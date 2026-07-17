@@ -1,0 +1,190 @@
+@import 'tailwindcss';
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-sans:
+        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+}
+
+@layer components {
+    .input-field {
+        @apply w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition-all duration-200 outline-none focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-gray-600 dark:bg-slate-700 dark:text-gray-100 dark:focus:border-indigo-500 dark:focus:bg-slate-600 dark:focus:ring-indigo-900;
+    }
+    
+    .btn-primary {
+        @apply w-full rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-3 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:from-indigo-600 hover:to-purple-600 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    .btn-danger {
+        @apply w-full rounded-xl bg-red-500 px-4 py-3 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 dark:focus:ring-offset-slate-800 disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    .btn-google {
+        @apply flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 hover:bg-gray-50 hover:shadow-md dark:border-gray-600 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600;
+    }
+
+    .btn-icon {
+        @apply absolute top-1/2 right-3 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300;
+    }
+
+    .form-label {
+        @apply mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300;
+    }
+
+    .form-error {
+        @apply mt-1 text-xs text-red-500;
+    }
+
+    .otp-input-field {
+        @apply h-12 w-10 sm:h-14 sm:w-12 rounded-xl border border-gray-200 bg-gray-50 text-center text-xl font-semibold text-gray-800 transition-all duration-200 outline-none focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-gray-600 dark:bg-slate-700 dark:text-gray-100 dark:focus:border-indigo-500 dark:focus:bg-slate-600 dark:focus:ring-indigo-900;
+    }
+
+    .btn-secondary {
+        @apply px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all dark:bg-slate-800 dark:text-gray-300 dark:border-slate-600 dark:hover:bg-slate-700;
+    }
+
+    .btn-sm {
+        @apply px-3 py-1.5 text-xs font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900;
+    }
+
+    .data-table {
+        @apply w-full whitespace-nowrap text-left text-sm text-gray-600 dark:text-gray-300;
+    }
+
+    .data-table thead {
+        @apply border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-gray-400;
+    }
+
+    .data-table th {
+        @apply px-6 py-4;
+    }
+
+    .data-table td {
+        @apply px-6 py-4;
+    }
+
+    .data-table-row {
+        @apply hover:bg-gray-50 transition-colors dark:hover:bg-slate-700/50;
+    }
+
+    .badge {
+        @apply inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset;
+    }
+
+    .badge-indigo {
+        @apply bg-indigo-50 text-indigo-700 ring-indigo-700/10 dark:bg-indigo-900/30 dark:text-indigo-400 dark:ring-indigo-400/20;
+    }
+
+    .modal-overlay {
+        @apply fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4 backdrop-blur-sm transition-opacity dark:bg-slate-900/80;
+    }
+
+    .modal-content {
+        @apply relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-8 text-left align-middle shadow-2xl transition-all dark:bg-slate-800;
+    }
+
+    /* ========== Auth Components ========== */
+
+    .auth-heading {
+        @apply text-2xl font-semibold text-gray-800 dark:text-gray-100;
+    }
+
+    .auth-subtitle {
+        @apply text-sm text-gray-500 dark:text-gray-400;
+    }
+
+    .auth-footer {
+        @apply text-center text-sm text-gray-500 dark:text-gray-400;
+    }
+
+    /* ========== Page / Dashboard Components ========== */
+
+    .page-heading {
+        @apply text-2xl font-bold text-gray-800 dark:text-gray-100;
+    }
+
+    .page-subtitle {
+        @apply mt-1 text-sm text-gray-500 dark:text-gray-400;
+    }
+
+    .page-header {
+        @apply mb-6 flex items-center justify-between;
+    }
+
+    .card-panel {
+        @apply overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-slate-800 dark:ring-white/10;
+    }
+
+    /* ========== Table Components ========== */
+
+    .table-body {
+        @apply divide-y divide-gray-100 dark:divide-slate-700;
+    }
+
+    .btn-edit {
+        @apply text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300;
+    }
+
+    .btn-delete {
+        @apply text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300;
+    }
+
+    /* ========== Modal Components ========== */
+
+    .modal-heading {
+        @apply mb-6 text-xl font-bold text-gray-900 dark:text-gray-100;
+    }
+
+    .modal-footer {
+        @apply mt-8 flex justify-end gap-3 border-t border-gray-100 pt-4 dark:border-slate-700;
+    }
+
+    /* ========== Shared UI Elements ========== */
+
+    .link-primary {
+        @apply font-medium text-indigo-500 hover:text-indigo-600 dark:text-indigo-400;
+    }
+
+    .form-divider {
+        @apply flex items-center gap-3;
+    }
+
+    .form-divider-line {
+        @apply h-px flex-1 bg-gray-200 dark:bg-gray-600;
+    }
+
+    .form-divider-text {
+        @apply text-xs text-gray-400 dark:text-gray-500;
+    }
+
+    .checkbox-field {
+        @apply h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 dark:border-slate-600 dark:bg-slate-700 dark:ring-offset-slate-800;
+    }
+
+    /* ========== Avatar ========== */
+
+    .avatar-placeholder {
+        @apply flex items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300;
+    }
+
+    .otp-input-error {
+        @apply !border-red-500 !bg-red-50 !text-red-900 dark:!border-red-900/50 dark:!bg-red-950/20 dark:!text-red-400;
+        animation: otp-shake 0.5s ease-in-out;
+    }
+    .otp-input-success {
+        @apply !border-green-500 !bg-green-50 !text-green-900 dark:!border-green-900/50 dark:!bg-green-950/20 dark:!text-green-400;
+        transform: scale(1.05);
+        transition: all 0.2s ease-in-out;
+    }
+    @keyframes otp-shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+        20%, 40%, 60%, 80% { transform: translateX(4px); }
+    }
+}

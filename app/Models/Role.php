@@ -1,0 +1,51 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
+class Role extends Model
+{
+    protected $fillable = [
+        'name',
+        'description',
+        'is_system',
+    ];
+
+    protected $casts = [
+        'is_system' => 'boolean',
+    ];
+
+    protected static function booted()
+    {
+        static::updated(function ($role) {
+            $userIds = \DB::table('user_roles')->where('role_id', $role->id)->pluck('user_id');
+            foreach ($userIds as $id) {
+                \Illuminate\Support\Facades\Cache::forget("user_permissions:{$id}");
+            }
+        });
+
+        static::deleted(function ($role) {
+            $userIds = \DB::table('user_roles')->where('role_id', $role->id)->pluck('user_id');
+            foreach ($userIds as $id) {
+                \Illuminate\Support\Facades\Cache::forget("user_permissions:{$id}");
+            }
+        });
+    }
+
+    public function permissions(): BelongsToMany
+    {
+        return $this->belongsToMany(Permission::class, 'role_permissions')->using(RolePermission::class);
+    }
+
+    public function pages(): BelongsToMany
+    {
+        return $this->belongsToMany(Page::class, 'role_pages');
+    }
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_roles')->using(UserRole::class);
+    }
+}
