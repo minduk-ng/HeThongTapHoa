@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import { MenuItemData } from './ProductTable';
+import { compressAndResizeImage } from '../../../../utils/imageCompressor';
 
 interface Category {
     id: number;
@@ -78,11 +79,13 @@ export default function ProductFormDrawer({
         };
     }, [productToEdit, isOpen, categories]);
 
+    const [isCompressingImage, setIsCompressingImage] = useState(false);
+
     // Handle Ctrl+V Paste Image from Clipboard
     useEffect(() => {
         if (!isOpen) return;
 
-        const handlePaste = (e: ClipboardEvent) => {
+        const handlePaste = async (e: ClipboardEvent) => {
             if (!e.clipboardData || !e.clipboardData.files) return;
 
             const files = Array.from(e.clipboardData.files);
@@ -90,9 +93,15 @@ export default function ProductFormDrawer({
 
             if (imageItem) {
                 e.preventDefault();
-                setImageFile(imageItem);
-                const newBlobUrl = URL.createObjectURL(imageItem);
-                setSafeImagePreview(newBlobUrl);
+                setIsCompressingImage(true);
+                try {
+                    const compressed = await compressAndResizeImage(imageItem, 600, 0.85);
+                    setImageFile(compressed);
+                    const newBlobUrl = URL.createObjectURL(compressed);
+                    setSafeImagePreview(newBlobUrl);
+                } finally {
+                    setIsCompressingImage(false);
+                }
             }
         };
 
@@ -104,12 +113,18 @@ export default function ProductFormDrawer({
 
     if (!isOpen) return null;
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            setImageFile(file);
-            const newBlobUrl = URL.createObjectURL(file);
-            setSafeImagePreview(newBlobUrl);
+            const rawFile = e.target.files[0];
+            setIsCompressingImage(true);
+            try {
+                const compressed = await compressAndResizeImage(rawFile, 600, 0.85);
+                setImageFile(compressed);
+                const newBlobUrl = URL.createObjectURL(compressed);
+                setSafeImagePreview(newBlobUrl);
+            } finally {
+                setIsCompressingImage(false);
+            }
         }
     };
 
@@ -266,7 +281,15 @@ export default function ProductFormDrawer({
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                                     {/* Enlarged Image Preview Box (w-36 h-36) */}
                                     <div className="w-36 h-36 rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 flex items-center justify-center overflow-hidden relative shrink-0 shadow-xs">
-                                        {imagePreview ? (
+                                        {isCompressingImage ? (
+                                            <div className="text-center p-2 text-blue-600 dark:text-blue-400">
+                                                <svg className="w-6 h-6 animate-spin mx-auto mb-1" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                </svg>
+                                                <span className="text-[10px] font-medium block">Đang nén 600x600 WebP...</span>
+                                            </div>
+                                        ) : imagePreview ? (
                                             <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                                         ) : (
                                             <div className="text-center p-3">
