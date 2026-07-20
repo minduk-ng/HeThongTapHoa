@@ -21,7 +21,9 @@ return new class extends Migration
             $table->foreignId('category_id')->nullable()->constrained('menu_categories')->nullOnDelete();
             $table->string('name', 100);
             $table->decimal('price', 15, 2);
+            $table->decimal('vat_rate', 5, 2)->default(0.00);
             $table->string('image', 255)->nullable();
+            $table->text('description')->nullable();
             $table->boolean('is_available')->default(true);
             $table->timestamps();
         });
