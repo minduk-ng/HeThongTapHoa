@@ -94,6 +94,21 @@ Route::middleware('auth')->group(function () {
         // Recipes Management
         Route::get('/inventory/recipes', [\App\Http\Controllers\Manager\RecipeController::class, 'index'])->middleware('permission:recipes.view');
         Route::post('/inventory/recipes/{product}', [\App\Http\Controllers\Manager\RecipeController::class, 'updateRecipe'])->middleware('permission:recipes.edit');
+
+        // Tables Management
+        Route::get('/tables', [\App\Http\Controllers\Manager\TableController::class, 'index'])->middleware('permission:tables.view');
+        Route::post('/tables', [\App\Http\Controllers\Manager\TableController::class, 'store'])->middleware('permission:tables.create');
+        Route::post('/tables/{table}', [\App\Http\Controllers\Manager\TableController::class, 'update'])->middleware('permission:tables.edit');
+        Route::delete('/tables/{table}', [\App\Http\Controllers\Manager\TableController::class, 'destroy'])->middleware('permission:tables.delete');
+    });
+
+    // Staff Features (POS & Kitchen Display)
+    Route::prefix('staff')->middleware(\App\Http\Middleware\CheckPageAccess::class)->group(function () {
+        Route::get('/pos', [\App\Http\Controllers\Staff\POSController::class, 'index'])->middleware('permission:pos.view');
+        Route::post('/pos/send-to-kitchen', [\App\Http\Controllers\Staff\POSController::class, 'sendToKitchen'])->middleware('permission:pos.create');
+
+        Route::get('/kitchen', [\App\Http\Controllers\Staff\KitchenController::class, 'index'])->middleware('permission:kitchen.view');
+        Route::post('/kitchen/complete/{order}', [\App\Http\Controllers\Staff\KitchenController::class, 'completeOrder'])->middleware('permission:kitchen.update');
     });
 
 });

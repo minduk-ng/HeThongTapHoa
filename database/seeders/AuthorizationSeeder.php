@@ -51,6 +51,12 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 20,
             ],
             [
+                'name' => 'Bàn & Sơ đồ',
+                'route_path' => '/manager/tables',
+                'group_name' => 'Quản lý',
+                'sort_order' => 21,
+            ],
+            [
                 'name' => 'Nguyên liệu',
                 'route_path' => '/manager/inventory/ingredients',
                 'group_name' => 'Quản lý',
@@ -61,6 +67,18 @@ class AuthorizationSeeder extends Seeder
                 'route_path' => '/manager/inventory/recipes',
                 'group_name' => 'Quản lý',
                 'sort_order' => 26,
+            ],
+            [
+                'name' => 'Đặt hàng POS',
+                'route_path' => '/staff/pos',
+                'group_name' => 'Nhân viên',
+                'sort_order' => 30,
+            ],
+            [
+                'name' => 'Màn hình Bếp',
+                'route_path' => '/staff/kitchen',
+                'group_name' => 'Nhân viên',
+                'sort_order' => 31,
             ],
         ];
 
@@ -95,6 +113,9 @@ class AuthorizationSeeder extends Seeder
             'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
             'ingredients.view', 'ingredients.create', 'ingredients.edit', 'ingredients.delete', 'ingredients.import',
             'recipes.view', 'recipes.edit',
+            'tables.view', 'tables.create', 'tables.edit', 'tables.delete',
+            'pos.view', 'pos.create',
+            'kitchen.view', 'kitchen.update',
         ];
 
         foreach ($permissions as $permission) {
