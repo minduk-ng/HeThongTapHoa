@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import { MenuItemData } from './ProductTable';
 
@@ -33,6 +33,21 @@ export default function ProductFormDrawer({
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const blobUrlRef = useRef<string | null>(null);
+
+    // Clean up created blob URL to prevent memory leaks
+    const setSafeImagePreview = (newUrl: string | null) => {
+        if (blobUrlRef.current && blobUrlRef.current.startsWith('blob:')) {
+            URL.revokeObjectURL(blobUrlRef.current);
+            blobUrlRef.current = null;
+        }
+        if (newUrl && newUrl.startsWith('blob:')) {
+            blobUrlRef.current = newUrl;
+        }
+        setImagePreview(newUrl);
+    };
+
     useEffect(() => {
         if (productToEdit) {
             setName(productToEdit.name || '');
@@ -41,7 +56,7 @@ export default function ProductFormDrawer({
             setVatRate(productToEdit.vat_rate ? String(productToEdit.vat_rate) : '0');
             setDescription(productToEdit.description || '');
             setIsAvailable(productToEdit.is_available ?? true);
-            setImagePreview(productToEdit.image || null);
+            setSafeImagePreview(productToEdit.image || null);
             setImageFile(null);
         } else {
             setName('');
@@ -50,11 +65,42 @@ export default function ProductFormDrawer({
             setVatRate('0');
             setDescription('');
             setIsAvailable(true);
-            setImagePreview(null);
+            setSafeImagePreview(null);
             setImageFile(null);
         }
         setErrors({});
+
+        return () => {
+            if (blobUrlRef.current && blobUrlRef.current.startsWith('blob:')) {
+                URL.revokeObjectURL(blobUrlRef.current);
+                blobUrlRef.current = null;
+            }
+        };
     }, [productToEdit, isOpen, categories]);
+
+    // Handle Ctrl+V Paste Image from Clipboard
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handlePaste = (e: ClipboardEvent) => {
+            if (!e.clipboardData || !e.clipboardData.files) return;
+
+            const files = Array.from(e.clipboardData.files);
+            const imageItem = files.find((f) => f.type.startsWith('image/'));
+
+            if (imageItem) {
+                e.preventDefault();
+                setImageFile(imageItem);
+                const newBlobUrl = URL.createObjectURL(imageItem);
+                setSafeImagePreview(newBlobUrl);
+            }
+        };
+
+        window.addEventListener('paste', handlePaste);
+        return () => {
+            window.removeEventListener('paste', handlePaste);
+        };
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
@@ -62,7 +108,16 @@ export default function ProductFormDrawer({
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             setImageFile(file);
-            setImagePreview(URL.createObjectURL(file));
+            const newBlobUrl = URL.createObjectURL(file);
+            setSafeImagePreview(newBlobUrl);
+        }
+    };
+
+    const handleRemoveImage = () => {
+        setImageFile(null);
+        setSafeImagePreview(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
         }
     };
 
@@ -203,33 +258,48 @@ export default function ProductFormDrawer({
                                 {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
                             </div>
 
-                            {/* Image Upload Box */}
+                            {/* Image Upload / Clipboard Paste Container */}
                             <div>
                                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                                    Ảnh sản phẩm (lưu `/storage/menu`)
+                                    Ảnh sản phẩm (Hỗ trợ <kbd className="px-1.5 py-0.5 text-[10px] bg-zinc-100 dark:bg-zinc-800 border rounded">Ctrl+V</kbd> dán trực tiếp từ bộ nhớ tạm)
                                 </label>
-                                <div className="flex items-center space-x-4">
-                                    <div className="w-24 h-24 rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden relative">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                                    {/* Enlarged Image Preview Box (w-36 h-36) */}
+                                    <div className="w-36 h-36 rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 flex items-center justify-center overflow-hidden relative shrink-0 shadow-xs">
                                         {imagePreview ? (
                                             <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                                         ) : (
-                                            <div className="text-center p-2">
-                                                <svg className="w-6 h-6 text-zinc-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <div className="text-center p-3">
+                                                <svg className="w-8 h-8 text-zinc-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                 </svg>
-                                                <span className="text-[10px] text-zinc-400 block mt-1">Chưa có ảnh</span>
+                                                <span className="text-xs text-zinc-400 block mt-1">Chưa có ảnh</span>
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex-1">
+
+                                    <div className="flex-1 space-y-2">
                                         <input
+                                            ref={fileInputRef}
                                             type="file"
                                             accept="image/*"
                                             onChange={handleImageChange}
                                             className="block w-full text-xs text-zinc-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-zinc-800 dark:file:text-zinc-200 cursor-pointer"
                                         />
-                                        <p className="text-[11px] text-zinc-400 mt-1">
-                                            Hỗ trợ JPG, PNG, WEBP tối đa 5MB. Tên file tự động lưu theo tên món + ngày giờ.
+                                        {imagePreview && (
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveImage}
+                                                className="text-xs text-rose-600 dark:text-rose-400 font-medium hover:underline flex items-center space-x-1"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                                <span>Xóa ảnh</span>
+                                            </button>
+                                        )}
+                                        <p className="text-[11px] text-zinc-400">
+                                            Tip: Bạn có thể sao chép ảnh từ web/máy tính và nhấn <strong className="text-blue-600 dark:text-blue-400">Ctrl + V</strong> để dán ảnh tức thì. Tự động giải phóng bộ nhớ đệm khi đổi ảnh.
                                         </p>
                                     </div>
                                 </div>
