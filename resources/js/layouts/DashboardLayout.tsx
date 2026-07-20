@@ -23,30 +23,31 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }, [flash]);
 
     return (
-        <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+        <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800 transition-colors duration-150 dark:bg-slate-900 dark:text-slate-100">
+            {/* Top Navigation Bar Header */}
             <Sidebar />
             
-            <main className="ml-64 flex-1 flex flex-col min-h-screen relative overflow-x-hidden">
+            <main className="relative flex flex-1 flex-col w-full">
                 {/* Floating Notification Toast */}
                 {notification && (
-                    <div className="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg animate-fade-in-down transition-all duration-300 bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 max-w-sm">
+                    <div className="fixed top-20 right-6 z-50 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-lg transition-all duration-200 dark:border-slate-700 dark:bg-slate-800 max-w-sm">
                         {notification.type === 'success' ? (
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-500 dark:bg-green-900/30 dark:text-green-400">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
                                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
                             </div>
                         ) : (
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-500 dark:bg-red-900/30 dark:text-red-400">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400">
                                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                             </div>
                         )}
-                        <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                        <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                             {notification.message}
                         </div>
-                        <button onClick={() => setNotification(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-auto">
+                        <button onClick={() => setNotification(null)} className="ml-auto text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -54,10 +55,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     </div>
                 )}
 
-                {/* Decorative backgrounds */}
-                <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-indigo-50/50 to-transparent dark:from-indigo-900/10 pointer-events-none" />
-                
-                <div className="flex-1 p-8 relative z-10 w-full max-w-7xl mx-auto">
+                {/* Main Content Container */}
+                <div className="relative z-10 flex-1 w-full max-w-7xl mx-auto p-6 md:p-8">
                     {children}
                 </div>
             </main>
