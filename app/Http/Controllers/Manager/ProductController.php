@@ -127,8 +127,16 @@ class ProductController extends Controller
         return back()->with('success', 'Cập nhật sản phẩm thành công!');
     }
 
-    public function destroy(MenuItem $product)
+    public function destroy(Request $request, MenuItem $product)
     {
+        $request->validate([
+            'password' => 'required|string',
+        ]);
+
+        if (!\Illuminate\Support\Facades\Hash::check($request->password, $request->user()->password)) {
+            return back()->withErrors(['password' => 'Mật khẩu không chính xác.']);
+        }
+
         // Delete image file if exists
         if ($product->image && str_starts_with($product->image, '/storage/')) {
             $oldPath = str_replace('/storage/', '', $product->image);

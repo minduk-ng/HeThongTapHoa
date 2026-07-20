@@ -58,8 +58,16 @@ class CategoryController extends Controller
         return back()->with('success', 'Cập nhật danh mục thành công!');
     }
 
-    public function destroy(MenuCategory $category)
+    public function destroy(Request $request, MenuCategory $category)
     {
+        $request->validate([
+            'password' => 'required|string',
+        ]);
+
+        if (!\Illuminate\Support\Facades\Hash::check($request->password, $request->user()->password)) {
+            return back()->withErrors(['password' => 'Mật khẩu không chính xác.']);
+        }
+
         $category->delete();
 
         return back()->with('success', 'Xóa danh mục thành công!');
