@@ -77,7 +77,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/products/check-import', [\App\Http\Controllers\Manager\ProductController::class, 'checkImport'])->middleware('permission:products.import');
         Route::post('/products/confirm-import', [\App\Http\Controllers\Manager\ProductController::class, 'confirmImport'])->middleware('permission:products.import');
 
-        Route::post('/categories', [\App\Http\Controllers\Manager\CategoryController::class, 'store'])->middleware('permission:products.create');
+        // Categories Management
+        Route::get('/categories', [\App\Http\Controllers\Manager\CategoryController::class, 'index'])->middleware('permission:categories.view');
+        Route::post('/categories', [\App\Http\Controllers\Manager\CategoryController::class, 'store'])->middleware('permission:categories.create');
+        Route::post('/categories/{category}', [\App\Http\Controllers\Manager\CategoryController::class, 'update'])->middleware('permission:categories.edit');
+        Route::delete('/categories/{category}', [\App\Http\Controllers\Manager\CategoryController::class, 'destroy'])->middleware('permission:categories.delete');
     });
+
 });
 
