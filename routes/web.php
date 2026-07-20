@@ -65,4 +65,19 @@ Route::middleware('auth')->group(function () {
         Route::put('/permissions/{user}', [\App\Http\Controllers\Admin\UserPermissionController::class, 'update'])->middleware('permission:users.edit');
         Route::post('/permissions/bulk', [\App\Http\Controllers\Admin\UserPermissionController::class, 'bulkAction'])->middleware('permission:users.edit');
     });
+
+    // Store Management Routes (/manager/)
+    Route::prefix('manager')->middleware(\App\Http\Middleware\CheckPageAccess::class)->group(function () {
+        Route::get('/products', [\App\Http\Controllers\Manager\ProductController::class, 'index'])->middleware('permission:products.view');
+        Route::post('/products', [\App\Http\Controllers\Manager\ProductController::class, 'store'])->middleware('permission:products.create');
+        Route::post('/products/{product}', [\App\Http\Controllers\Manager\ProductController::class, 'update'])->middleware('permission:products.edit');
+        Route::delete('/products/{product}', [\App\Http\Controllers\Manager\ProductController::class, 'destroy'])->middleware('permission:products.delete');
+
+        Route::get('/products/export', [\App\Http\Controllers\Manager\ProductController::class, 'export'])->middleware('permission:products.export');
+        Route::post('/products/check-import', [\App\Http\Controllers\Manager\ProductController::class, 'checkImport'])->middleware('permission:products.import');
+        Route::post('/products/confirm-import', [\App\Http\Controllers\Manager\ProductController::class, 'confirmImport'])->middleware('permission:products.import');
+
+        Route::post('/categories', [\App\Http\Controllers\Manager\CategoryController::class, 'store'])->middleware('permission:products.create');
+    });
 });
+
