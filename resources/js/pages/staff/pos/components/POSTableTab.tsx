@@ -36,7 +36,6 @@ interface POSTableTabProps {
 }
 
 export default function POSTableTab({ tables, selectedTable, onSelectTable }: POSTableTabProps) {
-    // Group tables by Area
     const groupedAreas = tables.reduce((acc, table) => {
         const areaName = table.area || 'Khác';
         if (!acc[areaName]) acc[areaName] = [];
@@ -45,13 +44,13 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable }: PO
     }, {} as Record<string, POSTableData[]>);
 
     return (
-        <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-220px)] pr-1">
+        <div className="h-full overflow-y-auto pr-1 space-y-5">
             {Object.entries(groupedAreas).map(([areaName, areaTables]) => (
                 <div key={areaName} className="space-y-3">
-                    <div className="flex items-center space-x-2 border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                    <div className="flex items-center space-x-2 border-b border-zinc-200 dark:border-zinc-800 pb-2 sticky top-0 bg-white dark:bg-zinc-900 z-10">
                         <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-                        <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                            {areaName} <span className="text-xs text-zinc-400 font-normal">({areaTables.length} bàn)</span>
+                        <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">
+                            {areaName} <span className="text-zinc-400 font-normal">({areaTables.length} bàn)</span>
                         </h3>
                     </div>
 
@@ -64,16 +63,16 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable }: PO
                                 <div
                                     key={table.id}
                                     onClick={() => onSelectTable(table)}
-                                    className={`relative cursor-pointer p-4 rounded-xl border-2 transition-all select-none flex flex-col justify-between h-28 ${
+                                    className={`relative cursor-pointer p-3.5 rounded-xl border-2 transition-all select-none flex flex-col justify-between h-28 ${
                                         isSelected
-                                            ? 'border-blue-600 bg-blue-50/90 dark:bg-blue-950/60 shadow-md ring-2 ring-blue-400/50'
+                                            ? 'border-blue-600 bg-blue-50/90 dark:bg-blue-950/70 shadow-md ring-2 ring-blue-500/40'
                                             : isOccupied
                                             ? 'border-amber-400 bg-amber-50/80 dark:bg-amber-950/40 hover:border-amber-500'
                                             : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700'
                                     }`}
                                 >
                                     <div className="flex justify-between items-start">
-                                        <span className="font-extrabold text-base text-zinc-900 dark:text-zinc-100">
+                                        <span className="font-black text-base text-zinc-900 dark:text-zinc-100">
                                             {table.table_number}
                                         </span>
                                         <span

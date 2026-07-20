@@ -58,10 +58,11 @@ export default function POSMenuTab({
     };
 
     return (
-        <div className="space-y-4 flex flex-col h-full">
-            {/* Category Filter & Search Bar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <div className="relative flex-1">
+        <div className="h-full flex flex-col min-h-0 space-y-3">
+            {/* Top Fixed Header Controls (Search & Category Tabs) */}
+            <div className="shrink-0 space-y-2.5">
+                {/* Search Bar */}
+                <div className="relative">
                     <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
@@ -70,46 +71,46 @@ export default function POSMenuTab({
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Tìm tên món ăn / đồ uống..."
-                        className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
+                </div>
+
+                {/* Horizontal Category Pill Tabs */}
+                <div className="flex items-center space-x-2 overflow-x-auto pb-1 no-scrollbar">
+                    <button
+                        type="button"
+                        onClick={() => setSelectedCategoryId('all')}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors ${
+                            selectedCategoryId === 'all'
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
+                        }`}
+                    >
+                        Tất cả món ({products.length})
+                    </button>
+                    {categories.map((cat) => {
+                        const count = products.filter((p) => p.category_id === cat.id).length;
+                        const isSelected = selectedCategoryId === String(cat.id);
+                        return (
+                            <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => setSelectedCategoryId(String(cat.id))}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors ${
+                                    isSelected
+                                        ? 'bg-blue-600 text-white shadow-xs'
+                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
+                                }`}
+                            >
+                                {cat.name} ({count})
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
-            {/* Horizontal Category Pill Tabs */}
-            <div className="flex items-center space-x-2 overflow-x-auto pb-1 no-scrollbar shrink-0">
-                <button
-                    type="button"
-                    onClick={() => setSelectedCategoryId('all')}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors ${
-                        selectedCategoryId === 'all'
-                            ? 'bg-blue-600 text-white shadow-xs'
-                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
-                    }`}
-                >
-                    Tất cả món ({products.length})
-                </button>
-                {categories.map((cat) => {
-                    const count = products.filter((p) => p.category_id === cat.id).length;
-                    const isSelected = selectedCategoryId === String(cat.id);
-                    return (
-                        <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => setSelectedCategoryId(String(cat.id))}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors ${
-                                isSelected
-                                    ? 'bg-blue-600 text-white shadow-xs'
-                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
-                            }`}
-                        >
-                            {cat.name} ({count})
-                        </button>
-                    );
-                })}
-            </div>
-
-            {/* Products Grid */}
-            <div className="flex-1 overflow-y-auto max-h-[calc(100vh-280px)] pr-1">
+            {/* Scrollable Products Grid */}
+            <div className="flex-1 overflow-y-auto pr-1 min-h-0">
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                     {filteredProducts.map((product) => {
                         const inCart = isProductInCart(product.id);

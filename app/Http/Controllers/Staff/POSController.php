@@ -65,10 +65,11 @@ class POSController extends Controller
                 OrderItem::where('order_id', $order->id)->delete();
             } else {
                 $orderCode = 'ORD-' . strtoupper(\Illuminate\Support\Str::random(6));
+                $employeeId = DB::table('employees')->where('id', $request->user()->id)->exists() ? $request->user()->id : null;
                 $order = Order::create([
                     'order_code' => $orderCode,
                     'table_id' => $table->id,
-                    'employee_id' => $request->user()->id,
+                    'employee_id' => $employeeId,
                     'subtotal' => $validated['subtotal'],
                     'vat_amount' => $validated['vat_amount'],
                     'total' => $validated['total'],

@@ -15,7 +15,6 @@ export default function POSManager({ tables, categories, products }: POSManagerP
     const [activeTab, setActiveTab] = useState<'tables' | 'menu'>('tables');
     const [selectedTable, setSelectedTable] = useState<POSTableData | null>(tables[0] || null);
 
-    // Map table orders to active cart items
     const [tableCarts, setTableCarts] = useState<Record<number, CartItem[]>>({});
     const [submitting, setSubmitting] = useState(false);
 
@@ -54,18 +53,15 @@ export default function POSManager({ tables, categories, products }: POSManagerP
 
         if (index > -1) {
             const existingItem = existingCart[index];
-            // If item is not yet confirmed, clicking again toggles/removes it
             if (!existingItem.isConfirmed) {
                 const updated = existingCart.filter((i) => i.menu_item_id !== product.id);
                 setTableCarts({ ...tableCarts, [tableId]: updated });
             } else {
-                // If confirmed, increase quantity by 1
                 const updated = [...existingCart];
                 updated[index] = { ...existingItem, quantity: existingItem.quantity + 1 };
                 setTableCarts({ ...tableCarts, [tableId]: updated });
             }
         } else {
-            // Add new item
             const newItem: CartItem = {
                 menu_item_id: product.id,
                 name: product.name,
@@ -154,13 +150,13 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         <DashboardLayout>
             <Head title="Đặt hàng POS & Quản lý bàn bán hàng" />
 
-            <div className="p-4 md:p-6 max-w-7xl mx-auto h-[calc(100vh-80px)] flex flex-col">
-                {/* 2-Half Split Screen Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 h-full min-h-0">
-                    {/* Left Half (7 columns): Tabs "Chọn bàn" and "Chọn món" */}
-                    <div className="lg:col-span-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 flex flex-col h-full shadow-xs">
-                        {/* Tab Switcher */}
-                        <div className="flex items-center space-x-2 border-b border-zinc-200 dark:border-zinc-800 pb-3 mb-4 shrink-0">
+            {/* Standalone Full-Height Split Screen Container */}
+            <div className="h-[calc(100vh-68px)] p-3 overflow-hidden">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full min-h-0">
+                    {/* Left Panel (7 columns): Standalone Box for Tabs */}
+                    <div className="lg:col-span-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 flex flex-col h-full min-h-0 shadow-xs">
+                        {/* Top Fixed Tab Selector */}
+                        <div className="shrink-0 flex items-center space-x-2 border-b border-zinc-200 dark:border-zinc-800 pb-3 mb-3">
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('tables')}
@@ -196,15 +192,14 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                             </button>
                         </div>
 
-                        {/* Tab Content */}
-                        <div className="flex-1 overflow-hidden">
+                        {/* Content Area with Independent Scroll */}
+                        <div className="flex-1 overflow-hidden min-h-0">
                             {activeTab === 'tables' ? (
                                 <POSTableTab
                                     tables={tables}
                                     selectedTable={selectedTable}
                                     onSelectTable={(table) => {
                                         handleSelectTable(table);
-                                        // Auto-switch to menu tab after choosing a table
                                         setActiveTab('menu');
                                     }}
                                 />
@@ -219,8 +214,8 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                         </div>
                     </div>
 
-                    {/* Right Half (5 columns): Table Details & Cart Info Panel */}
-                    <div className="lg:col-span-5 h-full">
+                    {/* Right Panel (5 columns): Standalone Cart Panel Box */}
+                    <div className="lg:col-span-5 h-full min-h-0">
                         <POSCartPanel
                             selectedTable={selectedTable}
                             cartItems={currentCart}
