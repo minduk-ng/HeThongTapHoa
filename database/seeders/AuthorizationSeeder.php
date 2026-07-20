@@ -39,7 +39,13 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 12,
             ],
             [
-                'name' => 'Danh mục & Sản phẩm',
+                'name' => 'Danh mục',
+                'route_path' => '/manager/categories',
+                'group_name' => 'Quản lý',
+                'sort_order' => 19,
+            ],
+            [
+                'name' => 'Sản phẩm',
                 'route_path' => '/manager/products',
                 'group_name' => 'Quản lý',
                 'sort_order' => 20,
@@ -74,6 +80,7 @@ class AuthorizationSeeder extends Seeder
             'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
             'users.view', 'users.edit',
             'products.view', 'products.create', 'products.edit', 'products.delete', 'products.import', 'products.export',
+            'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
         ];
 
         foreach ($permissions as $permission) {
