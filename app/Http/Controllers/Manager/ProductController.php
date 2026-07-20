@@ -221,8 +221,12 @@ class ProductController extends Controller
                 }
 
                 if (isset($data[0]) || isset($data[1])) {
+                    $rawId = trim($data[0] ?? '');
+                    $cleanId = preg_replace('/[^0-9]/', '', $rawId);
+
                     $rows[] = [
-                        'id' => trim($data[0] ?? ''),
+                        'id' => $cleanId !== '' ? (int)$cleanId : null,
+                        'raw_id' => $rawId,
                         'name' => trim($data[1] ?? ''),
                         'category' => trim($data[2] ?? ''),
                         'price' => (float) preg_replace('/[^0-9.]/', '', $data[3] ?? '0'),
@@ -240,7 +244,7 @@ class ProductController extends Controller
 
             foreach ($rows as $row) {
                 $isDuplicate = false;
-                if (!empty($row['id']) && is_numeric($row['id']) && in_array((int)$row['id'], $existingIds)) {
+                if (!empty($row['id']) && in_array((int)$row['id'], $existingIds)) {
                     $isDuplicate = true;
                 } elseif (!empty($row['name']) && in_array(mb_strtolower($row['name']), $existingNames)) {
                     $isDuplicate = true;

@@ -68,14 +68,15 @@ Route::middleware('auth')->group(function () {
 
     // Store Management Routes (/manager/)
     Route::prefix('manager')->middleware(\App\Http\Middleware\CheckPageAccess::class)->group(function () {
+        // Products Management
         Route::get('/products', [\App\Http\Controllers\Manager\ProductController::class, 'index'])->middleware('permission:products.view');
         Route::post('/products', [\App\Http\Controllers\Manager\ProductController::class, 'store'])->middleware('permission:products.create');
-        Route::post('/products/{product}', [\App\Http\Controllers\Manager\ProductController::class, 'update'])->middleware('permission:products.edit');
-        Route::delete('/products/{product}', [\App\Http\Controllers\Manager\ProductController::class, 'destroy'])->middleware('permission:products.delete');
-
         Route::get('/products/export', [\App\Http\Controllers\Manager\ProductController::class, 'export'])->middleware('permission:products.export');
         Route::post('/products/check-import', [\App\Http\Controllers\Manager\ProductController::class, 'checkImport'])->middleware('permission:products.import');
         Route::post('/products/confirm-import', [\App\Http\Controllers\Manager\ProductController::class, 'confirmImport'])->middleware('permission:products.import');
+        Route::post('/products/{product}', [\App\Http\Controllers\Manager\ProductController::class, 'update'])->middleware('permission:products.edit');
+        Route::delete('/products/{product}', [\App\Http\Controllers\Manager\ProductController::class, 'destroy'])->middleware('permission:products.delete');
+
 
         // Categories Management
         Route::get('/categories', [\App\Http\Controllers\Manager\CategoryController::class, 'index'])->middleware('permission:categories.view');
