@@ -50,6 +50,18 @@ class AuthorizationSeeder extends Seeder
                 'group_name' => 'Quản lý',
                 'sort_order' => 20,
             ],
+            [
+                'name' => 'Nguyên liệu',
+                'route_path' => '/manager/inventory/ingredients',
+                'group_name' => 'Quản lý',
+                'sort_order' => 25,
+            ],
+            [
+                'name' => 'Định lượng món',
+                'route_path' => '/manager/inventory/recipes',
+                'group_name' => 'Quản lý',
+                'sort_order' => 26,
+            ],
         ];
 
         foreach ($pages as $page) {
@@ -81,6 +93,8 @@ class AuthorizationSeeder extends Seeder
             'users.view', 'users.edit',
             'products.view', 'products.create', 'products.edit', 'products.delete', 'products.import', 'products.export',
             'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
+            'ingredients.view', 'ingredients.create', 'ingredients.edit', 'ingredients.delete', 'ingredients.import',
+            'recipes.view', 'recipes.edit',
         ];
 
         foreach ($permissions as $permission) {

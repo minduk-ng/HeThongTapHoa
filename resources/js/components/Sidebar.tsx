@@ -125,9 +125,6 @@ export default function Sidebar() {
                                         >
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                         </svg>
-                                        {isPinned && (
-                                            <span className="h-1.5 w-1.5 rounded-full bg-sky-500" title="Pinned" />
-                                        )}
                                     </button>
 
                                     {/* GitHub Style Dropdown Menu */}

@@ -29,4 +29,9 @@ class MenuItem extends Model
     {
         return $this->belongsTo(MenuCategory::class, 'category_id');
     }
+
+    public function recipes()
+    {
+        return $this->hasMany(ProductRecipe::class, 'menu_item_id');
+    }
 }

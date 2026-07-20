@@ -83,6 +83,17 @@ Route::middleware('auth')->group(function () {
         Route::post('/categories', [\App\Http\Controllers\Manager\CategoryController::class, 'store'])->middleware('permission:categories.create');
         Route::post('/categories/{category}', [\App\Http\Controllers\Manager\CategoryController::class, 'update'])->middleware('permission:categories.edit');
         Route::delete('/categories/{category}', [\App\Http\Controllers\Manager\CategoryController::class, 'destroy'])->middleware('permission:categories.delete');
+
+        // Inventory Management
+        Route::get('/inventory/ingredients', [\App\Http\Controllers\Manager\IngredientController::class, 'index'])->middleware('permission:ingredients.view');
+        Route::post('/inventory/ingredients', [\App\Http\Controllers\Manager\IngredientController::class, 'store'])->middleware('permission:ingredients.create');
+        Route::post('/inventory/ingredients/import', [\App\Http\Controllers\Manager\IngredientController::class, 'importStock'])->middleware('permission:ingredients.import');
+        Route::post('/inventory/ingredients/{ingredient}', [\App\Http\Controllers\Manager\IngredientController::class, 'update'])->middleware('permission:ingredients.edit');
+        Route::delete('/inventory/ingredients/{ingredient}', [\App\Http\Controllers\Manager\IngredientController::class, 'destroy'])->middleware('permission:ingredients.delete');
+
+        // Recipes Management
+        Route::get('/inventory/recipes', [\App\Http\Controllers\Manager\RecipeController::class, 'index'])->middleware('permission:recipes.view');
+        Route::post('/inventory/recipes/{product}', [\App\Http\Controllers\Manager\RecipeController::class, 'updateRecipe'])->middleware('permission:recipes.edit');
     });
 
 });
