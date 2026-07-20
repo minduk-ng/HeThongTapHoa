@@ -47,17 +47,29 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
             const res = await fetch('/manager/products/check-import', {
                 method: 'POST',
                 headers: {
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
                 },
                 body: formData,
             });
 
+            const isJson = res.headers.get('content-type')?.includes('application/json');
+            const data = isJson ? await res.json() : null;
+
             if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.message || 'Lỗi kiểm tra file Excel');
+                if (data && data.message) {
+                    throw new Error(data.message);
+                } else if (data && data.errors) {
+                    const firstErr = Object.values(data.errors).flat()[0];
+                    throw new Error(String(firstErr));
+                }
+                throw new Error(`Lỗi kiểm tra file Excel (${res.status} ${res.statusText})`);
             }
 
-            const data: ImportCheckResult = await res.json();
+            if (!data) {
+                throw new Error('Phản hồi từ máy chủ không hợp lệ (không phải định dạng JSON).');
+            }
+
             setCheckResult(data);
         } catch (err: any) {
             setErrorMsg(err.message || 'Đã xảy ra lỗi khi tải file.');

@@ -179,73 +179,94 @@ class ProductController extends Controller
 
     public function checkImport(Request $request)
     {
-        $request->validate([
-            'file' => 'required|file|mimes:csv,txt,xlsx|max:10240',
-        ]);
+        try {
+            $request->validate([
+                'file' => 'required|file|mimes:csv,txt,xlsx|max:10240',
+            ]);
 
-        $file = $request->file('file');
-        $path = $file->getRealPath();
-        
-        $rows = [];
-        if (($handle = fopen($path, 'r')) !== false) {
-            // Check BOM
-            $bom = fread($handle, 3);
-            if ($bom !== "\xEF\xBB\xBF") {
-                rewind($handle);
+            $file = $request->file('file');
+            $path = $file->getRealPath();
+
+            $content = file_get_contents($path);
+            if ($content === false) {
+                return response()->json(['message' => 'Không thể đọc nội dung file.'], 422);
             }
 
+            // Remove UTF-8 BOM if present
+            if (str_starts_with($content, "\xEF\xBB\xBF")) {
+                $content = substr($content, 3);
+            }
+
+            // Auto-detect delimiter (, or ; or \t)
+            $firstLine = strtok($content, "\r\n");
+            $delimiter = ',';
+            if (substr_count($firstLine, ';') > substr_count($firstLine, ',')) {
+                $delimiter = ';';
+            } elseif (substr_count($firstLine, "\t") > substr_count($firstLine, ',')) {
+                $delimiter = "\t";
+            }
+
+            $lines = explode("\n", str_replace(["\r\n", "\r"], "\n", $content));
+            $rows = [];
             $isHeader = true;
-            while (($data = fgetcsv($handle, 1000, ",")) !== false) {
+
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line)) continue;
+
+                $data = str_getcsv($line, $delimiter);
                 if ($isHeader) {
                     $isHeader = false;
                     continue;
                 }
+
                 if (isset($data[0]) || isset($data[1])) {
                     $rows[] = [
                         'id' => trim($data[0] ?? ''),
                         'name' => trim($data[1] ?? ''),
                         'category' => trim($data[2] ?? ''),
-                        'price' => (float) ($data[3] ?? 0),
-                        'vat_rate' => (float) ($data[4] ?? 0),
+                        'price' => (float) preg_replace('/[^0-9.]/', '', $data[3] ?? '0'),
+                        'vat_rate' => (float) preg_replace('/[^0-9.]/', '', $data[4] ?? '0'),
                         'description' => trim($data[6] ?? ''),
                     ];
                 }
             }
-            fclose($handle);
-        }
 
-        $existingIds = MenuItem::pluck('id')->toArray();
-        $existingNames = MenuItem::pluck('name')->map(fn($n) => mb_strtolower($n))->toArray();
+            $existingIds = MenuItem::pluck('id')->toArray();
+            $existingNames = MenuItem::pluck('name')->map(fn($n) => mb_strtolower($n))->toArray();
 
-        $duplicates = [];
-        $newItems = [];
+            $duplicates = [];
+            $newItems = [];
 
-        foreach ($rows as $row) {
-            $isDuplicate = false;
-            if (!empty($row['id']) && in_array((int)$row['id'], $existingIds)) {
-                $isDuplicate = true;
-            } elseif (!empty($row['name']) && in_array(mb_strtolower($row['name']), $existingNames)) {
-                $isDuplicate = true;
+            foreach ($rows as $row) {
+                $isDuplicate = false;
+                if (!empty($row['id']) && is_numeric($row['id']) && in_array((int)$row['id'], $existingIds)) {
+                    $isDuplicate = true;
+                } elseif (!empty($row['name']) && in_array(mb_strtolower($row['name']), $existingNames)) {
+                    $isDuplicate = true;
+                }
+
+                if ($isDuplicate) {
+                    $duplicates[] = $row;
+                } else {
+                    $newItems[] = $row;
+                }
             }
 
-            if ($isDuplicate) {
-                $duplicates[] = $row;
-            } else {
-                $newItems[] = $row;
-            }
+            // Cache temp import data
+            $tempId = 'import_' . Str::random(10);
+            session([$tempId => ['rows' => $rows, 'duplicates' => $duplicates, 'new_items' => $newItems]]);
+
+            return response()->json([
+                'temp_id' => $tempId,
+                'total_count' => count($rows),
+                'duplicates_count' => count($duplicates),
+                'new_count' => count($newItems),
+                'duplicates' => $duplicates,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Lỗi đọc file: ' . $e->getMessage()], 422);
         }
-
-        // Cache temp import data
-        $tempId = 'import_' . Str::random(10);
-        session([$tempId => ['rows' => $rows, 'duplicates' => $duplicates, 'new_items' => $newItems]]);
-
-        return response()->json([
-            'temp_id' => $tempId,
-            'total_count' => count($rows),
-            'duplicates_count' => count($duplicates),
-            'new_count' => count($newItems),
-            'duplicates' => $duplicates,
-        ]);
     }
 
     public function confirmImport(Request $request)
