@@ -20,6 +20,14 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     const [confirming, setConfirming] = useState(false);
     const [checkResult, setCheckResult] = useState<ImportCheckResult | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const handleClose = () => {
+        setFile(null);
+        setCheckResult(null);
+        setErrorMsg(null);
+        setChecking(false);
+        setConfirming(false);
+        onClose();
+    };
 
     if (!isOpen) return null;
 
@@ -113,7 +121,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         <span>Nhập dữ liệu sản phẩm từ Excel</span>
                     </h3>
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded-lg"
                     >
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -147,7 +155,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         <div className="flex justify-end space-x-3 pt-2">
                             <button
                                 type="button"
-                                onClick={onClose}
+                                onClick={handleClose}
                                 className="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700"
                             >
                                 Hủy
@@ -199,7 +207,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                         <div className="pt-2 flex flex-col sm:flex-row justify-end gap-2">
                             <button
                                 type="button"
-                                onClick={onClose}
+                                onClick={handleClose}
                                 disabled={confirming}
                                 className="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700"
                             >

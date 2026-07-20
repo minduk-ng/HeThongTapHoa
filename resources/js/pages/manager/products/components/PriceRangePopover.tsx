@@ -35,8 +35,43 @@ export default function PriceRangePopover({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const numMin = tempMin !== '' ? Number(tempMin) : globalMin;
+    const numMax = tempMax !== '' ? Number(tempMax) : globalMax;
+
+    // Handle min slider drag with auto inversion swap
+    const handleMinSlider = (valStr: string) => {
+        const val = Number(valStr);
+        if (val > numMax) {
+            setTempMin(String(numMax));
+            setTempMax(String(val));
+        } else {
+            setTempMin(String(val));
+        }
+    };
+
+    // Handle max slider drag with auto inversion swap
+    const handleMaxSlider = (valStr: string) => {
+        const val = Number(valStr);
+        if (val < numMin) {
+            setTempMax(String(numMin));
+            setTempMin(String(val));
+        } else {
+            setTempMax(String(val));
+        }
+    };
+
     const handleApply = () => {
-        onChange(tempMin, tempMax);
+        let finalMin = tempMin !== '' ? Number(tempMin) : globalMin;
+        let finalMax = tempMax !== '' ? Number(tempMax) : globalMax;
+
+        if (finalMin > finalMax) {
+            [finalMin, finalMax] = [finalMax, finalMin];
+        }
+
+        const strMin = finalMin > globalMin ? String(finalMin) : '';
+        const strMax = finalMax < globalMax ? String(finalMax) : '';
+
+        onChange(strMin, strMax);
         setIsOpen(false);
     };
 
@@ -48,12 +83,14 @@ export default function PriceRangePopover({
     };
 
     const formatVND = (val: string | number) => {
-        if (!val && val !== 0) return '';
+        if (!val && val !== 0) return '0 đ';
         return Number(val).toLocaleString('vi-VN') + ' đ';
     };
 
-    const numMin = tempMin !== '' ? Number(tempMin) : globalMin;
-    const numMax = tempMax !== '' ? Number(tempMax) : globalMax;
+    // Calculate highlight bar percentage
+    const safeMax = globalMax > globalMin ? globalMax : globalMin + 100000;
+    const minPercent = Math.min(Math.max(((numMin - globalMin) / (safeMax - globalMin)) * 100, 0), 100);
+    const maxPercent = Math.min(Math.max(((numMax - globalMin) / (safeMax - globalMin)) * 100, 0), 100);
 
     return (
         <div className="relative inline-block" ref={popoverRef}>
@@ -80,64 +117,83 @@ export default function PriceRangePopover({
             </button>
 
             {isOpen && (
-                <div className="absolute left-0 mt-2 w-72 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-30 p-4 space-y-4">
+                <div className="absolute left-0 mt-2 w-80 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-30 p-4 space-y-4">
                     <div className="flex justify-between items-center pb-2 border-b border-zinc-100 dark:border-zinc-800">
                         <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Khoảng giá bán</span>
                         <button
                             type="button"
                             onClick={handleReset}
-                            className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+                            className="text-xs text-blue-600 hover:underline dark:text-blue-400 font-medium"
                         >
                             Đặt lại
                         </button>
                     </div>
 
-                    {/* Dual Range Sliders */}
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-xs text-zinc-500">
+                    {/* Unified Visual Track Slider Container */}
+                    <div className="space-y-3 pt-1">
+                        <div className="flex justify-between text-xs font-medium text-zinc-600 dark:text-zinc-400">
                             <span>{formatVND(numMin)}</span>
                             <span>{formatVND(numMax)}</span>
                         </div>
-                        <input
-                            type="range"
-                            min={globalMin}
-                            max={globalMax}
-                            step={5000}
-                            value={numMin}
-                            onChange={(e) => setTempMin(e.target.value)}
-                            className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                        />
-                        <input
-                            type="range"
-                            min={globalMin}
-                            max={globalMax}
-                            step={5000}
-                            value={numMax}
-                            onChange={(e) => setTempMax(e.target.value)}
-                            className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                        />
+
+                        {/* Combined Dual Handle Track Container */}
+                        <div className="relative w-full h-6 flex items-center">
+                            {/* Base Gray Track */}
+                            <div className="absolute w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full" />
+
+                            {/* Active Blue Highlight Track */}
+                            <div
+                                className="absolute h-2 bg-blue-600 rounded-full"
+                                style={{
+                                    left: `${Math.min(minPercent, maxPercent)}%`,
+                                    width: `${Math.abs(maxPercent - minPercent)}%`,
+                                }}
+                            />
+
+                            {/* Overlaid Min Handle Slider */}
+                            <input
+                                type="range"
+                                min={globalMin}
+                                max={safeMax}
+                                step={5000}
+                                value={numMin}
+                                onChange={(e) => handleMinSlider(e.target.value)}
+                                className="absolute w-full h-2 appearance-none bg-transparent pointer-events-auto cursor-pointer focus:outline-hidden [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-blue-600 [&::-webkit-slider-thumb]:shadow-md hover:[&::-webkit-slider-thumb]:scale-110 transition-transform"
+                            />
+
+                            {/* Overlaid Max Handle Slider */}
+                            <input
+                                type="range"
+                                min={globalMin}
+                                max={safeMax}
+                                step={5000}
+                                value={numMax}
+                                onChange={(e) => handleMaxSlider(e.target.value)}
+                                className="absolute w-full h-2 appearance-none bg-transparent pointer-events-auto cursor-pointer focus:outline-hidden [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-blue-600 [&::-webkit-slider-thumb]:shadow-md hover:[&::-webkit-slider-thumb]:scale-110 transition-transform"
+                            />
+                        </div>
                     </div>
 
                     {/* Direct Number Inputs */}
-                    <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="grid grid-cols-2 gap-3 pt-1">
                         <div>
-                            <label className="block text-xs text-zinc-500 mb-1">Từ (VNĐ)</label>
+                            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Từ (VNĐ)</label>
                             <input
                                 type="number"
                                 value={tempMin}
                                 onChange={(e) => setTempMin(e.target.value)}
                                 placeholder="0"
-                                className="w-full px-2 py-1.5 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-2.5 py-1.5 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs text-zinc-500 mb-1">Đến (VNĐ)</label>
+                            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Đến (VNĐ)</label>
                             <input
                                 type="number"
                                 value={tempMax}
                                 onChange={(e) => setTempMax(e.target.value)}
                                 placeholder={String(globalMax)}
-                                className="w-full px-2 py-1.5 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-2.5 py-1.5 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
                     </div>
@@ -153,7 +209,7 @@ export default function PriceRangePopover({
                         <button
                             type="button"
                             onClick={handleApply}
-                            className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                            className="px-4 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-xs"
                         >
                             Áp dụng
                         </button>

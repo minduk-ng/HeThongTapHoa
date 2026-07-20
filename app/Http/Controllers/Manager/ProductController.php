@@ -285,7 +285,10 @@ class ProductController extends Controller
             return response()->json(['message' => 'Dữ liệu tạm không tồn tại hoặc đã hết hạn.'], 400);
         }
 
-        $defaultCategory = MenuCategory::firstOrCreate(['name' => 'Mặc định'], ['sort_order' => 0]);
+        $defaultCategory = MenuCategory::firstOrCreate(
+            ['name' => 'Không rõ'],
+            ['sort_order' => 999, 'description' => 'Danh mục mặc định cho các sản phẩm không có danh mục']
+        );
 
         if ($request->action === 'replace_all') {
             foreach ($tempData['rows'] as $row) {
@@ -293,7 +296,7 @@ class ProductController extends Controller
 
                 $catId = $defaultCategory->id;
                 if (!empty($row['category'])) {
-                    $cat = MenuCategory::firstOrCreate(['name' => $row['category']], ['sort_order' => 0]);
+                    $cat = MenuCategory::firstOrCreate(['name' => trim($row['category'])], ['sort_order' => 0]);
                     $catId = $cat->id;
                 }
 
@@ -306,6 +309,7 @@ class ProductController extends Controller
                         'description' => $row['description'],
                     ]);
                 } else {
+                    // ID omitted so database auto-increments ID automatically
                     MenuItem::create([
                         'name' => $row['name'],
                         'category_id' => $catId,
@@ -322,10 +326,11 @@ class ProductController extends Controller
 
                 $catId = $defaultCategory->id;
                 if (!empty($row['category'])) {
-                    $cat = MenuCategory::firstOrCreate(['name' => $row['category']], ['sort_order' => 0]);
+                    $cat = MenuCategory::firstOrCreate(['name' => trim($row['category'])], ['sort_order' => 0]);
                     $catId = $cat->id;
                 }
 
+                // ID omitted so database auto-increments ID automatically
                 MenuItem::create([
                     'name' => $row['name'],
                     'category_id' => $catId,
