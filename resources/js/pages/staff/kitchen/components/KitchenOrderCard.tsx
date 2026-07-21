@@ -57,25 +57,29 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
         });
     };
 
-    // Determine header theme color matching blue tone palette
-    let headerBgClass = 'bg-blue-600 dark:bg-blue-700 text-white';
+    // Soft, gentle color themes for card header
+    let headerBgClass = 'bg-blue-600/90 dark:bg-blue-900/80 text-white';
+    let cardBorderClass = 'border-blue-200 dark:border-zinc-800';
+
     if (isOver10Mins) {
-        headerBgClass = 'bg-rose-600 dark:bg-rose-800 text-white';
+        headerBgClass = 'bg-rose-700/90 dark:bg-rose-900/90 text-white';
+        cardBorderClass = 'border-rose-300 dark:border-rose-900/60';
     } else if (hasAdditional) {
-        headerBgClass = 'bg-amber-600 dark:bg-amber-700 text-white';
+        headerBgClass = 'bg-amber-600/90 dark:bg-amber-800/90 text-white';
+        cardBorderClass = 'border-amber-300 dark:border-amber-900/60';
     }
 
     return (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-md flex flex-col justify-between h-full transition-all min-h-[340px]">
+        <div className={`bg-white dark:bg-zinc-900 border ${cardBorderClass} rounded-2xl overflow-hidden shadow-md flex flex-col justify-between h-full transition-all min-h-[340px]`}>
             {/* Order Card Header */}
-            <div className={`p-4 ${headerBgClass} space-y-2 relative shadow-xs`}>
+            <div className={`p-4 ${headerBgClass} space-y-2 shadow-xs`}>
                 {hasAdditional && (
-                    <span className="absolute -top-2.5 left-4 px-3 py-0.5 rounded-full bg-amber-300 text-amber-950 font-black text-[10px] shadow-md uppercase tracking-wide border border-amber-400">
-                        ⚠️ Bàn gọi thêm đồ
-                    </span>
+                    <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-amber-300/30 text-amber-100 font-extrabold text-[11px] border border-amber-300/40">
+                        <span>⚠️ Bàn gọi thêm đồ</span>
+                    </div>
                 )}
 
-                <div className="flex justify-between items-start pt-1">
+                <div className="flex justify-between items-start">
                     <div>
                         <span className="text-[11px] font-bold text-white/80 uppercase tracking-wider block">
                             {order.order_code}
@@ -84,7 +88,7 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
                             {order.table?.table_number || 'Mang về'} – {order.table?.area || 'Trong nhà'}
                         </h3>
                     </div>
-                    <div className="px-3 py-1 rounded-full bg-black/25 text-white font-black text-xs">
+                    <div className="px-3 py-1 rounded-full bg-black/25 text-white font-black text-xs shrink-0">
                         {elapsedMinutes}'
                     </div>
                 </div>
@@ -129,7 +133,7 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
                                 </div>
                             </div>
 
-                            <span className="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 font-black text-xs shrink-0 border border-blue-200 dark:border-blue-800">
+                            <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-200 font-black text-xs shrink-0 border border-blue-200 dark:border-blue-800">
                                 {item.quantity} ly/phần
                             </span>
                         </div>

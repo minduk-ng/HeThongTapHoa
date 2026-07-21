@@ -13,7 +13,7 @@ export default function KitchenStatsHeader({ stats }: KitchenStatsHeaderProps) {
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Card 1: TỔNG ORDER */}
-            <div className="bg-blue-600 dark:bg-blue-900 text-white border border-blue-500/40 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+            <div className="bg-blue-600/90 dark:bg-blue-900/80 text-white border border-blue-500/30 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                 <span className="text-xs font-black tracking-wider text-blue-200 uppercase">
                     TỔNG ORDER
                 </span>
@@ -28,37 +28,37 @@ export default function KitchenStatsHeader({ stats }: KitchenStatsHeaderProps) {
             </div>
 
             {/* Card 2: ĐANG CHỜ */}
-            <div className="bg-slate-900 dark:bg-slate-950 text-white border border-slate-700 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
-                <span className="text-xs font-black tracking-wider text-slate-400 uppercase">
+            <div className="bg-slate-800 dark:bg-slate-900 text-white border border-slate-700/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                <span className="text-xs font-black tracking-wider text-slate-300 uppercase">
                     ĐANG CHỜ
                 </span>
                 <div className="mt-3 flex items-baseline justify-between">
                     <span className="text-4xl font-black text-slate-100">
                         {stats.waiting_items}
                     </span>
-                    <span className="text-xs text-slate-300 font-bold px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700">
+                    <span className="text-xs text-slate-300 font-bold px-2.5 py-0.5 rounded-full bg-slate-700/80 dark:bg-slate-800 border border-slate-600">
                         món cần làm
                     </span>
                 </div>
             </div>
 
             {/* Card 3: HOÀN THÀNH */}
-            <div className="bg-teal-700 dark:bg-teal-900 text-white border border-teal-600/40 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
-                <span className="text-xs font-black tracking-wider text-teal-200 uppercase">
+            <div className="bg-emerald-700/90 dark:bg-emerald-900/80 text-white border border-emerald-600/30 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                <span className="text-xs font-black tracking-wider text-emerald-200 uppercase">
                     HOÀN THÀNH
                 </span>
                 <div className="mt-3 flex items-baseline justify-between">
                     <span className="text-4xl font-black text-white">
                         {stats.completed_items}
                     </span>
-                    <span className="text-xs text-teal-100 font-bold px-2.5 py-0.5 rounded-full bg-teal-800/80 border border-teal-500/40">
+                    <span className="text-xs text-emerald-100 font-bold px-2.5 py-0.5 rounded-full bg-emerald-800/80 dark:bg-emerald-950 border border-emerald-500/30">
                         đơn xong hôm nay
                     </span>
                 </div>
             </div>
 
             {/* Card 4: CẢNH BÁO */}
-            <div className="bg-amber-600 dark:bg-amber-800 text-white border border-amber-500/40 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+            <div className="bg-amber-600/90 dark:bg-amber-800/80 text-white border border-amber-500/30 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                 <span className="text-xs font-black tracking-wider text-amber-200 uppercase">
                     CẢNH BÁO
                 </span>
