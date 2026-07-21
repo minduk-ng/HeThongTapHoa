@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { POSTableData } from './POSTableTab';
 
 export interface CartItem {
@@ -10,6 +10,7 @@ export interface CartItem {
     vat_rate: number;
     note?: string;
     isConfirmed?: boolean;
+    orderStatus?: string;
 }
 
 interface POSCartPanelProps {
@@ -33,6 +34,8 @@ export default function POSCartPanel({
     onOpenPayment,
     submitting,
 }: POSCartPanelProps) {
+    const [managerBypass, setManagerBypass] = useState(false);
+
     if (!selectedTable) {
         return (
             <div className="h-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center text-zinc-400">
@@ -54,6 +57,18 @@ export default function POSCartPanel({
         return sum + itemSubtotal * ((item.vat_rate || 0) / 100);
     }, 0);
     const totalAmount = subtotal + vatTotal;
+
+    // Check if table has active orders that are still pending/processing at kitchen
+    const allSessionOrders = selectedTable.active_orders || (selectedTable.active_order ? [selectedTable.active_order] : []);
+    const hasKitchenPendingOrders = allSessionOrders.some(
+        (o) => o.status === 'pending' || o.status === 'confirmed' || o.status === 'processing'
+    );
+
+    // Unsent items (new additions not yet sent to kitchen)
+    const hasUnsentItems = cartItems.some((i) => !i.isConfirmed || i.quantity > (i.initialQuantity || 0));
+
+    // Payment button is blocked if kitchen is still processing, UNLESS manager bypass is toggled
+    const isPaymentBlocked = (hasKitchenPendingOrders || hasUnsentItems) && !managerBypass;
 
     return (
         <div className="h-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex flex-col justify-between overflow-hidden shadow-xs">
@@ -108,13 +123,19 @@ export default function POSCartPanel({
                             >
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <div className="flex items-center space-x-1.5">
+                                        <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
                                             <h4 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
                                                 {item.name}
                                             </h4>
                                             {item.isConfirmed && (
-                                                <span className="px-1.5 py-0.5 text-[9px] font-extrabold rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 shrink-0">
-                                                    🔒 Đã gửi bếp
+                                                <span
+                                                    className={`px-1.5 py-0.5 text-[9px] font-extrabold rounded-md shrink-0 ${
+                                                        hasKitchenPendingOrders
+                                                            ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300'
+                                                            : 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300'
+                                                    }`}
+                                                >
+                                                    {hasKitchenPendingOrders ? '⏳ Đang pha chế' : '✅ Đã chế biến xong'}
                                                 </span>
                                             )}
                                         </div>
@@ -187,6 +208,20 @@ export default function POSCartPanel({
 
             {/* Financial Summary & Actions Footer (Fixed Bottom) */}
             <div className="shrink-0 p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-800/60 space-y-3">
+                {/* Kitchen completion status notice */}
+                {hasKitchenPendingOrders && (
+                    <div className="p-2 border border-amber-300 dark:border-amber-800/80 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-[11px] text-amber-800 dark:text-amber-200 flex items-center justify-between">
+                        <span>⏳ Đang chờ Bếp hoàn thành đơn...</span>
+                        <button
+                            type="button"
+                            onClick={() => setManagerBypass(!managerBypass)}
+                            className="font-bold underline text-amber-700 dark:text-amber-300 hover:text-amber-900 ml-2"
+                        >
+                            {managerBypass ? 'Bắt buộc khóa' : 'Duyệt khẩn cấp'}
+                        </button>
+                    </div>
+                )}
+
                 <div className="space-y-1 text-xs">
                     <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                         <span>Tạm tính ({cartItems.reduce((s, i) => s + i.quantity, 0)} món):</span>
@@ -207,7 +242,7 @@ export default function POSCartPanel({
                 <div className="grid grid-cols-2 gap-3 pt-1">
                     <button
                         type="button"
-                        disabled={submitting || cartItems.length === 0}
+                        disabled={submitting || cartItems.length === 0 || !hasUnsentItems}
                         onClick={onSendToKitchen}
                         className="py-2.5 px-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs disabled:opacity-50 flex items-center justify-center space-x-1.5 transition-colors"
                     >
@@ -219,9 +254,14 @@ export default function POSCartPanel({
 
                     <button
                         type="button"
-                        disabled={submitting || cartItems.length === 0}
+                        disabled={submitting || cartItems.length === 0 || isPaymentBlocked}
                         onClick={onOpenPayment}
-                        className="py-2.5 px-3 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-200 rounded-xl shadow-xs disabled:opacity-50 flex items-center justify-center space-x-1.5 transition-colors"
+                        className={`py-2.5 px-3 text-xs font-bold rounded-xl shadow-xs flex items-center justify-center space-x-1.5 transition-colors ${
+                            isPaymentBlocked
+                                ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 border border-zinc-300 dark:border-zinc-700 cursor-not-allowed opacity-60'
+                                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        }`}
+                        title={isPaymentBlocked ? 'Cần gửi toàn bộ món xuống Bếp và chờ Bếp làm xong mới được thanh toán' : 'Thanh toán đơn hàng'}
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />

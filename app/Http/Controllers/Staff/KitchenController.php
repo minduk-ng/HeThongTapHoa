@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
+use App\Models\Ingredient;
+use App\Models\InventoryTransaction;
 use App\Models\Order;
-use App\Models\Table;
+use App\Models\ProductRecipe;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class KitchenController extends Controller
@@ -50,11 +53,35 @@ class KitchenController extends Controller
 
     public function completeOrder(Request $request, Order $order)
     {
-        $order->update([
-            'status' => 'completed',
-            'has_additional_items' => false,
-        ]);
+        DB::transaction(function () use ($order, $request) {
+            $order->update([
+                'status' => 'completed',
+                'has_additional_items' => false,
+            ]);
 
-        return back()->with('success', 'Đã xác nhận hoàn thành đơn order!');
+            $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
+
+            foreach ($order->items as $item) {
+                $recipes = ProductRecipe::where('menu_item_id', $item->menu_item_id)->get();
+                foreach ($recipes as $recipe) {
+                    $ingredient = Ingredient::find($recipe->ingredient_id);
+                    if ($ingredient) {
+                        $deductQuantity = (float) $recipe->amount * (int) $item->quantity;
+                        $ingredient->decrement('stock_quantity', $deductQuantity);
+
+                        InventoryTransaction::create([
+                            'ingredient_id' => $ingredient->id,
+                            'employee_id' => $employeeId,
+                            'type' => 'export',
+                            'quantity' => $deductQuantity,
+                            'reason' => "Xuất kho tự động cho đơn {$order->order_code}",
+                            'transacted_at' => now(),
+                        ]);
+                    }
+                }
+            }
+        });
+
+        return back()->with('success', 'Đã xác nhận hoàn thành đơn order và tự động trừ nguyên liệu kho thành công!');
     }
 }

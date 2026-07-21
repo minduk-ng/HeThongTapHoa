@@ -13,6 +13,7 @@ export interface POSProductData {
     image?: string | null;
     category_id: number;
     category?: CategoryData;
+    max_servings?: number;
 }
 
 interface CartItem {
@@ -115,13 +116,18 @@ export default function POSMenuTab({
                     {filteredProducts.map((product) => {
                         const inCart = isProductInCart(product.id);
                         const qty = getCartItemQuantity(product.id);
+                        const maxServings = product.max_servings !== undefined ? product.max_servings : 999;
+                        const isOutOfStock = maxServings <= 0;
+                        const isLowStock = maxServings > 0 && maxServings <= 5;
 
                         return (
                             <div
                                 key={product.id}
-                                onClick={() => onToggleProduct(product)}
+                                onClick={() => !isOutOfStock && onToggleProduct(product)}
                                 className={`relative cursor-pointer p-3 rounded-xl border-2 transition-all select-none flex flex-col justify-between ${
-                                    inCart
+                                    isOutOfStock
+                                        ? 'opacity-50 border-rose-200 dark:border-rose-900 bg-zinc-50 dark:bg-zinc-800/40 cursor-not-allowed'
+                                        : inCart
                                         ? 'border-blue-600 bg-blue-50/80 dark:bg-blue-950/60 shadow-md ring-2 ring-blue-400/50'
                                         : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700'
                                 }`}
@@ -134,6 +140,17 @@ export default function POSMenuTab({
                                             ☕
                                         </div>
                                     )}
+
+                                    {/* Stock badges */}
+                                    {isOutOfStock ? (
+                                        <span className="absolute top-1 left-1 bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md shadow-xs">
+                                            ❌ Hết hàng
+                                        </span>
+                                    ) : isLowStock ? (
+                                        <span className="absolute top-1 left-1 bg-amber-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md shadow-xs animate-pulse">
+                                            ⚠️ Còn {maxServings} suất
+                                        </span>
+                                    ) : null}
 
                                     {inCart && (
                                         <span className="absolute top-1 right-1 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-extrabold flex items-center justify-center shadow-md">

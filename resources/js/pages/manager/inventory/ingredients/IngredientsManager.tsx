@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
 import DashboardLayout from '../../../../layouts/DashboardLayout';
 import IngredientFilterBar from './components/IngredientFilterBar';
@@ -37,38 +37,39 @@ export default function IngredientsManager({
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    useEffect(() => {
-        setSearchQuery(filters.search || '');
-        setSelectedUnit(filters.unit || 'all');
-        setAlertFilter(filters.alert || 'all');
-    }, [filters]);
+    // 100% Frontend filtering via useMemo without backend HTTP roundtrips
+    const filteredIngredients = useMemo(() => {
+        return ingredients.filter((item) => {
+            const query = searchQuery.trim().toLowerCase();
+            const matchesSearch =
+                !query ||
+                item.name.toLowerCase().includes(query) ||
+                (item.code && item.code.toLowerCase().includes(query));
 
-    const applyFilters = (newFilters: Record<string, any>) => {
-        router.get(
-            '/manager/inventory/ingredients',
-            {
-                search: searchQuery,
-                unit: selectedUnit,
-                alert: alertFilter,
-                ...newFilters,
-            },
-            { preserveState: true, replace: true }
-        );
-    };
+            const matchesUnit = selectedUnit === 'all' || item.unit === selectedUnit;
+
+            let matchesAlert = true;
+            if (alertFilter === 'low_stock') {
+                const minAlert = item.min_stock_alert !== undefined ? item.min_stock_alert : 5;
+                matchesAlert = Number(item.stock_quantity || 0) <= minAlert;
+            } else if (alertFilter === 'out_of_stock') {
+                matchesAlert = Number(item.stock_quantity || 0) <= 0;
+            }
+
+            return matchesSearch && matchesUnit && matchesAlert;
+        });
+    }, [ingredients, searchQuery, selectedUnit, alertFilter]);
 
     const handleSearchChange = (query: string) => {
         setSearchQuery(query);
-        applyFilters({ search: query });
     };
 
     const handleUnitChange = (unit: string) => {
         setSelectedUnit(unit);
-        applyFilters({ unit });
     };
 
     const handleAlertChange = (alert: string) => {
         setAlertFilter(alert);
-        applyFilters({ alert });
     };
 
     const handleOpenAddDrawer = () => {
@@ -146,7 +147,7 @@ export default function IngredientsManager({
 
                 {/* Ingredient Data Table */}
                 <IngredientTable
-                    ingredients={ingredients}
+                    ingredients={filteredIngredients}
                     onEdit={handleEditIngredient}
                     onDelete={handleDeleteIngredient}
                     onImportStock={(item) => setImportIngredient(item)}

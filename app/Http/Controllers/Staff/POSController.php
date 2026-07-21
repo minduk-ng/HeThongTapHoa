@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
+use App\Models\Ingredient;
 use App\Models\Invoice;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\ProductRecipe;
 use App\Models\Table;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +21,25 @@ class POSController extends Controller
     {
         $tables = Table::with(['activeOrders.items.menuItem'])->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
         $categories = MenuCategory::orderBy('sort_order', 'asc')->get();
-        $products = MenuItem::with('category')->where('is_available', true)->get();
+        $products = MenuItem::with(['category', 'recipes.ingredient'])->where('is_available', true)->get();
+
+        // Calculate max_servings for each product based on ingredient inventory
+        $products->transform(function ($product) {
+            if ($product->recipes && $product->recipes->count() > 0) {
+                $possibleServings = [];
+                foreach ($product->recipes as $recipe) {
+                    if ($recipe->ingredient && (float) $recipe->amount > 0) {
+                        $stock = (float) $recipe->ingredient->stock_quantity;
+                        $possible = (int) floor($stock / (float) $recipe->amount);
+                        $possibleServings[] = max(0, $possible);
+                    }
+                }
+                $product->max_servings = count($possibleServings) > 0 ? min($possibleServings) : 999;
+            } else {
+                $product->max_servings = 999; // Unlimited if no recipe defined
+            }
+            return $product;
+        });
 
         return Inertia::render('staff/pos/POSManager', [
             'tables' => $tables,

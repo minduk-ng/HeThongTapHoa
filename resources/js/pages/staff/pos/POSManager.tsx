@@ -102,6 +102,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         const existingCart = tableCarts[tableId] || [];
 
         const index = existingCart.findIndex((i) => i.menu_item_id === product.id);
+        const maxServings = product.max_servings !== undefined ? product.max_servings : 999;
 
         if (index > -1) {
             const existingItem = existingCart[index];
@@ -109,11 +110,19 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 const updated = existingCart.filter((i) => i.menu_item_id !== product.id);
                 setTableCarts({ ...tableCarts, [tableId]: updated });
             } else {
+                if (existingItem.quantity + 1 > maxServings) {
+                    alert(`⚠️ Không đủ nguyên liệu trong kho! "${product.name}" chỉ còn phục vụ tối đa ${maxServings} phần.`);
+                    return;
+                }
                 const updated = [...existingCart];
                 updated[index] = { ...existingItem, quantity: existingItem.quantity + 1 };
                 setTableCarts({ ...tableCarts, [tableId]: updated });
             }
         } else {
+            if (1 > maxServings) {
+                alert(`⚠️ Không đủ nguyên liệu trong kho! "${product.name}" đã hết hàng.`);
+                return;
+            }
             const newItem: CartItem = {
                 menu_item_id: product.id,
                 name: product.name,
@@ -132,12 +141,18 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         if (!selectedTable) return;
         const tableId = selectedTable.id;
         const existingCart = tableCarts[tableId] || [];
+        const product = products.find((p) => p.id === menuItemId);
+        const maxServings = product?.max_servings !== undefined ? product.max_servings : 999;
 
         const updated = existingCart
             .map((item) => {
                 if (item.menu_item_id === menuItemId) {
                     const minQty = item.isConfirmed ? (item.initialQuantity || 1) : 0;
                     const newQty = item.quantity + delta;
+                    if (delta > 0 && newQty > maxServings) {
+                        alert(`⚠️ Không đủ nguyên liệu trong kho! "${item.name}" chỉ còn phục vụ tối đa ${maxServings} phần.`);
+                        return item;
+                    }
                     return newQty >= minQty ? { ...item, quantity: newQty } : item;
                 }
                 return item;

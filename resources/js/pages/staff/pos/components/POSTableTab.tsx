@@ -38,6 +38,7 @@ export interface POSTableData {
         subtotal: number;
         vat_amount: number;
         total: number;
+        status: string;
         items: Array<{
             id: number;
             menu_item_id: number;
