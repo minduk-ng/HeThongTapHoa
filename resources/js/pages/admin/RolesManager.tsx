@@ -22,19 +22,29 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
         pages: [] as number[],
     });
 
+    // Fully dynamic permission lookup without hardcoded routes
     const getPagePermissions = (pagePath: string): Permission[] => {
-        let prefix = '';
-        const path = pagePath.replace(/^\//, '');
-        if (path === 'admin/pages') {
-            prefix = 'pages';
-        } else if (path === 'admin/roles') {
-            prefix = 'roles';
-        } else if (path === 'admin/permissions') {
-            prefix = 'users';
+        const segments = pagePath.replace(/^\/+|\/+$/g, '').split('/');
+        
+        // Match path segments from right to left against available permissions
+        for (let i = segments.length - 1; i >= 0; i--) {
+            const candidate = segments[i];
+            const prefix = candidate === 'permissions' ? 'users' : candidate;
+            const matched = permissions.filter(p => p.name.startsWith(prefix + '.'));
+            if (matched.length > 0) {
+                return matched;
+            }
         }
+        return [];
+    };
 
-        if (!prefix) return [];
-        return permissions.filter(p => p.name.startsWith(prefix + '.'));
+    const getPermissionPrefix = (pagePath: string): string => {
+        const pagePerms = getPagePermissions(pagePath);
+        if (pagePerms.length > 0) {
+            return pagePerms[0].name.split('.')[0];
+        }
+        const segments = pagePath.replace(/^\/+|\/+$/g, '').split('/');
+        return segments[segments.length - 1] || '';
     };
 
     const openCreateModal = () => {
@@ -56,7 +66,7 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
         setData({
             name: role.name,
             description: role.description || '',
-            permissions: role.permissions.map(p => p.name),
+            permissions: role.permissions ? role.permissions.map(p => p.name) : [],
             pages: role.pages ? role.pages.map(p => p.id) : [],
         });
         setEditingRole(role);
@@ -110,29 +120,49 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
         }
     };
 
+    // Calculate Page Selection State (0: Unchecked, 1: Partial View-only (-), 2: Full Checked (✓))
+    const getPageSelectionState = (page: Page): 0 | 1 | 2 => {
+        if (editingRole?.name === 'admin') return 2;
+        if (!data.pages.includes(page.id)) return 0;
+
+        const pagePerms = getPagePermissions(page.route_path).map(p => p.name);
+        if (pagePerms.length === 0) return 2;
+
+        const selectedCount = pagePerms.filter(name => data.permissions.includes(name)).length;
+        if (selectedCount === 0) return 0;
+        if (selectedCount === pagePerms.length) return 2;
+        return 1;
+    };
+
+    // 3-State Cycle for Individual Page: 0 -> 1 -> 2 -> 0
     const handlePageToggle = (page: Page) => {
         if (editingRole?.name === 'admin') return;
-        
-        const pagePermissions = getPagePermissions(page.route_path);
-        const prefix = page.route_path.replace(/^\/admin\//, '').replace(/^\//, '');
-        const viewPermName = prefix === 'permissions' ? 'users.view' : `${prefix}.view`;
 
-        if (data.pages.includes(page.id)) {
-            // Uncheck page: remove page ID and all its permissions
-            setData('pages', data.pages.filter(id => id !== page.id));
-            const permNames = pagePermissions.map(p => p.name);
-            setData('permissions', data.permissions.filter(pName => !permNames.includes(pName)));
-            setExpandedPages(prev => ({ ...prev, [page.id]: false }));
-        } else {
-            // Check page: add page ID, check view permission by default, and expand
-            setData('pages', [...data.pages, page.id]);
+        const currentState = getPageSelectionState(page);
+        const pagePermissions = getPagePermissions(page.route_path);
+        const pagePermNames = pagePermissions.map(p => p.name);
+        const prefix = getPermissionPrefix(page.route_path);
+        const viewPermName = `${prefix}.view`;
+
+        if (currentState === 0) {
+            // State 0 -> State 1: Select View-only permission (-), add page ID, and expand
+            setData('pages', [...new Set([...data.pages, page.id])]);
             const nextPermissions = [...data.permissions];
-            const hasView = nextPermissions.includes(viewPermName);
-            if (!hasView && permissions.some(p => p.name === viewPermName)) {
+            if (!nextPermissions.includes(viewPermName) && permissions.some(p => p.name === viewPermName)) {
                 nextPermissions.push(viewPermName);
             }
             setData('permissions', nextPermissions);
             setExpandedPages(prev => ({ ...prev, [page.id]: true }));
+        } else if (currentState === 1) {
+            // State 1 -> State 2: Select ALL permissions for this page (✓)
+            const nextPermissions = [...new Set([...data.permissions, ...pagePermNames])];
+            setData('permissions', nextPermissions);
+            setExpandedPages(prev => ({ ...prev, [page.id]: true }));
+        } else {
+            // State 2 -> State 0: Uncheck completely, remove page ID and all its permissions
+            setData('pages', data.pages.filter(id => id !== page.id));
+            setData('permissions', data.permissions.filter(pName => !pagePermNames.includes(pName)));
+            setExpandedPages(prev => ({ ...prev, [page.id]: false }));
         }
     };
 
@@ -202,7 +232,7 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
                                 </td>
                                 <td>
                                     <span className="badge bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                                        {role.permissions.length} quyền
+                                        {role.permissions ? role.permissions.length : 0} quyền
                                     </span>
                                 </td>
                                 <td className="text-right space-x-2">
@@ -258,7 +288,11 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
                             </div>
 
                             <div>
-                                <label className="form-label mb-3 font-semibold text-gray-800 dark:text-gray-100">Quyền truy cập trang & Chức năng</label>
+                                <label className="form-label mb-1 font-semibold text-gray-800 dark:text-gray-100">Quyền truy cập trang & Chức năng</label>
+                                <p className="text-xs text-gray-400 mb-3">
+                                    💡 <b>Quy trình chọn 3 trạng thái</b>: Bấm 1 lần ➜ Chọn quyền Xem (hiện dấu <b>-</b>) &bull; Bấm lần 2 ➜ Chọn tất cả quyền (hiện dấu <b>✓</b>) &bull; Bấm lần 3 ➜ Hủy chọn.
+                                </p>
+
                                 <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 rounded-xl border border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50">
                                     {Object.entries(
                                         pages.reduce((acc, page) => {
@@ -267,13 +301,13 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
                                             return acc;
                                         }, {} as Record<string, Page[]>)
                                     ).map(([groupName, groupPages]) => {
-                                        const isGroupAllSelected = groupPages.every(p => data.pages.includes(p.id)) && editingRole?.name !== 'admin';
+                                        const isGroupAllSelected = groupPages.every(p => getPageSelectionState(p) === 2) && editingRole?.name !== 'admin';
                                         
                                         const handleGroupToggle = () => {
                                             if (editingRole?.name === 'admin') return;
                                             const groupPageIds = groupPages.map(p => p.id);
                                             if (isGroupAllSelected) {
-                                                // Uncheck group: remove page IDs and their permissions
+                                                // Uncheck group completely
                                                 setData('pages', data.pages.filter(id => !groupPageIds.includes(id)));
                                                 const allGroupPerms = groupPages.flatMap(p => getPagePermissions(p.route_path).map(pm => pm.name));
                                                 setData('permissions', data.permissions.filter(pName => !allGroupPerms.includes(pName)));
@@ -283,19 +317,13 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
                                                     return next;
                                                 });
                                             } else {
-                                                // Check group: add page IDs and their default view permissions
+                                                // Check group completely
                                                 const nextPages = [...new Set([...data.pages, ...groupPageIds])];
-                                                const nextPermissions = [...data.permissions];
+                                                const allGroupPerms = groupPages.flatMap(p => getPagePermissions(p.route_path).map(pm => pm.name));
+                                                const nextPermissions = [...new Set([...data.permissions, ...allGroupPerms])];
                                                 const newExpanded = { ...expandedPages };
-                                                
-                                                groupPages.forEach(p => {
-                                                    newExpanded[p.id] = true;
-                                                    const prefix = p.route_path.replace(/^\/admin\//, '').replace(/^\//, '');
-                                                    const viewPermName = prefix === 'permissions' ? 'users.view' : `${prefix}.view`;
-                                                    if (!nextPermissions.includes(viewPermName) && permissions.some(pm => pm.name === viewPermName)) {
-                                                        nextPermissions.push(viewPermName);
-                                                    }
-                                                });
+                                                groupPages.forEach(p => { newExpanded[p.id] = true; });
+
                                                 setData('pages', nextPages);
                                                 setData('permissions', nextPermissions);
                                                 setExpandedPages(newExpanded);
@@ -304,7 +332,7 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
 
                                         return (
                                             <div key={groupName} className="space-y-3 pb-3 border-b border-gray-100 dark:border-slate-700/50 last:border-b-0">
-                                                <label className="flex items-center space-x-2 cursor-pointer font-bold text-xs uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                                                <label className="flex items-center space-x-2 cursor-pointer font-bold text-xs uppercase tracking-wider text-indigo-600 dark:text-indigo-400 select-none">
                                                     <input
                                                         type="checkbox"
                                                         checked={isGroupAllSelected || editingRole?.name === 'admin'}
@@ -316,30 +344,52 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
                                                 </label>
                                                 <div className="pl-4 space-y-3">
                                                     {groupPages.map((page) => {
-                                                        const isPageChecked = data.pages.includes(page.id) || editingRole?.name === 'admin';
-                                                        const isExpanded = !!expandedPages[page.id] && isPageChecked;
+                                                        const selectionState = getPageSelectionState(page);
+                                                        const isExpanded = !!expandedPages[page.id] && selectionState > 0;
                                                         const pagePerms = getPagePermissions(page.route_path);
 
                                                         return (
                                                             <div key={page.id} className="space-y-2">
                                                                 <div className="flex items-center justify-between bg-white dark:bg-slate-800/80 p-2.5 rounded-lg border border-gray-100 dark:border-slate-700/50">
-                                                                    <label className="flex items-center space-x-3 cursor-pointer flex-1">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={isPageChecked}
-                                                                            onChange={() => handlePageToggle(page)}
-                                                                            disabled={editingRole?.name === 'admin'}
-                                                                            className="checkbox-field"
-                                                                        />
+                                                                    <div
+                                                                        onClick={() => handlePageToggle(page)}
+                                                                        className="flex items-center space-x-3 cursor-pointer flex-1 select-none"
+                                                                    >
+                                                                        {/* 3-State Custom Interactive Checkbox Icon */}
+                                                                        <div className="shrink-0">
+                                                                            {selectionState === 0 ? (
+                                                                                <div className="w-4 h-4 border-2 border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 transition-colors" />
+                                                                            ) : selectionState === 1 ? (
+                                                                                <div className="w-4 h-4 rounded-md bg-indigo-500 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                                                                                    -
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="w-4 h-4 rounded-md bg-indigo-600 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                                                                                    ✓
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+
                                                                         <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                                                                             {page.name}
                                                                         </span>
-                                                                    </label>
-                                                                    {pagePerms.length > 0 && isPageChecked && (
+                                                                        {selectionState === 1 && (
+                                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                                                                Xem trang
+                                                                            </span>
+                                                                        )}
+                                                                        {selectionState === 2 && (
+                                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                                                                Tất cả quyền
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {pagePerms.length > 0 && selectionState > 0 && (
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => setExpandedPages(prev => ({ ...prev, [page.id]: !prev[page.id] }))}
-                                                                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                                                                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
                                                                         >
                                                                             <svg
                                                                                 className={`h-4 w-4 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}
@@ -364,10 +414,13 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
                                                                                     actionLabel === 'view' ? 'Xem' :
                                                                                     actionLabel === 'create' ? 'Thêm' :
                                                                                     actionLabel === 'edit' ? 'Sửa' :
-                                                                                    actionLabel === 'delete' ? 'Xóa' : perm.name;
+                                                                                    actionLabel === 'delete' ? 'Xóa' :
+                                                                                    actionLabel === 'import' ? 'Nhập Excel' :
+                                                                                    actionLabel === 'export' ? 'Xuất Excel' :
+                                                                                    actionLabel === 'update' ? 'Cập nhật' : perm.name;
                                                                                 
                                                                                 return (
-                                                                                    <label key={perm.id} className="flex items-center space-x-2 cursor-pointer bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-slate-700 shadow-sm text-xs">
+                                                                                    <label key={perm.id} className="flex items-center space-x-2 cursor-pointer bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-slate-700 shadow-sm text-xs select-none">
                                                                                         <input
                                                                                             type="checkbox"
                                                                                             checked={data.permissions.includes(perm.name) || editingRole?.name === 'admin'}
