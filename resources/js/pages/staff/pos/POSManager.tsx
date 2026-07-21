@@ -4,6 +4,8 @@ import DashboardLayout from '../../../layouts/DashboardLayout';
 import POSTableTab, { POSTableData } from './components/POSTableTab';
 import POSMenuTab, { CategoryData, POSProductData } from './components/POSMenuTab';
 import POSCartPanel, { CartItem } from './components/POSCartPanel';
+import PaymentDrawer from './components/PaymentDrawer';
+import ReceiptPrintModal from './components/ReceiptPrintModal';
 
 interface POSManagerProps {
     tables: POSTableData[];
@@ -17,6 +19,25 @@ export default function POSManager({ tables, categories, products }: POSManagerP
 
     const [tableCarts, setTableCarts] = useState<Record<number, CartItem[]>>({});
     const [submitting, setSubmitting] = useState(false);
+
+    // Payment & Receipt Print Modals State
+    const [isPaymentDrawerOpen, setIsPaymentDrawerOpen] = useState(false);
+    const [receiptModal, setReceiptModal] = useState<{
+        isOpen: boolean;
+        paymentMethod: 'cash' | 'bank_transfer';
+        amountReceived: number;
+        changeAmount: number;
+        cartItems: CartItem[];
+        table: POSTableData | null;
+        invoiceCode?: string;
+    }>({
+        isOpen: false,
+        paymentMethod: 'cash',
+        amountReceived: 0,
+        changeAmount: 0,
+        cartItems: [],
+        table: null,
+    });
 
     useEffect(() => {
         const initialCarts: Record<number, CartItem[]> = {};
@@ -183,6 +204,57 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         });
     };
 
+    const handleConfirmPayment = (
+        paymentMethod: 'cash' | 'bank_transfer',
+        amountReceived: number,
+        changeAmount: number,
+        shouldPrint: boolean
+    ) => {
+        if (!selectedTable) return;
+
+        setSubmitting(true);
+
+        const payload = {
+            table_id: selectedTable.id,
+            payment_method: paymentMethod,
+            amount_received: amountReceived,
+            change_amount: changeAmount,
+        };
+
+        const snapshotCart = [...currentCart];
+        const snapshotTable = { ...selectedTable };
+
+        router.post('/staff/pos/checkout', payload, {
+            onSuccess: () => {
+                setSubmitting(false);
+                setIsPaymentDrawerOpen(false);
+
+                // Clear table cart
+                setTableCarts((prev) => ({ ...prev, [selectedTable.id]: [] }));
+
+                if (shouldPrint) {
+                    setReceiptModal({
+                        isOpen: true,
+                        paymentMethod,
+                        amountReceived,
+                        changeAmount,
+                        cartItems: snapshotCart,
+                        table: snapshotTable,
+                        invoiceCode: 'INV-' + dateCode(),
+                    });
+                }
+            },
+            onError: () => {
+                setSubmitting(false);
+            },
+        });
+    };
+
+    const dateCode = () => {
+        const d = new Date();
+        return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+    };
+
     return (
         <DashboardLayout fullWidth={true}>
             <Head title="Đặt hàng POS & Quản lý bàn bán hàng" />
@@ -259,11 +331,34 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                             onRemoveItem={handleRemoveItem}
                             onUpdateNote={handleUpdateNote}
                             onSendToKitchen={handleSendToKitchen}
+                            onOpenPayment={() => setIsPaymentDrawerOpen(true)}
                             submitting={submitting}
                         />
                     </div>
                 </div>
             </div>
+
+            {/* Payment Sliding Drawer Overlay */}
+            <PaymentDrawer
+                isOpen={isPaymentDrawerOpen}
+                onClose={() => setIsPaymentDrawerOpen(false)}
+                selectedTable={selectedTable}
+                cartItems={currentCart}
+                onConfirmPayment={handleConfirmPayment}
+                submitting={submitting}
+            />
+
+            {/* K80 Thermal Receipt Printable Modal */}
+            <ReceiptPrintModal
+                isOpen={receiptModal.isOpen}
+                onClose={() => setReceiptModal((prev) => ({ ...prev, isOpen: false }))}
+                selectedTable={receiptModal.table}
+                cartItems={receiptModal.cartItems}
+                paymentMethod={receiptModal.paymentMethod}
+                amountReceived={receiptModal.amountReceived}
+                changeAmount={receiptModal.changeAmount}
+                invoiceCode={receiptModal.invoiceCode}
+            />
         </DashboardLayout>
     );
 }

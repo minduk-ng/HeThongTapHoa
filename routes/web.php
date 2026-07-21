@@ -106,6 +106,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('staff')->middleware(\App\Http\Middleware\CheckPageAccess::class)->group(function () {
         Route::get('/pos', [\App\Http\Controllers\Staff\POSController::class, 'index'])->middleware('permission:pos.view');
         Route::post('/pos/send-to-kitchen', [\App\Http\Controllers\Staff\POSController::class, 'sendToKitchen'])->middleware('permission:pos.create');
+        Route::post('/pos/checkout', [\App\Http\Controllers\Staff\POSController::class, 'checkout'])->middleware('permission:pos.create');
 
         Route::get('/kitchen', [\App\Http\Controllers\Staff\KitchenController::class, 'index'])->middleware('permission:kitchen.view');
         Route::post('/kitchen/complete/{order}', [\App\Http\Controllers\Staff\KitchenController::class, 'completeOrder'])->middleware('permission:kitchen.update');

@@ -19,6 +19,7 @@ interface POSCartPanelProps {
     onRemoveItem: (menuItemId: number) => void;
     onUpdateNote: (menuItemId: number, note: string) => void;
     onSendToKitchen: () => void;
+    onOpenPayment: () => void;
     submitting: boolean;
 }
 
@@ -29,6 +30,7 @@ export default function POSCartPanel({
     onRemoveItem,
     onUpdateNote,
     onSendToKitchen,
+    onOpenPayment,
     submitting,
 }: POSCartPanelProps) {
     if (!selectedTable) {
@@ -217,8 +219,9 @@ export default function POSCartPanel({
 
                     <button
                         type="button"
-                        onClick={() => alert('Chức năng thanh toán sẽ được tích hợp ở bước tiếp theo!')}
-                        className="py-2.5 px-3 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-200 rounded-xl shadow-xs flex items-center justify-center space-x-1.5 transition-colors"
+                        disabled={submitting || cartItems.length === 0}
+                        onClick={onOpenPayment}
+                        className="py-2.5 px-3 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-200 rounded-xl shadow-xs disabled:opacity-50 flex items-center justify-center space-x-1.5 transition-colors"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />

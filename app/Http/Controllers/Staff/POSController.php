@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
+use App\Models\Invoice;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Order;
@@ -81,5 +82,52 @@ class POSController extends Controller
         });
 
         return back()->with('success', 'Đã gửi đơn order chế biến xuống bếp thành công!');
+    }
+
+    public function checkout(Request $request)
+    {
+        $validated = $request->validate([
+            'table_id' => 'required|exists:tables,id',
+            'payment_method' => 'required|in:cash,bank_transfer',
+            'amount_received' => 'required|numeric|min:0',
+            'change_amount' => 'required|numeric|min:0',
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            $table = Table::findOrFail($validated['table_id']);
+
+            // Find all active orders for this table session
+            $activeOrders = Order::where('table_id', $table->id)
+                ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                ->get();
+
+            if ($activeOrders->isEmpty()) {
+                throw new \Exception('Không tìm thấy đơn hàng đang hoạt động của bàn này.');
+            }
+
+            // Mark all orders in this session as paid
+            foreach ($activeOrders as $order) {
+                $order->update(['status' => 'paid']);
+            }
+
+            // Primary order for invoice association
+            $primaryOrder = $activeOrders->first();
+
+            // Create Invoice record
+            $invoiceCode = 'INV-' . date('Ymd') . strtoupper(\Illuminate\Support\Str::random(4));
+            Invoice::create([
+                'order_id' => $primaryOrder->id,
+                'invoice_code' => $invoiceCode,
+                'payment_method' => $validated['payment_method'],
+                'amount_received' => $validated['amount_received'],
+                'change_amount' => $validated['change_amount'],
+                'issued_at' => now(),
+            ]);
+
+            // Release table to available
+            $table->update(['status' => 'available']);
+        });
+
+        return back()->with('success', 'Thanh toán hoàn tất thành công!');
     }
 }
