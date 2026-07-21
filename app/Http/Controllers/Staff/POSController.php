@@ -16,7 +16,7 @@ class POSController extends Controller
 {
     public function index(Request $request)
     {
-        $tables = Table::with(['activeOrder.items.menuItem'])->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
+        $tables = Table::with(['activeOrders.items.menuItem'])->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
         $categories = MenuCategory::orderBy('sort_order', 'asc')->get();
         $products = MenuItem::with('category')->where('is_available', true)->get();
 
@@ -44,44 +44,30 @@ class POSController extends Controller
         DB::transaction(function () use ($validated, $request) {
             $table = Table::findOrFail($validated['table_id']);
 
-            // Find existing active order or create new order
-            $order = Order::where('table_id', $table->id)
+            // Check if table already has previous orders in this session
+            $hasPreviousOrders = Order::where('table_id', $table->id)
                 ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
-                ->first();
+                ->exists();
 
-            $isAdditional = false;
+            // Create a fresh Kitchen Ticket order for the newly added items
+            $orderCode = 'ORD-' . strtoupper(\Illuminate\Support\Str::random(6));
+            $employeeId = DB::table('employees')->where('id', $request->user()->id)->exists() ? $request->user()->id : null;
 
-            if ($order) {
-                $isAdditional = true;
-                $order->update([
-                    'subtotal' => $validated['subtotal'],
-                    'vat_amount' => $validated['vat_amount'],
-                    'total' => $validated['total'],
-                    'status' => 'pending',
-                    'has_additional_items' => true, // Flag alert for kitchen!
-                ]);
-
-                // Delete old items and insert updated items list
-                OrderItem::where('order_id', $order->id)->delete();
-            } else {
-                $orderCode = 'ORD-' . strtoupper(\Illuminate\Support\Str::random(6));
-                $employeeId = DB::table('employees')->where('id', $request->user()->id)->exists() ? $request->user()->id : null;
-                $order = Order::create([
-                    'order_code' => $orderCode,
-                    'table_id' => $table->id,
-                    'employee_id' => $employeeId,
-                    'subtotal' => $validated['subtotal'],
-                    'vat_amount' => $validated['vat_amount'],
-                    'total' => $validated['total'],
-                    'status' => 'pending',
-                    'has_additional_items' => false,
-                ]);
-            }
+            $order = Order::create([
+                'order_code' => $orderCode,
+                'table_id' => $table->id,
+                'employee_id' => $employeeId,
+                'subtotal' => $validated['subtotal'],
+                'vat_amount' => $validated['vat_amount'],
+                'total' => $validated['total'],
+                'status' => 'pending',
+                'has_additional_items' => $hasPreviousOrders, // Flag alert for kitchen if table calls for extra items!
+            ]);
 
             // Update table status to occupied
             $table->update(['status' => 'occupied']);
 
-            // Insert order items
+            // Insert new order ticket items
             foreach ($validated['items'] as $item) {
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -94,6 +80,6 @@ class POSController extends Controller
             }
         });
 
-        return back()->with('success', 'Đã gửi order xuống bếp chế biến thành công!');
+        return back()->with('success', 'Đã gửi đơn order chế biến xuống bếp thành công!');
     }
 }

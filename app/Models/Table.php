@@ -31,4 +31,9 @@ class Table extends Model
     {
         return $this->hasOne(Order::class, 'table_id')->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])->latestOfMany();
     }
+
+    public function activeOrders()
+    {
+        return $this->hasMany(Order::class, 'table_id')->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed']);
+    }
 }

@@ -21,20 +21,33 @@ export default function POSManager({ tables, categories, products }: POSManagerP
     useEffect(() => {
         const initialCarts: Record<number, CartItem[]> = {};
         tables.forEach((table) => {
-            if (table.active_order && table.active_order.items) {
-                initialCarts[table.id] = table.active_order.items.map((item) => ({
-                    menu_item_id: item.menu_item_id,
-                    name: item.menu_item?.name || 'Món',
-                    quantity: item.quantity,
-                    initialQuantity: item.quantity,
-                    unit_price: item.unit_price,
-                    vat_rate: item.menu_item?.vat_rate || 0,
-                    note: item.note || '',
-                    isConfirmed: true,
-                }));
-            } else {
-                initialCarts[table.id] = [];
-            }
+            const mergedMap: Record<number, CartItem> = {};
+            const allOrders = table.active_orders || (table.active_order ? [table.active_order] : []);
+
+            allOrders.forEach((order) => {
+                if (order.items) {
+                    order.items.forEach((item) => {
+                        const existing = mergedMap[item.menu_item_id];
+                        if (existing) {
+                            existing.quantity += item.quantity;
+                            existing.initialQuantity = (existing.initialQuantity || 0) + item.quantity;
+                        } else {
+                            mergedMap[item.menu_item_id] = {
+                                menu_item_id: item.menu_item_id,
+                                name: item.menu_item?.name || 'Món',
+                                quantity: item.quantity,
+                                initialQuantity: item.quantity,
+                                unit_price: item.unit_price,
+                                vat_rate: item.menu_item?.vat_rate || 0,
+                                note: item.note || '',
+                                isConfirmed: true,
+                            };
+                        }
+                    });
+                }
+            });
+
+            initialCarts[table.id] = Object.values(mergedMap);
         });
         setTableCarts(initialCarts);
     }, [tables]);
@@ -100,7 +113,6 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         if (!selectedTable) return;
         const tableId = selectedTable.id;
         const existingCart = tableCarts[tableId] || [];
-        // Cannot remove confirmed items
         const updated = existingCart.filter((item) => item.menu_item_id !== menuItemId || item.isConfirmed);
         setTableCarts({ ...tableCarts, [tableId]: updated });
     };
@@ -118,10 +130,36 @@ export default function POSManager({ tables, categories, products }: POSManagerP
     const handleSendToKitchen = () => {
         if (!selectedTable || currentCart.length === 0) return;
 
+        // Filter out ONLY new delta items to send as fresh kitchen ticket!
+        const newDeltaItems = currentCart
+            .map((item) => {
+                const initialQty = item.isConfirmed ? (item.initialQuantity || 0) : 0;
+                const newDelta = item.quantity - initialQty;
+                if (newDelta > 0) {
+                    return {
+                        menu_item_id: item.menu_item_id,
+                        quantity: newDelta,
+                        unit_price: item.unit_price,
+                        note: item.note || null,
+                        vat_rate: item.vat_rate,
+                    };
+                }
+                return null;
+            })
+            .filter(Boolean) as Array<{
+                menu_item_id: number;
+                quantity: number;
+                unit_price: number;
+                note: string | null;
+                vat_rate: number;
+            }>;
+
+        if (newDeltaItems.length === 0) return;
+
         setSubmitting(true);
 
-        const subtotal = currentCart.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
-        const vatTotal = currentCart.reduce((sum, item) => {
+        const subtotal = newDeltaItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+        const vatTotal = newDeltaItems.reduce((sum, item) => {
             const itemSubtotal = item.quantity * item.unit_price;
             return sum + itemSubtotal * ((item.vat_rate || 0) / 100);
         }, 0);
@@ -129,12 +167,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
 
         const payload = {
             table_id: selectedTable.id,
-            items: currentCart.map((item) => ({
-                menu_item_id: item.menu_item_id,
-                quantity: item.quantity,
-                unit_price: item.unit_price,
-                note: item.note || null,
-            })),
+            items: newDeltaItems,
             subtotal,
             vat_amount: vatTotal,
             total: totalAmount,
@@ -204,7 +237,6 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                     selectedTable={selectedTable}
                                     onSelectTable={(table) => {
                                         handleSelectTable(table);
-                                        // Tab stays on 'tables' (no auto tab switch!)
                                     }}
                                 />
                             ) : (

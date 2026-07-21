@@ -6,6 +6,28 @@ export interface POSTableData {
     capacity: number;
     area: string;
     status: 'available' | 'occupied' | 'reserved' | 'maintenance';
+    active_orders?: Array<{
+        id: number;
+        order_code: string;
+        subtotal: number;
+        vat_amount: number;
+        total: number;
+        status: string;
+        items: Array<{
+            id: number;
+            menu_item_id: number;
+            quantity: number;
+            unit_price: number;
+            subtotal: number;
+            note?: string | null;
+            menu_item?: {
+                id: number;
+                name: string;
+                price: number;
+                vat_rate: number;
+            };
+        }>;
+    }>;
     active_order?: {
         id: number;
         order_code: string;
@@ -59,6 +81,11 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable }: PO
                             const isSelected = selectedTable?.id === table.id;
                             const isOccupied = table.status === 'occupied';
 
+                            // Total count of items across all orders in current table session
+                            const totalSessionItemsCount = table.active_orders
+                                ? table.active_orders.reduce((sum, order) => sum + (order.items?.length || 0), 0)
+                                : table.active_order?.items?.length || 0;
+
                             return (
                                 <div
                                     key={table.id}
@@ -88,9 +115,9 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable }: PO
 
                                     <div className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
                                         <span>🪑 {table.capacity} ghế</span>
-                                        {table.active_order && (
+                                        {totalSessionItemsCount > 0 && (
                                             <span className="font-bold text-amber-700 dark:text-amber-300">
-                                                {table.active_order.items?.length || 0} món
+                                                {totalSessionItemsCount} món
                                             </span>
                                         )}
                                     </div>
