@@ -98,6 +98,7 @@ Route::middleware('auth')->group(function () {
         // Tables Management
         Route::get('/tables', [\App\Http\Controllers\Manager\TableController::class, 'index'])->middleware('permission:tables.view');
         Route::post('/tables', [\App\Http\Controllers\Manager\TableController::class, 'store'])->middleware('permission:tables.create');
+        Route::post('/tables/batch', [\App\Http\Controllers\Manager\TableController::class, 'batchStore'])->middleware('permission:tables.create');
         Route::post('/tables/{table}', [\App\Http\Controllers\Manager\TableController::class, 'update'])->middleware('permission:tables.edit');
         Route::delete('/tables/{table}', [\App\Http\Controllers\Manager\TableController::class, 'destroy'])->middleware('permission:tables.delete');
     });

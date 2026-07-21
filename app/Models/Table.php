@@ -16,10 +16,15 @@ class Table extends Model
         'capacity',
         'area',
         'status',
+        'reservation_name',
+        'reservation_phone',
+        'reservation_time',
+        'reservation_note',
     ];
 
     protected $casts = [
         'capacity' => 'integer',
+        'reservation_time' => 'datetime',
     ];
 
     public function orders()

@@ -6,6 +6,7 @@ import POSMenuTab, { CategoryData, POSProductData } from './components/POSMenuTa
 import POSCartPanel, { CartItem } from './components/POSCartPanel';
 import PaymentDrawer from './components/PaymentDrawer';
 import ReceiptPrintModal from './components/ReceiptPrintModal';
+import ReservationConfirmModal from './components/ReservationConfirmModal';
 
 interface POSManagerProps {
     tables: POSTableData[];
@@ -19,6 +20,10 @@ export default function POSManager({ tables, categories, products }: POSManagerP
 
     const [tableCarts, setTableCarts] = useState<Record<number, CartItem[]>>({});
     const [submitting, setSubmitting] = useState(false);
+
+    // Reservation Confirmation Popup State
+    const [pendingReservationTable, setPendingReservationTable] = useState<POSTableData | null>(null);
+    const [acknowledgedReservations, setAcknowledgedReservations] = useState<Record<number, boolean>>({});
 
     // Payment & Receipt Print Modals State
     const [isPaymentDrawerOpen, setIsPaymentDrawerOpen] = useState(false);
@@ -74,7 +79,19 @@ export default function POSManager({ tables, categories, products }: POSManagerP
     }, [tables]);
 
     const handleSelectTable = (table: POSTableData) => {
+        // If table is reserved and staff hasn't acknowledged reservation popup yet
+        if (table.status === 'reserved' && !acknowledgedReservations[table.id]) {
+            setPendingReservationTable(table);
+            return;
+        }
         setSelectedTable(table);
+    };
+
+    const handleConfirmReservationPrompt = () => {
+        if (!pendingReservationTable) return;
+        setAcknowledgedReservations((prev) => ({ ...prev, [pendingReservationTable.id]: true }));
+        setSelectedTable(pendingReservationTable);
+        setPendingReservationTable(null);
     };
 
     const currentCart = selectedTable ? tableCarts[selectedTable.id] || [] : [];
@@ -337,6 +354,14 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                     </div>
                 </div>
             </div>
+
+            {/* Reservation Confirmation Modal Popup */}
+            <ReservationConfirmModal
+                isOpen={!!pendingReservationTable}
+                onClose={() => setPendingReservationTable(null)}
+                table={pendingReservationTable}
+                onConfirm={handleConfirmReservationPrompt}
+            />
 
             {/* Payment Sliding Drawer Overlay */}
             <PaymentDrawer

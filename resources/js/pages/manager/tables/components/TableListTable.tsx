@@ -6,6 +6,10 @@ export interface TableData {
     capacity: number;
     area: string;
     status: 'available' | 'occupied' | 'reserved' | 'maintenance';
+    reservation_name?: string | null;
+    reservation_phone?: string | null;
+    reservation_time?: string | null;
+    reservation_note?: string | null;
 }
 
 interface TableListTableProps {

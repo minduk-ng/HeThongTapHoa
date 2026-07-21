@@ -11,6 +11,24 @@ class TableController extends Controller
 {
     public function index(Request $request)
     {
+        // Auto-seed takeaway virtual tables if not present
+        if (!Table::where('table_number', 'Mang đi 01')->exists()) {
+            Table::create([
+                'table_number' => 'Mang đi 01',
+                'capacity' => 1,
+                'area' => 'Mang đi (Takeaway)',
+                'status' => 'available',
+            ]);
+        }
+        if (!Table::where('table_number', 'Mang đi 02')->exists()) {
+            Table::create([
+                'table_number' => 'Mang đi 02',
+                'capacity' => 1,
+                'area' => 'Mang đi (Takeaway)',
+                'status' => 'available',
+            ]);
+        }
+
         $query = Table::query();
 
         if ($request->filled('search')) {
@@ -39,10 +57,14 @@ class TableController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'table_number' => 'required|string|max:20|unique:tables,table_number',
+            'table_number' => 'required|string|max:50|unique:tables,table_number',
             'area' => 'required|string|max:50',
             'capacity' => 'required|integer|min:1',
             'status' => 'required|in:available,occupied,reserved,maintenance',
+            'reservation_name' => 'nullable|string|max:100',
+            'reservation_phone' => 'nullable|string|max:20',
+            'reservation_time' => 'nullable|date',
+            'reservation_note' => 'nullable|string|max:500',
         ]);
 
         Table::create($validated);
@@ -50,14 +72,55 @@ class TableController extends Controller
         return back()->with('success', 'Thêm bàn mới thành công!');
     }
 
+    public function batchStore(Request $request)
+    {
+        $validated = $request->validate([
+            'prefix' => 'nullable|string|max:20',
+            'from_number' => 'required|integer|min:1',
+            'to_number' => 'required|integer|gte:from_number',
+            'area' => 'required|string|max:50',
+            'capacity' => 'required|integer|min:1',
+        ]);
+
+        $prefix = $validated['prefix'] ?? 'Bàn ';
+        $createdCount = 0;
+
+        for ($i = $validated['from_number']; $i <= $validated['to_number']; $i++) {
+            $tableName = $prefix . sprintf('%02d', $i);
+            if (!Table::where('table_number', $tableName)->exists()) {
+                Table::create([
+                    'table_number' => $tableName,
+                    'area' => $validated['area'],
+                    'capacity' => $validated['capacity'],
+                    'status' => 'available',
+                ]);
+                $createdCount++;
+            }
+        }
+
+        return back()->with('success', "Đã tạo tự động {$createdCount} bàn mới thành công!");
+    }
+
     public function update(Request $request, Table $table)
     {
         $validated = $request->validate([
-            'table_number' => 'required|string|max:20|unique:tables,table_number,' . $table->id,
+            'table_number' => 'required|string|max:50|unique:tables,table_number,' . $table->id,
             'area' => 'required|string|max:50',
             'capacity' => 'required|integer|min:1',
             'status' => 'required|in:available,occupied,reserved,maintenance',
+            'reservation_name' => 'nullable|string|max:100',
+            'reservation_phone' => 'nullable|string|max:20',
+            'reservation_time' => 'nullable|date',
+            'reservation_note' => 'nullable|string|max:500',
         ]);
+
+        // If status changed away from reserved, clear reservation fields
+        if ($validated['status'] !== 'reserved') {
+            $validated['reservation_name'] = null;
+            $validated['reservation_phone'] = null;
+            $validated['reservation_time'] = null;
+            $validated['reservation_note'] = null;
+        }
 
         $table->update($validated);
 
