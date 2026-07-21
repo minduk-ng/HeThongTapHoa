@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import KitchenStatsHeader from './components/KitchenStatsHeader';
@@ -15,13 +15,37 @@ interface KitchenDisplayProps {
 }
 
 export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
-    // Auto refresh every 15 seconds to sync orders in real-time
+    const [nowTime, setNowTime] = useState<number>(Date.now());
+
+    // Tick every 5 seconds to update real-time minute counters and warning counts locally
     useEffect(() => {
         const timer = setInterval(() => {
-            router.reload({ only: ['orders', 'stats'] });
-        }, 15000);
+            setNowTime(Date.now());
+        }, 5000);
         return () => clearInterval(timer);
     }, []);
+
+    // Sync with server every 20 seconds for new incoming orders
+    useEffect(() => {
+        const serverTimer = setInterval(() => {
+            router.reload({ only: ['orders', 'stats'] });
+        }, 20000);
+        return () => clearInterval(serverTimer);
+    }, []);
+
+    // Real-time calculation of warning orders on Frontend without server requests
+    const liveWarningCount = orders.filter((o) => {
+        const createdAtTime = new Date(o.created_at).getTime();
+        const elapsedMinutes = Math.max(0, Math.floor((nowTime - createdAtTime) / 60000));
+        return elapsedMinutes >= 10 || !!o.has_additional_items;
+    }).length;
+
+    const computedStats = {
+        ...stats,
+        total_orders: orders.length,
+        waiting_items: orders.reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.quantity, 0), 0),
+        warning_orders: liveWarningCount,
+    };
 
     return (
         <DashboardLayout>
@@ -52,12 +76,12 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                 </div>
 
                 {/* Top KPI Statistics Header Cards */}
-                <KitchenStatsHeader stats={stats} />
+                <KitchenStatsHeader stats={computedStats} />
 
                 {/* Order Cards Grid */}
                 {orders.length === 0 ? (
-                    <div className="py-16 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900">
-                        <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center text-3xl mx-auto mb-3">
+                    <div className="py-16 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900 shadow-xs">
+                        <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 flex items-center justify-center text-3xl mx-auto mb-3">
                             ✨
                         </div>
                         <h3 className="text-base font-bold text-zinc-800 dark:text-zinc-200">
@@ -68,7 +92,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                         {orders.map((order) => (
                             <KitchenOrderCard key={order.id} order={order} />
                         ))}

@@ -4,9 +4,10 @@ import { usePage } from '@inertiajs/react';
 
 interface DashboardLayoutProps {
     children: ReactNode;
+    fullWidth?: boolean;
 }
 
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, fullWidth = false }: DashboardLayoutProps) {
     const { flash } = usePage().props as any;
     const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -56,7 +57,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 )}
 
                 {/* Main Content Container */}
-                <div className="relative z-10 flex-1 w-full max-w-7xl mx-auto p-6 md:p-8">
+                <div className={`relative z-10 flex-1 w-full ${fullWidth ? 'p-3 flex flex-col' : 'max-w-7xl mx-auto p-6 md:p-8'}`}>
                     {children}
                 </div>
             </main>

@@ -5,6 +5,7 @@ export interface CartItem {
     menu_item_id: number;
     name: string;
     quantity: number;
+    initialQuantity?: number;
     unit_price: number;
     vat_rate: number;
     note?: string;
@@ -89,69 +90,96 @@ export default function POSCartPanel({
                         <p className="text-[11px] text-zinc-400 mt-1">Chuyển sang tab "Chọn món" để thêm sản phẩm.</p>
                     </div>
                 ) : (
-                    cartItems.map((item) => (
-                        <div
-                            key={item.menu_item_id}
-                            className="p-3 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50/50 dark:bg-zinc-800/40 space-y-2"
-                        >
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h4 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
-                                        {item.name}
-                                    </h4>
-                                    <span className="text-xs text-zinc-500">
-                                        {item.unit_price.toLocaleString('vi-VN')} đ/món
+                    cartItems.map((item) => {
+                        const minQty = item.isConfirmed ? (item.initialQuantity || 1) : 0;
+                        const isMinusDisabled = item.isConfirmed && item.quantity <= minQty;
+                        const isDeleteDisabled = !!item.isConfirmed;
+
+                        return (
+                            <div
+                                key={item.menu_item_id}
+                                className={`p-3 border rounded-xl space-y-2 transition-colors ${
+                                    item.isConfirmed
+                                        ? 'bg-zinc-100/70 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700'
+                                        : 'bg-zinc-50/50 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-800'
+                                }`}
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <div className="flex items-center space-x-1.5">
+                                            <h4 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                                                {item.name}
+                                            </h4>
+                                            {item.isConfirmed && (
+                                                <span className="px-1.5 py-0.5 text-[9px] font-extrabold rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 shrink-0">
+                                                    🔒 Đã gửi bếp
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className="text-xs text-zinc-500">
+                                            {item.unit_price.toLocaleString('vi-VN')} đ/món
+                                        </span>
+                                    </div>
+                                    <span className="font-black text-sm text-zinc-900 dark:text-zinc-100">
+                                        {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
                                     </span>
                                 </div>
-                                <span className="font-black text-sm text-zinc-900 dark:text-zinc-100">
-                                    {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
-                                </span>
-                            </div>
 
-                            {/* Quantity Controls & Remove */}
-                            <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800/60 gap-2">
-                                <input
-                                    type="text"
-                                    value={item.note || ''}
-                                    onChange={(e) => onUpdateNote(item.menu_item_id, e.target.value)}
-                                    placeholder="Ghi chú (ít đường, nhiều đá...)"
-                                    className="flex-1 px-2 py-1 text-xs border rounded-md bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700"
-                                />
+                                {/* Quantity Controls & Remove */}
+                                <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800/60 gap-2">
+                                    <input
+                                        type="text"
+                                        value={item.note || ''}
+                                        onChange={(e) => onUpdateNote(item.menu_item_id, e.target.value)}
+                                        placeholder="Ghi chú (ít đường, nhiều đá...)"
+                                        className="flex-1 px-2 py-1 text-xs border rounded-md bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700"
+                                    />
 
-                                <div className="flex items-center space-x-2 shrink-0">
-                                    <div className="flex items-center border border-zinc-300 dark:border-zinc-700 rounded-lg overflow-hidden bg-white dark:bg-zinc-800">
-                                        <button
-                                            type="button"
-                                            onClick={() => onUpdateQuantity(item.menu_item_id, -1)}
-                                            className="px-2 py-0.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 font-bold"
-                                        >
-                                            -
-                                        </button>
-                                        <span className="px-2.5 py-0.5 text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                                            {item.quantity}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => onUpdateQuantity(item.menu_item_id, 1)}
-                                            className="px-2 py-0.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 font-bold"
-                                        >
-                                            +
-                                        </button>
+                                    <div className="flex items-center space-x-2 shrink-0">
+                                        <div className="flex items-center border border-zinc-300 dark:border-zinc-700 rounded-lg overflow-hidden bg-white dark:bg-zinc-800">
+                                            <button
+                                                type="button"
+                                                disabled={isMinusDisabled}
+                                                onClick={() => onUpdateQuantity(item.menu_item_id, -1)}
+                                                className="px-2 py-0.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                                                title={isMinusDisabled ? 'Món đã gửi bếp không được giảm dưới số lượng đã đặt' : 'Giảm số lượng'}
+                                            >
+                                                -
+                                            </button>
+                                            <span className="px-2.5 py-0.5 text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                                                {item.quantity}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => onUpdateQuantity(item.menu_item_id, 1)}
+                                                className="px-2 py-0.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 font-bold"
+                                                title="Gọi thêm món"
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+
+                                        {!isDeleteDisabled ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => onRemoveItem(item.menu_item_id)}
+                                                className="p-1 text-zinc-400 hover:text-rose-600 rounded-md"
+                                                title="Hủy chọn món"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        ) : (
+                                            <span className="p-1 text-zinc-300 dark:text-zinc-600 cursor-not-allowed" title="Món đã gửi bếp không được xóa">
+                                                🔒
+                                            </span>
+                                        )}
                                     </div>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => onRemoveItem(item.menu_item_id)}
-                                        className="p-1 text-zinc-400 hover:text-rose-600 rounded-md"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
                                 </div>
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
 

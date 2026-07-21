@@ -29,6 +29,6 @@ class Table extends Model
 
     public function activeOrder()
     {
-        return $this->hasOne(Order::class, 'table_id')->whereIn('status', ['draft', 'pending', 'confirmed', 'processing'])->latestOfMany();
+        return $this->hasOne(Order::class, 'table_id')->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])->latestOfMany();
     }
 }

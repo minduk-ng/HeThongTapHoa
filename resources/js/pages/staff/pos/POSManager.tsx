@@ -26,6 +26,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                     menu_item_id: item.menu_item_id,
                     name: item.menu_item?.name || 'Món',
                     quantity: item.quantity,
+                    initialQuantity: item.quantity,
                     unit_price: item.unit_price,
                     vat_rate: item.menu_item?.vat_rate || 0,
                     note: item.note || '',
@@ -66,6 +67,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 menu_item_id: product.id,
                 name: product.name,
                 quantity: 1,
+                initialQuantity: 0,
                 unit_price: Number(product.price),
                 vat_rate: Number(product.vat_rate || 0),
                 note: '',
@@ -83,8 +85,9 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         const updated = existingCart
             .map((item) => {
                 if (item.menu_item_id === menuItemId) {
+                    const minQty = item.isConfirmed ? (item.initialQuantity || 1) : 0;
                     const newQty = item.quantity + delta;
-                    return newQty > 0 ? { ...item, quantity: newQty } : null;
+                    return newQty >= minQty ? { ...item, quantity: newQty } : item;
                 }
                 return item;
             })
@@ -97,7 +100,8 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         if (!selectedTable) return;
         const tableId = selectedTable.id;
         const existingCart = tableCarts[tableId] || [];
-        const updated = existingCart.filter((item) => item.menu_item_id !== menuItemId);
+        // Cannot remove confirmed items
+        const updated = existingCart.filter((item) => item.menu_item_id !== menuItemId || item.isConfirmed);
         setTableCarts({ ...tableCarts, [tableId]: updated });
     };
 
@@ -147,13 +151,13 @@ export default function POSManager({ tables, categories, products }: POSManagerP
     };
 
     return (
-        <DashboardLayout>
+        <DashboardLayout fullWidth={true}>
             <Head title="Đặt hàng POS & Quản lý bàn bán hàng" />
 
-            {/* Standalone Full-Height Split Screen Container */}
-            <div className="h-[calc(100vh-68px)] p-3 overflow-hidden">
+            {/* Full Width & Height Split Screen Container */}
+            <div className="h-[calc(100vh-85px)] w-full overflow-hidden">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full min-h-0">
-                    {/* Left Panel (7 columns): Standalone Box for Tabs */}
+                    {/* Left Panel (7 columns): Standalone Card for Tabs */}
                     <div className="lg:col-span-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 flex flex-col h-full min-h-0 shadow-xs">
                         {/* Top Fixed Tab Selector */}
                         <div className="shrink-0 flex items-center space-x-2 border-b border-zinc-200 dark:border-zinc-800 pb-3 mb-3">
@@ -200,7 +204,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                     selectedTable={selectedTable}
                                     onSelectTable={(table) => {
                                         handleSelectTable(table);
-                                        setActiveTab('menu');
+                                        // Tab stays on 'tables' (no auto tab switch!)
                                     }}
                                 />
                             ) : (
@@ -214,7 +218,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                         </div>
                     </div>
 
-                    {/* Right Panel (5 columns): Standalone Cart Panel Box */}
+                    {/* Right Panel (5 columns): Standalone Cart Panel Card */}
                     <div className="lg:col-span-5 h-full min-h-0">
                         <POSCartPanel
                             selectedTable={selectedTable}

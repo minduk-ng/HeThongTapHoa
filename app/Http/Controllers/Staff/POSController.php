@@ -46,7 +46,7 @@ class POSController extends Controller
 
             // Find existing active order or create new order
             $order = Order::where('table_id', $table->id)
-                ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing'])
+                ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
                 ->first();
 
             $isAdditional = false;
