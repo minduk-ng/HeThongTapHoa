@@ -13,12 +13,30 @@
 }
 
 @layer components {
+    /* Form & Input Controls */
     .input-field {
         @apply w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 transition-colors duration-150 outline-none focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-sky-400 dark:focus:bg-slate-800 dark:focus:ring-sky-950;
     }
     
+    .form-label {
+        @apply mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300;
+    }
+
+    .form-error {
+        @apply mt-1 text-xs text-red-500;
+    }
+
+    .checkbox-field {
+        @apply h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-700 dark:ring-offset-slate-800;
+    }
+
+    /* Buttons */
     .btn-primary {
         @apply w-full rounded-xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors duration-150 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    .btn-secondary {
+        @apply px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 transition-colors duration-150 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700;
     }
 
     .btn-danger {
@@ -29,30 +47,19 @@
         @apply flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition-colors duration-150 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700;
     }
 
-    .btn-icon {
-        @apply absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300;
-    }
-
-    .form-label {
-        @apply mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300;
-    }
-
-    .form-error {
-        @apply mt-1 text-xs text-red-500;
-    }
-
-    .otp-input-field {
-        @apply h-12 w-10 sm:h-14 sm:w-12 rounded-xl border border-slate-200 bg-slate-50 text-center text-xl font-semibold text-slate-800 transition-colors duration-150 outline-none focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-sky-400 dark:focus:bg-slate-800 dark:focus:ring-sky-950;
-    }
-
-    .btn-secondary {
-        @apply px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 transition-colors duration-150 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700;
-    }
-
     .btn-sm {
         @apply px-3 py-1.5 text-xs font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900;
     }
 
+    .btn-edit {
+        @apply text-sky-600 hover:text-sky-800 dark:text-sky-400 dark:hover:text-sky-300 font-medium;
+    }
+
+    .btn-delete {
+        @apply text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-medium;
+    }
+
+    /* Data Tables */
     .data-table {
         @apply w-full whitespace-nowrap text-left text-sm text-slate-600 dark:text-slate-300;
     }
@@ -61,11 +68,7 @@
         @apply border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-400;
     }
 
-    .data-table th {
-        @apply px-6 py-4;
-    }
-
-    .data-table td {
+    .data-table th, .data-table td {
         @apply px-6 py-4;
     }
 
@@ -73,14 +76,40 @@
         @apply hover:bg-slate-50 transition-colors duration-150 dark:hover:bg-slate-800/50;
     }
 
-    .badge {
-        @apply inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset;
+    .table-body {
+        @apply divide-y divide-slate-100 dark:divide-slate-700;
     }
 
-    .badge-indigo, .badge-sky {
+    /* Badges System */
+    .badge {
+        @apply inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset;
+    }
+
+    .badge-info, .badge-sky, .badge-indigo {
         @apply bg-sky-50 text-sky-700 ring-sky-700/10 dark:bg-sky-950/60 dark:text-sky-300 dark:ring-sky-400/20;
     }
 
+    .badge-success {
+        @apply bg-emerald-50 text-emerald-700 ring-emerald-700/10 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-400/20;
+    }
+
+    .badge-warning {
+        @apply bg-amber-50 text-amber-700 ring-amber-700/10 dark:bg-amber-950/60 dark:text-amber-300 dark:ring-amber-400/20;
+    }
+
+    .badge-danger {
+        @apply bg-red-50 text-red-700 ring-red-700/10 dark:bg-red-950/60 dark:text-red-400 dark:ring-red-400/20;
+    }
+
+    .badge-purple {
+        @apply bg-purple-50 text-purple-700 ring-purple-700/10 dark:bg-purple-950/60 dark:text-purple-300 dark:ring-purple-400/20;
+    }
+
+    .badge-secondary {
+        @apply bg-slate-100 text-slate-700 ring-slate-700/10 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-400/20;
+    }
+
+    /* Modals & Panels */
     .modal-overlay {
         @apply fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 transition-opacity duration-200 dark:bg-slate-950/70;
     }
@@ -89,22 +118,15 @@
         @apply relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-8 text-left align-middle shadow-xl transition-all duration-200 dark:bg-slate-800 dark:border dark:border-slate-700;
     }
 
-    /* ========== Auth Components ========== */
-
-    .auth-heading {
-        @apply text-2xl font-semibold text-slate-800 dark:text-slate-100;
+    .modal-heading {
+        @apply mb-6 text-xl font-bold text-slate-900 dark:text-slate-100;
     }
 
-    .auth-subtitle {
-        @apply text-sm text-slate-500 dark:text-slate-400;
+    .modal-footer {
+        @apply mt-8 flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-700;
     }
 
-    .auth-footer {
-        @apply text-center text-sm text-slate-500 dark:text-slate-400;
-    }
-
-    /* ========== Page / Dashboard Components ========== */
-
+    /* Page Layout Headers & Cards */
     .page-heading {
         @apply text-2xl font-bold text-slate-900 dark:text-slate-100;
     }
@@ -121,71 +143,29 @@
         @apply overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-900/5 dark:bg-slate-800 dark:ring-white/10;
     }
 
-    /* ========== Table Components ========== */
-
-    .table-body {
-        @apply divide-y divide-slate-100 dark:divide-slate-700;
-    }
-
-    .btn-edit {
-        @apply text-sky-600 hover:text-sky-800 dark:text-sky-400 dark:hover:text-sky-300 font-medium;
-    }
-
-    .btn-delete {
-        @apply text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-medium;
-    }
-
-    /* ========== Modal Components ========== */
-
-    .modal-heading {
-        @apply mb-6 text-xl font-bold text-slate-900 dark:text-slate-100;
-    }
-
-    .modal-footer {
-        @apply mt-8 flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-700;
-    }
-
-    /* ========== Shared UI Elements ========== */
-
     .link-primary {
         @apply font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300;
     }
 
-    .form-divider {
-        @apply flex items-center gap-3;
-    }
-
-    .form-divider-line {
-        @apply h-px flex-1 bg-slate-200 dark:bg-slate-700;
-    }
-
-    .form-divider-text {
-        @apply text-xs text-slate-400 dark:text-slate-500;
-    }
-
-    .checkbox-field {
-        @apply h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-700 dark:ring-offset-slate-800;
-    }
-
-    /* ========== Avatar ========== */
-
-    .avatar-placeholder {
-        @apply flex items-center justify-center rounded-full bg-sky-100 text-sky-700 font-semibold dark:bg-sky-950 dark:text-sky-300;
+    /* OTP Inputs */
+    .otp-input-field {
+        @apply h-12 w-10 sm:h-14 sm:w-12 rounded-xl border border-slate-200 bg-slate-50 text-center text-xl font-semibold text-slate-800 transition-colors duration-150 outline-none focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-sky-400 dark:focus:bg-slate-800 dark:focus:ring-sky-950;
     }
 
     .otp-input-error {
         @apply !border-red-500 !bg-red-50 !text-red-900 dark:!border-red-900/50 dark:!bg-red-950/20 dark:!text-red-400;
         animation: otp-shake 0.5s ease-in-out;
     }
+
     .otp-input-success {
         @apply !border-emerald-500 !bg-emerald-50 !text-emerald-900 dark:!border-emerald-900/50 dark:!bg-emerald-950/20 dark:!text-emerald-400;
         transform: scale(1.02);
         transition: transform 0.15s ease-in-out;
     }
+
     @keyframes otp-shake {
         0%, 100% { transform: translateX(0); }
         10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
         20%, 40%, 60%, 80% { transform: translateX(4px); }
     }
 }
-

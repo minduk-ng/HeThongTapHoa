@@ -225,13 +225,13 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
                                 <td className="text-gray-600 dark:text-gray-300">{role.description}</td>
                                 <td>
                                     {role.is_system ? (
-                                        <span className="badge bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Hệ thống</span>
+                                        <span className="badge badge-danger">Hệ thống</span>
                                     ) : (
-                                        <span className="badge bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-300">Tùy chỉnh</span>
+                                        <span className="badge badge-secondary">Tùy chỉnh</span>
                                     )}
                                 </td>
                                 <td>
-                                    <span className="badge bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                    <span className="badge badge-info">
                                         {role.permissions ? role.permissions.length : 0} quyền
                                     </span>
                                 </td>
