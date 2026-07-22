@@ -19,6 +19,7 @@ class OrderCompleted implements ShouldBroadcastNow
     {
         return [
             new PrivateChannel('pos-channel'),
+            new PrivateChannel('kitchen-channel'),
         ];
     }
 

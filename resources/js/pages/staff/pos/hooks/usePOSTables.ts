@@ -7,6 +7,8 @@ export function usePOSTables(tables: POSTableData[]) {
     const [pendingReservationTable, setPendingReservationTable] = useState<POSTableData | null>(null);
     const [acknowledgedReservations, setAcknowledgedReservations] = useState<Record<number, boolean>>({});
 
+    const [draftTableCounts, setDraftTableCounts] = useState<Record<number, number>>({});
+
     // Realtime WebSocket Listener via Reverb for order status & table updates
     useEffect(() => {
         if (typeof window !== 'undefined' && window.Echo) {
@@ -24,6 +26,16 @@ export function usePOSTables(tables: POSTableData[]) {
                         onError: () => {},
                     });
                 });
+
+            const presence = window.Echo.join('pos-room');
+            presence.listenForWhisper('table-draft-cart-updated', (e: { tableId: number; unconfirmedCount: number }) => {
+                if (e && e.tableId !== undefined) {
+                    setDraftTableCounts((prev) => ({
+                        ...prev,
+                        [e.tableId]: e.unconfirmedCount || 0,
+                    }));
+                }
+            });
 
             return () => {
                 window.Echo.leave('pos-channel');
@@ -64,6 +76,7 @@ export function usePOSTables(tables: POSTableData[]) {
         pendingReservationTable,
         setPendingReservationTable,
         acknowledgedReservations,
+        draftTableCounts,
         handleSelectTable,
         handleConfirmReservationPrompt,
     };

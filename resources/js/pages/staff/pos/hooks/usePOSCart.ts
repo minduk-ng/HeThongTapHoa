@@ -47,6 +47,16 @@ export function usePOSCart(
 
     const currentCart = selectedTable ? tableCarts[selectedTable.id] || [] : [];
 
+    const whisperDraftCart = (tableId: number, items: CartItem[]) => {
+        if (typeof window !== 'undefined' && window.Echo) {
+            const unconfirmedCount = items.filter((i) => !i.isConfirmed).reduce((s, i) => s + i.quantity, 0);
+            window.Echo.join('pos-room').whisper('table-draft-cart-updated', {
+                tableId,
+                unconfirmedCount,
+            });
+        }
+    };
+
     const handleToggleProduct = (product: POSProductData) => {
         if (!selectedTable) return;
         const tableId = selectedTable.id;
@@ -55,19 +65,18 @@ export function usePOSCart(
         const index = existingCart.findIndex((i) => i.menu_item_id === product.id);
         const maxServings = product.max_servings !== undefined ? product.max_servings : 999;
 
+        let updated: CartItem[];
         if (index > -1) {
             const existingItem = existingCart[index];
             if (!existingItem.isConfirmed) {
-                const updated = existingCart.filter((i) => i.menu_item_id !== product.id);
-                setTableCarts((prev) => ({ ...prev, [tableId]: updated }));
+                updated = existingCart.filter((i) => i.menu_item_id !== product.id);
             } else {
                 if (existingItem.quantity + 1 > maxServings) {
                     alert(`Không đủ nguyên liệu trong kho! “${product.name}” chỉ còn phục vụ tối đa ${maxServings} phần.`);
                     return;
                 }
-                const updated = [...existingCart];
+                updated = [...existingCart];
                 updated[index] = { ...existingItem, quantity: existingItem.quantity + 1 };
-                setTableCarts((prev) => ({ ...prev, [tableId]: updated }));
             }
         } else {
             if (1 > maxServings) {
@@ -84,8 +93,11 @@ export function usePOSCart(
                 note: '',
                 isConfirmed: false,
             };
-            setTableCarts((prev) => ({ ...prev, [tableId]: [...existingCart, newItem] }));
+            updated = [...existingCart, newItem];
         }
+
+        setTableCarts((prev) => ({ ...prev, [tableId]: updated }));
+        whisperDraftCart(tableId, updated);
     };
 
     const handleUpdateQuantity = (menuItemId: number, delta: number) => {
@@ -111,6 +123,7 @@ export function usePOSCart(
             .filter(Boolean) as CartItem[];
 
         setTableCarts((prev) => ({ ...prev, [tableId]: updated }));
+        whisperDraftCart(tableId, updated);
     };
 
     const handleRemoveItem = (menuItemId: number) => {
@@ -119,6 +132,7 @@ export function usePOSCart(
         const existingCart = tableCarts[tableId] || [];
         const updated = existingCart.filter((item) => item.menu_item_id !== menuItemId || item.isConfirmed);
         setTableCarts((prev) => ({ ...prev, [tableId]: updated }));
+        whisperDraftCart(tableId, updated);
     };
 
     const handleUpdateNote = (menuItemId: number, note: string) => {
@@ -134,6 +148,7 @@ export function usePOSCart(
     const clearTableCart = (tableId?: number) => {
         if (!tableId) return;
         setTableCarts((prev) => ({ ...prev, [tableId]: [] }));
+        whisperDraftCart(tableId, []);
     };
 
     return {

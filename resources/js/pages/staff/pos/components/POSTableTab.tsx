@@ -8,9 +8,10 @@ interface POSTableTabProps {
     selectedTable: POSTableData | null;
     onSelectTable: (table: POSTableData) => void;
     lockedCheckoutTables?: Record<number, CheckoutLockInfo>;
+    draftTableCounts?: Record<number, number>;
 }
 
-export default function POSTableTab({ tables, selectedTable, onSelectTable, lockedCheckoutTables = {} }: POSTableTabProps) {
+export default function POSTableTab({ tables, selectedTable, onSelectTable, lockedCheckoutTables = {}, draftTableCounts = {} }: POSTableTabProps) {
     const groupedAreas = tables.reduce((acc, table) => {
         const areaName = table.area || 'Khác';
         if (!acc[areaName]) acc[areaName] = [];
@@ -41,6 +42,8 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable, lock
                             const isSelected = selectedTable?.id === table.id;
                             const isOccupied = table.status === 'occupied';
                             const isReserved = table.status === 'reserved';
+                            const draftCount = draftTableCounts[table.id] || 0;
+                            const isDrafting = !isOccupied && !isReserved && draftCount > 0;
 
                             // Total count of items across all orders in current table session
                             const totalSessionItemsCount = table.active_orders
@@ -62,6 +65,8 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable, lock
                                             ? 'border-amber-300 bg-amber-50/60 dark:bg-amber-950/30 hover:border-amber-400'
                                             : isReserved
                                             ? 'border-purple-300 bg-purple-50/60 dark:bg-purple-950/30 hover:border-purple-400'
+                                            : isDrafting
+                                            ? 'border-amber-200 bg-amber-50/40 dark:bg-amber-950/20 hover:border-amber-300'
                                             : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700'
                                     }`}
                                 >
@@ -76,10 +81,18 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable, lock
                                                         ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/60'
                                                         : isReserved
                                                         ? 'bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-900/60'
+                                                        : isDrafting
+                                                        ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/60 dark:text-amber-200 dark:border-amber-800/80 font-bold'
                                                         : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60'
                                                 }`}
                                             >
-                                                {isOccupied ? 'Đang dùng' : isReserved ? `Đặt trước ${resTimeStr ? `(${resTimeStr})` : ''}` : 'Trống'}
+                                                {isOccupied
+                                                    ? 'Đang dùng'
+                                                    : isReserved
+                                                    ? `Đặt trước ${resTimeStr ? `(${resTimeStr})` : ''}`
+                                                    : isDrafting
+                                                    ? `Chuẩn bị (${draftCount} món)`
+                                                    : 'Trống'}
                                             </span>
 
                                             {lockedCheckoutTables[table.id] && (

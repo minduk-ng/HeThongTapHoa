@@ -26,16 +26,23 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
         return () => clearInterval(timer);
     }, []);
 
-    // Realtime WebSocket Listener via Reverb for instant new order tickets
+    // Realtime WebSocket Listener via Reverb for instant new order tickets & completions
     useEffect(() => {
         if (typeof window !== 'undefined' && window.Echo) {
             const channel = window.Echo.private('kitchen-channel');
-            channel.listen('.OrderSentToKitchen', () => {
-                router.reload({
-                    only: ['orders', 'stats'],
-                    onError: () => {},
+            channel
+                .listen('.OrderSentToKitchen', () => {
+                    router.reload({
+                        only: ['orders', 'stats'],
+                        onError: () => {},
+                    });
+                })
+                .listen('.OrderCompleted', () => {
+                    router.reload({
+                        only: ['orders', 'stats'],
+                        onError: () => {},
+                    });
                 });
-            });
 
             return () => {
                 window.Echo.leave('kitchen-channel');

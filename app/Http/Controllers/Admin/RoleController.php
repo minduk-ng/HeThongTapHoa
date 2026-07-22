@@ -16,6 +16,23 @@ class RoleController extends Controller
 {
     public function index(): Response
     {
+        $systemPermissions = [
+            'pages.view', 'pages.create', 'pages.edit', 'pages.delete',
+            'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
+            'users.view', 'users.edit',
+            'products.view', 'products.create', 'products.edit', 'products.delete', 'products.import', 'products.export',
+            'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
+            'ingredients.view', 'ingredients.create', 'ingredients.edit', 'ingredients.delete', 'ingredients.import',
+            'recipes.view', 'recipes.edit',
+            'tables.view', 'tables.create', 'tables.edit', 'tables.delete',
+            'pos.view', 'pos.create', 'pos.bypass_kitchen_lock',
+            'kitchen.view', 'kitchen.update',
+        ];
+
+        foreach ($systemPermissions as $permName) {
+            Permission::firstOrCreate(['name' => $permName]);
+        }
+
         $roles = Role::with(['permissions', 'pages'])->get();
         $permissions = Permission::all();
         $pages = Page::orderBy('sort_order')->get();

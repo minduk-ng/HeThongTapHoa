@@ -23,6 +23,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         handleSelectTable,
         handleConfirmReservationPrompt,
         setPendingReservationTable,
+        draftTableCounts,
     } = usePOSTables(tables);
 
     const {
@@ -101,6 +102,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                     selectedTable={selectedTable}
                                     onSelectTable={handleSelectTable}
                                     lockedCheckoutTables={lockedCheckoutTables}
+                                    draftTableCounts={draftTableCounts}
                                 />
                             ) : (
                                 <POSMenuTab

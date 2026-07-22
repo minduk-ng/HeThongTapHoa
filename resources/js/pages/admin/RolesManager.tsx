@@ -11,6 +11,33 @@ interface Props {
     pages: Page[];
 }
 
+const PERMISSION_LABEL_DICTIONARY: Record<string, string> = {
+    view: 'Xem',
+    create: 'Thêm',
+    edit: 'Sửa',
+    update: 'Cập nhật',
+    delete: 'Xóa',
+    import: 'Nhập Excel',
+    export: 'Xuất Excel',
+    bypass_kitchen_lock: 'Duyệt khẩn cấp thanh toán',
+    cancel: 'Hủy bỏ',
+    approve: 'Phê duyệt',
+};
+
+function formatPermissionLabel(permName: string): string {
+    const parts = permName.split('.');
+    const actionKey = parts[parts.length - 1] || permName;
+
+    if (PERMISSION_LABEL_DICTIONARY[actionKey]) {
+        return PERMISSION_LABEL_DICTIONARY[actionKey];
+    }
+
+    return actionKey
+        .split('_')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
 export default function RolesManager({ roles, permissions, pages }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -411,16 +438,7 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
                                                                         <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Chức năng trang:</div>
                                                                         <div className="flex flex-wrap gap-3">
                                                                             {pagePerms.map((perm) => {
-                                                                                const actionLabel = perm.name.split('.')[1];
-                                                                                const friendlyLabel = 
-                                                                                    actionLabel === 'view' ? 'Xem' :
-                                                                                    actionLabel === 'create' ? 'Thêm' :
-                                                                                    actionLabel === 'edit' ? 'Sửa' :
-                                                                                    actionLabel === 'delete' ? 'Xóa' :
-                                                                                    actionLabel === 'import' ? 'Nhập Excel' :
-                                                                                    actionLabel === 'export' ? 'Xuất Excel' :
-                                                                                    actionLabel === 'update' ? 'Cập nhật' : perm.name;
-                                                                                
+                                                                                const friendlyLabel = formatPermissionLabel(perm.name);
                                                                                 return (
                                                                                     <label key={perm.id} className="flex items-center space-x-2 cursor-pointer bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-slate-700 shadow-sm text-xs select-none">
                                                                                         <input
