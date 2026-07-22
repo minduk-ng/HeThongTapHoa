@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { Plus, Search, FolderTree, Package, Layers } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
@@ -31,13 +31,20 @@ export default function CategoriesManager({ categories, filters }: CategoriesMan
         setSearchQuery(filters.search || '');
     }, [filters]);
 
+    // 100% Instant Frontend Search/Filtering via useMemo
+    const filteredCategories = useMemo(() => {
+        return categories.filter((cat) => {
+            const query = searchQuery.trim().toLowerCase();
+            if (!query) return true;
+            const matchesName = cat.name.toLowerCase().includes(query);
+            const matchesDesc = cat.description?.toLowerCase().includes(query);
+            const matchesChild = cat.items?.some((item) => item.name.toLowerCase().includes(query));
+            return matchesName || matchesDesc || matchesChild;
+        });
+    }, [categories, searchQuery]);
+
     const handleSearchChange = (query: string) => {
         setSearchQuery(query);
-        router.get(
-            '/manager/categories',
-            { search: query },
-            { preserveState: true, replace: true }
-        );
     };
 
     const handleOpenAddDrawer = () => {
@@ -171,9 +178,9 @@ export default function CategoriesManager({ categories, filters }: CategoriesMan
                     </>
                 }
             >
-                {/* Category Accordion Table with Fixed Header & Pagination */}
+                {/* Category Accordion Table with Instant Filtering */}
                 <CategoryTable
-                    categories={categories}
+                    categories={filteredCategories}
                     onEdit={handleEditCategory}
                     onDelete={handleDeleteCategory}
                 />

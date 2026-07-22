@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { Plus, Search, Upload, Download, UtensilsCrossed, Package, Layers, SlidersHorizontal } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
@@ -35,13 +35,10 @@ export default function ProductsManager({
     items,
     categories,
     filters,
-    priceRangeLimits,
 }: ProductsManagerProps) {
     const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [selectedCategory, setSelectedCategory] = useState(filters.category_id || 'all');
-    const [minPrice, setMinPrice] = useState(filters.min_price || '');
-    const [maxPrice, setMaxPrice] = useState(filters.max_price || '');
 
     // Modals and Drawer States
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -60,39 +57,41 @@ export default function ProductsManager({
         setStatusFilter(filters.status || 'all');
         setSearchQuery(filters.search || '');
         setSelectedCategory(filters.category_id || 'all');
-        setMinPrice(filters.min_price || '');
-        setMaxPrice(filters.max_price || '');
     }, [filters]);
 
-    // Handle filter application
-    const applyFilters = (newFilters: Record<string, any>) => {
-        router.get(
-            '/manager/products',
-            {
-                status: statusFilter,
-                search: searchQuery,
-                category_id: selectedCategory,
-                min_price: minPrice,
-                max_price: maxPrice,
-                ...newFilters,
-            },
-            { preserveState: true, replace: true }
-        );
-    };
+    // 100% Instant Frontend Filtering via useMemo without backend HTTP roundtrips
+    const filteredItems = useMemo(() => {
+        return items.filter((product) => {
+            const query = searchQuery.trim().toLowerCase();
+            const matchesSearch =
+                !query ||
+                product.name.toLowerCase().includes(query) ||
+                String(product.id).includes(query);
+
+            const matchesCategory =
+                selectedCategory === 'all' || String(product.category_id) === selectedCategory;
+
+            let matchesStatus = true;
+            if (statusFilter === 'active') {
+                matchesStatus = product.is_available === true;
+            } else if (statusFilter === 'inactive') {
+                matchesStatus = product.is_available === false;
+            }
+
+            return matchesSearch && matchesCategory && matchesStatus;
+        });
+    }, [items, searchQuery, selectedCategory, statusFilter]);
 
     const handleStatusChange = (status: string) => {
         setStatusFilter(status);
-        applyFilters({ status });
     };
 
     const handleSearchChange = (query: string) => {
         setSearchQuery(query);
-        applyFilters({ search: query });
     };
 
     const handleCategoryChange = (catId: string) => {
         setSelectedCategory(catId);
-        applyFilters({ category_id: catId });
     };
 
     const handleOpenAddDrawer = () => {
@@ -279,9 +278,9 @@ export default function ProductsManager({
                     </>
                 }
             >
-                {/* Product Data Table */}
+                {/* Product Data Table with Instant Frontend Filtering */}
                 <ProductTable
-                    items={items}
+                    items={filteredItems}
                     onEdit={handleEditProduct}
                     onDelete={handleDeleteProduct}
                 />

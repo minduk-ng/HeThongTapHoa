@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { Plus, Search, Armchair, SlidersHorizontal, CheckCircle, Users } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
@@ -36,32 +36,32 @@ export default function TableManager({ tables, areas, filters }: TableManagerPro
         setSelectedStatus(filters.status || 'all');
     }, [filters]);
 
-    const applyFilters = (newFilters: Record<string, any>) => {
-        router.get(
-            '/manager/tables',
-            {
-                search: searchQuery,
-                area: selectedArea,
-                status: selectedStatus,
-                ...newFilters,
-            },
-            { preserveState: true, replace: true }
-        );
-    };
+    // 100% Instant Frontend Filtering via useMemo without backend HTTP roundtrips
+    const filteredTables = useMemo(() => {
+        return tables.filter((table) => {
+            const query = searchQuery.trim().toLowerCase();
+            const matchesSearch =
+                !query ||
+                table.table_number.toLowerCase().includes(query) ||
+                (table.area && table.area.toLowerCase().includes(query));
+
+            const matchesArea = selectedArea === 'all' || table.area === selectedArea;
+            const matchesStatus = selectedStatus === 'all' || table.status === selectedStatus;
+
+            return matchesSearch && matchesArea && matchesStatus;
+        });
+    }, [tables, searchQuery, selectedArea, selectedStatus]);
 
     const handleSearchChange = (query: string) => {
         setSearchQuery(query);
-        applyFilters({ search: query });
     };
 
     const handleAreaChange = (area: string) => {
         setSelectedArea(area);
-        applyFilters({ area });
     };
 
     const handleStatusChange = (status: string) => {
         setSelectedStatus(status);
-        applyFilters({ status });
     };
 
     const handleOpenAddDrawer = () => {
@@ -232,9 +232,9 @@ export default function TableManager({ tables, areas, filters }: TableManagerPro
                     </>
                 }
             >
-                {/* Table List Table */}
+                {/* Table List Table with Instant Frontend Filtering */}
                 <TableListTable
-                    tables={tables}
+                    tables={filteredTables}
                     onEdit={handleEditTable}
                     onDelete={handleDeleteTable}
                 />

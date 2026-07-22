@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Head, router } from '@inertiajs/react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Head } from '@inertiajs/react';
 import { ChefHat, Search, SlidersHorizontal, BookOpen, Layers } from 'lucide-react';
 import DashboardLayout from '../../../../layouts/DashboardLayout';
 import ManagerPageLayout from '../../../../components/ManagerPageLayout';
@@ -44,26 +44,28 @@ export default function RecipesManager({
         setSelectedCategory(filters.category_id || 'all');
     }, [filters]);
 
-    const applyFilters = (newFilters: Record<string, any>) => {
-        router.get(
-            '/manager/inventory/recipes',
-            {
-                search: searchQuery,
-                category_id: selectedCategory,
-                ...newFilters,
-            },
-            { preserveState: true, replace: true }
-        );
-    };
+    // 100% Instant Frontend Filtering via useMemo without backend HTTP roundtrips
+    const filteredProducts = useMemo(() => {
+        return products.filter((product) => {
+            const query = searchQuery.trim().toLowerCase();
+            const matchesSearch =
+                !query ||
+                product.name.toLowerCase().includes(query) ||
+                String(product.id).includes(query);
+
+            const matchesCategory =
+                selectedCategory === 'all' || String(product.category_id) === selectedCategory;
+
+            return matchesSearch && matchesCategory;
+        });
+    }, [products, searchQuery, selectedCategory]);
 
     const handleSearchChange = (query: string) => {
         setSearchQuery(query);
-        applyFilters({ search: query });
     };
 
     const handleCategoryChange = (catId: string) => {
         setSelectedCategory(catId);
-        applyFilters({ category_id: catId });
     };
 
     // Calculate recipe stats
@@ -169,9 +171,9 @@ export default function RecipesManager({
                     </>
                 }
             >
-                {/* Recipe Table */}
+                {/* Recipe Table with Instant Frontend Filtering */}
                 <RecipeTable
-                    products={products}
+                    products={filteredProducts}
                     onEditRecipe={(product) => setSelectedProduct(product)}
                 />
             </ManagerPageLayout>
