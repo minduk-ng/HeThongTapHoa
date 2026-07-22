@@ -2,11 +2,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 export interface CheckoutLockInfo {
     employeeName: string;
+    clientId?: string;
 }
 
 export function usePOSCheckoutLock() {
     const [lockedCheckoutTables, setLockedCheckoutTables] = useState<Record<number, CheckoutLockInfo>>({});
     const activeLockTableIdRef = useRef<number | null>(null);
+    const clientIdRef = useRef<string>(Math.random().toString(36).substring(2, 9));
 
     useEffect(() => {
         if (typeof window === 'undefined' || !window.Echo) return;
@@ -14,12 +16,16 @@ export function usePOSCheckoutLock() {
         const presenceChannel = window.Echo.join('pos-room');
 
         presenceChannel
-            .listenForWhisper('table-checkout-started', (e: { tableId: number; employeeName: string }) => {
+            .listenForWhisper('table-checkout-started', (e: { tableId: number; employeeName: string; clientId?: string }) => {
                 if (e && e.tableId) {
+                    if (e.clientId && e.clientId === clientIdRef.current) {
+                        return;
+                    }
                     setLockedCheckoutTables((prev) => ({
                         ...prev,
                         [e.tableId]: {
                             employeeName: e.employeeName || 'Nhân viên khác',
+                            clientId: e.clientId,
                         },
                     }));
                 }
@@ -73,6 +79,7 @@ export function usePOSCheckoutLock() {
             window.Echo.join('pos-room').whisper('table-checkout-started', {
                 tableId,
                 employeeName,
+                clientId: clientIdRef.current,
             });
         }
     }, []);
@@ -84,6 +91,7 @@ export function usePOSCheckoutLock() {
         if (typeof window !== 'undefined' && window.Echo) {
             window.Echo.join('pos-room').whisper('table-checkout-ended', {
                 tableId,
+                clientId: clientIdRef.current,
             });
         }
     }, []);
