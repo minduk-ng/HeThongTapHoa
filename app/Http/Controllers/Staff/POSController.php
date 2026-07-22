@@ -13,13 +13,14 @@ use App\Models\ProductRecipe;
 use App\Models\Table;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class POSController extends Controller
 {
     public function index(Request $request)
     {
-        $tables = Table::with(['activeOrders.items.menuItem'])->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
+        $tables = Table::with(['activeOrders.items.menuItem'])->where('status', '!=', 'maintenance')->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
         $categories = MenuCategory::orderBy('sort_order', 'asc')->get();
         $products = MenuItem::with(['category', 'recipes.ingredient'])->where('is_available', true)->get();
 
@@ -62,46 +63,51 @@ class POSController extends Controller
             'total' => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($validated, $request) {
-            $table = Table::findOrFail($validated['table_id']);
+        try {
+            DB::transaction(function () use ($validated, $request) {
+                $table = Table::findOrFail($validated['table_id']);
 
-            // Check if table already has previous orders in this session
-            $hasPreviousOrders = Order::where('table_id', $table->id)
-                ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
-                ->exists();
+                // Check if table already has previous orders in this session
+                $hasPreviousOrders = Order::where('table_id', $table->id)
+                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                    ->exists();
 
-            // Create a fresh Kitchen Ticket order for the newly added items
-            $orderCode = 'ORD-' . strtoupper(\Illuminate\Support\Str::random(6));
-            $employeeId = DB::table('employees')->where('id', $request->user()->id)->exists() ? $request->user()->id : null;
+                // Create a fresh Kitchen Ticket order for the newly added items
+                $orderCode = 'ORD-' . strtoupper(\Illuminate\Support\Str::random(6));
+                $employeeId = DB::table('employees')->where('id', $request->user()->id)->exists() ? $request->user()->id : null;
 
-            $order = Order::create([
-                'order_code' => $orderCode,
-                'table_id' => $table->id,
-                'employee_id' => $employeeId,
-                'subtotal' => $validated['subtotal'],
-                'vat_amount' => $validated['vat_amount'],
-                'total' => $validated['total'],
-                'status' => 'pending',
-                'has_additional_items' => $hasPreviousOrders, // Flag alert for kitchen if table calls for extra items!
-            ]);
-
-            // Update table status to occupied
-            $table->update(['status' => 'occupied']);
-
-            // Insert new order ticket items
-            foreach ($validated['items'] as $item) {
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'menu_item_id' => $item['menu_item_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'subtotal' => $item['quantity'] * $item['unit_price'],
-                    'note' => $item['note'] ?? null,
+                $order = Order::create([
+                    'order_code' => $orderCode,
+                    'table_id' => $table->id,
+                    'employee_id' => $employeeId,
+                    'subtotal' => $validated['subtotal'],
+                    'vat_amount' => $validated['vat_amount'],
+                    'total' => $validated['total'],
+                    'status' => 'pending',
+                    'has_additional_items' => $hasPreviousOrders, // Flag alert for kitchen if table calls for extra items!
                 ]);
-            }
-        });
 
-        return back()->with('success', 'Đã gửi đơn order chế biến xuống bếp thành công!');
+                // Update table status to occupied
+                $table->update(['status' => 'occupied']);
+
+                // Insert new order ticket items
+                foreach ($validated['items'] as $item) {
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'menu_item_id' => $item['menu_item_id'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['unit_price'],
+                        'subtotal' => $item['quantity'] * $item['unit_price'],
+                        'note' => $item['note'] ?? null,
+                    ]);
+                }
+            });
+
+            return back()->with('success', 'Đã gửi đơn order chế biến xuống bếp thành công!');
+        } catch (\Throwable $e) {
+            Log::error('POS sendToKitchen DB error: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Gửi đơn thất bại: Không thể kết nối hoặc lưu cơ sở dữ liệu. Vui lòng thử lại.']);
+        }
     }
 
     public function checkout(Request $request)
@@ -113,41 +119,46 @@ class POSController extends Controller
             'change_amount' => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($validated) {
-            $table = Table::findOrFail($validated['table_id']);
+        try {
+            DB::transaction(function () use ($validated) {
+                $table = Table::findOrFail($validated['table_id']);
 
-            // Find all active orders for this table session
-            $activeOrders = Order::where('table_id', $table->id)
-                ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
-                ->get();
+                // Find all active orders for this table session
+                $activeOrders = Order::where('table_id', $table->id)
+                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                    ->get();
 
-            if ($activeOrders->isEmpty()) {
-                throw new \Exception('Không tìm thấy đơn hàng đang hoạt động của bàn này.');
-            }
+                if ($activeOrders->isEmpty()) {
+                    throw new \Exception('Không tìm thấy đơn hàng đang hoạt động của bàn này.');
+                }
 
-            // Mark all orders in this session as paid
-            foreach ($activeOrders as $order) {
-                $order->update(['status' => 'paid']);
-            }
+                // Mark all orders in this session as paid
+                foreach ($activeOrders as $order) {
+                    $order->update(['status' => 'paid']);
+                }
 
-            // Primary order for invoice association
-            $primaryOrder = $activeOrders->first();
+                // Primary order for invoice association
+                $primaryOrder = $activeOrders->first();
 
-            // Create Invoice record
-            $invoiceCode = 'INV-' . date('Ymd') . strtoupper(\Illuminate\Support\Str::random(4));
-            Invoice::create([
-                'order_id' => $primaryOrder->id,
-                'invoice_code' => $invoiceCode,
-                'payment_method' => $validated['payment_method'],
-                'amount_received' => $validated['amount_received'],
-                'change_amount' => $validated['change_amount'],
-                'issued_at' => now(),
-            ]);
+                // Create Invoice record
+                $invoiceCode = 'INV-' . date('Ymd') . strtoupper(\Illuminate\Support\Str::random(4));
+                Invoice::create([
+                    'order_id' => $primaryOrder->id,
+                    'invoice_code' => $invoiceCode,
+                    'payment_method' => $validated['payment_method'],
+                    'amount_received' => $validated['amount_received'],
+                    'change_amount' => $validated['change_amount'],
+                    'issued_at' => now(),
+                ]);
 
-            // Release table to available
-            $table->update(['status' => 'available']);
-        });
+                // Release table to available
+                $table->update(['status' => 'available']);
+            });
 
-        return back()->with('success', 'Thanh toán hoàn tất thành công!');
+            return back()->with('success', 'Thanh toán hoàn tất thành công!');
+        } catch (\Throwable $e) {
+            Log::error('POS checkout DB error: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Thanh toán thất bại: ' . $e->getMessage()]);
+        }
     }
 }

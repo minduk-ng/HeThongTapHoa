@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { POSTableData, CartItem, ReceiptModalState } from '../types/pos.types';
 
@@ -14,13 +14,23 @@ export function usePOSCheckout() {
         table: null,
     });
 
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+            }
+        };
+    }, []);
+
     const dateCode = () => {
         const d = new Date();
         return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
     };
 
     const handleSendToKitchen = (selectedTable: POSTableData | null, currentCart: CartItem[]) => {
-        if (!selectedTable || currentCart.length === 0) return;
+        if (!selectedTable || currentCart.length === 0 || submitting) return;
 
         const newDeltaItems = currentCart
             .map((item) => {
@@ -49,6 +59,13 @@ export function usePOSCheckout() {
 
         setSubmitting(true);
 
+        // Safety timeout (8s) if DB/Server hangs indefinitely
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => {
+            setSubmitting(false);
+            alert('Kết nối cơ sở dữ liệu/máy chủ quá thời gian chờ (Timeout). Vui lòng bấm gửi lại!');
+        }, 8000);
+
         const subtotal = newDeltaItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
         const vatTotal = newDeltaItems.reduce((sum, item) => {
             const itemSubtotal = item.quantity * item.unit_price;
@@ -65,11 +82,15 @@ export function usePOSCheckout() {
         };
 
         router.post('/staff/pos/send-to-kitchen', payload, {
-            onSuccess: () => {
+            onFinish: () => {
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 setSubmitting(false);
             },
-            onError: () => {
+            onError: (errors) => {
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 setSubmitting(false);
+                const msg = errors.error || errors.message || 'Gửi đơn thất bại do kết nối CSDL chập chờn. Vui lòng gửi lại!';
+                alert(msg);
             },
         });
     };
@@ -83,9 +104,16 @@ export function usePOSCheckout() {
         shouldPrint: boolean,
         onSuccessClearCart: () => void
     ) => {
-        if (!selectedTable) return;
+        if (!selectedTable || submitting) return;
 
         setSubmitting(true);
+
+        // Safety timeout (8s) if DB/Server hangs indefinitely
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => {
+            setSubmitting(false);
+            alert('Kết nối cơ sở dữ liệu/máy chủ quá thời gian chờ (Timeout). Vui lòng thử thanh toán lại!');
+        }, 8000);
 
         const payload = {
             table_id: selectedTable.id,
@@ -99,9 +127,7 @@ export function usePOSCheckout() {
 
         router.post('/staff/pos/checkout', payload, {
             onSuccess: () => {
-                setSubmitting(false);
                 setIsPaymentDrawerOpen(false);
-
                 onSuccessClearCart();
 
                 if (shouldPrint) {
@@ -116,8 +142,15 @@ export function usePOSCheckout() {
                     });
                 }
             },
-            onError: () => {
+            onFinish: () => {
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 setSubmitting(false);
+            },
+            onError: (errors) => {
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                setSubmitting(false);
+                const msg = errors.error || errors.message || 'Thanh toán thất bại do kết nối CSDL chập chờn. Vui lòng thử lại!';
+                alert(msg);
             },
         });
     };

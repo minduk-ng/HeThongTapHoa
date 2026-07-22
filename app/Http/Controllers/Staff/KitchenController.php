@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\ProductRecipe;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class KitchenController extends Controller
@@ -53,35 +54,40 @@ class KitchenController extends Controller
 
     public function completeOrder(Request $request, Order $order)
     {
-        DB::transaction(function () use ($order, $request) {
-            $order->update([
-                'status' => 'completed',
-                'has_additional_items' => false,
-            ]);
+        try {
+            DB::transaction(function () use ($order, $request) {
+                $order->update([
+                    'status' => 'completed',
+                    'has_additional_items' => false,
+                ]);
 
-            $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
+                $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
 
-            foreach ($order->items as $item) {
-                $recipes = ProductRecipe::where('menu_item_id', $item->menu_item_id)->get();
-                foreach ($recipes as $recipe) {
-                    $ingredient = Ingredient::find($recipe->ingredient_id);
-                    if ($ingredient) {
-                        $deductQuantity = (float) $recipe->amount * (int) $item->quantity;
-                        $ingredient->decrement('stock_quantity', $deductQuantity);
+                foreach ($order->items as $item) {
+                    $recipes = ProductRecipe::where('menu_item_id', $item->menu_item_id)->get();
+                    foreach ($recipes as $recipe) {
+                        $ingredient = Ingredient::find($recipe->ingredient_id);
+                        if ($ingredient) {
+                            $deductQuantity = (float) $recipe->amount * (int) $item->quantity;
+                            $ingredient->decrement('stock_quantity', $deductQuantity);
 
-                        InventoryTransaction::create([
-                            'ingredient_id' => $ingredient->id,
-                            'employee_id' => $employeeId,
-                            'type' => 'export',
-                            'quantity' => $deductQuantity,
-                            'reason' => "Xuất kho tự động cho đơn {$order->order_code}",
-                            'transacted_at' => now(),
-                        ]);
+                            InventoryTransaction::create([
+                                'ingredient_id' => $ingredient->id,
+                                'employee_id' => $employeeId,
+                                'type' => 'export',
+                                'quantity' => $deductQuantity,
+                                'reason' => "Xuất kho tự động cho đơn {$order->order_code}",
+                                'transacted_at' => now(),
+                            ]);
+                        }
                     }
                 }
-            }
-        });
+            });
 
-        return back()->with('success', 'Đã xác nhận hoàn thành đơn order và tự động trừ nguyên liệu kho thành công!');
+            return back()->with('success', 'Đã xác nhận hoàn thành đơn order và tự động trừ nguyên liệu kho thành công!');
+        } catch (\Throwable $e) {
+            Log::error('Kitchen completeOrder DB error: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Hoàn thành đơn thất bại: Không thể kết nối hoặc lưu cơ sở dữ liệu. Vui lòng thử lại.']);
+        }
     }
 }

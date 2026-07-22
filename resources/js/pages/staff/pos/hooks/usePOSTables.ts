@@ -7,11 +7,14 @@ export function usePOSTables(tables: POSTableData[]) {
     const [pendingReservationTable, setPendingReservationTable] = useState<POSTableData | null>(null);
     const [acknowledgedReservations, setAcknowledgedReservations] = useState<Record<number, boolean>>({});
 
-    // Non-blocking 3s background refresh for table session updates
+    // Non-blocking 5s background refresh for table session updates
     useEffect(() => {
         const timer = setInterval(() => {
-            router.reload({ only: ['tables'] });
-        }, 3000);
+            router.reload({
+                only: ['tables'],
+                onError: () => { /* silently skip if server/DB is unreachable */ },
+            });
+        }, 5000);
         return () => clearInterval(timer);
     }, []);
 

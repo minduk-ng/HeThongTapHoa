@@ -26,11 +26,14 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
         return () => clearInterval(timer);
     }, []);
 
-    // Non-blocking 3s partial reload for new kitchen orders
+    // Non-blocking 5s partial reload for new kitchen orders
     useEffect(() => {
         const timer = setInterval(() => {
-            router.reload({ only: ['orders', 'stats'] });
-        }, 3000);
+            router.reload({
+                only: ['orders', 'stats'],
+                onError: () => { /* silently skip if server/DB is unreachable */ },
+            });
+        }, 5000);
         return () => clearInterval(timer);
     }, []);
 

@@ -51,10 +51,25 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
     };
 
     const handleCompleteOrder = () => {
+        if (submitting) return;
         setSubmitting(true);
+
+        const timeout = setTimeout(() => {
+            setSubmitting(false);
+            alert('Kết nối CSDL/Máy chủ quá thời gian chờ. Vui lòng thử lại!');
+        }, 8000);
+
         router.post(`/staff/kitchen/complete/${order.id}`, {}, {
-            onSuccess: () => setSubmitting(false),
-            onError: () => setSubmitting(false),
+            onFinish: () => {
+                clearTimeout(timeout);
+                setSubmitting(false);
+            },
+            onError: (errors: any) => {
+                clearTimeout(timeout);
+                setSubmitting(false);
+                const msg = errors.error || errors.message || 'Không thể hoàn thành đơn do kết nối CSDL chập chờn.';
+                alert(msg);
+            },
         });
     };
 
