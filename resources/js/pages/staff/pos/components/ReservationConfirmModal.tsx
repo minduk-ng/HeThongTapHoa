@@ -28,7 +28,7 @@ export default function ReservationConfirmModal({
         : '—';
 
     return (
-        <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+        <div className="fixed inset-0 z-[100] overflow-hidden flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
             <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 border border-purple-200/80 dark:border-purple-900/60 rounded-2xl shadow-xl p-6 space-y-5">
                 {/* Header */}
                 <div className="flex items-center space-x-3 border-b border-purple-100 dark:border-purple-900/60 pb-4">

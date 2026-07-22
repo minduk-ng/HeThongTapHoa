@@ -179,14 +179,14 @@ export default function ProductFormDrawer({
     };
 
     return (
-        <div className="fixed inset-0 z-50 overflow-hidden">
+        <div className="fixed inset-0 z-[100] overflow-hidden">
             {/* Dimming Backdrop */}
             <div
-                className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
+                className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
                 onClick={onClose}
             />
 
-            <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div className="absolute inset-y-0 right-0 max-w-full flex pl-10 z-[101]">
                 <div className="w-screen max-w-xl bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col justify-between">
                     {/* Header */}
                     <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
@@ -276,7 +276,7 @@ export default function ProductFormDrawer({
                             {/* Image Upload / Clipboard Paste Container */}
                             <div>
                                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                                    Ảnh sản phẩm (Hỗ trợ <kbd className="px-1.5 py-0.5 text-[10px] bg-zinc-100 dark:bg-zinc-800 border rounded">Ctrl+V</kbd> dán trực tiếp từ bộ nhớ tạm)
+                                    Ảnh sản phẩm
                                 </label>
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                                     {/* Enlarged Image Preview Box (w-36 h-36) */}
@@ -322,7 +322,7 @@ export default function ProductFormDrawer({
                                             </button>
                                         )}
                                         <p className="text-[11px] text-zinc-400">
-                                            Tip: Bạn có thể sao chép ảnh từ web/máy tính và nhấn <strong className="text-blue-600 dark:text-blue-400">Ctrl + V</strong> để dán ảnh tức thì. Tự động giải phóng bộ nhớ đệm khi đổi ảnh.
+                                            Tip: Bạn có thể sao chép ảnh từ web/máy tính và nhấn <strong className="text-blue-600 dark:text-blue-400">Ctrl + V</strong> để dán ảnh.
                                         </p>
                                     </div>
                                 </div>

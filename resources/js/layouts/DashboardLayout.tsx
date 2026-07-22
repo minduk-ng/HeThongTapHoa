@@ -59,7 +59,7 @@ export default function DashboardLayout({ children, fullWidth = false }: Dashboa
                 )}
 
                 {/* Main Content Container */}
-                <div className={`relative z-10 flex-1 w-full min-h-0 ${fullWidth ? 'p-3 flex flex-col h-full overflow-hidden' : 'max-w-7xl mx-auto p-6 md:p-8 overflow-y-auto'}`}>
+                <div className={`relative flex-1 w-full min-h-0 ${fullWidth ? 'p-3 flex flex-col h-full overflow-hidden' : 'max-w-7xl mx-auto p-6 md:p-8 overflow-y-auto'}`}>
                     {children}
                 </div>
             </main>

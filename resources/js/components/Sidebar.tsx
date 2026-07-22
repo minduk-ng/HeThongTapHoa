@@ -73,7 +73,7 @@ export default function Sidebar() {
     };
 
     return (
-        <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 shadow-xs transition-colors duration-150">
+        <header className="sticky top-0 z-30 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 shadow-xs transition-colors duration-150">
             <div className="flex h-16 w-full items-center justify-between px-4 sm:px-6 md:px-8">
                 
                 {/* ========== LEFT SECTION: BANNER & NAVIGATION ========== */}
