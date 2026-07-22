@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\OtpMail;
 use App\Models\OtpCode;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
@@ -18,7 +19,7 @@ class ForgotPasswordController extends Controller
         return Inertia::render('auth/Auth', ['step' => 'forgot']);
     }
 
-    public function sendOtp(Request $request): \Illuminate\Http\RedirectResponse
+    public function sendOtp(Request $request): RedirectResponse
     {
         $request->validate([
             'email' => ['required', 'email'],
@@ -48,7 +49,7 @@ class ForgotPasswordController extends Controller
         return redirect('/verify-otp')->with('success', 'Nếu email của bạn tồn tại trong hệ thống, mã xác minh OTP đã được gửi.');
     }
 
-    public function showReset(Request $request): Response|\Illuminate\Http\RedirectResponse
+    public function showReset(Request $request): Response|RedirectResponse
     {
         if (! $request->session()->get('reset_verified')) {
             return redirect('/forgot-password');
@@ -57,7 +58,7 @@ class ForgotPasswordController extends Controller
         return Inertia::render('auth/Auth', ['step' => 'reset']);
     }
 
-    public function reset(Request $request): \Illuminate\Http\RedirectResponse
+    public function reset(Request $request): RedirectResponse
     {
         if (! $request->session()->get('reset_verified')) {
             return redirect('/forgot-password');

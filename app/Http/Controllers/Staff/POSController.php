@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Staff;
 
+use App\Events\OrderSentToKitchen;
+use App\Events\TableStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use App\Models\Invoice;
@@ -9,11 +11,11 @@ use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\ProductRecipe;
 use App\Models\Table;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class POSController extends Controller
@@ -39,6 +41,7 @@ class POSController extends Controller
             } else {
                 $product->max_servings = 999; // Unlimited if no recipe defined
             }
+
             return $product;
         });
 
@@ -64,7 +67,7 @@ class POSController extends Controller
         ]);
 
         try {
-            DB::transaction(function () use ($validated, $request) {
+            $createdOrder = DB::transaction(function () use ($validated, $request) {
                 $table = Table::findOrFail($validated['table_id']);
 
                 // Check if table already has previous orders in this session
@@ -73,7 +76,7 @@ class POSController extends Controller
                     ->exists();
 
                 // Create a fresh Kitchen Ticket order for the newly added items
-                $orderCode = 'ORD-' . strtoupper(\Illuminate\Support\Str::random(6));
+                $orderCode = 'ORD-'.strtoupper(Str::random(6));
                 $employeeId = DB::table('employees')->where('id', $request->user()->id)->exists() ? $request->user()->id : null;
 
                 $order = Order::create([
@@ -101,11 +104,16 @@ class POSController extends Controller
                         'note' => $item['note'] ?? null,
                     ]);
                 }
+
+                return $order;
             });
+
+            OrderSentToKitchen::dispatch($createdOrder);
 
             return back()->with('success', 'Đã gửi đơn order chế biến xuống bếp thành công!');
         } catch (\Throwable $e) {
-            Log::error('POS sendToKitchen DB error: ' . $e->getMessage());
+            Log::error('POS sendToKitchen DB error: '.$e->getMessage());
+
             return back()->withErrors(['error' => 'Gửi đơn thất bại: Không thể kết nối hoặc lưu cơ sở dữ liệu. Vui lòng thử lại.']);
         }
     }
@@ -120,16 +128,26 @@ class POSController extends Controller
         ]);
 
         try {
-            DB::transaction(function () use ($validated) {
+            $targetTable = DB::transaction(function () use ($validated) {
                 $table = Table::findOrFail($validated['table_id']);
 
-                // Find all active orders for this table session
+                // Find all active orders for this table session with DB update lock
                 $activeOrders = Order::where('table_id', $table->id)
                     ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                    ->lockForUpdate()
                     ->get();
 
                 if ($activeOrders->isEmpty()) {
-                    throw new \Exception('Không tìm thấy đơn hàng đang hoạt động của bàn này.');
+                    throw new \Exception('Đơn hàng của bàn này đã được thanh toán bởi nhân viên khác hoặc không còn tồn tại.');
+                }
+
+                // Check if any order is still pending/processing in kitchen
+                $hasUncompletedOrders = $activeOrders->contains(function ($order) {
+                    return in_array($order->status, ['draft', 'pending', 'confirmed', 'processing']);
+                });
+
+                if ($hasUncompletedOrders && ! $request->user()->hasPermission('pos.bypass_kitchen_lock')) {
+                    throw new \Exception('Bạn không có quyền duyệt khẩn cấp thanh toán khi món chưa được Bếp hoàn tất.');
                 }
 
                 // Mark all orders in this session as paid
@@ -141,7 +159,7 @@ class POSController extends Controller
                 $primaryOrder = $activeOrders->first();
 
                 // Create Invoice record
-                $invoiceCode = 'INV-' . date('Ymd') . strtoupper(\Illuminate\Support\Str::random(4));
+                $invoiceCode = 'INV-'.date('Ymd').strtoupper(Str::random(4));
                 Invoice::create([
                     'order_id' => $primaryOrder->id,
                     'invoice_code' => $invoiceCode,
@@ -153,12 +171,17 @@ class POSController extends Controller
 
                 // Release table to available
                 $table->update(['status' => 'available']);
+
+                return $table;
             });
+
+            TableStatusUpdated::dispatch($targetTable);
 
             return back()->with('success', 'Thanh toán hoàn tất thành công!');
         } catch (\Throwable $e) {
-            Log::error('POS checkout DB error: ' . $e->getMessage());
-            return back()->withErrors(['error' => 'Thanh toán thất bại: ' . $e->getMessage()]);
+            Log::error('POS checkout DB error: '.$e->getMessage());
+
+            return back()->withErrors(['error' => 'Thanh toán thất bại: '.$e->getMessage()]);
         }
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Manager;
 use App\Http\Controllers\Controller;
 use App\Models\Table;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class TableController extends Controller
@@ -12,7 +13,7 @@ class TableController extends Controller
     public function index(Request $request)
     {
         // Auto-seed takeaway virtual tables if not present
-        if (!Table::where('table_number', 'Mang đi 01')->exists()) {
+        if (! Table::where('table_number', 'Mang đi 01')->exists()) {
             Table::create([
                 'table_number' => 'Mang đi 01',
                 'capacity' => 1,
@@ -20,7 +21,7 @@ class TableController extends Controller
                 'status' => 'available',
             ]);
         }
-        if (!Table::where('table_number', 'Mang đi 02')->exists()) {
+        if (! Table::where('table_number', 'Mang đi 02')->exists()) {
             Table::create([
                 'table_number' => 'Mang đi 02',
                 'capacity' => 1,
@@ -86,8 +87,8 @@ class TableController extends Controller
         $createdCount = 0;
 
         for ($i = $validated['from_number']; $i <= $validated['to_number']; $i++) {
-            $tableName = $prefix . sprintf('%02d', $i);
-            if (!Table::where('table_number', $tableName)->exists()) {
+            $tableName = $prefix.sprintf('%02d', $i);
+            if (! Table::where('table_number', $tableName)->exists()) {
                 Table::create([
                     'table_number' => $tableName,
                     'area' => $validated['area'],
@@ -104,7 +105,7 @@ class TableController extends Controller
     public function update(Request $request, Table $table)
     {
         $validated = $request->validate([
-            'table_number' => 'required|string|max:50|unique:tables,table_number,' . $table->id,
+            'table_number' => 'required|string|max:50|unique:tables,table_number,'.$table->id,
             'area' => 'required|string|max:50',
             'capacity' => 'required|integer|min:1',
             'status' => 'required|in:available,occupied,reserved,maintenance',
@@ -133,7 +134,7 @@ class TableController extends Controller
             'password' => 'required|string',
         ]);
 
-        if (!\Illuminate\Support\Facades\Hash::check($request->password, $request->user()->password)) {
+        if (! Hash::check($request->password, $request->user()->password)) {
             return back()->withErrors(['password' => 'Mật khẩu không chính xác.']);
         }
 

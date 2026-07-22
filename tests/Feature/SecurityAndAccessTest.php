@@ -1,9 +1,9 @@
 <?php
 
-use App\Models\User;
 use App\Models\OtpCode;
-use App\Models\Role;
 use App\Models\Page;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -12,10 +12,10 @@ beforeEach(function () {
     // Seed standard roles and pages
     $this->adminRole = Role::create(['name' => 'admin', 'description' => 'Admin role', 'is_system' => true]);
     $this->guestRole = Role::create(['name' => 'guest', 'description' => 'Guest role', 'is_system' => true]);
-    
+
     $this->homePage = Page::create(['name' => 'Home', 'route_path' => '/', 'group_name' => 'Home', 'sort_order' => 1]);
     $this->adminPage = Page::create(['name' => 'Pages', 'route_path' => '/admin/pages', 'group_name' => 'Admin', 'sort_order' => 2]);
-    
+
     $this->adminRole->pages()->attach([$this->homePage->id, $this->adminPage->id]);
     $this->guestRole->pages()->attach([$this->homePage->id]);
 });
@@ -46,7 +46,7 @@ test('OTP verification fails when incorrect or expired', function () {
         'password' => bcrypt('password123'),
         'email_verified_at' => null,
     ]);
-    
+
     // Save expired OTP
     OtpCode::create([
         'email' => 'test@example.com',
@@ -60,7 +60,7 @@ test('OTP verification fails when incorrect or expired', function () {
     // Attempt with expired code
     $response = $this->post('/verify-otp', ['code' => '111111']);
     $response->assertSessionHasErrors(['code']);
-    
+
     // Attempt with incorrect code
     $response = $this->post('/verify-otp', ['code' => '222222']);
     $response->assertSessionHasErrors(['code']);
@@ -93,11 +93,11 @@ test('reset password works correctly', function () {
     // Request reset password (fails with non-existing email but shows generic success redirect)
     $response = $this->post('/forgot-password', ['email' => 'nonexistent@example.com']);
     $response->assertRedirect('/verify-otp');
-    
+
     // Correct request
     $response = $this->post('/forgot-password', ['email' => 'user@example.com']);
     $response->assertRedirect('/verify-otp');
-    
+
     $otp = OtpCode::where('email', 'user@example.com')->first();
     $this->assertNotNull($otp);
 
@@ -122,7 +122,7 @@ test('reset password works correctly', function () {
         'password_confirmation' => 'newpassword123',
     ]);
     $response->assertRedirect('/login');
-    
+
     // Verify password is updated
     $this->assertTrue(Auth::attempt([
         'email' => 'user@example.com',

@@ -190,12 +190,16 @@ class DefaultMenuAndInventorySeeder extends Seeder
         ];
 
         foreach ($recipesData as $productName => $items) {
-            if (!isset($productModels[$productName])) continue;
+            if (! isset($productModels[$productName])) {
+                continue;
+            }
             $product = $productModels[$productName];
 
             foreach ($items as $rec) {
                 $ingCode = $rec['ingredient'];
-                if (!isset($ingredientModels[$ingCode])) continue;
+                if (! isset($ingredientModels[$ingCode])) {
+                    continue;
+                }
                 $ing = $ingredientModels[$ingCode];
 
                 ProductRecipe::updateOrCreate(

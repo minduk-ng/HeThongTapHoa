@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Page;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -43,9 +44,9 @@ class HandleInertiaRequests extends Middleware
         $navigation = [];
         if ($user) {
             $user->load('roles.pages');
-            
+
             if ($user->isAdmin()) {
-                $allowedPageIds = \App\Models\Page::pluck('id')->toArray();
+                $allowedPageIds = Page::pluck('id')->toArray();
             } else {
                 $allowedPageIds = [];
                 foreach ($user->roles as $role) {
@@ -54,10 +55,10 @@ class HandleInertiaRequests extends Middleware
                 $allowedPageIds = array_unique($allowedPageIds);
             }
 
-            $pages = \App\Models\Page::orderBy('sort_order')->get();
+            $pages = Page::orderBy('sort_order')->get();
             foreach ($pages as $page) {
                 if ($page->route_path === '/' || in_array($page->id, $allowedPageIds)) {
-                    if (!isset($navigation[$page->group_name])) {
+                    if (! isset($navigation[$page->group_name])) {
                         $navigation[$page->group_name] = [];
                     }
                     $navigation[$page->group_name][] = [

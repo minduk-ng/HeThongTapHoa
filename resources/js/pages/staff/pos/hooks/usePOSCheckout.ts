@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { POSTableData, CartItem, ReceiptModalState } from '../types/pos.types';
+import { usePOSCheckoutLock } from './usePOSCheckoutLock';
 
-export function usePOSCheckout() {
+export function usePOSCheckout(selectedTable: POSTableData | null = null) {
     const [submitting, setSubmitting] = useState(false);
     const [isPaymentDrawerOpen, setIsPaymentDrawerOpen] = useState(false);
+    const { lockedCheckoutTables, lockTableCheckout, unlockTableCheckout } = usePOSCheckoutLock();
     const [receiptModal, setReceiptModal] = useState<ReceiptModalState>({
         isOpen: false,
         paymentMethod: 'cash',
@@ -15,6 +17,17 @@ export function usePOSCheckout() {
     });
 
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const togglePaymentDrawer = (open: boolean) => {
+        setIsPaymentDrawerOpen(open);
+        if (selectedTable) {
+            if (open) {
+                lockTableCheckout(selectedTable.id, 'Nhân viên');
+            } else {
+                unlockTableCheckout(selectedTable.id);
+            }
+        }
+    };
 
     useEffect(() => {
         return () => {
@@ -106,6 +119,11 @@ export function usePOSCheckout() {
     ) => {
         if (!selectedTable || submitting) return;
 
+        if (lockedCheckoutTables[selectedTable.id]) {
+            alert(`Không thể thanh toán: Bàn này đang được thanh toán bởi ${lockedCheckoutTables[selectedTable.id].employeeName}!`);
+            return;
+        }
+
         setSubmitting(true);
 
         // Safety timeout (8s) if DB/Server hangs indefinitely
@@ -127,7 +145,7 @@ export function usePOSCheckout() {
 
         router.post('/staff/pos/checkout', payload, {
             onSuccess: () => {
-                setIsPaymentDrawerOpen(false);
+                togglePaymentDrawer(false);
                 onSuccessClearCart();
 
                 if (shouldPrint) {
@@ -158,7 +176,8 @@ export function usePOSCheckout() {
     return {
         submitting,
         isPaymentDrawerOpen,
-        setIsPaymentDrawerOpen,
+        setIsPaymentDrawerOpen: togglePaymentDrawer,
+        lockedCheckoutTables,
         receiptModal,
         setReceiptModal,
         handleSendToKitchen,

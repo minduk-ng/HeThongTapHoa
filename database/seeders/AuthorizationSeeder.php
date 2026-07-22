@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class AuthorizationSeeder extends Seeder
 {
@@ -114,7 +114,7 @@ class AuthorizationSeeder extends Seeder
             'ingredients.view', 'ingredients.create', 'ingredients.edit', 'ingredients.delete', 'ingredients.import',
             'recipes.view', 'recipes.edit',
             'tables.view', 'tables.create', 'tables.edit', 'tables.delete',
-            'pos.view', 'pos.create',
+            'pos.view', 'pos.create', 'pos.bypass_kitchen_lock',
             'kitchen.view', 'kitchen.update',
         ];
 
@@ -134,7 +134,7 @@ class AuthorizationSeeder extends Seeder
                 'permission_id' => $permissionId,
             ];
         }
-        
+
         // Clear old permissions for admin to avoid duplicates, then insert
         DB::table('role_permissions')->where('role_id', $adminRoleId)->delete();
         DB::table('role_permissions')->insert($rolePermissions);
@@ -143,8 +143,8 @@ class AuthorizationSeeder extends Seeder
         $adminEmail = env('ADMIN_EMAIL', 'admin@admin.com');
         $adminPassword = env('ADMIN_DEFAULT_PASSWORD', '244466666');
         $adminUser = DB::table('users')->where('email', $adminEmail)->first();
-        
-        if (!$adminUser) {
+
+        if (! $adminUser) {
             $adminUserId = DB::table('users')->insertGetId([
                 'name' => 'Admin',
                 'email' => $adminEmail,
@@ -162,11 +162,11 @@ class AuthorizationSeeder extends Seeder
             'user_id' => $adminUserId,
             'role_id' => $adminRoleId,
         ]);
-        
+
         // Assign guest role to all other users
         $guestRoleId = DB::table('roles')->where('name', 'guest')->value('id');
         $otherUsers = DB::table('users')->where('email', '!=', $adminEmail)->pluck('id');
-        
+
         foreach ($otherUsers as $userId) {
             DB::table('user_roles')->updateOrInsert([
                 'user_id' => $userId,

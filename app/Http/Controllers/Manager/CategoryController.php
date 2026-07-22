@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Manager;
 use App\Http\Controllers\Controller;
 use App\Models\MenuCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class CategoryController extends Controller
@@ -46,7 +47,7 @@ class CategoryController extends Controller
     public function update(Request $request, MenuCategory $category)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:100|unique:menu_categories,name,' . $category->id,
+            'name' => 'required|string|max:100|unique:menu_categories,name,'.$category->id,
             'description' => 'nullable|string',
             'sort_order' => 'nullable|integer',
         ]);
@@ -64,7 +65,7 @@ class CategoryController extends Controller
             'password' => 'required|string',
         ]);
 
-        if (!\Illuminate\Support\Facades\Hash::check($request->password, $request->user()->password)) {
+        if (! Hash::check($request->password, $request->user()->password)) {
             return back()->withErrors(['password' => 'Mật khẩu không chính xác.']);
         }
 

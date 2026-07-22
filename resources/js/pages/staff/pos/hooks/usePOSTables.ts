@@ -7,16 +7,41 @@ export function usePOSTables(tables: POSTableData[]) {
     const [pendingReservationTable, setPendingReservationTable] = useState<POSTableData | null>(null);
     const [acknowledgedReservations, setAcknowledgedReservations] = useState<Record<number, boolean>>({});
 
-    // Non-blocking 5s background refresh for table session updates
+    // Realtime WebSocket Listener via Reverb for order status & table updates
     useEffect(() => {
-        const timer = setInterval(() => {
-            router.reload({
-                only: ['tables'],
-                onError: () => { /* silently skip if server/DB is unreachable */ },
-            });
-        }, 5000);
-        return () => clearInterval(timer);
+        if (typeof window !== 'undefined' && window.Echo) {
+            const channel = window.Echo.private('pos-channel');
+            channel
+                .listen('.OrderCompleted', () => {
+                    router.reload({
+                        only: ['tables'],
+                        onError: () => {},
+                    });
+                })
+                .listen('.TableStatusUpdated', () => {
+                    router.reload({
+                        only: ['tables'],
+                        onError: () => {},
+                    });
+                });
+
+            return () => {
+                window.Echo.leave('pos-channel');
+            };
+        }
     }, []);
+
+    // Sync selectedTable when Inertia reloads tables prop
+    useEffect(() => {
+        if (selectedTable) {
+            const updated = tables.find((t) => t.id === selectedTable.id);
+            if (updated) {
+                setSelectedTable(updated);
+            }
+        } else if (tables.length > 0) {
+            setSelectedTable(tables[0]);
+        }
+    }, [tables]);
 
     const handleSelectTable = (table: POSTableData) => {
         if (table.status === 'reserved' && !acknowledgedReservations[table.id]) {

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -30,7 +31,7 @@ class ProductController extends Controller
             $search = trim($request->search);
             $query->where(function ($q) use ($search) {
                 $q->where('id', $search)
-                  ->orWhere('name', 'like', "%{$search}%");
+                    ->orWhere('name', 'like', "%{$search}%");
             });
         }
 
@@ -79,9 +80,9 @@ class ProductController extends Controller
 
         if ($request->hasFile('image')) {
             $file = $request->file('image');
-            $filename = Str::slug($validated['name']) . '_' . date('Ymd_His') . '.' . $file->getClientOriginalExtension();
+            $filename = Str::slug($validated['name']).'_'.date('Ymd_His').'.'.$file->getClientOriginalExtension();
             $path = $file->storeAs('menu', $filename, 'public');
-            $validated['image'] = '/storage/' . $path;
+            $validated['image'] = '/storage/'.$path;
         }
 
         $validated['vat_rate'] = $validated['vat_rate'] ?? 0;
@@ -112,9 +113,9 @@ class ProductController extends Controller
             }
 
             $file = $request->file('image');
-            $filename = Str::slug($validated['name']) . '_' . date('Ymd_His') . '.' . $file->getClientOriginalExtension();
+            $filename = Str::slug($validated['name']).'_'.date('Ymd_His').'.'.$file->getClientOriginalExtension();
             $path = $file->storeAs('menu', $filename, 'public');
-            $validated['image'] = '/storage/' . $path;
+            $validated['image'] = '/storage/'.$path;
         } else {
             unset($validated['image']);
         }
@@ -133,7 +134,7 @@ class ProductController extends Controller
             'password' => 'required|string',
         ]);
 
-        if (!\Illuminate\Support\Facades\Hash::check($request->password, $request->user()->password)) {
+        if (! Hash::check($request->password, $request->user()->password)) {
             return back()->withErrors(['password' => 'Mật khẩu không chính xác.']);
         }
 
@@ -153,17 +154,17 @@ class ProductController extends Controller
         $items = MenuItem::with('category')->get();
 
         $headers = [
-            "Content-type" => "text/csv; charset=UTF-8",
-            "Content-Disposition" => "attachment; filename=danh_sach_san_pham_" . date('Ymd_His') . ".csv",
-            "Pragma" => "no-cache",
-            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
-            "Expires" => "0",
+            'Content-type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename=danh_sach_san_pham_'.date('Ymd_His').'.csv',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
         ];
 
         $callback = function () use ($items) {
             $file = fopen('php://output', 'w');
             // UTF-8 BOM for Excel compatibility
-            fputs($file, "\xEF\xBB\xBF");
+            fwrite($file, "\xEF\xBB\xBF");
 
             fputcsv($file, ['ID / Mã SP', 'Tên sản phẩm', 'Danh mục', 'Giá bán (VNĐ)', 'Thuế VAT (%)', 'Trạng thái', 'Ghi chú']);
 
@@ -220,11 +221,14 @@ class ProductController extends Controller
 
             foreach ($lines as $line) {
                 $line = trim($line);
-                if (empty($line)) continue;
+                if (empty($line)) {
+                    continue;
+                }
 
                 $data = str_getcsv($line, $delimiter);
                 if ($isHeader) {
                     $isHeader = false;
+
                     continue;
                 }
 
@@ -233,7 +237,7 @@ class ProductController extends Controller
                     $cleanId = preg_replace('/[^0-9]/', '', $rawId);
 
                     $rows[] = [
-                        'id' => $cleanId !== '' ? (int)$cleanId : null,
+                        'id' => $cleanId !== '' ? (int) $cleanId : null,
                         'raw_id' => $rawId,
                         'name' => trim($data[1] ?? ''),
                         'category' => trim($data[2] ?? ''),
@@ -245,16 +249,16 @@ class ProductController extends Controller
             }
 
             $existingIds = MenuItem::pluck('id')->toArray();
-            $existingNames = MenuItem::pluck('name')->map(fn($n) => mb_strtolower($n))->toArray();
+            $existingNames = MenuItem::pluck('name')->map(fn ($n) => mb_strtolower($n))->toArray();
 
             $duplicates = [];
             $newItems = [];
 
             foreach ($rows as $row) {
                 $isDuplicate = false;
-                if (!empty($row['id']) && in_array((int)$row['id'], $existingIds)) {
+                if (! empty($row['id']) && in_array((int) $row['id'], $existingIds)) {
                     $isDuplicate = true;
-                } elseif (!empty($row['name']) && in_array(mb_strtolower($row['name']), $existingNames)) {
+                } elseif (! empty($row['name']) && in_array(mb_strtolower($row['name']), $existingNames)) {
                     $isDuplicate = true;
                 }
 
@@ -266,7 +270,7 @@ class ProductController extends Controller
             }
 
             // Cache temp import data
-            $tempId = 'import_' . Str::random(10);
+            $tempId = 'import_'.Str::random(10);
             session([$tempId => ['rows' => $rows, 'duplicates' => $duplicates, 'new_items' => $newItems]]);
 
             return response()->json([
@@ -277,7 +281,7 @@ class ProductController extends Controller
                 'duplicates' => $duplicates,
             ]);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Lỗi đọc file: ' . $e->getMessage()], 422);
+            return response()->json(['message' => 'Lỗi đọc file: '.$e->getMessage()], 422);
         }
     }
 
@@ -289,7 +293,7 @@ class ProductController extends Controller
         ]);
 
         $tempData = session($request->temp_id);
-        if (!$tempData) {
+        if (! $tempData) {
             return response()->json(['message' => 'Dữ liệu tạm không tồn tại hoặc đã hết hạn.'], 400);
         }
 
@@ -300,15 +304,17 @@ class ProductController extends Controller
 
         if ($request->action === 'replace_all') {
             foreach ($tempData['rows'] as $row) {
-                if (empty($row['name'])) continue;
+                if (empty($row['name'])) {
+                    continue;
+                }
 
                 $catId = $defaultCategory->id;
-                if (!empty($row['category'])) {
+                if (! empty($row['category'])) {
                     $cat = MenuCategory::firstOrCreate(['name' => trim($row['category'])], ['sort_order' => 0]);
                     $catId = $cat->id;
                 }
 
-                if (!empty($row['id']) && MenuItem::where('id', $row['id'])->exists()) {
+                if (! empty($row['id']) && MenuItem::where('id', $row['id'])->exists()) {
                     MenuItem::where('id', $row['id'])->update([
                         'name' => $row['name'],
                         'category_id' => $catId,
@@ -330,10 +336,12 @@ class ProductController extends Controller
             }
         } else { // add_only_new
             foreach ($tempData['new_items'] as $row) {
-                if (empty($row['name'])) continue;
+                if (empty($row['name'])) {
+                    continue;
+                }
 
                 $catId = $defaultCategory->id;
-                if (!empty($row['category'])) {
+                if (! empty($row['category'])) {
                     $cat = MenuCategory::firstOrCreate(['name' => trim($row['category'])], ['sort_order' => 0]);
                     $catId = $cat->id;
                 }

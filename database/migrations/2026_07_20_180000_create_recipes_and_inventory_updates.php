@@ -10,19 +10,19 @@ return new class extends Migration
     {
         // Update ingredients table with code, min_stock_alert, cost_price
         Schema::table('ingredients', function (Blueprint $table) {
-            if (!Schema::hasColumn('ingredients', 'code')) {
+            if (! Schema::hasColumn('ingredients', 'code')) {
                 $table->string('code', 50)->nullable()->unique()->after('id');
             }
-            if (!Schema::hasColumn('ingredients', 'min_stock_alert')) {
+            if (! Schema::hasColumn('ingredients', 'min_stock_alert')) {
                 $table->decimal('min_stock_alert', 10, 2)->default(50)->after('stock_quantity');
             }
-            if (!Schema::hasColumn('ingredients', 'cost_price')) {
+            if (! Schema::hasColumn('ingredients', 'cost_price')) {
                 $table->decimal('cost_price', 12, 2)->default(0)->after('min_stock_alert');
             }
         });
 
         // Create product_recipes table
-        if (!Schema::hasTable('product_recipes')) {
+        if (! Schema::hasTable('product_recipes')) {
             Schema::create('product_recipes', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('menu_item_id')->constrained('menu_items')->cascadeOnDelete();

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Cache;
 
 class Role extends Model
 {
@@ -22,14 +23,14 @@ class Role extends Model
         static::updated(function ($role) {
             $userIds = \DB::table('user_roles')->where('role_id', $role->id)->pluck('user_id');
             foreach ($userIds as $id) {
-                \Illuminate\Support\Facades\Cache::forget("user_permissions:{$id}");
+                Cache::forget("user_permissions:{$id}");
             }
         });
 
         static::deleted(function ($role) {
             $userIds = \DB::table('user_roles')->where('role_id', $role->id)->pluck('user_id');
             foreach ($userIds as $id) {
-                \Illuminate\Support\Facades\Cache::forget("user_permissions:{$id}");
+                Cache::forget("user_permissions:{$id}");
             }
         });
     }

@@ -38,11 +38,12 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         submitting,
         isPaymentDrawerOpen,
         setIsPaymentDrawerOpen,
+        lockedCheckoutTables,
         receiptModal,
         setReceiptModal,
         handleSendToKitchen,
         handleConfirmPayment,
-    } = usePOSCheckout();
+    } = usePOSCheckout(selectedTable);
 
     return (
         <DashboardLayout fullWidth={true}>
@@ -99,6 +100,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                     tables={tables}
                                     selectedTable={selectedTable}
                                     onSelectTable={handleSelectTable}
+                                    lockedCheckoutTables={lockedCheckoutTables}
                                 />
                             ) : (
                                 <POSMenuTab
@@ -122,6 +124,8 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                             onSendToKitchen={() => handleSendToKitchen(selectedTable, currentCart)}
                             onOpenPayment={() => setIsPaymentDrawerOpen(true)}
                             submitting={submitting}
+                            isCheckoutLocked={!!(selectedTable && lockedCheckoutTables[selectedTable.id])}
+                            checkoutLockedBy={selectedTable ? lockedCheckoutTables[selectedTable.id]?.employeeName : ''}
                         />
                     </div>
                 </div>
@@ -158,7 +162,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
             {/* K80 Thermal Receipt Printable Modal */}
             <ReceiptPrintModal
                 isOpen={receiptModal.isOpen}
-                onClose={() => setReceiptModal((prev) => ({ ...prev, isOpen: false }))}
+                onClose={() => setReceiptModal((prev: import('./types/pos.types').ReceiptModalState) => ({ ...prev, isOpen: false }))}
                 selectedTable={receiptModal.table}
                 cartItems={receiptModal.cartItems}
                 paymentMethod={receiptModal.paymentMethod}

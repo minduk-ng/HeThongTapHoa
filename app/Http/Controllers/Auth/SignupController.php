@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\OtpMail;
 use App\Models\OtpCode;
+use App\Models\Role;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
@@ -18,7 +20,7 @@ class SignupController extends Controller
         return Inertia::render('auth/Auth', ['step' => 'signup']);
     }
 
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -32,7 +34,7 @@ class SignupController extends Controller
             'password' => $validated['password'],
         ]);
 
-        $guestRole = \App\Models\Role::where('name', 'guest')->first();
+        $guestRole = Role::where('name', 'guest')->first();
         if ($guestRole) {
             $user->roles()->attach($guestRole->id);
         }

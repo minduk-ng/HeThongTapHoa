@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePage } from '@inertiajs/react';
 import { Armchair, ShoppingBag, Lock, Trash2, Send, CreditCard } from 'lucide-react';
 import { POSTableData, CartItem } from '../types/pos.types';
 
@@ -11,6 +12,8 @@ interface POSCartPanelProps {
     onSendToKitchen: () => void;
     onOpenPayment: () => void;
     submitting: boolean;
+    isCheckoutLocked?: boolean;
+    checkoutLockedBy?: string;
 }
 
 export default function POSCartPanel({
@@ -22,7 +25,11 @@ export default function POSCartPanel({
     onSendToKitchen,
     onOpenPayment,
     submitting,
+    isCheckoutLocked = false,
+    checkoutLockedBy = '',
 }: POSCartPanelProps) {
+    const { auth } = usePage<any>().props;
+    const canBypassKitchen = !!(auth?.is_admin || auth?.permissions?.includes('pos.bypass_kitchen_lock'));
     const [managerBypass, setManagerBypass] = useState(false);
 
     if (!selectedTable) {
@@ -213,13 +220,15 @@ export default function POSCartPanel({
                 {hasKitchenPendingOrders && (
                     <div className="p-2.5 border border-amber-200 dark:border-amber-900/60 bg-amber-50/80 dark:bg-amber-950/40 rounded-xl text-xs text-amber-800 dark:text-amber-200 flex items-center justify-between">
                         <span>Đang chờ Bếp hoàn tất món ăn...</span>
-                        <button
-                            type="button"
-                            onClick={() => setManagerBypass(!managerBypass)}
-                            className="font-semibold text-amber-700 dark:text-amber-300 hover:underline ml-2"
-                        >
-                            {managerBypass ? 'Bắt buộc khóa' : 'Duyệt khẩn cấp'}
-                        </button>
+                        {canBypassKitchen && (
+                            <button
+                                type="button"
+                                onClick={() => setManagerBypass(!managerBypass)}
+                                className="font-semibold text-amber-700 dark:text-amber-300 hover:underline ml-2"
+                            >
+                                {managerBypass ? 'Bắt buộc khóa' : 'Duyệt khẩn cấp'}
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -253,17 +262,25 @@ export default function POSCartPanel({
 
                     <button
                         type="button"
-                        disabled={submitting || cartItems.length === 0 || isPaymentBlocked}
+                        disabled={submitting || cartItems.length === 0 || isPaymentBlocked || isCheckoutLocked}
                         onClick={onOpenPayment}
                         className={`py-2.5 px-3 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 transition-colors duration-150 ${
-                            isPaymentBlocked
+                            isCheckoutLocked
+                                ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 cursor-not-allowed opacity-90 font-bold'
+                                : isPaymentBlocked
                                 ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border border-zinc-200 dark:border-zinc-700 cursor-not-allowed opacity-60'
                                 : 'bg-emerald-600 text-white hover:bg-emerald-700'
                         }`}
-                        title={isPaymentBlocked ? 'Cần gửi toàn bộ món xuống Bếp và chờ Bếp làm xong mới được thanh toán' : 'Thanh toán đơn hàng'}
+                        title={
+                            isCheckoutLocked
+                                ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}`
+                                : isPaymentBlocked
+                                ? 'Cần gửi toàn bộ món xuống Bếp và chờ Bếp làm xong mới được thanh toán'
+                                : 'Thanh toán đơn hàng'
+                        }
                     >
-                        <CreditCard className="w-3.5 h-3.5" />
-                        <span>Thanh toán</span>
+                        {isCheckoutLocked ? <Lock className="w-3.5 h-3.5" /> : <CreditCard className="w-3.5 h-3.5" />}
+                        <span>{isCheckoutLocked ? `Đang thanh toán: ${checkoutLockedBy}` : 'Thanh toán'}</span>
                     </button>
                 </div>
             </div>

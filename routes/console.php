@@ -14,4 +14,3 @@ Schedule::call(function () {
 })->everyMinute()->name('cleanup-expired-otps');
 
 Schedule::command('cache:prune-expired')->daily();
-

@@ -2,17 +2,18 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Page;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
-use App\Models\Page;
 
 class CheckPageAccess
 {
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             abort(403, 'Unauthorized');
         }
 
@@ -20,9 +21,9 @@ class CheckPageAccess
             return $next($request);
         }
 
-        $path = '/' . ltrim($request->getPathInfo(), '/');
+        $path = '/'.ltrim($request->getPathInfo(), '/');
 
-        $pageRoles = \Illuminate\Support\Facades\Cache::remember('system_page_roles', now()->addHours(24), function () {
+        $pageRoles = Cache::remember('system_page_roles', now()->addHours(24), function () {
             return Page::with('roles')->get()->map(function ($page) {
                 return [
                     'id' => $page->id,
@@ -40,7 +41,7 @@ class CheckPageAccess
                     $matchedPage = $page;
                     break;
                 }
-            } else if ($path === $page['route_path'] || str_starts_with($path, $page['route_path'] . '/')) {
+            } elseif ($path === $page['route_path'] || str_starts_with($path, $page['route_path'].'/')) {
                 $matchedPage = $page;
                 break;
             }
@@ -50,7 +51,7 @@ class CheckPageAccess
             $userRoleIds = $user->roles->pluck('id')->toArray();
             $hasAccess = count(array_intersect($matchedPage['role_ids'], $userRoleIds)) > 0;
 
-            if (!$hasAccess) {
+            if (! $hasAccess) {
                 abort(403, 'Bạn không có quyền truy cập trang này.');
             }
         } else {

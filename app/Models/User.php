@@ -6,9 +6,11 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * @property int $id
@@ -42,7 +44,7 @@ class User extends Authenticatable
         ];
     }
 
-    public function roles(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'user_roles')->using(UserRole::class);
     }
@@ -72,11 +74,12 @@ class User extends Authenticatable
             return Permission::pluck('name')->toArray();
         }
 
-        return \Illuminate\Support\Facades\Cache::remember("user_permissions:{$this->id}", now()->addMinutes(15), function () {
+        return Cache::remember("user_permissions:{$this->id}", now()->addMinutes(15), function () {
             $permissions = collect();
             foreach ($this->roles()->with('permissions')->get() as $role) {
                 $permissions = $permissions->merge($role->permissions->pluck('name'));
             }
+
             return $permissions->unique()->values()->toArray();
         });
     }

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -14,7 +16,7 @@ class GoogleAuthController extends Controller
         return Socialite::driver('google')->redirect();
     }
 
-    public function callback(): \Illuminate\Http\RedirectResponse
+    public function callback(): RedirectResponse
     {
         try {
             $googleUser = Socialite::driver('google')->user();
@@ -47,7 +49,7 @@ class GoogleAuthController extends Controller
                 'email_verified_at' => now(),
             ]);
 
-            $guestRole = \App\Models\Role::where('name', 'guest')->first();
+            $guestRole = Role::where('name', 'guest')->first();
             if ($guestRole) {
                 $user->roles()->attach($guestRole->id);
             }

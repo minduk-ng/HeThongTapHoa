@@ -4,24 +4,26 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Page;
+use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Facades\Cache;
 
 class PageController extends Controller
 {
     public function index(): Response
     {
-        $superAdminUserIds = \App\Models\User::all()
-            ->filter(fn($u) => $u->isAdmin())
+        $superAdminUserIds = User::all()
+            ->filter(fn ($u) => $u->isAdmin())
             ->pluck('id')
             ->toArray();
 
         $pages = Page::with('roles')->get()
             ->groupBy('group_name')
-            ->sortBy(fn($group) => $group->min('sort_order'))
-            ->flatMap(fn($group) => $group->sortBy('sort_order'))
+            ->sortBy(fn ($group) => $group->min('sort_order'))
+            ->flatMap(fn ($group) => $group->sortBy('sort_order'))
             ->values();
 
         // Optimize: Fetch all user-role assignments at once to avoid N+1 query
@@ -40,13 +42,13 @@ class PageController extends Controller
             }
             $page->user_count = count(array_unique(array_merge($roleUserIds, $superAdminUserIds)));
         }
-            
+
         return Inertia::render('admin/PagesManager', [
             'pages' => $pages,
         ]);
     }
 
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -58,7 +60,7 @@ class PageController extends Controller
             'name' => $validated['name'],
             'route_path' => $validated['route_path'],
             'group_name' => $validated['group_name'],
-            'sort_order' => (int)Page::max('sort_order') + 1,
+            'sort_order' => (int) Page::max('sort_order') + 1,
         ]);
 
         Cache::forget('system_page_roles');
@@ -66,11 +68,11 @@ class PageController extends Controller
         return redirect()->back()->with('success', 'Tạo trang thành công.');
     }
 
-    public function update(Request $request, Page $page): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, Page $page): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'route_path' => ['required', 'string', 'max:255', 'unique:pages,route_path,' . $page->id],
+            'route_path' => ['required', 'string', 'max:255', 'unique:pages,route_path,'.$page->id],
             'group_name' => ['required', 'string', 'max:255'],
         ]);
 
@@ -85,7 +87,7 @@ class PageController extends Controller
         return redirect()->back()->with('success', 'Cập nhật trang thành công.');
     }
 
-    public function reorder(Request $request): \Illuminate\Http\RedirectResponse
+    public function reorder(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'groups' => ['required', 'array'],
@@ -111,13 +113,13 @@ class PageController extends Controller
         return redirect()->back()->with('success', 'Đã lưu thứ tự trang.');
     }
 
-    public function destroy(Request $request, Page $page): \Illuminate\Http\RedirectResponse
+    public function destroy(Request $request, Page $page): RedirectResponse
     {
         $request->validate([
             'password' => ['required', 'string'],
         ]);
 
-        if (!\Hash::check($request->input('password'), $request->user()->password)) {
+        if (! \Hash::check($request->input('password'), $request->user()->password)) {
             return redirect()->back()->with('error', 'Mật khẩu xác nhận không chính xác.');
         }
 

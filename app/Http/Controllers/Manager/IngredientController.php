@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class IngredientController extends Controller
@@ -20,7 +22,7 @@ class IngredientController extends Controller
             $search = trim($request->search);
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%");
             });
         }
 
@@ -53,7 +55,7 @@ class IngredientController extends Controller
             'cost_price' => 'nullable|numeric|min:0',
         ]);
 
-        $slug = \Illuminate\Support\Str::slug($validated['name']);
+        $slug = Str::slug($validated['name']);
         $validated['code'] = $slug;
         $validated['min_stock_alert'] = $validated['min_stock_alert'] ?? 50;
         $validated['cost_price'] = $validated['cost_price'] ?? 0;
@@ -66,7 +68,7 @@ class IngredientController extends Controller
     public function update(Request $request, Ingredient $ingredient)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:100|unique:ingredients,name,' . $ingredient->id,
+            'name' => 'required|string|max:100|unique:ingredients,name,'.$ingredient->id,
             'unit' => 'required|string|max:20',
             'stock_quantity' => 'required|numeric|min:0',
             'min_stock_alert' => 'nullable|numeric|min:0',
@@ -84,7 +86,7 @@ class IngredientController extends Controller
             'password' => 'required|string',
         ]);
 
-        if (!\Illuminate\Support\Facades\Hash::check($request->password, $request->user()->password)) {
+        if (! Hash::check($request->password, $request->user()->password)) {
             return back()->withErrors(['password' => 'Mật khẩu không chính xác.']);
         }
 
@@ -102,7 +104,7 @@ class IngredientController extends Controller
             'note' => 'nullable|string|max:255',
         ]);
 
-        DB::transaction(function () use ($validated, $request) {
+        DB::transaction(function () use ($validated) {
             $ingredient = Ingredient::lockForUpdate()->findOrFail($validated['ingredient_id']);
             $currentStock = (float) $ingredient->stock_quantity;
             $currentCost = (float) $ingredient->cost_price;
@@ -112,8 +114,8 @@ class IngredientController extends Controller
 
             // Calculate weighted average cost price
             $newStock = $currentStock + $importQty;
-            $newAvgCost = $newStock > 0 
-                ? (($currentStock * $currentCost) + ($importQty * $importPrice)) / $newStock 
+            $newAvgCost = $newStock > 0
+                ? (($currentStock * $currentCost) + ($importQty * $importPrice)) / $newStock
                 : $importPrice;
 
             $ingredient->update([

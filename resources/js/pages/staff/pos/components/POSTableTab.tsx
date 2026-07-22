@@ -1,14 +1,16 @@
 import React from 'react';
 import { Users, Check } from 'lucide-react';
 import { POSTableData } from '../types/pos.types';
+import { CheckoutLockInfo } from '../hooks/usePOSCheckoutLock';
 
 interface POSTableTabProps {
     tables: POSTableData[];
     selectedTable: POSTableData | null;
     onSelectTable: (table: POSTableData) => void;
+    lockedCheckoutTables?: Record<number, CheckoutLockInfo>;
 }
 
-export default function POSTableTab({ tables, selectedTable, onSelectTable }: POSTableTabProps) {
+export default function POSTableTab({ tables, selectedTable, onSelectTable, lockedCheckoutTables = {} }: POSTableTabProps) {
     const groupedAreas = tables.reduce((acc, table) => {
         const areaName = table.area || 'Khác';
         if (!acc[areaName]) acc[areaName] = [];
@@ -67,17 +69,25 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable }: PO
                                         <span className="font-display text-xl font-normal text-zinc-900 dark:text-zinc-100">
                                             {table.table_number}
                                         </span>
-                                        <span
-                                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
-                                                isOccupied
-                                                    ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/60'
-                                                    : isReserved
-                                                    ? 'bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-900/60'
-                                                    : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60'
-                                            }`}
-                                        >
-                                            {isOccupied ? 'Đang dùng' : isReserved ? `Đặt trước ${resTimeStr ? `(${resTimeStr})` : ''}` : 'Trống'}
-                                        </span>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <span
+                                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+                                                    isOccupied
+                                                        ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/60'
+                                                        : isReserved
+                                                        ? 'bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-900/60'
+                                                        : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60'
+                                                }`}
+                                            >
+                                                {isOccupied ? 'Đang dùng' : isReserved ? `Đặt trước ${resTimeStr ? `(${resTimeStr})` : ''}` : 'Trống'}
+                                            </span>
+
+                                            {lockedCheckoutTables[table.id] && (
+                                                <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800/60">
+                                                    Đang thanh toán: {lockedCheckoutTables[table.id].employeeName}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">

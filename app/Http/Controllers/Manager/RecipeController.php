@@ -50,7 +50,7 @@ class RecipeController extends Controller
         DB::transaction(function () use ($request, $product) {
             ProductRecipe::where('menu_item_id', $product->id)->delete();
 
-            if (!empty($request->items)) {
+            if (! empty($request->items)) {
                 foreach ($request->items as $item) {
                     ProductRecipe::create([
                         'menu_item_id' => $product->id,

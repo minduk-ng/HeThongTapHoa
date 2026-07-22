@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\OtpMail;
 use App\Models\OtpCode;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -36,14 +35,14 @@ class ProfileController extends Controller
                 'email' => $user->email,
                 'avatar' => $user->avatar,
                 'has_password' => $user->password !== null,
-            ]
+            ],
         ]);
     }
 
     public function updateEmail(Request $request)
     {
         $validated = $request->validate([
-            'email' => ['required', 'email', 'unique:users,email,' . Auth::id()],
+            'email' => ['required', 'email', 'unique:users,email,'.Auth::id()],
         ]);
 
         $email = $validated['email'];
@@ -88,7 +87,7 @@ class ProfileController extends Controller
         ]);
 
         $newEmail = $request->session()->get('pending_new_email');
-        if (!$newEmail) {
+        if (! $newEmail) {
             return response()->json(['errors' => ['code' => 'Yêu cầu đổi email không hợp lệ.']], 422);
         }
 
@@ -98,7 +97,7 @@ class ProfileController extends Controller
             ->where('expires_at', '>', now())
             ->first();
 
-        if (!$otp) {
+        if (! $otp) {
             return response()->json(['errors' => ['code' => 'Mã xác thực không đúng hoặc đã hết hạn.']], 422);
         }
 
@@ -116,7 +115,7 @@ class ProfileController extends Controller
                 'email' => $user->email,
                 'avatar' => $user->avatar,
                 'has_password' => $user->password !== null,
-            ]
+            ],
         ]);
     }
 
@@ -143,7 +142,7 @@ class ProfileController extends Controller
                 'email' => $user->email,
                 'avatar' => $user->avatar,
                 'has_password' => true,
-            ]
+            ],
         ]);
     }
 
@@ -159,7 +158,7 @@ class ProfileController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        if (!Hash::check($validated['current_password'], $user->password)) {
+        if (! Hash::check($validated['current_password'], $user->password)) {
             return response()->json(['errors' => ['current_password' => 'Mật khẩu hiện tại không chính xác.']], 422);
         }
 
@@ -207,7 +206,7 @@ class ProfileController extends Controller
         $user = Auth::user();
         $newPasswordHash = $request->session()->get('pending_new_password');
 
-        if (!$newPasswordHash) {
+        if (! $newPasswordHash) {
             return response()->json(['errors' => ['code' => 'Yêu cầu đổi mật khẩu không hợp lệ.']], 422);
         }
 
@@ -217,7 +216,7 @@ class ProfileController extends Controller
             ->where('expires_at', '>', now())
             ->first();
 
-        if (!$otp) {
+        if (! $otp) {
             return response()->json(['errors' => ['code' => 'Mã xác thực không đúng hoặc đã hết hạn.']], 422);
         }
 
@@ -234,7 +233,7 @@ class ProfileController extends Controller
                 'email' => $user->email,
                 'avatar' => $user->avatar,
                 'has_password' => true,
-            ]
+            ],
         ]);
     }
 }

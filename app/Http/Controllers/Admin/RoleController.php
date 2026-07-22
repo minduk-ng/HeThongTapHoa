@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Page;
 use App\Models\Permission;
 use App\Models\Role;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Facades\Cache;
 
 class RoleController extends Controller
 {
@@ -16,8 +18,8 @@ class RoleController extends Controller
     {
         $roles = Role::with(['permissions', 'pages'])->get();
         $permissions = Permission::all();
-        $pages = \App\Models\Page::orderBy('sort_order')->get();
-        
+        $pages = Page::orderBy('sort_order')->get();
+
         return Inertia::render('admin/RolesManager', [
             'roles' => $roles,
             'permissions' => $permissions,
@@ -25,7 +27,7 @@ class RoleController extends Controller
         ]);
     }
 
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:roles,name'],
@@ -42,12 +44,12 @@ class RoleController extends Controller
             'is_system' => false,
         ]);
 
-        if (!empty($validated['permissions'])) {
+        if (! empty($validated['permissions'])) {
             $permissionIds = Permission::whereIn('name', $validated['permissions'])->pluck('id');
             $role->permissions()->attach($permissionIds);
         }
 
-        if (!empty($validated['pages'])) {
+        if (! empty($validated['pages'])) {
             $role->pages()->sync($validated['pages']);
         }
 
@@ -56,14 +58,14 @@ class RoleController extends Controller
         return redirect()->back()->with('success', 'Tạo nhóm quyền thành công.');
     }
 
-    public function update(Request $request, Role $role): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, Role $role): RedirectResponse
     {
         if ($role->name === 'admin') {
             return redirect()->back()->with('error', 'Không thể chỉnh sửa nhóm quyền admin.');
         }
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:roles,name,' . $role->id],
+            'name' => ['required', 'string', 'max:255', 'unique:roles,name,'.$role->id],
             'description' => ['nullable', 'string', 'max:255'],
             'permissions' => ['array'],
             'permissions.*' => ['exists:permissions,name'],
@@ -99,7 +101,7 @@ class RoleController extends Controller
         return redirect()->back()->with('success', 'Cập nhật nhóm quyền thành công.');
     }
 
-    public function destroy(Request $request, Role $role): \Illuminate\Http\RedirectResponse
+    public function destroy(Request $request, Role $role): RedirectResponse
     {
         if ($role->is_system) {
             return redirect()->back()->with('error', 'Không thể xóa nhóm quyền hệ thống.');
@@ -109,7 +111,7 @@ class RoleController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (!\Hash::check($request->input('password'), $request->user()->password)) {
+        if (! \Hash::check($request->input('password'), $request->user()->password)) {
             return redirect()->back()->with('error', 'Mật khẩu xác nhận không chính xác.');
         }
 

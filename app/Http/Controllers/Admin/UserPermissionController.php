@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Facades\Cache;
 
 class UserPermissionController extends Controller
 {
@@ -21,7 +22,7 @@ class UserPermissionController extends Controller
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             })
             ->when($roleName, function ($query, $roleName) {
@@ -33,18 +34,18 @@ class UserPermissionController extends Controller
             ->withQueryString();
 
         $roles = Role::all();
-        
+
         return Inertia::render('admin/UsersPermission', [
             'users' => $users,
             'roles' => $roles,
             'filters' => [
                 'search' => $search,
                 'role' => $roleName,
-            ]
+            ],
         ]);
     }
 
-    public function update(Request $request, User $user): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, User $user): RedirectResponse
     {
         if ($user->isAdmin()) {
             return redirect()->back()->with('error', 'Không thể thay đổi quyền của Admin gốc.');
@@ -67,7 +68,7 @@ class UserPermissionController extends Controller
         return redirect()->back()->with('success', 'Cập nhật quyền người dùng thành công.');
     }
 
-    public function bulkAction(Request $request): \Illuminate\Http\RedirectResponse
+    public function bulkAction(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'user_ids' => ['required', 'array'],
@@ -80,7 +81,8 @@ class UserPermissionController extends Controller
         // Tránh tác động đến tài khoản super admin
         $userIds = collect($validated['user_ids'])->filter(function ($id) {
             $user = User::find($id);
-            return $user && !$user->isAdmin();
+
+            return $user && ! $user->isAdmin();
         })->toArray();
 
         if (empty($userIds)) {
@@ -92,19 +94,19 @@ class UserPermissionController extends Controller
                 'password' => ['required', 'string'],
             ]);
 
-            if (!\Hash::check($request->input('password'), $request->user()->password)) {
+            if (! \Hash::check($request->input('password'), $request->user()->password)) {
                 return redirect()->back()->withErrors([
-                    'password' => 'Mật khẩu xác nhận không chính xác.'
+                    'password' => 'Mật khẩu xác nhận không chính xác.',
                 ]);
             }
 
             User::whereIn('id', $userIds)->delete();
-        } else if ($validated['action'] === 'assign_role') {
+        } elseif ($validated['action'] === 'assign_role') {
             $roleIds = Role::whereIn('name', $validated['role_names'] ?? [])->pluck('id')->toArray();
             foreach ($userIds as $id) {
                 User::find($id)->roles()->syncWithoutDetaching($roleIds);
             }
-        } else if ($validated['action'] === 'clear_roles') {
+        } elseif ($validated['action'] === 'clear_roles') {
             $guestRoleId = Role::where('name', 'guest')->value('id');
             foreach ($userIds as $id) {
                 $user = User::find($id);

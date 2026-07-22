@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Mail\OtpMail;
 use App\Models\OtpCode;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -14,7 +16,7 @@ use Inertia\Response;
 
 class OtpController extends Controller
 {
-    public function show(Request $request): Response|\Illuminate\Http\RedirectResponse
+    public function show(Request $request): Response|RedirectResponse
     {
         $email = $request->session()->get('otp_email');
         $type = $request->session()->get('otp_type');
@@ -30,7 +32,7 @@ class OtpController extends Controller
         ]);
     }
 
-    public function verify(Request $request): \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+    public function verify(Request $request): RedirectResponse|JsonResponse
     {
         $request->validate([
             'code' => ['required', 'string', 'size:6'],
@@ -43,6 +45,7 @@ class OtpController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['errors' => ['code' => 'Phiên làm việc đã hết hạn.']], 422);
             }
+
             return redirect('/login');
         }
 
@@ -56,6 +59,7 @@ class OtpController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['errors' => ['code' => 'Mã xác thực không đúng hoặc đã hết hạn.']], 422);
             }
+
             return back()->withErrors([
                 'code' => 'Mã xác thực không đúng hoặc đã hết hạn.',
             ]);
@@ -76,6 +80,7 @@ class OtpController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['success' => true, 'redirect' => '/']);
             }
+
             return redirect('/');
         }
 
@@ -85,10 +90,11 @@ class OtpController extends Controller
         if ($request->wantsJson()) {
             return response()->json(['success' => true, 'redirect' => '/reset-password']);
         }
+
         return redirect('/reset-password');
     }
 
-    public function resend(Request $request): \Illuminate\Http\RedirectResponse
+    public function resend(Request $request): RedirectResponse
     {
         $email = $request->session()->get('otp_email');
         $type = $request->session()->get('otp_type');

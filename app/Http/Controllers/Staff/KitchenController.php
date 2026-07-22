@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Staff;
 
+use App\Events\OrderCompleted;
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use App\Models\InventoryTransaction;
@@ -38,6 +39,7 @@ class KitchenController extends Controller
         // Warning count: orders waiting > 10 minutes OR has additional items calls
         $warningOrdersCount = $activeOrders->filter(function ($order) {
             $isOver10Mins = $order->created_at ? $order->created_at->diffInMinutes(now()) >= 10 : false;
+
             return $isOver10Mins || $order->has_additional_items;
         })->count();
 
@@ -84,9 +86,12 @@ class KitchenController extends Controller
                 }
             });
 
+            OrderCompleted::dispatch($order);
+
             return back()->with('success', 'Đã xác nhận hoàn thành đơn order và tự động trừ nguyên liệu kho thành công!');
         } catch (\Throwable $e) {
-            Log::error('Kitchen completeOrder DB error: ' . $e->getMessage());
+            Log::error('Kitchen completeOrder DB error: '.$e->getMessage());
+
             return back()->withErrors(['error' => 'Hoàn thành đơn thất bại: Không thể kết nối hoặc lưu cơ sở dữ liệu. Vui lòng thử lại.']);
         }
     }
