@@ -14,6 +14,12 @@ export function usePOSTables(tables: POSTableData[]) {
         if (typeof window !== 'undefined' && window.Echo) {
             const channel = window.Echo.private('pos-channel');
             channel
+                .listen('.OrderSentToKitchen', () => {
+                    router.reload({
+                        only: ['tables'],
+                        onError: () => {},
+                    });
+                })
                 .listen('.OrderCompleted', () => {
                     router.reload({
                         only: ['tables'],

@@ -9,40 +9,45 @@ export function usePOSCart(
     const [tableCarts, setTableCarts] = useState<Record<number, CartItem[]>>({});
 
     useEffect(() => {
-        const initialCarts: Record<number, CartItem[]> = {};
-        tables.forEach((table) => {
-            const mergedMap: Record<number, CartItem> = {};
-            const allOrders = table.active_orders || (table.active_order ? [table.active_order] : []);
+        setTableCarts((prevCarts) => {
+            const nextCarts: Record<number, CartItem[]> = {};
+            tables.forEach((table) => {
+                const mergedMap: Record<number, CartItem> = {};
+                const allOrders = table.active_orders || (table.active_order ? [table.active_order] : []);
 
-            allOrders.forEach((order) => {
-                const isOrderCompleted = order.status === 'completed';
-                if (order.items) {
-                    order.items.forEach((item) => {
-                        const existing = mergedMap[item.menu_item_id];
-                        if (existing) {
-                            existing.quantity += item.quantity;
-                            existing.initialQuantity = (existing.initialQuantity || 0) + item.quantity;
-                            existing.isKitchenCompleted = (existing.isKitchenCompleted ?? true) && isOrderCompleted;
-                        } else {
-                            mergedMap[item.menu_item_id] = {
-                                menu_item_id: item.menu_item_id,
-                                name: item.menu_item?.name || 'Món',
-                                quantity: item.quantity,
-                                initialQuantity: item.quantity,
-                                unit_price: item.unit_price,
-                                vat_rate: item.menu_item?.vat_rate || 0,
-                                note: item.note || '',
-                                isConfirmed: true,
-                                isKitchenCompleted: isOrderCompleted,
-                            };
-                        }
-                    });
-                }
+                allOrders.forEach((order) => {
+                    const isOrderCompleted = order.status === 'completed';
+                    if (order.items) {
+                        order.items.forEach((item) => {
+                            const existing = mergedMap[item.menu_item_id];
+                            if (existing) {
+                                existing.quantity += item.quantity;
+                                existing.initialQuantity = (existing.initialQuantity || 0) + item.quantity;
+                                existing.isKitchenCompleted = (existing.isKitchenCompleted ?? true) && isOrderCompleted;
+                            } else {
+                                mergedMap[item.menu_item_id] = {
+                                    menu_item_id: item.menu_item_id,
+                                    name: item.menu_item?.name || 'Món',
+                                    quantity: item.quantity,
+                                    initialQuantity: item.quantity,
+                                    unit_price: item.unit_price,
+                                    vat_rate: item.menu_item?.vat_rate || 0,
+                                    note: item.note || '',
+                                    isConfirmed: true,
+                                    isKitchenCompleted: isOrderCompleted,
+                                };
+                            }
+                        });
+                    }
+                });
+
+                const existingUnconfirmed = (prevCarts[table.id] || []).filter((item) => !item.isConfirmed);
+                const confirmedItems = Object.values(mergedMap);
+
+                nextCarts[table.id] = [...confirmedItems, ...existingUnconfirmed];
             });
-
-            initialCarts[table.id] = Object.values(mergedMap);
+            return nextCarts;
         });
-        setTableCarts(initialCarts);
     }, [tables]);
 
     const currentCart = selectedTable ? tableCarts[selectedTable.id] || [] : [];
