@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
-import { POSTableData } from './POSTableTab';
-import { CartItem } from './POSCartPanel';
+import { Printer } from 'lucide-react';
+import { POSTableData, CartItem } from '../types/pos.types';
+
 
 interface ReceiptPrintModalProps {
     isOpen: boolean;
@@ -87,8 +88,8 @@ export default function ReceiptPrintModal({
             <div className="bg-white text-zinc-900 rounded-2xl shadow-2xl overflow-hidden max-w-md w-full max-h-[90vh] flex flex-col relative animate-in zoom-in-95 duration-150">
                 {/* Fixed Action Bar at Top */}
                 <div className="no-print shrink-0 p-4 bg-zinc-100 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 flex justify-between items-center z-10">
-                    <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center space-x-1.5">
-                        <span>🖨️</span>
+                    <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center space-x-1.5">
+                        <Printer className="w-4 h-4 text-zinc-500 stroke-[1.5]" />
                         <span>Mẫu Hóa đơn K80 (Khổ 80mm)</span>
                     </span>
                     <div className="flex space-x-2">

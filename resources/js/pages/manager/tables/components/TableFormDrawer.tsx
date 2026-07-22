@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
+import { Zap, Calendar } from 'lucide-react';
 import { TableData } from './TableListTable';
 
 interface TableFormDrawerProps {
@@ -203,7 +204,8 @@ export default function TableFormDrawer({
                                                 : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300'
                                         }`}
                                     >
-                                        ⚡ Tạo nhanh nhiều bàn
+                                        <Zap className="w-3.5 h-3.5 inline mr-1 stroke-[1.5]" />
+                                        Tạo nhanh nhiều bàn
                                     </button>
                                 </div>
                             )}
@@ -298,7 +300,7 @@ export default function TableFormDrawer({
                                         {a}
                                     </option>
                                 ))}
-                                <option value="__NEW__">➕ Thêm khu vực mới...</option>
+                                <option value="__NEW__">+ Thêm khu vực mới...</option>
                             </select>
 
                             {isCustomArea && (
@@ -340,7 +342,7 @@ export default function TableFormDrawer({
                                 >
                                     <option value="available">Bàn trống</option>
                                     <option value="occupied">Đang dùng</option>
-                                    <option value="reserved">📅 Đã đặt trước</option>
+                                    <option value="reserved">Đã đặt trước</option>
                                     <option value="maintenance">Bảo trì</option>
                                 </select>
                             </div>
@@ -349,8 +351,8 @@ export default function TableFormDrawer({
                         {/* Reservation Details Fields (Shown when status === 'reserved') */}
                         {mode === 'single' && status === 'reserved' && (
                             <div className="space-y-3 p-4 border border-purple-300 dark:border-purple-800/80 bg-purple-50/60 dark:bg-purple-950/30 rounded-xl">
-                                <span className="text-xs font-bold text-purple-900 dark:text-purple-300 uppercase tracking-wider block">
-                                    📅 Thông tin Đặt bàn trước
+                                <span className="text-xs font-semibold text-purple-900 dark:text-purple-300 flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5 stroke-[1.5]" /> Thông tin Đặt bàn trước
                                 </span>
 
                                 <div>

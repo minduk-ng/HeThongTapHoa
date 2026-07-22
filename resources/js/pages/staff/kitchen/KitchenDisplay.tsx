@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
+import { Sparkles } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import KitchenStatsHeader from './components/KitchenStatsHeader';
 import KitchenOrderCard, { KitchenOrderData } from './components/KitchenOrderCard';
@@ -25,12 +26,12 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
         return () => clearInterval(timer);
     }, []);
 
-    // Sync with server every 20 seconds for new incoming orders
+    // Non-blocking 3s partial reload for new kitchen orders
     useEffect(() => {
-        const serverTimer = setInterval(() => {
+        const timer = setInterval(() => {
             router.reload({ only: ['orders', 'stats'] });
-        }, 20000);
-        return () => clearInterval(serverTimer);
+        }, 3000);
+        return () => clearInterval(timer);
     }, []);
 
     // Real-time calculation of warning orders on Frontend without server requests
@@ -81,8 +82,8 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                 {/* Order Cards Grid */}
                 {orders.length === 0 ? (
                     <div className="py-16 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900 shadow-xs">
-                        <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 flex items-center justify-center text-3xl mx-auto mb-3">
-                            ✨
+                        <div className="w-16 h-16 rounded-2xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 border border-sky-200/60 dark:border-sky-800/60 flex items-center justify-center mx-auto mb-3">
+                            <Sparkles className="w-8 h-8 stroke-[1.5]" />
                         </div>
                         <h3 className="text-base font-bold text-zinc-800 dark:text-zinc-200">
                             Hiện không có đơn order nào chờ chế biến

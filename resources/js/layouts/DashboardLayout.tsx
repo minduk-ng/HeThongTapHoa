@@ -31,7 +31,7 @@ export default function DashboardLayout({ children, fullWidth = false }: Dashboa
             <main className="relative flex flex-1 flex-col w-full">
                 {/* Floating Notification Toast */}
                 {notification && (
-                    <div className="fixed top-20 right-6 z-50 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-lg transition-all duration-200 dark:border-slate-700 dark:bg-slate-800 max-w-sm">
+                    <div className="fixed top-20 right-6 z-50 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-lg transition-opacity duration-150 dark:border-slate-700 dark:bg-slate-800 max-w-sm">
                         {notification.type === 'success' ? (
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
                                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

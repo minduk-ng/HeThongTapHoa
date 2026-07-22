@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&display=swap');
+
 @import 'tailwindcss';
 
 @source '../views';
@@ -7,10 +9,17 @@
 
 @theme {
     --font-sans:
-        'Segoe UI', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif,
+        'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif,
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
+    --font-display: 'Plus Jakarta Sans', sans-serif;
 }
+
+.font-display {
+    font-family: var(--font-display);
+}
+
+
 
 @layer components {
     /* Form & Input Controls */
@@ -119,7 +128,7 @@
     }
 
     .modal-heading {
-        @apply mb-6 text-xl font-bold text-slate-900 dark:text-slate-100;
+        @apply mb-6 text-2xl font-normal font-display tracking-tight text-slate-900 dark:text-slate-100;
     }
 
     .modal-footer {
@@ -128,7 +137,7 @@
 
     /* Page Layout Headers & Cards */
     .page-heading {
-        @apply text-2xl font-bold text-slate-900 dark:text-slate-100;
+        @apply text-3xl font-normal font-display tracking-tight text-slate-900 dark:text-slate-100;
     }
 
     .page-subtitle {

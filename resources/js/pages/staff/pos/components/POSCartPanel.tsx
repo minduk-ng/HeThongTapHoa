@@ -1,17 +1,6 @@
 import React, { useState } from 'react';
-import { POSTableData } from './POSTableTab';
-
-export interface CartItem {
-    menu_item_id: number;
-    name: string;
-    quantity: number;
-    initialQuantity?: number;
-    unit_price: number;
-    vat_rate: number;
-    note?: string;
-    isConfirmed?: boolean;
-    orderStatus?: string;
-}
+import { Armchair, ShoppingBag, Lock, Trash2, Send, CreditCard } from 'lucide-react';
+import { POSTableData, CartItem } from '../types/pos.types';
 
 interface POSCartPanelProps {
     selectedTable: POSTableData | null;
@@ -38,14 +27,24 @@ export default function POSCartPanel({
 
     if (!selectedTable) {
         return (
-            <div className="h-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center text-zinc-400">
-                <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-2xl mb-3">
-                    🪑
+            <div className="h-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-6 flex flex-col justify-between">
+                <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-500 shrink-0 border border-zinc-200/60 dark:border-zinc-700/60">
+                        <Armchair className="w-6 h-6 stroke-[1.5]" />
+                    </div>
+                    <div>
+                        <h3 className="font-display text-2xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100 mb-1">
+                            Chưa chọn bàn
+                        </h3>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                            Vui lòng chọn một bàn từ danh sách bên trái để mở giỏ hàng và tiến hành gọi món.
+                        </p>
+                    </div>
                 </div>
-                <h3 className="font-bold text-zinc-700 dark:text-zinc-300 mb-1">Chưa chọn bàn</h3>
-                <p className="text-xs text-zinc-400 max-w-xs">
-                    Vui lòng chọn một bàn ở danh sách bên trái để xem giỏ hàng và đặt đồ.
-                </p>
+                <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800/60 text-[11px] text-zinc-400 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+                    <span>Trạng thái bàn tự động cập nhật theo thời gian thực</span>
+                </div>
             </div>
         );
     }
@@ -71,25 +70,25 @@ export default function POSCartPanel({
     const isPaymentBlocked = (hasKitchenPendingOrders || hasUnsentItems) && !managerBypass;
 
     return (
-        <div className="h-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex flex-col justify-between overflow-hidden shadow-xs">
+        <div className="h-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl flex flex-col justify-between overflow-hidden">
             {/* Header (Fixed Top) */}
-            <div className="shrink-0 p-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-800/60 flex items-center justify-between">
+            <div className="shrink-0 p-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between">
                 <div>
                     <div className="flex items-center space-x-2">
-                        <h2 className="text-lg font-black text-zinc-900 dark:text-zinc-100">
+                        <h2 className="font-display text-2xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100">
                             {selectedTable.table_number}
                         </h2>
-                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                        <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60">
                             {selectedTable.area || 'Trong nhà'}
                         </span>
                     </div>
                     <p className="text-xs text-zinc-400 mt-0.5">Sức chứa: {selectedTable.capacity} ghế</p>
                 </div>
                 <div className="text-right">
-                    <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
+                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${
                         selectedTable.status === 'occupied'
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/60'
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60'
                     }`}>
                         {selectedTable.status === 'occupied' ? 'Đang phục vụ' : 'Bàn trống'}
                     </span>
@@ -99,12 +98,16 @@ export default function POSCartPanel({
             {/* Cart Items List (Independent Scroll Area) */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
                 {cartItems.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-center text-zinc-400 py-12">
-                        <svg className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
-                        </svg>
-                        <p className="text-xs font-medium">Chưa có món nào được chọn cho bàn này.</p>
-                        <p className="text-[11px] text-zinc-400 mt-1">Chuyển sang tab "Chọn món" để thêm sản phẩm.</p>
+                    <div className="h-full flex flex-col justify-center p-4">
+                        <div className="flex items-start space-x-3 text-zinc-400">
+                            <ShoppingBag className="w-5 h-5 text-zinc-400 shrink-0 mt-0.5 stroke-[1.5]" />
+                            <div>
+                                <h4 className="font-display text-lg text-zinc-700 dark:text-zinc-300">Giỏ hàng trống</h4>
+                                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                                    Chưa có món nào được chọn cho bàn này. Bạn có thể chuyển sang tab “Chọn món” để thêm sản phẩm.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 ) : (
                     cartItems.map((item) => {
@@ -115,27 +118,27 @@ export default function POSCartPanel({
                         return (
                             <div
                                 key={item.menu_item_id}
-                                className={`p-3 border rounded-xl space-y-2 transition-colors ${
+                                className={`p-3 border rounded-xl space-y-2 transition-colors duration-150 ${
                                     item.isConfirmed
-                                        ? 'bg-zinc-100/70 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700'
-                                        : 'bg-zinc-50/50 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-800'
+                                        ? 'bg-zinc-50 dark:bg-zinc-800/60 border-zinc-200/80 dark:border-zinc-700/80'
+                                        : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
                                 }`}
                             >
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
-                                            <h4 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                                        <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                                            <h4 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
                                                 {item.name}
                                             </h4>
                                             {item.isConfirmed && (
                                                 <span
-                                                    className={`px-1.5 py-0.5 text-[9px] font-extrabold rounded-md shrink-0 ${
-                                                        hasKitchenPendingOrders
-                                                            ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300'
-                                                            : 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300'
+                                                    className={`px-2 py-0.5 text-[10px] font-medium rounded-md border shrink-0 ${
+                                                        item.isKitchenCompleted
+                                                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60'
+                                                            : 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/60'
                                                     }`}
                                                 >
-                                                    {hasKitchenPendingOrders ? '⏳ Đang pha chế' : '✅ Đã chế biến xong'}
+                                                    {item.isKitchenCompleted ? 'Đã chế biến' : 'Đang chế biến'}
                                                 </span>
                                             )}
                                         </div>
@@ -143,7 +146,7 @@ export default function POSCartPanel({
                                             {item.unit_price.toLocaleString('vi-VN')} đ/món
                                         </span>
                                     </div>
-                                    <span className="font-black text-sm text-zinc-900 dark:text-zinc-100">
+                                    <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
                                         {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
                                     </span>
                                 </div>
@@ -155,16 +158,16 @@ export default function POSCartPanel({
                                         value={item.note || ''}
                                         onChange={(e) => onUpdateNote(item.menu_item_id, e.target.value)}
                                         placeholder="Ghi chú (ít đường, nhiều đá...)"
-                                        className="flex-1 px-2 py-1 text-xs border rounded-md bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700"
+                                        className="flex-1 px-2.5 py-1 text-xs border rounded-lg bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 transition-colors duration-150"
                                     />
 
                                     <div className="flex items-center space-x-2 shrink-0">
-                                        <div className="flex items-center border border-zinc-300 dark:border-zinc-700 rounded-lg overflow-hidden bg-white dark:bg-zinc-800">
+                                        <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden bg-white dark:bg-zinc-800">
                                             <button
                                                 type="button"
                                                 disabled={isMinusDisabled}
                                                 onClick={() => onUpdateQuantity(item.menu_item_id, -1)}
-                                                className="px-2 py-0.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                                                className="px-2 py-0.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-150"
                                                 title={isMinusDisabled ? 'Món đã gửi bếp không được giảm dưới số lượng đã đặt' : 'Giảm số lượng'}
                                             >
                                                 -
@@ -175,7 +178,7 @@ export default function POSCartPanel({
                                             <button
                                                 type="button"
                                                 onClick={() => onUpdateQuantity(item.menu_item_id, 1)}
-                                                className="px-2 py-0.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 font-bold"
+                                                className="px-2 py-0.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 font-bold transition-colors duration-150"
                                                 title="Gọi thêm món"
                                             >
                                                 +
@@ -186,16 +189,14 @@ export default function POSCartPanel({
                                             <button
                                                 type="button"
                                                 onClick={() => onRemoveItem(item.menu_item_id)}
-                                                className="p-1 text-zinc-400 hover:text-rose-600 rounded-md"
+                                                className="p-1 text-zinc-400 hover:text-rose-600 rounded-md transition-colors duration-150"
                                                 title="Hủy chọn món"
                                             >
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
+                                                <Trash2 className="w-4 h-4" />
                                             </button>
                                         ) : (
                                             <span className="p-1 text-zinc-300 dark:text-zinc-600 cursor-not-allowed" title="Món đã gửi bếp không được xóa">
-                                                🔒
+                                                <Lock className="w-3.5 h-3.5 text-zinc-400" />
                                             </span>
                                         )}
                                     </div>
@@ -207,15 +208,15 @@ export default function POSCartPanel({
             </div>
 
             {/* Financial Summary & Actions Footer (Fixed Bottom) */}
-            <div className="shrink-0 p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-800/60 space-y-3">
+            <div className="shrink-0 p-4 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-800/40 space-y-3">
                 {/* Kitchen completion status notice */}
                 {hasKitchenPendingOrders && (
-                    <div className="p-2 border border-amber-300 dark:border-amber-800/80 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-[11px] text-amber-800 dark:text-amber-200 flex items-center justify-between">
-                        <span>⏳ Đang chờ Bếp hoàn thành đơn...</span>
+                    <div className="p-2.5 border border-amber-200 dark:border-amber-900/60 bg-amber-50/80 dark:bg-amber-950/40 rounded-xl text-xs text-amber-800 dark:text-amber-200 flex items-center justify-between">
+                        <span>Đang chờ Bếp hoàn tất món ăn...</span>
                         <button
                             type="button"
                             onClick={() => setManagerBypass(!managerBypass)}
-                            className="font-bold underline text-amber-700 dark:text-amber-300 hover:text-amber-900 ml-2"
+                            className="font-semibold text-amber-700 dark:text-amber-300 hover:underline ml-2"
                         >
                             {managerBypass ? 'Bắt buộc khóa' : 'Duyệt khẩn cấp'}
                         </button>
@@ -223,17 +224,17 @@ export default function POSCartPanel({
                 )}
 
                 <div className="space-y-1 text-xs">
-                    <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                    <div className="flex justify-between text-zinc-500 dark:text-zinc-400">
                         <span>Tạm tính ({cartItems.reduce((s, i) => s + i.quantity, 0)} món):</span>
-                        <span className="font-semibold">{subtotal.toLocaleString('vi-VN')} đ</span>
+                        <span className="font-semibold text-zinc-800 dark:text-zinc-200">{subtotal.toLocaleString('vi-VN')} đ</span>
                     </div>
-                    <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                    <div className="flex justify-between text-zinc-500 dark:text-zinc-400">
                         <span>Thuế VAT:</span>
-                        <span className="font-semibold">{vatTotal.toLocaleString('vi-VN')} đ</span>
+                        <span className="font-semibold text-zinc-800 dark:text-zinc-200">{vatTotal.toLocaleString('vi-VN')} đ</span>
                     </div>
-                    <div className="flex justify-between text-sm font-black text-zinc-900 dark:text-zinc-100 pt-1 border-t border-zinc-200 dark:border-zinc-700">
+                    <div className="flex justify-between text-sm font-bold text-zinc-900 dark:text-zinc-100 pt-1.5 border-t border-zinc-200/80 dark:border-zinc-700/80">
                         <span>Tổng thanh toán:</span>
-                        <span className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
+                        <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
                             {totalAmount.toLocaleString('vi-VN')} đ
                         </span>
                     </div>
@@ -244,11 +245,9 @@ export default function POSCartPanel({
                         type="button"
                         disabled={submitting || cartItems.length === 0 || !hasUnsentItems}
                         onClick={onSendToKitchen}
-                        className="py-2.5 px-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs disabled:opacity-50 flex items-center justify-center space-x-1.5 transition-colors"
+                        className="py-2.5 px-3 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl disabled:opacity-50 flex items-center justify-center space-x-1.5 transition-colors duration-150"
                     >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                        </svg>
+                        <Send className="w-3.5 h-3.5" />
                         <span>{submitting ? 'Đang gửi...' : 'Gửi bếp chế biến'}</span>
                     </button>
 
@@ -256,16 +255,14 @@ export default function POSCartPanel({
                         type="button"
                         disabled={submitting || cartItems.length === 0 || isPaymentBlocked}
                         onClick={onOpenPayment}
-                        className={`py-2.5 px-3 text-xs font-bold rounded-xl shadow-xs flex items-center justify-center space-x-1.5 transition-colors ${
+                        className={`py-2.5 px-3 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 transition-colors duration-150 ${
                             isPaymentBlocked
-                                ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 border border-zinc-300 dark:border-zinc-700 cursor-not-allowed opacity-60'
+                                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border border-zinc-200 dark:border-zinc-700 cursor-not-allowed opacity-60'
                                 : 'bg-emerald-600 text-white hover:bg-emerald-700'
                         }`}
                         title={isPaymentBlocked ? 'Cần gửi toàn bộ món xuống Bếp và chờ Bếp làm xong mới được thanh toán' : 'Thanh toán đơn hàng'}
                     >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
+                        <CreditCard className="w-3.5 h-3.5" />
                         <span>Thanh toán</span>
                     </button>
                 </div>

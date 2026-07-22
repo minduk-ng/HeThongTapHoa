@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Armchair } from 'lucide-react';
 
 export interface TableData {
     id: number;
@@ -178,8 +179,8 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
                                         </td>
                                         <td className={`px-4 font-bold text-zinc-900 dark:text-zinc-100 ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             <div className="flex items-center space-x-2">
-                                                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs shrink-0">
-                                                    🪑
+                                                <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">
+                                                    <Armchair className="w-4 h-4 stroke-[1.5]" />
                                                 </div>
                                                 <span>{item.table_number}</span>
                                             </div>

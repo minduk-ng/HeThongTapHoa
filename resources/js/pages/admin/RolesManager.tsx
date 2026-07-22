@@ -1,5 +1,6 @@
 import { Head, useForm, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { Lightbulb } from 'lucide-react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { Page, Permission, Role } from '../../types/admin';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
@@ -289,8 +290,9 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
 
                             <div>
                                 <label className="form-label mb-1 font-semibold text-gray-800 dark:text-gray-100">Quyền truy cập trang & Chức năng</label>
-                                <p className="text-xs text-gray-400 mb-3">
-                                    💡 <b>Quy trình chọn 3 trạng thái</b>: Bấm 1 lần ➜ Chọn quyền Xem (hiện dấu <b>-</b>) &bull; Bấm lần 2 ➜ Chọn tất cả quyền (hiện dấu <b>✓</b>) &bull; Bấm lần 3 ➜ Hủy chọn.
+                                <p className="text-xs text-gray-400 mb-3 flex items-center gap-1.5 flex-wrap">
+                                    <Lightbulb className="w-4 h-4 text-amber-500 stroke-[1.5] shrink-0" />
+                                    <span><b>Quy trình chọn 3 trạng thái</b>: Bấm 1 lần ➜ Chọn quyền Xem (hiện dấu <b>-</b>) &bull; Bấm lần 2 ➜ Chọn tất cả quyền (hiện dấu <b>✓</b>) &bull; Bấm lần 3 ➜ Hủy chọn.</span>
                                 </p>
 
                                 <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 rounded-xl border border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50">

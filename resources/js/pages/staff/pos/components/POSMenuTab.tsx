@@ -1,30 +1,6 @@
 import React, { useState } from 'react';
-
-export interface CategoryData {
-    id: number;
-    name: string;
-}
-
-export interface POSProductData {
-    id: number;
-    name: string;
-    price: number;
-    vat_rate: number;
-    image?: string | null;
-    category_id: number;
-    category?: CategoryData;
-    max_servings?: number;
-}
-
-interface CartItem {
-    menu_item_id: number;
-    name: string;
-    quantity: number;
-    unit_price: number;
-    vat_rate: number;
-    note?: string;
-    isConfirmed?: boolean;
-}
+import { Search, UtensilsCrossed } from 'lucide-react';
+import { CategoryData, POSProductData, CartItem } from '../types/pos.types';
 
 interface POSMenuTabProps {
     products: POSProductData[];
@@ -64,15 +40,13 @@ export default function POSMenuTab({
             <div className="shrink-0 space-y-2.5">
                 {/* Search Bar */}
                 <div className="relative">
-                    <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Tìm tên món ăn / đồ uống..."
-                        className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 transition-colors duration-150"
                     />
                 </div>
 
@@ -81,9 +55,9 @@ export default function POSMenuTab({
                     <button
                         type="button"
                         onClick={() => setSelectedCategoryId('all')}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors ${
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors duration-150 ${
                             selectedCategoryId === 'all'
-                                ? 'bg-blue-600 text-white shadow-xs'
+                                ? 'bg-sky-600 text-white'
                                 : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
                         }`}
                     >
@@ -97,9 +71,9 @@ export default function POSMenuTab({
                                 key={cat.id}
                                 type="button"
                                 onClick={() => setSelectedCategoryId(String(cat.id))}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors ${
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors duration-150 ${
                                     isSelected
-                                        ? 'bg-blue-600 text-white shadow-xs'
+                                        ? 'bg-sky-600 text-white'
                                         : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
                                 }`}
                             >
@@ -124,11 +98,11 @@ export default function POSMenuTab({
                             <div
                                 key={product.id}
                                 onClick={() => !isOutOfStock && onToggleProduct(product)}
-                                className={`relative cursor-pointer p-3 rounded-xl border-2 transition-all select-none flex flex-col justify-between ${
+                                className={`relative cursor-pointer p-3 rounded-xl border transition-colors duration-150 select-none flex flex-col justify-between ${
                                     isOutOfStock
                                         ? 'opacity-50 border-rose-200 dark:border-rose-900 bg-zinc-50 dark:bg-zinc-800/40 cursor-not-allowed'
                                         : inCart
-                                        ? 'border-blue-600 bg-blue-50/80 dark:bg-blue-950/60 shadow-md ring-2 ring-blue-400/50'
+                                        ? 'border-sky-600 bg-sky-50/60 dark:bg-sky-950/40'
                                         : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700'
                                 }`}
                             >
@@ -137,33 +111,33 @@ export default function POSMenuTab({
                                         <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center text-zinc-400">
-                                            ☕
+                                            <UtensilsCrossed className="w-6 h-6 stroke-[1.5]" />
                                         </div>
                                     )}
 
                                     {/* Stock badges */}
                                     {isOutOfStock ? (
-                                        <span className="absolute top-1 left-1 bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md shadow-xs">
-                                            ❌ Hết hàng
+                                        <span className="absolute top-1 left-1 bg-rose-600 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md">
+                                            Hết hàng
                                         </span>
                                     ) : isLowStock ? (
-                                        <span className="absolute top-1 left-1 bg-amber-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md shadow-xs animate-pulse">
-                                            ⚠️ Còn {maxServings} suất
+                                        <span className="absolute top-1 left-1 bg-amber-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md">
+                                            Còn {maxServings} suất
                                         </span>
                                     ) : null}
 
                                     {inCart && (
-                                        <span className="absolute top-1 right-1 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-extrabold flex items-center justify-center shadow-md">
+                                        <span className="absolute top-1 right-1 w-6 h-6 rounded-full bg-sky-600 text-white text-xs font-bold flex items-center justify-center">
                                             {qty}
                                         </span>
                                     )}
                                 </div>
 
                                 <div>
-                                    <h4 className="font-bold text-xs text-zinc-900 dark:text-zinc-100 line-clamp-2">
+                                    <h4 className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 line-clamp-2">
                                         {product.name}
                                     </h4>
-                                    <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 mt-1 block">
+                                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1 block">
                                         {Number(product.price).toLocaleString('vi-VN')} đ
                                     </span>
                                 </div>

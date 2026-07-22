@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { POSTableData } from './POSTableTab';
-import { CartItem } from './POSCartPanel';
+import { Banknote, QrCode, X } from 'lucide-react';
+import { POSTableData, CartItem } from '../types/pos.types';
 
 interface PaymentDrawerProps {
     isOpen: boolean;
@@ -67,38 +67,38 @@ export default function PaymentDrawer({
         <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
             {/* Backdrop Overlay */}
             <div
-                className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity animate-in fade-in"
+                className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity duration-150"
                 onClick={onClose}
             />
 
             {/* Sliding Drawer */}
-            <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 h-full shadow-2xl flex flex-col justify-between z-10 animate-in slide-in-from-right duration-200">
+            <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 h-full border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl flex flex-col justify-between z-10">
                 {/* Header */}
-                <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60 flex items-center justify-between">
+                <div className="p-5 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between">
                     <div>
-                        <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider block">
+                        <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 block">
                             Thanh toán đơn hàng
                         </span>
-                        <h2 className="text-xl font-black text-zinc-900 dark:text-zinc-100">
+                        <h2 className="font-display text-2xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100">
                             {selectedTable.table_number} ({selectedTable.area || 'Trong nhà'})
                         </h2>
                     </div>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 flex items-center justify-center hover:bg-zinc-300 font-bold text-sm"
+                        className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 flex items-center justify-center transition-colors duration-150"
                     >
-                        ✕
+                        <X className="w-4 h-4" />
                     </button>
                 </div>
 
                 {/* Main Content Area */}
                 <div className="flex-1 overflow-y-auto p-5 space-y-5">
                     {/* Financial Overview Card */}
-                    <div className="bg-blue-50/80 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 rounded-2xl p-4 space-y-2">
-                        <div className="flex justify-between items-center text-xs font-bold text-blue-900 dark:text-blue-200 border-b border-blue-200 dark:border-blue-800 pb-2 mb-1">
+                    <div className="bg-sky-50/60 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-900/60 rounded-2xl p-4 space-y-2">
+                        <div className="flex justify-between items-center text-xs font-semibold text-sky-900 dark:text-sky-200 border-b border-sky-200/60 dark:border-sky-800/60 pb-2 mb-1">
                             <span>Vị trí phục vụ:</span>
-                            <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white font-extrabold text-[11px]">
+                            <span className="px-2.5 py-0.5 rounded-md bg-sky-600 text-white font-semibold text-xs">
                                 {selectedTable.table_number} ({selectedTable.area || 'Trong nhà'})
                             </span>
                         </div>
@@ -110,9 +110,9 @@ export default function PaymentDrawer({
                             <span>Thuế VAT:</span>
                             <span className="font-semibold">{vatTotal.toLocaleString('vi-VN')} đ</span>
                         </div>
-                        <div className="flex justify-between text-base font-black text-zinc-900 dark:text-zinc-100 pt-2 border-t border-blue-200 dark:border-blue-800">
+                        <div className="flex justify-between text-sm font-bold text-zinc-900 dark:text-zinc-100 pt-2 border-t border-sky-200/60 dark:border-sky-800/60">
                             <span>TỔNG CỘNG:</span>
-                            <span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">
+                            <span className="text-xl font-bold text-sky-600 dark:text-sky-400">
                                 {totalAmount.toLocaleString('vi-VN')} đ
                             </span>
                         </div>
@@ -120,7 +120,7 @@ export default function PaymentDrawer({
 
                     {/* Payment Method Tabs */}
                     <div className="space-y-3">
-                        <label className="text-xs font-extrabold uppercase text-zinc-500 tracking-wider block">
+                        <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 block">
                             Phương thức thanh toán
                         </label>
                         <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl">
@@ -130,25 +130,27 @@ export default function PaymentDrawer({
                                     setPaymentMethod('cash');
                                     setAmountReceived(totalAmount);
                                 }}
-                                className={`py-2.5 px-3 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center space-x-2 ${
+                                className={`py-2.5 px-3 text-xs font-semibold rounded-lg transition-colors duration-150 flex items-center justify-center space-x-2 ${
                                     paymentMethod === 'cash'
-                                        ? 'bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                                        ? 'bg-white dark:bg-zinc-900 text-sky-600 dark:text-sky-400 border border-zinc-200/60 dark:border-zinc-700/60'
                                         : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
                                 }`}
                             >
-                                <span>💵 Tiền mặt</span>
+                                <Banknote className="w-4 h-4" />
+                                <span>Tiền mặt</span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => setPaymentMethod('bank_transfer')}
-                                className={`py-2.5 px-3 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center space-x-2 ${
+                                className={`py-2.5 px-3 text-xs font-semibold rounded-lg transition-colors duration-150 flex items-center justify-center space-x-2 ${
                                     paymentMethod === 'bank_transfer'
-                                        ? 'bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                                        ? 'bg-white dark:bg-zinc-900 text-sky-600 dark:text-sky-400 border border-zinc-200/60 dark:border-zinc-700/60'
                                         : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
                                 }`}
                             >
-                                <span>📲 Chuyển khoản QR</span>
+                                <QrCode className="w-4 h-4" />
+                                <span>Chuyển khoản</span>
                             </button>
                         </div>
                     </div>

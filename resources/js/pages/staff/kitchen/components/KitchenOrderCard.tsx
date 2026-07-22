@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
+import { AlertTriangle } from 'lucide-react';
 
 export interface KitchenOrderData {
     id: number;
@@ -74,8 +75,9 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
             {/* Order Card Header */}
             <div className={`p-4 ${headerBgClass} space-y-2 shadow-xs`}>
                 {hasAdditional && (
-                    <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-amber-300/30 text-amber-100 font-extrabold text-[11px] border border-amber-300/40">
-                        <span>⚠️ Bàn gọi thêm đồ</span>
+                    <div className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-md bg-amber-300/30 text-amber-100 font-semibold text-[11px] border border-amber-300/40">
+                        <AlertTriangle className="w-3.5 h-3.5 stroke-[1.5]" />
+                        <span>Bàn gọi thêm đồ</span>
                     </div>
                 )}
 

@@ -1,5 +1,6 @@
 import { Head, useForm, router } from '@inertiajs/react';
 import { useState, Fragment } from 'react';
+import { Lightbulb } from 'lucide-react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { Page } from '../../types/admin';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
@@ -302,8 +303,9 @@ export default function PagesManager({ pages }: Props) {
             {isSortingMode ? (
                 <div className="space-y-4">
                     <div className="flex justify-between items-center bg-indigo-50/50 dark:bg-slate-800 p-4 rounded-xl border border-indigo-100/50 dark:border-slate-700/50">
-                        <p className="text-sm text-indigo-700 dark:text-indigo-400 font-medium">
-                            💡 Kéo thả tiêu đề để đổi vị trí Nhóm. Kéo thả các trang con để sắp xếp thứ tự hoặc đổi Nhóm cho trang.
+                        <p className="text-sm text-indigo-700 dark:text-indigo-400 font-medium flex items-center gap-1.5">
+                            <Lightbulb className="w-4 h-4 stroke-[1.5] shrink-0" />
+                            <span>Kéo thả tiêu đề để đổi vị trí Nhóm. Kéo thả các trang con để sắp xếp thứ tự hoặc đổi Nhóm cho trang.</span>
                         </p>
                         <div className="flex gap-2">
                             <button onClick={() => setIsSortingMode(false)} className="btn-secondary">

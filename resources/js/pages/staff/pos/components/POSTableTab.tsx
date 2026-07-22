@@ -1,60 +1,6 @@
 import React from 'react';
-
-export interface POSTableData {
-    id: number;
-    table_number: string;
-    capacity: number;
-    area: string;
-    status: 'available' | 'occupied' | 'reserved' | 'maintenance';
-    reservation_name?: string | null;
-    reservation_phone?: string | null;
-    reservation_time?: string | null;
-    reservation_note?: string | null;
-    active_orders?: Array<{
-        id: number;
-        order_code: string;
-        subtotal: number;
-        vat_amount: number;
-        total: number;
-        status: string;
-        items: Array<{
-            id: number;
-            menu_item_id: number;
-            quantity: number;
-            unit_price: number;
-            subtotal: number;
-            note?: string | null;
-            menu_item?: {
-                id: number;
-                name: string;
-                price: number;
-                vat_rate: number;
-            };
-        }>;
-    }>;
-    active_order?: {
-        id: number;
-        order_code: string;
-        subtotal: number;
-        vat_amount: number;
-        total: number;
-        status: string;
-        items: Array<{
-            id: number;
-            menu_item_id: number;
-            quantity: number;
-            unit_price: number;
-            subtotal: number;
-            note?: string | null;
-            menu_item?: {
-                id: number;
-                name: string;
-                price: number;
-                vat_rate: number;
-            };
-        }>;
-    } | null;
-}
+import { Users, Check } from 'lucide-react';
+import { POSTableData } from '../types/pos.types';
 
 interface POSTableTabProps {
     tables: POSTableData[];
@@ -81,10 +27,10 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable }: PO
         <div className="h-full overflow-y-auto pr-1 space-y-5">
             {sortedAreaEntries.map(([areaName, areaTables]) => (
                 <div key={areaName} className="space-y-3">
-                    <div className="flex items-center space-x-2 border-b border-zinc-200 dark:border-zinc-800 pb-2 sticky top-0 bg-white dark:bg-zinc-900 z-10">
-                        <span className={`w-2.5 h-2.5 rounded-full ${areaName.includes('Mang đi') ? 'bg-amber-500' : 'bg-blue-600'}`}></span>
-                        <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">
-                            {areaName} <span className="text-zinc-400 font-normal">({areaTables.length} bàn/vị trí)</span>
+                    <div className="flex items-center space-x-2 border-b border-zinc-200/80 dark:border-zinc-800/80 pb-2 sticky top-0 bg-white dark:bg-zinc-900 z-10">
+                        <span className={`w-2 h-2 rounded-full ${areaName.includes('Mang đi') ? 'bg-amber-500' : 'bg-sky-600'}`}></span>
+                        <h3 className="font-display text-sm font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">
+                            {areaName} <span className="text-zinc-400 font-sans text-xs">({areaTables.length} bàn/vị trí)</span>
                         </h3>
                     </div>
 
@@ -107,45 +53,48 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable }: PO
                                 <div
                                     key={table.id}
                                     onClick={() => onSelectTable(table)}
-                                    className={`relative cursor-pointer p-3.5 rounded-xl border-2 transition-all select-none flex flex-col justify-between h-28 ${
+                                    className={`relative cursor-pointer p-3.5 rounded-xl border transition-colors duration-150 select-none flex flex-col justify-between h-28 ${
                                         isSelected
-                                            ? 'border-blue-600 bg-blue-50/90 dark:bg-blue-950/70 shadow-md ring-2 ring-blue-500/40'
+                                            ? 'border-sky-600 bg-sky-50/70 dark:bg-sky-950/50'
                                             : isOccupied
-                                            ? 'border-amber-400 bg-amber-50/80 dark:bg-amber-950/40 hover:border-amber-500'
+                                            ? 'border-amber-300 bg-amber-50/60 dark:bg-amber-950/30 hover:border-amber-400'
                                             : isReserved
-                                            ? 'border-purple-400 bg-purple-50/80 dark:bg-purple-950/40 hover:border-purple-500'
+                                            ? 'border-purple-300 bg-purple-50/60 dark:bg-purple-950/30 hover:border-purple-400'
                                             : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700'
                                     }`}
                                 >
                                     <div className="flex justify-between items-start">
-                                        <span className="font-black text-base text-zinc-900 dark:text-zinc-100">
+                                        <span className="font-display text-xl font-normal text-zinc-900 dark:text-zinc-100">
                                             {table.table_number}
                                         </span>
                                         <span
-                                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
                                                 isOccupied
-                                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/80 dark:text-amber-200'
+                                                    ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/60'
                                                     : isReserved
-                                                    ? 'bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300 font-extrabold'
-                                                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                                    ? 'bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-900/60'
+                                                    : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60'
                                             }`}
                                         >
-                                            {isOccupied ? 'Đang dùng' : isReserved ? `📅 Đặt trước ${resTimeStr ? `(${resTimeStr})` : ''}` : 'Trống'}
+                                            {isOccupied ? 'Đang dùng' : isReserved ? `Đặt trước ${resTimeStr ? `(${resTimeStr})` : ''}` : 'Trống'}
                                         </span>
                                     </div>
 
                                     <div className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
-                                        <span>🪑 {table.capacity} ghế</span>
+                                        <span className="flex items-center gap-1">
+                                            <Users className="w-3.5 h-3.5 stroke-[1.5]" />
+                                            {table.capacity} ghế
+                                        </span>
                                         {totalSessionItemsCount > 0 && (
-                                            <span className="font-bold text-amber-700 dark:text-amber-300">
+                                            <span className="font-semibold text-amber-700 dark:text-amber-300">
                                                 {totalSessionItemsCount} món
                                             </span>
                                         )}
                                     </div>
 
                                     {isSelected && (
-                                        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold shadow-xs">
-                                            ✓
+                                        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-sky-600 text-white text-xs flex items-center justify-center font-bold">
+                                            <Check className="w-3 h-3 stroke-[2.5]" />
                                         </div>
                                     )}
                                 </div>
