@@ -24,11 +24,13 @@ export default function DashboardLayout({ children, fullWidth = false }: Dashboa
     }, [flash]);
 
     return (
-        <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800 transition-colors duration-150 dark:bg-slate-900 dark:text-slate-100">
+        <div className={`flex flex-col bg-slate-50 text-slate-800 transition-colors duration-150 dark:bg-slate-900 dark:text-slate-100 ${
+            fullWidth ? 'h-screen w-screen overflow-hidden' : 'min-h-screen'
+        }`}>
             {/* Top Navigation Bar Header */}
             <Sidebar />
             
-            <main className="relative flex flex-1 flex-col w-full">
+            <main className="relative flex flex-1 flex-col w-full min-h-0 overflow-hidden">
                 {/* Floating Notification Toast */}
                 {notification && (
                     <div className="fixed top-20 right-6 z-50 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-lg transition-opacity duration-150 dark:border-slate-700 dark:bg-slate-800 max-w-sm">
@@ -57,7 +59,7 @@ export default function DashboardLayout({ children, fullWidth = false }: Dashboa
                 )}
 
                 {/* Main Content Container */}
-                <div className={`relative z-10 flex-1 w-full ${fullWidth ? 'p-3 flex flex-col' : 'max-w-7xl mx-auto p-6 md:p-8'}`}>
+                <div className={`relative z-10 flex-1 w-full min-h-0 ${fullWidth ? 'p-3 flex flex-col h-full overflow-hidden' : 'max-w-7xl mx-auto p-6 md:p-8 overflow-y-auto'}`}>
                     {children}
                 </div>
             </main>

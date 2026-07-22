@@ -49,7 +49,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
             <Head title="Đặt hàng POS & Quản lý bàn bán hàng" />
 
             {/* Full Width & Height Split Screen Container */}
-            <div className="h-[calc(100vh-85px)] w-full overflow-hidden">
+            <div className="h-full w-full min-h-0 overflow-hidden">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full min-h-0">
                     {/* Left Panel (7 columns): Standalone Card for Tabs */}
                     <div className="lg:col-span-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 flex flex-col h-full min-h-0 shadow-xs">

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
+import { ChefHat, Search, SlidersHorizontal, BookOpen, Layers } from 'lucide-react';
 import DashboardLayout from '../../../../layouts/DashboardLayout';
+import ManagerPageLayout from '../../../../components/ManagerPageLayout';
 import RecipeTable, { ProductRecipeData } from './components/RecipeTable';
 import RecipeFormDrawer from './components/RecipeFormDrawer';
 
@@ -64,58 +66,115 @@ export default function RecipesManager({
         applyFilters({ category_id: catId });
     };
 
+    // Calculate recipe stats
+    const configuredCount = products.filter((p) => p.recipes && p.recipes.length > 0).length;
+    const totalProducts = products.length;
+
     return (
-        <DashboardLayout>
+        <DashboardLayout fullWidth={true}>
             <Head title="Quản lý định lượng & Công thức món" />
 
-            <div className="p-6 space-y-6 max-w-7xl mx-auto">
-                {/* Header */}
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-                        Quản lý định lượng & Công thức món
-                    </h1>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                        Kho hàng &bull; Định lượng nguyên liệu pha chế & Giá vốn ước tính (COGS)
-                    </p>
-                </div>
-
-                {/* Filter Bar */}
-                <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl shadow-xs">
-                    <div className="flex flex-1 flex-wrap items-center gap-3">
-                        <div className="relative flex-1 min-w-[200px]">
-                            <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => handleSearchChange(e.target.value)}
-                                placeholder="Tìm theo tên sản phẩm..."
-                                className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                            />
+            <ManagerPageLayout
+                sidebar={
+                    <>
+                        {/* Header */}
+                        <div>
+                            <div className="flex items-center space-x-2 text-sky-600 dark:text-sky-400 mb-1">
+                                <ChefHat className="w-5 h-5 stroke-[1.5]" />
+                                <span className="text-xs font-semibold uppercase tracking-wider">Phân hệ Định lượng</span>
+                            </div>
+                            <h1 className="font-display text-xl font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">
+                                Định lượng & Công thức
+                            </h1>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                Định lượng nguyên liệu & tính giá vốn ước tính (COGS)
+                            </p>
                         </div>
 
-                        <select
-                            value={selectedCategory}
-                            onChange={(e) => handleCategoryChange(e.target.value)}
-                            className="px-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="all">Tất cả danh mục</option>
-                            {categories.map((cat) => (
-                                <option key={cat.id} value={cat.id}>
-                                    {cat.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
+                        {/* Filter Controls */}
+                        <div className="space-y-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
+                            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                                <SlidersHorizontal className="w-3.5 h-3.5 stroke-[1.5]" />
+                                <span>Bộ lọc sản phẩm</span>
+                            </label>
 
+                            {/* Search Bar */}
+                            <div className="relative">
+                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => handleSearchChange(e.target.value)}
+                                    placeholder="Tìm sản phẩm..."
+                                    className="w-full pl-9 pr-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 transition-colors"
+                                />
+                            </div>
+
+                            {/* Category Select */}
+                            <div>
+                                <label className="text-[11px] text-zinc-500 block mb-1">Danh mục món</label>
+                                <select
+                                    value={selectedCategory}
+                                    onChange={(e) => handleCategoryChange(e.target.value)}
+                                    className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
+                                >
+                                    <option value="all">Tất cả danh mục ({categories.length})</option>
+                                    {categories.map((cat) => (
+                                        <option key={cat.id} value={cat.id}>
+                                            {cat.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Guidelines Note Box */}
+                        <div className="p-3 bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-900/40 rounded-xl text-xs text-sky-900 dark:text-sky-200 space-y-1">
+                            <span className="font-semibold block flex items-center gap-1 text-[11px]">
+                                <BookOpen className="w-3.5 h-3.5 text-sky-600" /> Hướng dẫn thiết lập:
+                            </span>
+                            <p className="text-[11px] text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                                Nhấp chọn nút “Cấu hình công thức” ở mỗi món để khai báo lượng nguyên liệu tiêu hao khi bán 1 suất.
+                            </p>
+                        </div>
+
+                        {/* Mini Overview Stats */}
+                        <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2.5 mt-auto">
+                            <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block">
+                                Tiến độ cấu hình
+                            </label>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-800 rounded-xl">
+                                    <div className="flex items-center text-zinc-500 text-[11px] mb-1">
+                                        <ChefHat className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                                        <span>Đã cấu hình</span>
+                                    </div>
+                                    <span className="font-display text-lg font-normal text-zinc-900 dark:text-zinc-100">
+                                        {configuredCount} / {totalProducts}
+                                    </span>
+                                </div>
+
+                                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-800 rounded-xl">
+                                    <div className="flex items-center text-zinc-500 text-[11px] mb-1">
+                                        <Layers className="w-3.5 h-3.5 mr-1 text-sky-600" />
+                                        <span>Chưa có ĐL</span>
+                                    </div>
+                                    <span className="font-display text-lg font-normal text-amber-600 dark:text-amber-400">
+                                        {totalProducts - configuredCount}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                }
+            >
                 {/* Recipe Table */}
                 <RecipeTable
                     products={products}
                     onEditRecipe={(product) => setSelectedProduct(product)}
                 />
-            </div>
+            </ManagerPageLayout>
 
             {/* Recipe Form Drawer */}
             <RecipeFormDrawer

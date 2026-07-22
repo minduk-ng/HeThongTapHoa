@@ -178,3 +178,40 @@
         20%, 40%, 60%, 80% { transform: translateX(4px); }
     }
 }
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(161, 161, 170, 0.35); /* zinc-400/35 */
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(161, 161, 170, 0.65); /* zinc-400/65 */
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: rgba(113, 113, 122, 0.45); /* zinc-500/45 */
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(113, 113, 122, 0.75); /* zinc-500/75 */
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(161, 161, 170, 0.4) transparent;
+}
+
+.dark * {
+    scrollbar-color: rgba(113, 113, 122, 0.5) transparent;
+}
+
