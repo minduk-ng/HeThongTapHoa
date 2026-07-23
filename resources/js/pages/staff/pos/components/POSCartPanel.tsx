@@ -283,7 +283,11 @@ export default function POSCartPanel({
                                                     })
                                                 }
                                                 className="p-1 text-rose-500 hover:text-rose-700 dark:hover:text-rose-300 rounded-md transition-colors duration-150"
-                                                title="Hủy món đã gửi bếp kèm lý do"
+                                                title={
+                                                    confirmedItems.length === 1
+                                                        ? 'Đơn hàng chỉ còn 1 món. Vui lòng chọn "Hủy đơn" ở trên để hủy toàn bộ đơn'
+                                                        : 'Hủy món đã gửi bếp kèm lý do'
+                                                }
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>

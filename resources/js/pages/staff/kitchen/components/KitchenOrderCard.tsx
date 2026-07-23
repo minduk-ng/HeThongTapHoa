@@ -168,7 +168,11 @@ export default function KitchenOrderCard({ order, onCancelItem, onCancelOrder }:
                                             onCancelItem(item.id, item.menu_item?.name || 'Món ăn');
                                         }}
                                         className="p-1 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
-                                        title="Hủy món này"
+                                        title={
+                                            order.items.length === 1
+                                                ? 'Đơn hàng chỉ còn 1 món. Vui lòng chọn "Hủy đơn" ở dưới để hủy toàn bộ đơn'
+                                                : 'Hủy món này'
+                                        }
                                     >
                                         <Trash2 className="w-3.5 h-3.5 stroke-[1.5]" />
                                     </button>

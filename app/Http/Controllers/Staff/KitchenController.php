@@ -114,11 +114,24 @@ class KitchenController extends Controller
         ]);
 
         try {
-            DB::transaction(function () use ($validated, $request) {
+            $targetTable = null;
+            $targetOrder = null;
+
+            DB::transaction(function () use ($validated, $request, &$targetTable, &$targetOrder) {
                 $item = OrderItem::lockForUpdate()->findOrFail($validated['order_item_id']);
 
                 if ($item->status === 'completed' || $item->order?->status === 'completed') {
                     throw new \InvalidArgumentException('Món ăn/Đơn hàng đã hoàn thành chế biến, không thể hủy!');
+                }
+
+                $order = $item->order;
+                if ($order) {
+                    $activeItemsCount = $order->items()->where('status', '!=', 'cancelled')->count();
+                    if ($activeItemsCount <= 1) {
+                        throw new \InvalidArgumentException('Đơn hàng chỉ còn 1 món. Vui lòng chọn "Hủy đơn" để hủy toàn bộ đơn hàng này!');
+                    }
+                    $targetOrder = $order;
+                    $targetTable = $order->table ?? Table::find($order->table_id);
                 }
 
                 $reasonStr = $validated['cancellation_reason'].($validated['note'] ? ': '.$validated['note'] : '');
@@ -130,21 +143,21 @@ class KitchenController extends Controller
                     'cancelled_at' => now(),
                 ]);
 
-                // Check if all active items in order are cancelled
-                $order = $item->order;
                 if ($order) {
-                    $activeItemsCount = $order->items()->where('status', '!=', 'cancelled')->count();
-                    if ($activeItemsCount === 0) {
+                    $remainingActiveCount = $order->items()->where('status', '!=', 'cancelled')->count();
+                    if ($remainingActiveCount === 0) {
                         $order->update(['status' => 'cancelled']);
+                        if ($targetTable) {
+                            $targetTable->update(['status' => 'available', 'merged_into_table_id' => null]);
+                        }
                     }
                 }
             });
 
-            $this->safeDispatch(function () {
-                OrderSentToKitchen::dispatch(Order::first() ?? new Order);
-                $firstTable = Table::first();
-                if ($firstTable) {
-                    TableStatusUpdated::dispatch($firstTable);
+            $this->safeDispatch(function () use ($targetTable, $targetOrder) {
+                OrderSentToKitchen::dispatch($targetOrder ?? Order::first() ?? new Order);
+                if ($targetTable) {
+                    TableStatusUpdated::dispatch($targetTable);
                 }
             });
 

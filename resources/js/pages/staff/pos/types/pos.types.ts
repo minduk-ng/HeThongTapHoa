@@ -3,6 +3,7 @@ export interface POSOrderItemData {
     menu_item_id: number;
     quantity: number;
     unit_price: number;
+    status?: 'pending' | 'processing' | 'completed' | 'cancelled';
     note?: string;
     menu_item?: {
         name: string;

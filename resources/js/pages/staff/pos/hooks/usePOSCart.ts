@@ -19,6 +19,7 @@ export function usePOSCart(
                     const isOrderCompleted = order.status === 'completed';
                     if (order.items) {
                         order.items.forEach((item) => {
+                            if (item.status === 'cancelled') return;
                             const key = `${item.menu_item_id}_${isOrderCompleted ? 'completed' : 'pending'}`;
                             const existing = mergedMap[key];
                             if (existing) {

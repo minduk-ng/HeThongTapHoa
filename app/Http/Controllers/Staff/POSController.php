@@ -25,7 +25,9 @@ class POSController extends Controller
 {
     public function index(Request $request)
     {
-        $tables = Table::with(['mergedIntoTable', 'activeOrders.items.menuItem'])->where('status', '!=', 'maintenance')->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
+        $tables = Table::with(['mergedIntoTable', 'activeOrders.items' => function ($query) {
+            $query->where('status', '!=', 'cancelled')->with('menuItem');
+        }])->where('status', '!=', 'maintenance')->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
         $categories = MenuCategory::orderBy('sort_order', 'asc')->get();
         $products = MenuItem::with(['category', 'recipes.ingredient'])->where('is_available', true)->get();
 
@@ -53,7 +55,9 @@ class POSController extends Controller
             if ($table->merged_into_table_id || $tables->contains('merged_into_table_id', $table->id)) {
                 $groupId = $table->merged_into_table_id ?? $table->id;
                 $allGroupTableIds = $tables->filter(fn ($t) => $t->id == $groupId || $t->merged_into_table_id == $groupId)->pluck('id');
-                $allGroupOrders = Order::with(['items.menuItem'])->whereIn('table_id', $allGroupTableIds)->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])->get();
+                $allGroupOrders = Order::with(['items' => function ($query) {
+                    $query->where('status', '!=', 'cancelled')->with('menuItem');
+                }])->whereIn('table_id', $allGroupTableIds)->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])->get();
                 $table->setRelation('activeOrders', $allGroupOrders);
                 $table->setRelation('activeOrder', $allGroupOrders->first());
             }
@@ -493,11 +497,11 @@ class POSController extends Controller
                 ]);
             });
 
-            $this->safeDispatch(function () {
-                OrderSentToKitchen::dispatch(Order::first() ?? new Order);
-                $firstTable = Table::first();
-                if ($firstTable) {
-                    TableStatusUpdated::dispatch($firstTable);
+            $this->safeDispatch(function () use ($allGroupTables, $activeOrders) {
+                $primaryOrder = $activeOrders->first() ?? Order::first() ?? new Order;
+                OrderSentToKitchen::dispatch($primaryOrder);
+                foreach ($allGroupTables as $grpTable) {
+                    TableStatusUpdated::dispatch($grpTable);
                 }
             });
 
