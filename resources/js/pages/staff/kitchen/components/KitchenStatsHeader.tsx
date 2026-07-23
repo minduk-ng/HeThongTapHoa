@@ -11,7 +11,7 @@ interface KitchenStatsHeaderProps {
 
 export default function KitchenStatsHeader({ stats }: KitchenStatsHeaderProps) {
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-1 gap-3">
             {/* Card 1: TỔNG ORDER */}
             <div className="bg-blue-600/90 dark:bg-blue-900/80 text-white border border-blue-500/30 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                 <span className="text-xs font-black tracking-wider text-blue-200 uppercase">

@@ -20,6 +20,7 @@ const PERMISSION_LABEL_DICTIONARY: Record<string, string> = {
     import: 'Nhập Excel',
     export: 'Xuất Excel',
     bypass_kitchen_lock: 'Duyệt khẩn cấp thanh toán',
+    cancel_item: 'Hủy món đã gửi bếp kèm lý do',
     cancel: 'Hủy bỏ',
     approve: 'Phê duyệt',
 };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Trash2 } from 'lucide-react';
 
 export interface KitchenOrderData {
     id: number;
@@ -20,15 +20,20 @@ export interface KitchenOrderData {
         menu_item?: {
             id: number;
             name: string;
+            category?: {
+                id: number;
+                name: string;
+            } | null;
         };
     }>;
 }
 
 interface KitchenOrderCardProps {
     order: KitchenOrderData;
+    onCancelItem?: (itemId: number, itemName: string) => void;
 }
 
-export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
+export default function KitchenOrderCard({ order, onCancelItem }: KitchenOrderCardProps) {
     const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({});
     const [submitting, setSubmitting] = useState(false);
 
@@ -150,9 +155,24 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
                                 </div>
                             </div>
 
-                            <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-200 font-black text-xs shrink-0 border border-blue-200 dark:border-blue-800">
-                                {item.quantity} ly/phần
-                            </span>
+                            <div className="flex items-center space-x-2 shrink-0">
+                                <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-200 font-black text-xs border border-blue-200 dark:border-blue-800">
+                                    {item.quantity} ly/phần
+                                </span>
+                                {onCancelItem && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onCancelItem(item.id, item.menu_item?.name || 'Món ăn');
+                                        }}
+                                        className="p-1 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
+                                        title="Hủy món này"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5 stroke-[1.5]" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     );
                 })}

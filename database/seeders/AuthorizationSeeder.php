@@ -114,8 +114,8 @@ class AuthorizationSeeder extends Seeder
             'ingredients.view', 'ingredients.create', 'ingredients.edit', 'ingredients.delete', 'ingredients.import',
             'recipes.view', 'recipes.edit',
             'tables.view', 'tables.create', 'tables.edit', 'tables.delete',
-            'pos.view', 'pos.create', 'pos.bypass_kitchen_lock',
-            'kitchen.view', 'kitchen.update',
+            'pos.view', 'pos.create', 'pos.bypass_kitchen_lock', 'pos.cancel_item',
+            'kitchen.view', 'kitchen.update', 'kitchen.cancel_item',
         ];
 
         foreach ($permissions as $permission) {

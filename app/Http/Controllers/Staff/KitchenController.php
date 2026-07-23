@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Events\OrderCompleted;
+use App\Events\OrderSentToKitchen;
+use App\Events\TableStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use App\Models\InventoryTransaction;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\ProductRecipe;
+use App\Models\Table;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,8 +21,10 @@ class KitchenController extends Controller
 {
     public function index(Request $request)
     {
-        // Load active orders (pending / confirmed / processing)
-        $activeOrders = Order::with(['table', 'items.menuItem'])
+        // Load active orders excluding cancelled items
+        $activeOrders = Order::with(['table', 'items' => function ($query) {
+            $query->where('status', '!=', 'cancelled')->with('menuItem.category');
+        }])
             ->whereIn('status', ['pending', 'confirmed', 'processing'])
             ->orderBy('created_at', 'asc')
             ->get();
@@ -66,6 +72,9 @@ class KitchenController extends Controller
                 $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
 
                 foreach ($order->items as $item) {
+                    if ($item->status === 'cancelled') {
+                        continue;
+                    }
                     $recipes = ProductRecipe::where('menu_item_id', $item->menu_item_id)->get();
                     foreach ($recipes as $recipe) {
                         $ingredient = Ingredient::find($recipe->ingredient_id);
@@ -93,6 +102,50 @@ class KitchenController extends Controller
             Log::error('Kitchen completeOrder DB error: '.$e->getMessage());
 
             return back()->withErrors(['error' => 'Hoàn thành đơn thất bại: Không thể kết nối hoặc lưu cơ sở dữ liệu. Vui lòng thử lại.']);
+        }
+    }
+
+    public function cancelItem(Request $request)
+    {
+        $validated = $request->validate([
+            'order_item_id' => 'required|exists:order_items,id',
+            'cancellation_reason' => 'required|string|max:255',
+            'note' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated, $request) {
+                $item = OrderItem::lockForUpdate()->findOrFail($validated['order_item_id']);
+                $reasonStr = $validated['cancellation_reason'].($validated['note'] ? ': '.$validated['note'] : '');
+
+                $item->update([
+                    'status' => 'cancelled',
+                    'cancellation_reason' => $reasonStr,
+                    'cancelled_by_user_id' => $request->user()->id,
+                    'cancelled_at' => now(),
+                ]);
+
+                // Check if all active items in order are cancelled
+                $order = $item->order;
+                if ($order) {
+                    $activeItemsCount = $order->items()->where('status', '!=', 'cancelled')->count();
+                    if ($activeItemsCount === 0) {
+                        $order->update(['status' => 'cancelled']);
+                    }
+                }
+            });
+
+            OrderSentToKitchen::dispatch(Order::first() ?? new Order);
+            $firstTable = Table::first();
+            if ($firstTable) {
+                TableStatusUpdated::dispatch($firstTable);
+            }
+
+            return back()->with('success', 'Hủy món thành công!');
+        } catch (\Throwable $e) {
+            Log::error('Kitchen cancelItem DB error: '.$e->getMessage());
+
+            return back()->withErrors(['error' => 'Hủy món thất bại: '.$e->getMessage()]);
         }
     }
 }

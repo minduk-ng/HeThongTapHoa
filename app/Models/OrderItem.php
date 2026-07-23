@@ -15,13 +15,18 @@ class OrderItem extends Model
         'quantity',
         'unit_price',
         'subtotal',
+        'status',
         'note',
+        'cancellation_reason',
+        'cancelled_by_user_id',
+        'cancelled_at',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
         'unit_price' => 'float',
         'subtotal' => 'float',
+        'cancelled_at' => 'datetime',
     ];
 
     public function order()
@@ -32,5 +37,10 @@ class OrderItem extends Model
     public function menuItem()
     {
         return $this->belongsTo(MenuItem::class, 'menu_item_id');
+    }
+
+    public function cancelledBy()
+    {
+        return $this->belongsTo(User::class, 'cancelled_by_user_id');
     }
 }
