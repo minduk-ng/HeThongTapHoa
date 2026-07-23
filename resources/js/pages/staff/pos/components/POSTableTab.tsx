@@ -54,6 +54,10 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable, lock
                                 ? new Date(table.reservation_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
                                 : '';
 
+                            const grpId = table.merged_into_table_id || table.id;
+                            const grpTableIds = tables.filter((t) => t.id === grpId || t.merged_into_table_id === grpId).map((t) => t.id);
+                            const groupLockInfo = grpTableIds.map((id) => lockedCheckoutTables[id]).find(Boolean);
+
                             return (
                                 <div
                                     key={table.id}
@@ -97,9 +101,9 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable, lock
                                                     : 'Trống'}
                                             </span>
 
-                                            {lockedCheckoutTables[table.id] && (
+                                            {groupLockInfo && (
                                                 <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800/60">
-                                                    Đang thanh toán: {lockedCheckoutTables[table.id].employeeName}
+                                                    Đang thanh toán: {groupLockInfo.employeeName}
                                                 </span>
                                             )}
                                         </div>

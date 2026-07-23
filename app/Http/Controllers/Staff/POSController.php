@@ -239,21 +239,63 @@ class POSController extends Controller
                     throw new \Exception('Bàn đích phải ở trạng thái bàn trống.');
                 }
 
-                // Move all active orders to target table
-                Order::where('table_id', $sourceTable->id)
-                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
-                    ->update(['table_id' => $targetTable->id]);
+                if ($sourceTable->merged_into_table_id) {
+                    // Case 1: Source table is a sub-table in a merged group
+                    // Target table takes over the merge link to primary table
+                    $primaryId = $sourceTable->merged_into_table_id;
+                    $targetTable->update([
+                        'status' => 'occupied',
+                        'merged_into_table_id' => $primaryId,
+                    ]);
 
-                // Release source table
-                $sourceTable->update([
-                    'status' => 'available',
-                    'merged_into_table_id' => null,
-                ]);
+                    $sourceTable->update([
+                        'status' => 'available',
+                        'merged_into_table_id' => null,
+                    ]);
 
-                // Update target table to occupied
-                $targetTable->update([
-                    'status' => 'occupied',
-                ]);
+                    $primaryTable = Table::find($primaryId);
+                    if ($primaryTable) {
+                        TableStatusUpdated::dispatch($primaryTable);
+                    }
+                } elseif (Table::where('merged_into_table_id', $sourceTable->id)->exists()) {
+                    // Case 2: Source table is the primary table of a merged group
+                    // Move all active orders to target table
+                    Order::where('table_id', $sourceTable->id)
+                        ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                        ->update(['table_id' => $targetTable->id]);
+
+                    // Update all sub-tables to point to target table as their new primary table
+                    $subTables = Table::where('merged_into_table_id', $sourceTable->id)->get();
+                    foreach ($subTables as $subTable) {
+                        $subTable->update(['merged_into_table_id' => $targetTable->id]);
+                        TableStatusUpdated::dispatch($subTable);
+                    }
+
+                    $targetTable->update([
+                        'status' => 'occupied',
+                        'merged_into_table_id' => null,
+                    ]);
+
+                    $sourceTable->update([
+                        'status' => 'available',
+                        'merged_into_table_id' => null,
+                    ]);
+                } else {
+                    // Case 3: Standard independent table transfer
+                    Order::where('table_id', $sourceTable->id)
+                        ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                        ->update(['table_id' => $targetTable->id]);
+
+                    $sourceTable->update([
+                        'status' => 'available',
+                        'merged_into_table_id' => null,
+                    ]);
+
+                    $targetTable->update([
+                        'status' => 'occupied',
+                        'merged_into_table_id' => null,
+                    ]);
+                }
 
                 TableTransferred::dispatch($sourceTable, $targetTable, 'transfer');
                 TableStatusUpdated::dispatch($sourceTable);

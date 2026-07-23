@@ -25,12 +25,12 @@ export function usePOSCheckout(
     const togglePaymentDrawer = (open: boolean) => {
         setIsPaymentDrawerOpen(open);
         if (selectedTable) {
+            const groupId = selectedTable.merged_into_table_id || selectedTable.id;
             const linkedTableIds = tables
                 .filter(
                     (t) =>
-                        t.id !== selectedTable.id &&
-                        (t.merged_into_table_id === selectedTable.id ||
-                            (selectedTable.merged_into_table_id && t.id === selectedTable.merged_into_table_id))
+                        t.id === groupId ||
+                        t.merged_into_table_id === groupId
                 )
                 .map((t) => t.id);
 

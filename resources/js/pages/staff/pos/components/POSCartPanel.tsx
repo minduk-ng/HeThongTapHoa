@@ -267,9 +267,14 @@ export default function POSCartPanel({
                 <div className="grid grid-cols-2 gap-3 pt-1">
                     <button
                         type="button"
-                        disabled={submitting || cartItems.length === 0 || !hasUnconfirmedItems}
+                        disabled={submitting || cartItems.length === 0 || !hasUnconfirmedItems || isCheckoutLocked}
                         onClick={onSendToKitchen}
-                        className="py-2.5 px-3 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl disabled:opacity-50 flex items-center justify-center space-x-1.5 transition-colors duration-150"
+                        className={`py-2.5 px-3 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 transition-colors duration-150 ${
+                            isCheckoutLocked
+                                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border border-zinc-200 dark:border-zinc-700 cursor-not-allowed opacity-50'
+                                : 'text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50'
+                        }`}
+                        title={isCheckoutLocked ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}` : 'Gửi món vừa chọn xuống Bếp'}
                     >
                         <Send className="w-3.5 h-3.5" />
                         <span>{submitting ? 'Đang gửi...' : 'Gửi bếp chế biến'}</span>

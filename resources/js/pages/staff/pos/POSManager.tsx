@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { Armchair, UtensilsCrossed } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
@@ -63,6 +63,27 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         handleSendToKitchen,
         handleConfirmPayment,
     } = usePOSCheckout(selectedTable, tables);
+
+    const isCurrentTableCheckoutLocked = useMemo(() => {
+        if (!selectedTable) return false;
+        const groupId = selectedTable.merged_into_table_id || selectedTable.id;
+        const groupTableIds = tables
+            .filter((t) => t.id === groupId || t.merged_into_table_id === groupId)
+            .map((t) => t.id);
+
+        return groupTableIds.some((id) => !!lockedCheckoutTables[id]);
+    }, [selectedTable, tables, lockedCheckoutTables]);
+
+    const currentTableLockedBy = useMemo(() => {
+        if (!selectedTable) return '';
+        const groupId = selectedTable.merged_into_table_id || selectedTable.id;
+        const groupTableIds = tables
+            .filter((t) => t.id === groupId || t.merged_into_table_id === groupId)
+            .map((t) => t.id);
+
+        const lockedId = groupTableIds.find((id) => !!lockedCheckoutTables[id]);
+        return lockedId ? lockedCheckoutTables[lockedId].employeeName : '';
+    }, [selectedTable, tables, lockedCheckoutTables]);
 
     return (
         <DashboardLayout fullWidth={true}>
@@ -149,8 +170,8 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                             }
                             onOpenPayment={() => setIsPaymentDrawerOpen(true)}
                             submitting={submitting}
-                            isCheckoutLocked={!!(selectedTable && lockedCheckoutTables[selectedTable.id])}
-                            checkoutLockedBy={selectedTable ? lockedCheckoutTables[selectedTable.id]?.employeeName : ''}
+                            isCheckoutLocked={isCurrentTableCheckoutLocked}
+                            checkoutLockedBy={currentTableLockedBy}
                         />
                     </div>
                 </div>
