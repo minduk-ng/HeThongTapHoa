@@ -53,29 +53,41 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
     // Realtime WebSocket Listener via Reverb for instant new order tickets & completions & chime audio
     useEffect(() => {
         if (typeof window !== 'undefined' && window.Echo) {
-            const channel = window.Echo.private('kitchen-channel');
-            channel
-                .listen('.OrderSentToKitchen', () => {
-                    if (soundEnabledRef.current) {
-                        playKitchenChime();
-                    }
-                    router.reload({
-                        only: ['orders', 'stats'],
-                        onError: () => {},
-                    });
-                })
-                .listen('.OrderCompleted', () => {
-                    router.reload({
-                        only: ['orders', 'stats'],
-                        onError: () => {},
-                    });
-                })
-                .listen('.TableTransferred', () => {
-                    router.reload({
-                        only: ['orders', 'stats'],
-                        onError: () => {},
-                    });
+            const privateChannel = window.Echo.private('kitchen-channel');
+            const publicChannel = window.Echo.channel('kitchen-channel');
+
+            const handleOrderSent = () => {
+                if (soundEnabledRef.current) {
+                    playKitchenChime();
+                }
+                router.reload({
+                    only: ['orders', 'stats'],
+                    onError: () => {},
                 });
+            };
+
+            const handleReload = () => {
+                router.reload({
+                    only: ['orders', 'stats'],
+                    onError: () => {},
+                });
+            };
+
+            privateChannel
+                .listen('.OrderSentToKitchen', handleOrderSent)
+                .listen('OrderSentToKitchen', handleOrderSent)
+                .listen('.OrderCompleted', handleReload)
+                .listen('OrderCompleted', handleReload)
+                .listen('.TableTransferred', handleReload)
+                .listen('TableTransferred', handleReload);
+
+            publicChannel
+                .listen('.OrderSentToKitchen', handleOrderSent)
+                .listen('OrderSentToKitchen', handleOrderSent)
+                .listen('.OrderCompleted', handleReload)
+                .listen('OrderCompleted', handleReload)
+                .listen('.TableTransferred', handleReload)
+                .listen('TableTransferred', handleReload);
 
             return () => {
                 window.Echo.leave('kitchen-channel');

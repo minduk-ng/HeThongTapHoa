@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Models\Table;
+use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -22,6 +23,8 @@ class TableTransferred implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
+            new Channel('pos-channel'),
+            new Channel('kitchen-channel'),
             new PrivateChannel('pos-channel'),
             new PrivateChannel('kitchen-channel'),
         ];
