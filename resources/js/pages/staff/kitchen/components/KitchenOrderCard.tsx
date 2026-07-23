@@ -160,7 +160,7 @@ export default function KitchenOrderCard({ order, onCancelItem, onCancelOrder }:
                                 <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-200 font-black text-xs border border-blue-200 dark:border-blue-800">
                                     {item.quantity} ly/phần
                                 </span>
-                                {onCancelItem && (
+                                {onCancelItem && !isChecked && (
                                     <button
                                         type="button"
                                         onClick={(e) => {
@@ -181,7 +181,7 @@ export default function KitchenOrderCard({ order, onCancelItem, onCancelOrder }:
 
             {/* Complete Order & Cancel Order Footer */}
             <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex items-center gap-2">
-                {onCancelOrder && order.table?.id && (
+                {onCancelOrder && order.table?.id && completedItemsCount < order.items.length && (
                     <button
                         type="button"
                         disabled={submitting}

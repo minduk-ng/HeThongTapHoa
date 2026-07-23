@@ -95,7 +95,7 @@ class KitchenController extends Controller
                 }
             });
 
-            OrderCompleted::dispatch($order);
+            $this->safeDispatch(fn () => OrderCompleted::dispatch($order));
 
             return back()->with('success', 'Đã xác nhận hoàn thành đơn order và tự động trừ nguyên liệu kho thành công!');
         } catch (\Throwable $e) {
@@ -116,6 +116,11 @@ class KitchenController extends Controller
         try {
             DB::transaction(function () use ($validated, $request) {
                 $item = OrderItem::lockForUpdate()->findOrFail($validated['order_item_id']);
+
+                if ($item->status === 'completed' || $item->order?->status === 'completed') {
+                    throw new \InvalidArgumentException('Món ăn/Đơn hàng đã hoàn thành chế biến, không thể hủy!');
+                }
+
                 $reasonStr = $validated['cancellation_reason'].($validated['note'] ? ': '.$validated['note'] : '');
 
                 $item->update([
@@ -135,17 +140,30 @@ class KitchenController extends Controller
                 }
             });
 
-            OrderSentToKitchen::dispatch(Order::first() ?? new Order);
-            $firstTable = Table::first();
-            if ($firstTable) {
-                TableStatusUpdated::dispatch($firstTable);
-            }
+            $this->safeDispatch(function () {
+                OrderSentToKitchen::dispatch(Order::first() ?? new Order);
+                $firstTable = Table::first();
+                if ($firstTable) {
+                    TableStatusUpdated::dispatch($firstTable);
+                }
+            });
 
             return back()->with('success', 'Hủy món thành công!');
+        } catch (\InvalidArgumentException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         } catch (\Throwable $e) {
             Log::error('Kitchen cancelItem DB error: '.$e->getMessage());
 
             return back()->withErrors(['error' => 'Hủy món thất bại: '.$e->getMessage()]);
+        }
+    }
+
+    private function safeDispatch(callable $callback): void
+    {
+        try {
+            $callback();
+        } catch (\Throwable $e) {
+            Log::warning('Reverb Broadcast skipped due to socket connection issue: '.$e->getMessage());
         }
     }
 }

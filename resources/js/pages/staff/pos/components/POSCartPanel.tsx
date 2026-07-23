@@ -131,7 +131,7 @@ export default function POSCartPanel({
                     <p className="text-xs text-zinc-400 mt-0.5">Sức chứa: {selectedTable.capacity} ghế</p>
                 </div>
                 <div className="flex items-center space-x-2">
-                    {confirmedItems.length > 0 && canCancel && (
+                    {confirmedItems.length > 0 && canCancel && confirmedItems.some((i) => !i.isKitchenCompleted) && (
                         <button
                             type="button"
                             disabled={submitting || isCheckoutLocked}
@@ -271,7 +271,7 @@ export default function POSCartPanel({
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
-                                        ) : canCancel && item.orderItemId ? (
+                                        ) : canCancel && item.orderItemId && !item.isKitchenCompleted ? (
                                             <button
                                                 type="button"
                                                 onClick={() =>
@@ -288,7 +288,7 @@ export default function POSCartPanel({
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
                                         ) : (
-                                            <span className="p-1 text-zinc-300 dark:text-zinc-600 cursor-not-allowed" title="Món đã gửi bếp không được xóa">
+                                            <span className="p-1 text-zinc-300 dark:text-zinc-600 cursor-not-allowed" title={item.isKitchenCompleted ? 'Món đã hoàn thành chế biến, không thể hủy' : 'Món đã gửi bếp không được xóa'}>
                                                 <Lock className="w-3.5 h-3.5 text-zinc-400" />
                                             </span>
                                         )}

@@ -132,7 +132,7 @@ class POSController extends Controller
                 return $order;
             });
 
-            OrderSentToKitchen::dispatch($createdOrder);
+            $this->safeDispatch(fn () => OrderSentToKitchen::dispatch($createdOrder));
 
             return back()->with('success', 'Đã gửi đơn order chế biến xuống bếp thành công!');
         } catch (\Throwable $e) {
@@ -227,14 +227,14 @@ class POSController extends Controller
                         'status' => 'available',
                         'merged_into_table_id' => null,
                     ]);
-                    TableStatusUpdated::dispatch($grpTable);
+                    $this->safeDispatch(fn () => TableStatusUpdated::dispatch($grpTable));
                 }
 
-                return $table;
+                return $targetTable;
             });
 
-            TableStatusUpdated::dispatch($targetTable);
-            IngredientStockUpdated::dispatch(['source' => 'checkout']);
+            $this->safeDispatch(fn () => TableStatusUpdated::dispatch($table));
+            $this->safeDispatch(fn () => IngredientStockUpdated::dispatch(['source' => 'checkout']));
 
             return back()->with('success', 'Thanh toán hoàn tất thành công!');
         } catch (\Throwable $e) {
@@ -440,11 +440,26 @@ class POSController extends Controller
                     ->lockForUpdate()
                     ->get();
 
+                if ($activeOrders->isEmpty()) {
+                    throw new \InvalidArgumentException('Không tìm thấy đơn hàng cần hủy!');
+                }
+
+                foreach ($activeOrders as $order) {
+                    if ($order->status === 'completed') {
+                        throw new \InvalidArgumentException('Đơn hàng đã hoàn thành chế biến, không thể hủy!');
+                    }
+
+                    $uncompletedItems = $order->items->filter(fn ($i) => $i->status !== 'completed' && $i->status !== 'cancelled');
+                    if ($uncompletedItems->isEmpty() && $order->items->where('status', '!=', 'cancelled')->count() > 0) {
+                        throw new \InvalidArgumentException('Tất cả món trong đơn đã hoàn thành chế biến, không thể hủy!');
+                    }
+                }
+
                 $reasonStr = $validated['cancellation_reason'].($validated['note'] ? ': '.$validated['note'] : '');
 
                 foreach ($activeOrders as $order) {
                     foreach ($order->items as $item) {
-                        if ($item->status !== 'cancelled') {
+                        if ($item->status !== 'completed' && $item->status !== 'cancelled') {
                             $item->update([
                                 'status' => 'cancelled',
                                 'cancellation_reason' => $reasonStr,
@@ -463,17 +478,30 @@ class POSController extends Controller
                 ]);
             });
 
-            OrderSentToKitchen::dispatch(Order::first() ?? new Order);
-            $firstTable = Table::first();
-            if ($firstTable) {
-                TableStatusUpdated::dispatch($firstTable);
-            }
+            $this->safeDispatch(function () {
+                OrderSentToKitchen::dispatch(Order::first() ?? new Order);
+                $firstTable = Table::first();
+                if ($firstTable) {
+                    TableStatusUpdated::dispatch($firstTable);
+                }
+            });
 
             return back()->with('success', 'Đã hủy toàn bộ đơn hàng thành công!');
+        } catch (\InvalidArgumentException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         } catch (\Throwable $e) {
             Log::error('POS cancelOrder DB error: '.$e->getMessage());
 
             return back()->withErrors(['error' => 'Hủy đơn hàng thất bại: '.$e->getMessage()]);
+        }
+    }
+
+    private function safeDispatch(callable $callback): void
+    {
+        try {
+            $callback();
+        } catch (\Throwable $e) {
+            Log::warning('Reverb Broadcast skipped due to socket connection issue: '.$e->getMessage());
         }
     }
 }
