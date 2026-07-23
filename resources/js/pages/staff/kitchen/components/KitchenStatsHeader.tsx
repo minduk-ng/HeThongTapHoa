@@ -42,21 +42,6 @@ export default function KitchenStatsHeader({ stats }: KitchenStatsHeaderProps) {
                 </div>
             </div>
 
-            {/* Card 3: HOÀN THÀNH */}
-            <div className="bg-emerald-700/90 dark:bg-emerald-900/80 text-white border border-emerald-600/30 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-                <span className="text-xs font-black tracking-wider text-emerald-200 uppercase">
-                    HOÀN THÀNH
-                </span>
-                <div className="mt-3 flex items-baseline justify-between">
-                    <span className="text-4xl font-black text-white">
-                        {stats.completed_items}
-                    </span>
-                    <span className="text-xs text-emerald-100 font-bold px-2.5 py-0.5 rounded-full bg-emerald-800/80 dark:bg-emerald-950 border border-emerald-500/30">
-                        đơn xong hôm nay
-                    </span>
-                </div>
-            </div>
-
             {/* Card 4: CẢNH BÁO */}
             <div className="bg-amber-600/90 dark:bg-amber-800/80 text-white border border-amber-500/30 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                 <span className="text-xs font-black tracking-wider text-amber-200 uppercase">
