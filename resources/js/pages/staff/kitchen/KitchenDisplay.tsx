@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { Sparkles, Volume2, VolumeX, RefreshCw, Coffee, UtensilsCrossed, Layers } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
@@ -45,12 +45,18 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
         return () => clearInterval(timer);
     }, []);
 
+    const soundEnabledRef = useRef<boolean>(soundEnabled);
+    useEffect(() => {
+        soundEnabledRef.current = soundEnabled;
+    }, [soundEnabled]);
+
     // Realtime WebSocket Listener via Reverb for instant new order tickets & completions & chime audio
     useEffect(() => {
-        if (window.Echo) {
-            window.Echo.channel('kitchen-channel')
+        if (typeof window !== 'undefined' && window.Echo) {
+            const channel = window.Echo.private('kitchen-channel');
+            channel
                 .listen('.OrderSentToKitchen', () => {
-                    if (soundEnabled) {
+                    if (soundEnabledRef.current) {
                         playKitchenChime();
                     }
                     router.reload({
@@ -75,7 +81,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                 window.Echo.leave('kitchen-channel');
             };
         }
-    }, [soundEnabled]);
+    }, []);
 
     // Real-time calculation of warning orders on Frontend without server requests
     const liveWarningCount = orders.filter((o) => {
