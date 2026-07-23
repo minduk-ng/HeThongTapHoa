@@ -22,14 +22,18 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
     const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
     const [activeStation, setActiveStation] = useState<'all' | 'bar' | 'kitchen'>('all');
 
-    // Void Item Modal state
+    // Void Item/Order Modal state
     const [voidModalState, setVoidModalState] = useState<{
         isOpen: boolean;
+        mode: 'item' | 'order';
         orderItemId: number | null;
+        tableId: number | null;
         menuItemName: string;
     }>({
         isOpen: false,
+        mode: 'item',
         orderItemId: null,
+        tableId: null,
         menuItemName: '',
     });
 
@@ -43,9 +47,8 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
 
     // Realtime WebSocket Listener via Reverb for instant new order tickets & completions & chime audio
     useEffect(() => {
-        if (typeof window !== 'undefined' && window.Echo) {
-            const channel = window.Echo.private('kitchen-channel');
-            channel
+        if (window.Echo) {
+            window.Echo.channel('kitchen-channel')
                 .listen('.OrderSentToKitchen', () => {
                     if (soundEnabled) {
                         playKitchenChime();
@@ -119,8 +122,20 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
     const handleOpenVoidModal = (itemId: number, itemName: string) => {
         setVoidModalState({
             isOpen: true,
+            mode: 'item',
             orderItemId: itemId,
+            tableId: null,
             menuItemName: itemName,
+        });
+    };
+
+    const handleOpenCancelOrderModal = (tableId: number, orderCode: string) => {
+        setVoidModalState({
+            isOpen: true,
+            mode: 'order',
+            orderItemId: null,
+            tableId: tableId,
+            menuItemName: `Đơn ${orderCode}`,
         });
     };
 
@@ -130,8 +145,18 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
 
             <VoidItemModal
                 isOpen={voidModalState.isOpen}
-                onClose={() => setVoidModalState({ isOpen: false, orderItemId: null, menuItemName: '' })}
+                onClose={() =>
+                    setVoidModalState({
+                        isOpen: false,
+                        mode: 'item',
+                        orderItemId: null,
+                        tableId: null,
+                        menuItemName: '',
+                    })
+                }
+                mode={voidModalState.mode}
                 orderItemId={voidModalState.orderItemId}
+                tableId={voidModalState.tableId}
                 menuItemName={voidModalState.menuItemName}
             />
 
@@ -260,6 +285,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                                         key={order.id}
                                         order={order}
                                         onCancelItem={handleOpenVoidModal}
+                                        onCancelOrder={handleOpenCancelOrderModal}
                                     />
                                 ))}
                             </div>

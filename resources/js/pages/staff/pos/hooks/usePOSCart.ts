@@ -35,6 +35,7 @@ export function usePOSCart(
                                     note: item.note || '',
                                     isConfirmed: true,
                                     isKitchenCompleted: isOrderCompleted,
+                                    orderItemId: item.id,
                                 };
                             }
                         });

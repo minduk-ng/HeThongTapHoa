@@ -62,6 +62,7 @@ export interface CartItem {
     isConfirmed?: boolean;
     isKitchenCompleted?: boolean;
     orderStatus?: string;
+    orderItemId?: number;
 }
 
 export interface ReceiptModalState {

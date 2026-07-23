@@ -5,7 +5,9 @@ import { AlertCircle, Trash2 } from 'lucide-react';
 interface VoidItemModalProps {
     isOpen: boolean;
     onClose: () => void;
-    orderItemId: number | null;
+    mode?: 'item' | 'order';
+    orderItemId?: number | null;
+    tableId?: number | null;
     menuItemName: string;
 }
 
@@ -19,7 +21,9 @@ const CANCEL_REASONS = [
 export default function VoidItemModal({
     isOpen,
     onClose,
+    mode = 'item',
     orderItemId,
+    tableId,
     menuItemName,
 }: VoidItemModalProps) {
     const [reason, setReason] = useState<string>(CANCEL_REASONS[0]);
@@ -27,31 +31,30 @@ export default function VoidItemModal({
     const [submitting, setSubmitting] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-    if (!isOpen || !orderItemId) return null;
+    if (!isOpen) return null;
+    if (mode === 'item' && !orderItemId) return null;
+    if (mode === 'order' && !tableId) return null;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
         setErrorMsg(null);
 
-        router.post(
-            '/staff/kitchen/cancel-item',
-            {
-                order_item_id: orderItemId,
-                cancellation_reason: reason,
-                note: note.trim(),
+        const endpoint = mode === 'order' ? '/staff/pos/cancel-order' : '/staff/kitchen/cancel-item';
+        const payload = mode === 'order'
+            ? { table_id: tableId, cancellation_reason: reason, note: note.trim() }
+            : { order_item_id: orderItemId, cancellation_reason: reason, note: note.trim() };
+
+        router.post(endpoint, payload, {
+            onSuccess: () => {
+                setSubmitting(false);
+                onClose();
             },
-            {
-                onSuccess: () => {
-                    setSubmitting(false);
-                    onClose();
-                },
-                onError: (errs) => {
-                    setSubmitting(false);
-                    setErrorMsg(errs.error || 'Hủy món thất bại. Vui lòng kiểm tra phân quyền.');
-                },
-            }
-        );
+            onError: (errs) => {
+                setSubmitting(false);
+                setErrorMsg(errs.error || 'Thao tác hủy thất bại. Vui lòng kiểm tra lại phân quyền.');
+            },
+        });
     };
 
     return (
@@ -62,7 +65,7 @@ export default function VoidItemModal({
                     <div className="flex items-center space-x-2 text-rose-600 dark:text-rose-400">
                         <Trash2 className="w-5 h-5 stroke-[1.5]" />
                         <h3 className="font-display text-lg font-bold text-zinc-900 dark:text-zinc-100">
-                            Xác nhận Hủy món
+                            {mode === 'order' ? 'Xác nhận Hủy toàn bộ đơn hàng' : 'Xác nhận Hủy món'}
                         </h3>
                     </div>
                     <button
@@ -83,12 +86,13 @@ export default function VoidItemModal({
 
                 <form onSubmit={handleSubmit} className="p-5 space-y-4">
                     <div className="p-3 rounded-xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/60 text-xs text-rose-900 dark:text-rose-200">
-                        Đang chọn hủy: <strong className="text-rose-600 dark:text-rose-400 font-bold">{menuItemName}</strong>
+                        {mode === 'order' ? 'Đang chọn hủy:' : 'Đang chọn hủy món:'}{' '}
+                        <strong className="text-rose-600 dark:text-rose-400 font-bold">{menuItemName}</strong>
                     </div>
 
                     <div>
                         <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
-                            Lý do hủy món <span className="text-rose-500">*</span>
+                            Lý do hủy <span className="text-rose-500">*</span>
                         </label>
                         <div className="space-y-2">
                             {CANCEL_REASONS.map((r) => (
@@ -118,7 +122,7 @@ export default function VoidItemModal({
                             type="text"
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
-                            placeholder="Nhập chi tiết ví dụ: Khách đổi sang Cà phê sữa..."
+                            placeholder="Nhập chi tiết ví dụ: Khách đổi ý, khách bỏ về..."
                             className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
                         />
                     </div>
@@ -136,7 +140,7 @@ export default function VoidItemModal({
                             disabled={submitting}
                             className="px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-xs disabled:opacity-50"
                         >
-                            {submitting ? 'Đang xử lý...' : 'Xác nhận Hủy món'}
+                            {submitting ? 'Đang xử lý...' : mode === 'order' ? 'Xác nhận Hủy cả đơn' : 'Xác nhận Hủy món'}
                         </button>
                     </div>
                 </form>

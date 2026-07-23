@@ -75,20 +75,26 @@ export function usePOSCheckoutLock() {
 
     const lockTableCheckout = useCallback((tableId: number, employeeName: string, linkedTableIds: number[] = []) => {
         activeLockTableIdRef.current = tableId;
-        if (typeof window !== 'undefined' && window.Echo) {
-            const presence = window.Echo.join('pos-room');
-            presence.whisper('table-checkout-started', {
-                tableId,
-                employeeName,
-                clientId: clientIdRef.current,
-            });
-            linkedTableIds.forEach((linkedId) => {
-                presence.whisper('table-checkout-started', {
-                    tableId: linkedId,
-                    employeeName,
-                    clientId: clientIdRef.current,
-                });
-            });
+        try {
+            if (typeof window !== 'undefined' && window.Echo) {
+                const presence = window.Echo.join('pos-room');
+                if (presence && typeof presence.whisper === 'function') {
+                    presence.whisper('table-checkout-started', {
+                        tableId,
+                        employeeName,
+                        clientId: clientIdRef.current,
+                    });
+                    linkedTableIds.forEach((linkedId) => {
+                        presence.whisper('table-checkout-started', {
+                            tableId: linkedId,
+                            employeeName,
+                            clientId: clientIdRef.current,
+                        });
+                    });
+                }
+            }
+        } catch (err) {
+            console.warn('Reverb presence lock whisper suppressed:', err);
         }
     }, []);
 
@@ -96,18 +102,24 @@ export function usePOSCheckoutLock() {
         if (activeLockTableIdRef.current === tableId) {
             activeLockTableIdRef.current = null;
         }
-        if (typeof window !== 'undefined' && window.Echo) {
-            const presence = window.Echo.join('pos-room');
-            presence.whisper('table-checkout-ended', {
-                tableId,
-                clientId: clientIdRef.current,
-            });
-            linkedTableIds.forEach((linkedId) => {
-                presence.whisper('table-checkout-ended', {
-                    tableId: linkedId,
-                    clientId: clientIdRef.current,
-                });
-            });
+        try {
+            if (typeof window !== 'undefined' && window.Echo) {
+                const presence = window.Echo.join('pos-room');
+                if (presence && typeof presence.whisper === 'function') {
+                    presence.whisper('table-checkout-ended', {
+                        tableId,
+                        clientId: clientIdRef.current,
+                    });
+                    linkedTableIds.forEach((linkedId) => {
+                        presence.whisper('table-checkout-ended', {
+                            tableId: linkedId,
+                            clientId: clientIdRef.current,
+                        });
+                    });
+                }
+            }
+        } catch (err) {
+            console.warn('Reverb presence unlock whisper suppressed:', err);
         }
     }, []);
 

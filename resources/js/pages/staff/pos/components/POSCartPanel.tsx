@@ -4,6 +4,8 @@ import { Armchair, ShoppingBag, Lock, Trash2, Send, CreditCard, ArrowRightLeft }
 import { POSTableData, CartItem } from '../types/pos.types';
 import TransferMergeModal from './TransferMergeModal';
 
+import VoidItemModal from '@/pages/staff/kitchen/components/VoidItemModal';
+
 interface POSCartPanelProps {
     selectedTable: POSTableData | null;
     tables?: POSTableData[];
@@ -33,8 +35,24 @@ export default function POSCartPanel({
 }: POSCartPanelProps) {
     const { auth } = usePage<any>().props;
     const canBypassKitchen = !!(auth?.is_admin || auth?.permissions?.includes('pos.bypass_kitchen_lock'));
+    const canCancel = !!(auth?.is_admin || auth?.permissions?.includes('pos.cancel_item') || auth?.permissions?.includes('kitchen.cancel_item'));
     const [managerBypass, setManagerBypass] = useState(false);
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+
+    // Cancel Modal State
+    const [cancelModalState, setCancelModalState] = useState<{
+        isOpen: boolean;
+        mode: 'item' | 'order';
+        orderItemId?: number | null;
+        tableId?: number | null;
+        menuItemName: string;
+    }>({
+        isOpen: false,
+        mode: 'order',
+        orderItemId: null,
+        tableId: null,
+        menuItemName: '',
+    });
 
     if (!selectedTable) {
         return (
@@ -74,6 +92,23 @@ export default function POSCartPanel({
 
     return (
         <div className="h-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl flex flex-col justify-between overflow-hidden">
+            <VoidItemModal
+                isOpen={cancelModalState.isOpen}
+                onClose={() =>
+                    setCancelModalState({
+                        isOpen: false,
+                        mode: 'order',
+                        orderItemId: null,
+                        tableId: null,
+                        menuItemName: '',
+                    })
+                }
+                mode={cancelModalState.mode}
+                orderItemId={cancelModalState.orderItemId}
+                tableId={cancelModalState.tableId}
+                menuItemName={cancelModalState.menuItemName}
+            />
+
             <TransferMergeModal 
                 isOpen={isTransferModalOpen}
                 onClose={() => setIsTransferModalOpen(false)}
@@ -96,6 +131,26 @@ export default function POSCartPanel({
                     <p className="text-xs text-zinc-400 mt-0.5">Sức chứa: {selectedTable.capacity} ghế</p>
                 </div>
                 <div className="flex items-center space-x-2">
+                    {confirmedItems.length > 0 && canCancel && (
+                        <button
+                            type="button"
+                            disabled={submitting || isCheckoutLocked}
+                            onClick={() =>
+                                setCancelModalState({
+                                    isOpen: true,
+                                    mode: 'order',
+                                    tableId: selectedTable.id,
+                                    menuItemName: `Toàn bộ đơn ${selectedTable.table_number}`,
+                                })
+                            }
+                            className="px-2.5 py-1 text-xs font-semibold rounded-md border bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800 flex items-center gap-1 transition-colors disabled:opacity-40"
+                            title="Hủy toàn bộ đơn hàng của bàn này"
+                        >
+                            <Trash2 className="w-3.5 h-3.5 stroke-[1.5]" />
+                            <span>Hủy đơn</span>
+                        </button>
+                    )}
+
                     <button
                         type="button"
                         disabled={submitting || isCheckoutLocked}
@@ -212,7 +267,23 @@ export default function POSCartPanel({
                                                 type="button"
                                                 onClick={() => onRemoveItem(item.menu_item_id)}
                                                 className="p-1 text-zinc-400 hover:text-rose-600 rounded-md transition-colors duration-150"
-                                                title="Hủy chọn món"
+                                                title="Hủy chọn món nháp"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        ) : canCancel && item.orderItemId ? (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setCancelModalState({
+                                                        isOpen: true,
+                                                        mode: 'item',
+                                                        orderItemId: item.orderItemId,
+                                                        menuItemName: item.name,
+                                                    })
+                                                }
+                                                className="p-1 text-rose-500 hover:text-rose-700 dark:hover:text-rose-300 rounded-md transition-colors duration-150"
+                                                title="Hủy món đã gửi bếp kèm lý do"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>

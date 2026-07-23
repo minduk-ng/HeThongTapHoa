@@ -419,4 +419,61 @@ class POSController extends Controller
             return back()->withErrors(['error' => 'Tách / Hủy gộp bàn thất bại: '.$e->getMessage()]);
         }
     }
+
+    public function cancelOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'table_id' => 'required|exists:tables,id',
+            'cancellation_reason' => 'required|string|max:255',
+            'note' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated, $request) {
+                $table = Table::findOrFail($validated['table_id']);
+                $primaryId = $table->merged_into_table_id ?? $table->id;
+                $allGroupTables = Table::where('id', $primaryId)->orWhere('merged_into_table_id', $primaryId)->get();
+                $allGroupTableIds = $allGroupTables->pluck('id');
+
+                $activeOrders = Order::with('items')->whereIn('table_id', $allGroupTableIds)
+                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                    ->lockForUpdate()
+                    ->get();
+
+                $reasonStr = $validated['cancellation_reason'].($validated['note'] ? ': '.$validated['note'] : '');
+
+                foreach ($activeOrders as $order) {
+                    foreach ($order->items as $item) {
+                        if ($item->status !== 'cancelled') {
+                            $item->update([
+                                'status' => 'cancelled',
+                                'cancellation_reason' => $reasonStr,
+                                'cancelled_by_user_id' => $request->user()->id,
+                                'cancelled_at' => now(),
+                            ]);
+                        }
+                    }
+                    $order->update(['status' => 'cancelled']);
+                }
+
+                // Release all group tables to available
+                Table::whereIn('id', $allGroupTableIds)->update([
+                    'status' => 'available',
+                    'merged_into_table_id' => null,
+                ]);
+            });
+
+            OrderSentToKitchen::dispatch(Order::first() ?? new Order);
+            $firstTable = Table::first();
+            if ($firstTable) {
+                TableStatusUpdated::dispatch($firstTable);
+            }
+
+            return back()->with('success', 'Đã hủy toàn bộ đơn hàng thành công!');
+        } catch (\Throwable $e) {
+            Log::error('POS cancelOrder DB error: '.$e->getMessage());
+
+            return back()->withErrors(['error' => 'Hủy đơn hàng thất bại: '.$e->getMessage()]);
+        }
+    }
 }

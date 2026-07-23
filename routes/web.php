@@ -122,6 +122,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/pos/transfer-table', [POSController::class, 'transferTable'])->middleware('permission:pos.create');
         Route::post('/pos/merge-tables', [POSController::class, 'mergeTables'])->middleware('permission:pos.create');
         Route::post('/pos/unmerge-table', [POSController::class, 'unmergeTable'])->middleware('permission:pos.create');
+        Route::post('/pos/cancel-order', [POSController::class, 'cancelOrder'])->middleware('permission:pos.cancel_item|kitchen.cancel_item');
 
         Route::get('/kitchen', [KitchenController::class, 'index'])->middleware('permission:kitchen.view');
         Route::post('/kitchen/complete/{order}', [KitchenController::class, 'completeOrder'])->middleware('permission:kitchen.update');
