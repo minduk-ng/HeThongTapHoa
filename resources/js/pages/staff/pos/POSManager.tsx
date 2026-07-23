@@ -53,6 +53,18 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         clearUnconfirmedDraft,
     } = usePOSCart(selectedTable, tables, products);
 
+    // Clear unconfirmed local draft when OrderSentToKitchen WebSocket event fires
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.Echo) {
+            const channel = window.Echo.private('pos-channel');
+            channel.listen('.OrderSentToKitchen', () => {
+                if (selectedTable) {
+                    clearUnconfirmedDraft(selectedTable.id);
+                }
+            });
+        }
+    }, [selectedTable, clearUnconfirmedDraft]);
+
     const {
         submitting,
         isPaymentDrawerOpen,

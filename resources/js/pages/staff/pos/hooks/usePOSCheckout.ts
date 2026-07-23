@@ -104,12 +104,15 @@ export function usePOSCheckout(
         }, 0);
         const totalAmount = subtotal + vatTotal;
 
+        const idempotencyKey = `pos_send_${selectedTable.id}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
         const payload = {
             table_id: selectedTable.id,
             items: newDeltaItems,
             subtotal,
             vat_amount: vatTotal,
             total: totalAmount,
+            idempotency_key: idempotencyKey,
         };
 
         router.post('/staff/pos/send-to-kitchen', payload, {
@@ -156,11 +159,14 @@ export function usePOSCheckout(
             alert('Kết nối cơ sở dữ liệu/máy chủ quá thời gian chờ (Timeout). Vui lòng thử thanh toán lại!');
         }, 8000);
 
+        const idempotencyKey = `pos_pay_${selectedTable.id}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
         const payload = {
             table_id: selectedTable.id,
             payment_method: paymentMethod,
             amount_received: amountReceived,
             change_amount: changeAmount,
+            idempotency_key: idempotencyKey,
         };
 
         const snapshotCart = [...currentCart];

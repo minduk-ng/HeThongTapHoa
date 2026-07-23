@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Table;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -77,7 +78,17 @@ class POSController extends Controller
             'subtotal' => 'required|numeric|min:0',
             'vat_amount' => 'required|numeric|min:0',
             'total' => 'required|numeric|min:0',
+            'idempotency_key' => 'nullable|string|max:100',
         ]);
+
+        if ($request->filled('idempotency_key')) {
+            $lockKey = "idempotency:send_to_kitchen:{$request->input('idempotency_key')}";
+            if (! Cache::add($lockKey, true, 30)) {
+                Log::info("Duplicate sendToKitchen request suppressed: {$request->input('idempotency_key')}");
+
+                return back()->with('success', 'Đơn hàng đã được gửi xuống Bếp!');
+            }
+        }
 
         try {
             $createdOrder = DB::transaction(function () use ($validated, $request) {
@@ -138,7 +149,17 @@ class POSController extends Controller
             'payment_method' => 'required|in:cash,bank_transfer',
             'amount_received' => 'required|numeric|min:0',
             'change_amount' => 'required|numeric|min:0',
+            'idempotency_key' => 'nullable|string|max:100',
         ]);
+
+        if ($request->filled('idempotency_key')) {
+            $lockKey = "idempotency:checkout:{$request->input('idempotency_key')}";
+            if (! Cache::add($lockKey, true, 30)) {
+                Log::info("Duplicate checkout request suppressed: {$request->input('idempotency_key')}");
+
+                return back()->with('success', 'Thanh toán đã được ghi nhận thành công!');
+            }
+        }
 
         try {
             $targetTable = DB::transaction(function () use ($validated, $request) {
