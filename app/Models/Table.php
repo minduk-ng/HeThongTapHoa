@@ -16,6 +16,7 @@ class Table extends Model
         'capacity',
         'area',
         'status',
+        'merged_into_table_id',
         'reservation_name',
         'reservation_phone',
         'reservation_time',
@@ -40,5 +41,15 @@ class Table extends Model
     public function activeOrders()
     {
         return $this->hasMany(Order::class, 'table_id')->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed']);
+    }
+
+    public function mergedIntoTable()
+    {
+        return $this->belongsTo(Table::class, 'merged_into_table_id');
+    }
+
+    public function mergedSubTables()
+    {
+        return $this->hasMany(Table::class, 'merged_into_table_id');
     }
 }

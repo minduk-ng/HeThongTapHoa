@@ -3,7 +3,10 @@ import { router, usePage } from '@inertiajs/react';
 import { POSTableData, CartItem, ReceiptModalState } from '../types/pos.types';
 import { usePOSCheckoutLock } from './usePOSCheckoutLock';
 
-export function usePOSCheckout(selectedTable: POSTableData | null = null) {
+export function usePOSCheckout(
+    selectedTable: POSTableData | null = null,
+    tables: POSTableData[] = []
+) {
     const { auth } = usePage<any>().props;
     const [submitting, setSubmitting] = useState(false);
     const [isPaymentDrawerOpen, setIsPaymentDrawerOpen] = useState(false);
@@ -22,11 +25,20 @@ export function usePOSCheckout(selectedTable: POSTableData | null = null) {
     const togglePaymentDrawer = (open: boolean) => {
         setIsPaymentDrawerOpen(open);
         if (selectedTable) {
+            const linkedTableIds = tables
+                .filter(
+                    (t) =>
+                        t.id !== selectedTable.id &&
+                        (t.merged_into_table_id === selectedTable.id ||
+                            (selectedTable.merged_into_table_id && t.id === selectedTable.merged_into_table_id))
+                )
+                .map((t) => t.id);
+
             if (open) {
                 const employeeName = auth?.user?.name || 'Nhân viên';
-                lockTableCheckout(selectedTable.id, employeeName);
+                lockTableCheckout(selectedTable.id, employeeName, linkedTableIds);
             } else {
-                unlockTableCheckout(selectedTable.id);
+                unlockTableCheckout(selectedTable.id, linkedTableIds);
             }
         }
     };

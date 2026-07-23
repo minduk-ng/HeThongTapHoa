@@ -42,6 +42,12 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                         only: ['orders', 'stats'],
                         onError: () => {},
                     });
+                })
+                .listen('.TableTransferred', () => {
+                    router.reload({
+                        only: ['orders', 'stats'],
+                        onError: () => {},
+                    });
                 });
 
             return () => {

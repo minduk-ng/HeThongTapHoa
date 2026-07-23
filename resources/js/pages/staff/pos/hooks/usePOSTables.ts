@@ -31,6 +31,12 @@ export function usePOSTables(tables: POSTableData[]) {
                         only: ['tables'],
                         onError: () => {},
                     });
+                })
+                .listen('.TableTransferred', () => {
+                    router.reload({
+                        only: ['tables'],
+                        onError: () => {},
+                    });
                 });
 
             const presence = window.Echo.join('pos-room');

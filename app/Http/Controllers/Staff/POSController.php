@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Staff;
 use App\Events\IngredientStockUpdated;
 use App\Events\OrderSentToKitchen;
 use App\Events\TableStatusUpdated;
+use App\Events\TableTransferred;
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use App\Models\Invoice;
@@ -23,7 +24,7 @@ class POSController extends Controller
 {
     public function index(Request $request)
     {
-        $tables = Table::with(['activeOrders.items.menuItem'])->where('status', '!=', 'maintenance')->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
+        $tables = Table::with(['mergedIntoTable', 'activeOrders.items.menuItem'])->where('status', '!=', 'maintenance')->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
         $categories = MenuCategory::orderBy('sort_order', 'asc')->get();
         $products = MenuItem::with(['category', 'recipes.ingredient'])->where('is_available', true)->get();
 
@@ -44,6 +45,17 @@ class POSController extends Controller
             }
 
             return $product;
+        });
+
+        // Consolidate group orders so every table in a merged group shares the exact same active orders list
+        $tables->each(function ($table) use ($tables) {
+            if ($table->merged_into_table_id || $tables->contains('merged_into_table_id', $table->id)) {
+                $groupId = $table->merged_into_table_id ?? $table->id;
+                $allGroupTableIds = $tables->filter(fn ($t) => $t->id == $groupId || $t->merged_into_table_id == $groupId)->pluck('id');
+                $allGroupOrders = Order::with(['items.menuItem'])->whereIn('table_id', $allGroupTableIds)->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])->get();
+                $table->setRelation('activeOrders', $allGroupOrders);
+                $table->setRelation('activeOrder', $allGroupOrders->first());
+            }
         });
 
         return Inertia::render('staff/pos/POSManager', [
@@ -129,11 +141,16 @@ class POSController extends Controller
         ]);
 
         try {
-            $targetTable = DB::transaction(function () use ($validated) {
+            $targetTable = DB::transaction(function () use ($validated, $request) {
                 $table = Table::findOrFail($validated['table_id']);
 
-                // Find all active orders for this table session with DB update lock
-                $activeOrders = Order::where('table_id', $table->id)
+                // Determine primary group table ID and all tables in this merged group
+                $primaryId = $table->merged_into_table_id ?? $table->id;
+                $allGroupTables = Table::where('id', $primaryId)->orWhere('merged_into_table_id', $primaryId)->get();
+                $allGroupTableIds = $allGroupTables->pluck('id');
+
+                // Find all active orders for all tables in this merged group
+                $activeOrders = Order::with('items')->whereIn('table_id', $allGroupTableIds)
                     ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
                     ->lockForUpdate()
                     ->get();
@@ -151,7 +168,7 @@ class POSController extends Controller
                     throw new \Exception('Bạn không có quyền duyệt khẩn cấp thanh toán khi món chưa được Bếp hoàn tất.');
                 }
 
-                // Mark all orders in this session as paid
+                // Mark all orders in this group as paid
                 foreach ($activeOrders as $order) {
                     $order->update(['status' => 'paid']);
                 }
@@ -159,19 +176,38 @@ class POSController extends Controller
                 // Primary order for invoice association
                 $primaryOrder = $activeOrders->first();
 
+                // Compute total amount and table name string for invoice record
+                $primaryTableObj = $allGroupTables->firstWhere('id', $primaryId);
+                $subTableNumbers = $allGroupTables->where('id', '!=', $primaryId)->pluck('table_number')->implode(', ');
+                $tableNameStr = $subTableNumbers ? "{$primaryTableObj->table_number} (Gộp {$subTableNumbers})" : $primaryTableObj->table_number;
+
+                $totalAmount = $activeOrders->sum(function ($order) {
+                    return $order->items->sum(function ($item) {
+                        return (float) $item->quantity * (float) $item->unit_price;
+                    });
+                });
+
                 // Create Invoice record
                 $invoiceCode = 'INV-'.date('Ymd').strtoupper(Str::random(4));
                 Invoice::create([
                     'order_id' => $primaryOrder->id,
                     'invoice_code' => $invoiceCode,
+                    'table_name' => $tableNameStr,
+                    'total_amount' => $totalAmount,
                     'payment_method' => $validated['payment_method'],
                     'amount_received' => $validated['amount_received'],
                     'change_amount' => $validated['change_amount'],
                     'issued_at' => now(),
                 ]);
 
-                // Release table to available
-                $table->update(['status' => 'available']);
+                // Release all tables in the group to available
+                foreach ($allGroupTables as $grpTable) {
+                    $grpTable->update([
+                        'status' => 'available',
+                        'merged_into_table_id' => null,
+                    ]);
+                    TableStatusUpdated::dispatch($grpTable);
+                }
 
                 return $table;
             });
@@ -184,6 +220,140 @@ class POSController extends Controller
             Log::error('POS checkout DB error: '.$e->getMessage());
 
             return back()->withErrors(['error' => 'Thanh toán thất bại: '.$e->getMessage()]);
+        }
+    }
+
+    public function transferTable(Request $request)
+    {
+        $validated = $request->validate([
+            'source_table_id' => 'required|exists:tables,id',
+            'target_table_id' => 'required|exists:tables,id|different:source_table_id',
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated) {
+                $sourceTable = Table::lockForUpdate()->findOrFail($validated['source_table_id']);
+                $targetTable = Table::lockForUpdate()->findOrFail($validated['target_table_id']);
+
+                if ($targetTable->status !== 'available' && ! $targetTable->merged_into_table_id) {
+                    throw new \Exception('Bàn đích phải ở trạng thái bàn trống.');
+                }
+
+                // Move all active orders to target table
+                Order::where('table_id', $sourceTable->id)
+                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                    ->update(['table_id' => $targetTable->id]);
+
+                // Release source table
+                $sourceTable->update([
+                    'status' => 'available',
+                    'merged_into_table_id' => null,
+                ]);
+
+                // Update target table to occupied
+                $targetTable->update([
+                    'status' => 'occupied',
+                ]);
+
+                TableTransferred::dispatch($sourceTable, $targetTable, 'transfer');
+                TableStatusUpdated::dispatch($sourceTable);
+                TableStatusUpdated::dispatch($targetTable);
+            });
+
+            return back()->with('success', 'Chuyển bàn thành công!');
+        } catch (\Throwable $e) {
+            return back()->withErrors(['error' => 'Chuyển bàn thất bại: '.$e->getMessage()]);
+        }
+    }
+
+    public function mergeTables(Request $request)
+    {
+        $validated = $request->validate([
+            'source_table_id' => 'required|exists:tables,id',
+            'target_table_id' => 'required|exists:tables,id|different:source_table_id',
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated) {
+                $sourceTable = Table::lockForUpdate()->findOrFail($validated['source_table_id']);
+                $targetTable = Table::lockForUpdate()->findOrFail($validated['target_table_id']);
+
+                $primaryTargetId = $targetTable->merged_into_table_id ?? $targetTable->id;
+
+                // Move all active orders from source table and any sub-tables of source to primaryTargetId
+                $sourceGroupIds = Table::where('id', $sourceTable->id)
+                    ->orWhere('merged_into_table_id', $sourceTable->id)
+                    ->pluck('id');
+
+                Order::whereIn('table_id', $sourceGroupIds)
+                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                    ->update(['table_id' => $primaryTargetId]);
+
+                // Mark source table and any former sub-tables as merged into primaryTargetId
+                Table::whereIn('id', $sourceGroupIds)->update([
+                    'status' => 'occupied',
+                    'merged_into_table_id' => $primaryTargetId,
+                ]);
+
+                // Ensure primary target table is occupied
+                Table::where('id', $primaryTargetId)->update(['status' => 'occupied']);
+
+                $primaryTargetTable = Table::find($primaryTargetId);
+                TableTransferred::dispatch($sourceTable, $primaryTargetTable, 'merge');
+                TableStatusUpdated::dispatch($sourceTable);
+                TableStatusUpdated::dispatch($primaryTargetTable);
+            });
+
+            return back()->with('success', 'Gộp bàn thành công!');
+        } catch (\Throwable $e) {
+            return back()->withErrors(['error' => 'Gộp bàn thất bại: '.$e->getMessage()]);
+        }
+    }
+
+    public function unmergeTable(Request $request)
+    {
+        $validated = $request->validate([
+            'source_table_id' => 'required|exists:tables,id',
+            'keep_table_id' => 'required|exists:tables,id',
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated) {
+                $sourceTable = Table::lockForUpdate()->findOrFail($validated['source_table_id']);
+                $keepTable = Table::lockForUpdate()->findOrFail($validated['keep_table_id']);
+
+                $groupId = $sourceTable->merged_into_table_id ?? $sourceTable->id;
+                $allGroupTableIds = Table::where('id', $groupId)
+                    ->orWhere('merged_into_table_id', $groupId)
+                    ->pluck('id');
+
+                // Move all active orders in group to keep_table_id
+                Order::whereIn('table_id', $allGroupTableIds)
+                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                    ->update(['table_id' => $keepTable->id]);
+
+                // For keep_table: set merged_into_table_id = null, status = occupied
+                $keepTable->update([
+                    'status' => 'occupied',
+                    'merged_into_table_id' => null,
+                ]);
+
+                // For all other tables in group: reset merged_into_table_id = null, status = available
+                Table::whereIn('id', $allGroupTableIds)
+                    ->where('id', '!=', $keepTable->id)
+                    ->update([
+                        'status' => 'available',
+                        'merged_into_table_id' => null,
+                    ]);
+
+                TableTransferred::dispatch($sourceTable, $keepTable, 'unmerge');
+                TableStatusUpdated::dispatch($sourceTable);
+                TableStatusUpdated::dispatch($keepTable);
+            });
+
+            return back()->with('success', 'Tách / Hủy gộp bàn thành công!');
+        } catch (\Throwable $e) {
+            return back()->withErrors(['error' => 'Tách / Hủy gộp bàn thất bại: '.$e->getMessage()]);
         }
     }
 }

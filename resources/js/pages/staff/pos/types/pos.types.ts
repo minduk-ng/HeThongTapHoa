@@ -22,6 +22,8 @@ export interface POSTableData {
     area?: string;
     capacity: number;
     status: 'available' | 'occupied' | 'reserved' | 'maintenance';
+    merged_into_table_id?: number | null;
+    merged_into_table?: POSTableData | null;
     reservation_time?: string | null;
     reservation_name?: string | null;
     reservation_phone?: string | null;

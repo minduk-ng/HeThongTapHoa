@@ -73,25 +73,40 @@ export function usePOSCheckoutLock() {
         };
     }, []);
 
-    const lockTableCheckout = useCallback((tableId: number, employeeName: string) => {
+    const lockTableCheckout = useCallback((tableId: number, employeeName: string, linkedTableIds: number[] = []) => {
         activeLockTableIdRef.current = tableId;
         if (typeof window !== 'undefined' && window.Echo) {
-            window.Echo.join('pos-room').whisper('table-checkout-started', {
+            const presence = window.Echo.join('pos-room');
+            presence.whisper('table-checkout-started', {
                 tableId,
                 employeeName,
                 clientId: clientIdRef.current,
             });
+            linkedTableIds.forEach((linkedId) => {
+                presence.whisper('table-checkout-started', {
+                    tableId: linkedId,
+                    employeeName,
+                    clientId: clientIdRef.current,
+                });
+            });
         }
     }, []);
 
-    const unlockTableCheckout = useCallback((tableId: number) => {
+    const unlockTableCheckout = useCallback((tableId: number, linkedTableIds: number[] = []) => {
         if (activeLockTableIdRef.current === tableId) {
             activeLockTableIdRef.current = null;
         }
         if (typeof window !== 'undefined' && window.Echo) {
-            window.Echo.join('pos-room').whisper('table-checkout-ended', {
+            const presence = window.Echo.join('pos-room');
+            presence.whisper('table-checkout-ended', {
                 tableId,
                 clientId: clientIdRef.current,
+            });
+            linkedTableIds.forEach((linkedId) => {
+                presence.whisper('table-checkout-ended', {
+                    tableId: linkedId,
+                    clientId: clientIdRef.current,
+                });
             });
         }
     }, []);

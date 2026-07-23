@@ -86,7 +86,9 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable, lock
                                                         : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60'
                                                 }`}
                                             >
-                                                {isOccupied
+                                                {table.merged_into_table_id || table.merged_into_table
+                                                    ? `Gộp với ${table.merged_into_table?.table_number || `Bàn #${table.merged_into_table_id}`}`
+                                                    : isOccupied
                                                     ? 'Đang dùng'
                                                     : isReserved
                                                     ? `Đặt trước ${resTimeStr ? `(${resTimeStr})` : ''}`

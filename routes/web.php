@@ -119,6 +119,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/pos', [POSController::class, 'index'])->middleware('permission:pos.view');
         Route::post('/pos/send-to-kitchen', [POSController::class, 'sendToKitchen'])->middleware('permission:pos.create');
         Route::post('/pos/checkout', [POSController::class, 'checkout'])->middleware('permission:pos.create');
+        Route::post('/pos/transfer-table', [POSController::class, 'transferTable'])->middleware('permission:pos.create');
+        Route::post('/pos/merge-tables', [POSController::class, 'mergeTables'])->middleware('permission:pos.create');
+        Route::post('/pos/unmerge-table', [POSController::class, 'unmergeTable'])->middleware('permission:pos.create');
 
         Route::get('/kitchen', [KitchenController::class, 'index'])->middleware('permission:kitchen.view');
         Route::post('/kitchen/complete/{order}', [KitchenController::class, 'completeOrder'])->middleware('permission:kitchen.update');

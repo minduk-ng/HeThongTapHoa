@@ -62,7 +62,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         setReceiptModal,
         handleSendToKitchen,
         handleConfirmPayment,
-    } = usePOSCheckout(selectedTable);
+    } = usePOSCheckout(selectedTable, tables);
 
     return (
         <DashboardLayout fullWidth={true}>
@@ -137,6 +137,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                     <div className="lg:col-span-5 h-full min-h-0">
                         <POSCartPanel
                             selectedTable={selectedTable}
+                            tables={tables}
                             cartItems={currentCart}
                             onUpdateQuantity={handleUpdateQuantity}
                             onRemoveItem={handleRemoveItem}

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { usePage } from '@inertiajs/react';
-import { Armchair, ShoppingBag, Lock, Trash2, Send, CreditCard } from 'lucide-react';
+import { Armchair, ShoppingBag, Lock, Trash2, Send, CreditCard, ArrowRightLeft } from 'lucide-react';
 import { POSTableData, CartItem } from '../types/pos.types';
+import TransferMergeModal from './TransferMergeModal';
 
 interface POSCartPanelProps {
     selectedTable: POSTableData | null;
+    tables?: POSTableData[];
     cartItems: CartItem[];
     onUpdateQuantity: (menuItemId: number, delta: number) => void;
     onRemoveItem: (menuItemId: number) => void;
@@ -18,6 +20,7 @@ interface POSCartPanelProps {
 
 export default function POSCartPanel({
     selectedTable,
+    tables = [],
     cartItems,
     onUpdateQuantity,
     onRemoveItem,
@@ -31,6 +34,7 @@ export default function POSCartPanel({
     const { auth } = usePage<any>().props;
     const canBypassKitchen = !!(auth?.is_admin || auth?.permissions?.includes('pos.bypass_kitchen_lock'));
     const [managerBypass, setManagerBypass] = useState(false);
+    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
     if (!selectedTable) {
         return (
@@ -40,17 +44,13 @@ export default function POSCartPanel({
                         <Armchair className="w-6 h-6 stroke-[1.5]" />
                     </div>
                     <div>
-                        <h3 className="font-display text-2xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100 mb-1">
-                            Chưa chọn bàn
+                        <h3 className="font-display text-xl font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">
+                            Chưa chọn bàn phục vụ
                         </h3>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                            Vui lòng chọn một bàn từ danh sách bên trái để mở giỏ hàng và tiến hành gọi món.
+                        <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                            Vui lòng nhấp chọn một bàn từ sơ đồ khu vực bên trái để bắt đầu tạo giỏ hàng và gửi order xuống Bếp.
                         </p>
                     </div>
-                </div>
-                <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800/60 text-[11px] text-zinc-400 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
-                    <span>Trạng thái bàn tự động cập nhật theo thời gian thực</span>
                 </div>
             </div>
         );
@@ -64,20 +64,22 @@ export default function POSCartPanel({
     }, 0);
     const totalAmount = subtotal + vatTotal;
 
-    // Check if table has active orders that are still pending/processing at kitchen
-    const allSessionOrders = selectedTable.active_orders || (selectedTable.active_order ? [selectedTable.active_order] : []);
-    const hasKitchenPendingOrders = allSessionOrders.some(
-        (o) => o.status === 'pending' || o.status === 'confirmed' || o.status === 'processing'
-    );
+    const unconfirmedItems = cartItems.filter((i) => !i.isConfirmed);
+    const hasUnconfirmedItems = unconfirmedItems.length > 0;
 
-    // Unsent items (new additions not yet sent to kitchen)
-    const hasUnsentItems = cartItems.some((i) => !i.isConfirmed || i.quantity > (i.initialQuantity || 0));
+    const confirmedItems = cartItems.filter((i) => i.isConfirmed);
+    const hasKitchenPendingOrders = confirmedItems.some((i) => !i.isKitchenCompleted);
 
-    // Payment button is blocked if kitchen is still processing, UNLESS manager bypass is toggled
-    const isPaymentBlocked = (hasKitchenPendingOrders || hasUnsentItems) && !managerBypass;
+    const isPaymentBlocked = hasKitchenPendingOrders && !canBypassKitchen && !managerBypass;
 
     return (
         <div className="h-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl flex flex-col justify-between overflow-hidden">
+            <TransferMergeModal 
+                isOpen={isTransferModalOpen}
+                onClose={() => setIsTransferModalOpen(false)}
+                selectedTable={selectedTable}
+                tables={tables}
+            />
             {/* Header (Fixed Top) */}
             <div className="shrink-0 p-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between">
                 <div>
@@ -85,13 +87,25 @@ export default function POSCartPanel({
                         <h2 className="font-display text-2xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100">
                             {selectedTable.table_number}
                         </h2>
-                        <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60">
-                            {selectedTable.area || 'Trong nhà'}
-                        </span>
+                        {(selectedTable.merged_into_table || selectedTable.merged_into_table_id) && (
+                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
+                                Gộp với {selectedTable.merged_into_table?.table_number || `Bàn #${selectedTable.merged_into_table_id}`}
+                            </span>
+                        )}
                     </div>
                     <p className="text-xs text-zinc-400 mt-0.5">Sức chứa: {selectedTable.capacity} ghế</p>
                 </div>
-                <div className="text-right">
+                <div className="flex items-center space-x-2">
+                    <button
+                        type="button"
+                        disabled={submitting || isCheckoutLocked}
+                        onClick={() => setIsTransferModalOpen(true)}
+                        className="px-2.5 py-1 text-xs font-semibold rounded-md border bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800 flex items-center gap-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={isCheckoutLocked ? 'Bàn đang thực hiện thanh toán, không thể chuyển/gộp' : 'Chuyển, Gộp hoặc Tách bàn'}
+                    >
+                        <ArrowRightLeft className="w-3.5 h-3.5 stroke-[1.5]" />
+                        <span>Chuyển/Gộp</span>
+                    </button>
                     <span className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${
                         selectedTable.status === 'occupied'
                             ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/60'
@@ -253,7 +267,7 @@ export default function POSCartPanel({
                 <div className="grid grid-cols-2 gap-3 pt-1">
                     <button
                         type="button"
-                        disabled={submitting || cartItems.length === 0 || !hasUnsentItems}
+                        disabled={submitting || cartItems.length === 0 || !hasUnconfirmedItems}
                         onClick={onSendToKitchen}
                         className="py-2.5 px-3 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl disabled:opacity-50 flex items-center justify-center space-x-1.5 transition-colors duration-150"
                     >
