@@ -163,10 +163,10 @@ class POSController extends Controller
 
         try {
             $targetTable = DB::transaction(function () use ($validated, $request) {
-                $table = Table::findOrFail($validated['table_id']);
+                $targetTable = Table::findOrFail($validated['table_id']);
 
                 // Determine primary group table ID and all tables in this merged group
-                $primaryId = $table->merged_into_table_id ?? $table->id;
+                $primaryId = $targetTable->merged_into_table_id ?? $targetTable->id;
                 $allGroupTables = Table::where('id', $primaryId)->orWhere('merged_into_table_id', $primaryId)->get();
                 $allGroupTableIds = $allGroupTables->pluck('id');
 
@@ -233,7 +233,7 @@ class POSController extends Controller
                 return $targetTable;
             });
 
-            $this->safeDispatch(fn () => TableStatusUpdated::dispatch($table));
+            $this->safeDispatch(fn () => TableStatusUpdated::dispatch($targetTable));
             $this->safeDispatch(fn () => IngredientStockUpdated::dispatch(['source' => 'checkout']));
 
             return back()->with('success', 'Thanh toán hoàn tất thành công!');
@@ -276,7 +276,7 @@ class POSController extends Controller
 
                     $primaryTable = Table::find($primaryId);
                     if ($primaryTable) {
-                        TableStatusUpdated::dispatch($primaryTable);
+                        $this->safeDispatch(fn () => TableStatusUpdated::dispatch($primaryTable));
                     }
                 } elseif (Table::where('merged_into_table_id', $sourceTable->id)->exists()) {
                     // Case 2: Source table is the primary table of a merged group
@@ -289,7 +289,7 @@ class POSController extends Controller
                     $subTables = Table::where('merged_into_table_id', $sourceTable->id)->get();
                     foreach ($subTables as $subTable) {
                         $subTable->update(['merged_into_table_id' => $targetTable->id]);
-                        TableStatusUpdated::dispatch($subTable);
+                        $this->safeDispatch(fn () => TableStatusUpdated::dispatch($subTable));
                     }
 
                     $targetTable->update([
@@ -318,9 +318,11 @@ class POSController extends Controller
                     ]);
                 }
 
-                TableTransferred::dispatch($sourceTable, $targetTable, 'transfer');
-                TableStatusUpdated::dispatch($sourceTable);
-                TableStatusUpdated::dispatch($targetTable);
+                $this->safeDispatch(function () use ($sourceTable, $targetTable) {
+                    TableTransferred::dispatch($sourceTable, $targetTable, 'transfer');
+                    TableStatusUpdated::dispatch($sourceTable);
+                    TableStatusUpdated::dispatch($targetTable);
+                });
             });
 
             return back()->with('success', 'Chuyển bàn thành công!');
@@ -362,9 +364,11 @@ class POSController extends Controller
                 Table::where('id', $primaryTargetId)->update(['status' => 'occupied']);
 
                 $primaryTargetTable = Table::find($primaryTargetId);
-                TableTransferred::dispatch($sourceTable, $primaryTargetTable, 'merge');
-                TableStatusUpdated::dispatch($sourceTable);
-                TableStatusUpdated::dispatch($primaryTargetTable);
+                $this->safeDispatch(function () use ($sourceTable, $primaryTargetTable) {
+                    TableTransferred::dispatch($sourceTable, $primaryTargetTable, 'merge');
+                    TableStatusUpdated::dispatch($sourceTable);
+                    TableStatusUpdated::dispatch($primaryTargetTable);
+                });
             });
 
             return back()->with('success', 'Gộp bàn thành công!');
@@ -395,9 +399,18 @@ class POSController extends Controller
                     ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
                     ->update(['table_id' => $keepTable->id]);
 
-                // For keep_table: set merged_into_table_id = null, status = occupied
+                // Dynamic calculation: set status based on whether keepTable has active uncompleted orders
+                $hasActiveOrders = Order::where('table_id', $keepTable->id)
+                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                    ->whereHas('items', function ($query) {
+                        $query->where('status', '!=', 'cancelled');
+                    })
+                    ->exists();
+
+                $keepTableStatus = $hasActiveOrders ? 'occupied' : 'available';
+
                 $keepTable->update([
-                    'status' => 'occupied',
+                    'status' => $keepTableStatus,
                     'merged_into_table_id' => null,
                 ]);
 
@@ -409,9 +422,11 @@ class POSController extends Controller
                         'merged_into_table_id' => null,
                     ]);
 
-                TableTransferred::dispatch($sourceTable, $keepTable, 'unmerge');
-                TableStatusUpdated::dispatch($sourceTable);
-                TableStatusUpdated::dispatch($keepTable);
+                $this->safeDispatch(function () use ($sourceTable, $keepTable) {
+                    TableTransferred::dispatch($sourceTable, $keepTable, 'unmerge');
+                    TableStatusUpdated::dispatch($sourceTable);
+                    TableStatusUpdated::dispatch($keepTable);
+                });
             });
 
             return back()->with('success', 'Tách / Hủy gộp bàn thành công!');
