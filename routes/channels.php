@@ -24,3 +24,7 @@ Broadcast::channel('pos-room', function ($user) {
         'name' => $user->name ?? 'Nhân viên',
     ];
 });
+
+Broadcast::channel('inventory-channel', function ($user) {
+    return $user !== null;
+});

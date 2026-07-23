@@ -44,7 +44,11 @@ export function usePOSCheckout(selectedTable: POSTableData | null = null) {
         return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
     };
 
-    const handleSendToKitchen = (selectedTable: POSTableData | null, currentCart: CartItem[]) => {
+    const handleSendToKitchen = (
+        selectedTable: POSTableData | null,
+        currentCart: CartItem[],
+        onSuccessCallback?: () => void
+    ) => {
         if (!selectedTable || currentCart.length === 0 || submitting) return;
 
         const newDeltaItems = currentCart
@@ -97,6 +101,11 @@ export function usePOSCheckout(selectedTable: POSTableData | null = null) {
         };
 
         router.post('/staff/pos/send-to-kitchen', payload, {
+            onSuccess: () => {
+                if (selectedTable && onSuccessCallback) {
+                    onSuccessCallback();
+                }
+            },
             onFinish: () => {
                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 setSubmitting(false);

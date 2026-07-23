@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Manager;
 
+use App\Events\IngredientStockUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use App\Models\MenuCategory;
@@ -61,6 +62,8 @@ class RecipeController extends Controller
                 }
             }
         });
+
+        IngredientStockUpdated::dispatch(['product_id' => $product->id]);
 
         return back()->with('success', 'Cập nhật công thức định lượng thành công!');
     }

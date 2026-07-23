@@ -12,20 +12,20 @@ export function usePOSCart(
         setTableCarts((prevCarts) => {
             const nextCarts: Record<number, CartItem[]> = {};
             tables.forEach((table) => {
-                const mergedMap: Record<number, CartItem> = {};
+                const mergedMap: Record<string, CartItem> = {};
                 const allOrders = table.active_orders || (table.active_order ? [table.active_order] : []);
 
                 allOrders.forEach((order) => {
                     const isOrderCompleted = order.status === 'completed';
                     if (order.items) {
                         order.items.forEach((item) => {
-                            const existing = mergedMap[item.menu_item_id];
+                            const key = `${item.menu_item_id}_${isOrderCompleted ? 'completed' : 'pending'}`;
+                            const existing = mergedMap[key];
                             if (existing) {
                                 existing.quantity += item.quantity;
                                 existing.initialQuantity = (existing.initialQuantity || 0) + item.quantity;
-                                existing.isKitchenCompleted = (existing.isKitchenCompleted ?? true) && isOrderCompleted;
                             } else {
-                                mergedMap[item.menu_item_id] = {
+                                mergedMap[key] = {
                                     menu_item_id: item.menu_item_id,
                                     name: item.menu_item?.name || 'Món',
                                     quantity: item.quantity,
@@ -156,6 +156,19 @@ export function usePOSCart(
         whisperDraftCart(tableId, []);
     };
 
+    const clearUnconfirmedDraft = (tableId?: number) => {
+        if (!tableId) return;
+        setTableCarts((prev) => {
+            const existing = prev[tableId] || [];
+            const confirmedOnly = existing.filter((item) => item.isConfirmed);
+            return {
+                ...prev,
+                [tableId]: confirmedOnly,
+            };
+        });
+        whisperDraftCart(tableId, []);
+    };
+
     return {
         tableCarts,
         currentCart,
@@ -164,5 +177,6 @@ export function usePOSCart(
         handleRemoveItem,
         handleUpdateNote,
         clearTableCart,
+        clearUnconfirmedDraft,
     };
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Manager;
 
+use App\Events\TableStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Table;
 use Illuminate\Http\Request;
@@ -68,7 +69,9 @@ class TableController extends Controller
             'reservation_note' => 'nullable|string|max:500',
         ]);
 
-        Table::create($validated);
+        $table = Table::create($validated);
+
+        TableStatusUpdated::dispatch($table);
 
         return back()->with('success', 'Thêm bàn mới thành công!');
     }
@@ -85,11 +88,12 @@ class TableController extends Controller
 
         $prefix = $validated['prefix'] ?? 'Bàn ';
         $createdCount = 0;
+        $lastCreatedTable = null;
 
         for ($i = $validated['from_number']; $i <= $validated['to_number']; $i++) {
             $tableName = $prefix.sprintf('%02d', $i);
             if (! Table::where('table_number', $tableName)->exists()) {
-                Table::create([
+                $lastCreatedTable = Table::create([
                     'table_number' => $tableName,
                     'area' => $validated['area'],
                     'capacity' => $validated['capacity'],
@@ -97,6 +101,10 @@ class TableController extends Controller
                 ]);
                 $createdCount++;
             }
+        }
+
+        if ($lastCreatedTable) {
+            TableStatusUpdated::dispatch($lastCreatedTable);
         }
 
         return back()->with('success', "Đã tạo tự động {$createdCount} bàn mới thành công!");
@@ -115,6 +123,13 @@ class TableController extends Controller
             'reservation_note' => 'nullable|string|max:500',
         ]);
 
+        // Guard: Cannot manually set an occupied table (or a table with unpaid active orders) back to available
+        if (($table->status === 'occupied' || $table->activeOrders()->exists()) && $validated['status'] === 'available') {
+            return back()->withErrors([
+                'status' => "Bàn “{$table->table_number}” đang có đơn hàng chưa thanh toán. Vui lòng thanh toán tại màn hình POS trước.",
+            ]);
+        }
+
         // If status changed away from reserved, clear reservation fields
         if ($validated['status'] !== 'reserved') {
             $validated['reservation_name'] = null;
@@ -124,6 +139,8 @@ class TableController extends Controller
         }
 
         $table->update($validated);
+
+        TableStatusUpdated::dispatch($table);
 
         return back()->with('success', 'Cập nhật thông tin bàn thành công!');
     }
@@ -138,7 +155,10 @@ class TableController extends Controller
             return back()->withErrors(['password' => 'Mật khẩu không chính xác.']);
         }
 
+        $clonedTable = clone $table;
         $table->delete();
+
+        TableStatusUpdated::dispatch($clonedTable);
 
         return back()->with('success', 'Xóa bàn thành công!');
     }

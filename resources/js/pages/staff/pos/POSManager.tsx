@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Head } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
+import { Head, router } from '@inertiajs/react';
 import { Armchair, UtensilsCrossed } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import POSTableTab from './components/POSTableTab';
@@ -17,6 +17,23 @@ import { usePOSCheckout } from './hooks/usePOSCheckout';
 export default function POSManager({ tables, categories, products }: POSManagerProps) {
     const [activeTab, setActiveTab] = useState<'tables' | 'menu'>('tables');
 
+    // Realtime listener for inventory stock & recipe updates via Reverb
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.Echo) {
+            const channel = window.Echo.private('inventory-channel');
+            channel.listen('.IngredientStockUpdated', () => {
+                router.reload({
+                    only: ['products'],
+                    onError: () => {},
+                });
+            });
+
+            return () => {
+                window.Echo.leave('inventory-channel');
+            };
+        }
+    }, []);
+
     const {
         selectedTable,
         pendingReservationTable,
@@ -33,6 +50,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         handleRemoveItem,
         handleUpdateNote,
         clearTableCart,
+        clearUnconfirmedDraft,
     } = usePOSCart(selectedTable, tables, products);
 
     const {
@@ -123,7 +141,11 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                             onUpdateQuantity={handleUpdateQuantity}
                             onRemoveItem={handleRemoveItem}
                             onUpdateNote={handleUpdateNote}
-                            onSendToKitchen={() => handleSendToKitchen(selectedTable, currentCart)}
+                            onSendToKitchen={() =>
+                                handleSendToKitchen(selectedTable, currentCart, () => {
+                                    if (selectedTable) clearUnconfirmedDraft(selectedTable.id);
+                                })
+                            }
                             onOpenPayment={() => setIsPaymentDrawerOpen(true)}
                             submitting={submitting}
                             isCheckoutLocked={!!(selectedTable && lockedCheckoutTables[selectedTable.id])}

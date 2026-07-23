@@ -6,10 +6,13 @@
         "build": "vite build",
         "build:ssr": "vite build && vite build --ssr",
         "dev": "vite",
+        "dev:all": "concurrently -n \"vite,reverb,queue,cron,serve\" -c \"cyan,magenta,yellow,green,blue\" \"npm run dev\" \"php artisan reverb:start\" \"php artisan queue:listen\" \"php artisan schedule:work\" \"php artisan serve\"",
         "format": "prettier --write resources/",
         "format:check": "prettier --check resources/",
         "lint": "eslint . --fix",
         "lint:check": "eslint .",
+        "queue": "php artisan queue:listen",
+        "schedule": "php artisan schedule:work",
         "types:check": "tsc --noEmit"
     },
     "devDependencies": {

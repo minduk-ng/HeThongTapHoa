@@ -121,10 +121,11 @@ export default function POSCartPanel({
                         const minQty = item.isConfirmed ? (item.initialQuantity || 1) : 0;
                         const isMinusDisabled = item.isConfirmed && item.quantity <= minQty;
                         const isDeleteDisabled = !!item.isConfirmed;
+                        const itemKey = `${item.menu_item_id}_${item.isConfirmed ? (item.isKitchenCompleted ? 'completed' : 'pending') : 'draft'}`;
 
                         return (
                             <div
-                                key={item.menu_item_id}
+                                key={itemKey}
                                 className={`p-3 border rounded-xl space-y-2 transition-colors duration-150 ${
                                     item.isConfirmed
                                         ? 'bg-zinc-50 dark:bg-zinc-800/60 border-zinc-200/80 dark:border-zinc-700/80'

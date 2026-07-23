@@ -36,6 +36,36 @@ export default function TableManager({ tables, areas, filters }: TableManagerPro
         setSelectedStatus(filters.status || 'all');
     }, [filters]);
 
+    // Realtime WebSocket Listener via Reverb for instant table updates
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.Echo) {
+            const channel = window.Echo.private('pos-channel');
+            channel
+                .listen('.OrderSentToKitchen', () => {
+                    router.reload({
+                        only: ['tables'],
+                        onError: () => {},
+                    });
+                })
+                .listen('.OrderCompleted', () => {
+                    router.reload({
+                        only: ['tables'],
+                        onError: () => {},
+                    });
+                })
+                .listen('.TableStatusUpdated', () => {
+                    router.reload({
+                        only: ['tables'],
+                        onError: () => {},
+                    });
+                });
+
+            return () => {
+                window.Echo.leave('pos-channel');
+            };
+        }
+    }, []);
+
     // 100% Instant Frontend Filtering via useMemo without backend HTTP roundtrips
     const filteredTables = useMemo(() => {
         return tables.filter((table) => {

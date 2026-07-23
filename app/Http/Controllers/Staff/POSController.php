@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Staff;
 
+use App\Events\IngredientStockUpdated;
 use App\Events\OrderSentToKitchen;
 use App\Events\TableStatusUpdated;
 use App\Http\Controllers\Controller;
@@ -176,6 +177,7 @@ class POSController extends Controller
             });
 
             TableStatusUpdated::dispatch($targetTable);
+            IngredientStockUpdated::dispatch(['source' => 'checkout']);
 
             return back()->with('success', 'Thanh toán hoàn tất thành công!');
         } catch (\Throwable $e) {

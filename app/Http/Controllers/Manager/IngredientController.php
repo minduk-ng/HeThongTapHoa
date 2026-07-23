@@ -1,9 +1,8 @@
 <?php
 
-namespace App\Models;
-
 namespace App\Http\Controllers\Manager;
 
+use App\Events\IngredientStockUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use Illuminate\Http\Request;
@@ -60,7 +59,9 @@ class IngredientController extends Controller
         $validated['min_stock_alert'] = $validated['min_stock_alert'] ?? 50;
         $validated['cost_price'] = $validated['cost_price'] ?? 0;
 
-        Ingredient::create($validated);
+        $ingredient = Ingredient::create($validated);
+
+        IngredientStockUpdated::dispatch(['ingredient_id' => $ingredient->id]);
 
         return back()->with('success', 'Thêm nguyên liệu thành công!');
     }
@@ -77,6 +78,8 @@ class IngredientController extends Controller
 
         $ingredient->update($validated);
 
+        IngredientStockUpdated::dispatch(['ingredient_id' => $ingredient->id]);
+
         return back()->with('success', 'Cập nhật nguyên liệu thành công!');
     }
 
@@ -90,7 +93,10 @@ class IngredientController extends Controller
             return back()->withErrors(['password' => 'Mật khẩu không chính xác.']);
         }
 
+        $ingredientId = $ingredient->id;
         $ingredient->delete();
+
+        IngredientStockUpdated::dispatch(['ingredient_id' => $ingredientId]);
 
         return back()->with('success', 'Xóa nguyên liệu thành công!');
     }
@@ -134,6 +140,8 @@ class IngredientController extends Controller
                 'updated_at' => now(),
             ]);
         });
+
+        IngredientStockUpdated::dispatch(['ingredient_id' => $validated['ingredient_id']]);
 
         return back()->with('success', 'Nhập kho nguyên liệu thành công!');
     }

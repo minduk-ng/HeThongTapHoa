@@ -199,9 +199,14 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
                                             <div className="flex items-center justify-center space-x-1">
                                                 <button
                                                     type="button"
+                                                    disabled={item.status === 'occupied'}
                                                     onClick={() => onEdit(item)}
-                                                    className="p-1 text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg"
-                                                    title="Chỉnh sửa bàn"
+                                                    className={`p-1 rounded-lg transition-colors ${
+                                                        item.status === 'occupied'
+                                                            ? 'text-zinc-300 dark:text-zinc-700 cursor-not-allowed opacity-50'
+                                                            : 'text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                                    }`}
+                                                    title={item.status === 'occupied' ? 'Bàn đang có khách sử dụng, không thể chỉnh sửa' : 'Chỉnh sửa bàn'}
                                                 >
                                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
