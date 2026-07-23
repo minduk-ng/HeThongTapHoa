@@ -23,7 +23,7 @@ export default function CategoryFormDrawer({
         if (categoryToEdit) {
             setName(categoryToEdit.name || '');
             setDescription(categoryToEdit.description || '');
-            setSortOrder(categoryToEdit.sort_order ? String(categoryToEdit.sort_order) : '0');
+            setSortOrder(categoryToEdit.display_order ? String(categoryToEdit.display_order) : (categoryToEdit.sort_order ? String(categoryToEdit.sort_order) : '0'));
         } else {
             setName('');
             setDescription('');

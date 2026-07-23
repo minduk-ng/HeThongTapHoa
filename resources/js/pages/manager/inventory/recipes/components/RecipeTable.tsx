@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react';
+import { ChefHat, ChevronUp, ChevronDown, Image as ImageIcon, Edit3, Rows3 } from 'lucide-react';
 
-export interface RecipeItemData {
+export interface RecipeItem {
     id: number;
-    menu_item_id: number;
+    product_id: number;
     ingredient_id: number;
     amount: number;
     unit: string;
     ingredient?: {
         id: number;
-        code: string;
         name: string;
         cost_price: number;
         unit: string;
@@ -19,13 +19,13 @@ export interface ProductRecipeData {
     id: number;
     name: string;
     price: number;
-    image?: string | null;
-    category_id: number;
+    image: string | null;
+    category_id: number | null;
     category?: {
         id: number;
         name: string;
     };
-    recipes?: RecipeItemData[];
+    recipes?: RecipeItem[];
 }
 
 interface RecipeTableProps {
@@ -33,22 +33,22 @@ interface RecipeTableProps {
     onEditRecipe: (product: ProductRecipeData) => void;
 }
 
-type SortField = 'id' | 'name' | 'category' | 'price' | 'cogs' | 'margin';
+type SortField = 'name' | 'category' | 'price' | 'cogs' | 'margin';
 type SortDirection = 'asc' | 'desc';
 
 export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps) {
     const [isCompact, setIsCompact] = useState(false);
     const [pageSize, setPageSize] = useState<number>(20);
     const [currentPage, setCurrentPage] = useState<number>(1);
-    const [sortField, setSortField] = useState<SortField>('id');
+    const [sortField, setSortField] = useState<SortField>('name');
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
     // Calculate COGS (Cost of Goods Sold) for a product
     const calculateCOGS = (product: ProductRecipeData) => {
         if (!product.recipes || product.recipes.length === 0) return 0;
-        return product.recipes.reduce((sum, r) => {
-            const unitCost = r.ingredient?.cost_price || 0;
-            return sum + (Number(r.amount) * Number(unitCost));
+        return product.recipes.reduce((sum, item) => {
+            const cost = item.ingredient ? Number(item.ingredient.cost_price) : 0;
+            return sum + item.amount * cost;
         }, 0);
     };
 
@@ -108,12 +108,12 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
 
     const renderSortIcon = (field: SortField) => {
         if (sortField !== field) {
-            return <span className="text-zinc-300 dark:text-zinc-600 ml-1 text-xs opacity-50">▲</span>;
+            return <ChevronUp className="w-3.5 h-3.5 ml-1 text-zinc-300 dark:text-zinc-600 opacity-50 inline" />;
         }
-        return (
-            <span className="text-blue-600 dark:text-blue-400 ml-1 text-xs font-bold">
-                {sortDirection === 'asc' ? '▲' : '▼'}
-            </span>
+        return sortDirection === 'asc' ? (
+            <ChevronUp className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
+        ) : (
+            <ChevronDown className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
         );
     };
 
@@ -187,8 +187,20 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
                     <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 text-zinc-800 dark:text-zinc-200">
                         {paginatedItems.length === 0 ? (
                             <tr>
-                                <td colSpan={isCompact ? 7 : 8} className="py-8 text-center text-zinc-400 dark:text-zinc-500">
-                                    Không có sản phẩm nào phù hợp.
+                                <td colSpan={isCompact ? 7 : 8} className="py-12 px-6">
+                                    <div className="flex items-start space-x-4 max-w-md">
+                                        <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 flex items-center justify-center shrink-0">
+                                            <ChefHat className="w-5 h-5 stroke-[1.5]" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                                Không tìm thấy định lượng
+                                            </h4>
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">
+                                                Không tìm thấy món ăn nào phù hợp với bộ lọc. Vui lòng kiểm tra lại từ khóa tìm kiếm hoặc chọn danh mục khác.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         ) : (
@@ -205,7 +217,7 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
                                         key={product.id}
                                         className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors"
                                     >
-                                        <td className={`px-4 text-center text-zinc-500 text-xs ${isCompact ? 'py-1.5' : 'py-3'}`}>
+                                        <td className={`px-4 text-center text-zinc-500 text-xs tabular-nums ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {realIndex}
                                         </td>
                                         {!isCompact && (
@@ -214,9 +226,7 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
                                                     {product.image ? (
                                                         <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                                                     ) : (
-                                                        <svg className="w-5 h-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                        </svg>
+                                                        <ImageIcon className="w-5 h-5 text-zinc-400 stroke-[1.5]" />
                                                     )}
                                                 </div>
                                             </td>
@@ -224,7 +234,7 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
                                         <td className={`px-4 font-medium text-zinc-900 dark:text-zinc-100 ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             <div>
                                                 <p className="font-bold">{product.name}</p>
-                                                <span className="text-xs text-zinc-400">
+                                                <span className="text-xs text-zinc-400 tabular-nums">
                                                     {hasRecipes ? `${product.recipes!.length} thành phần định lượng` : 'Chưa thiết lập định lượng'}
                                                 </span>
                                             </div>
@@ -232,15 +242,15 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
                                         <td className={`px-4 text-zinc-600 dark:text-zinc-400 ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {product.category?.name ?? '—'}
                                         </td>
-                                        <td className={`px-4 text-right font-medium text-zinc-900 dark:text-zinc-100 ${isCompact ? 'py-1.5' : 'py-3'}`}>
+                                        <td className={`px-4 text-right font-medium text-zinc-900 dark:text-zinc-100 tabular-nums ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {formatCurrency(product.price)}
                                         </td>
-                                        <td className={`px-4 text-right font-semibold text-amber-600 dark:text-amber-400 ${isCompact ? 'py-1.5' : 'py-3'}`}>
+                                        <td className={`px-4 text-right font-semibold text-amber-600 dark:text-amber-400 tabular-nums ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {hasRecipes ? formatCurrency(cogs) : '—'}
                                         </td>
                                         <td className={`px-4 text-center ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {hasRecipes ? (
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tabular-nums ${
                                                     marginPercent >= 60
                                                         ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
                                                         : marginPercent >= 40
@@ -257,11 +267,9 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
                                             <button
                                                 type="button"
                                                 onClick={() => onEditRecipe(product)}
-                                                className="px-3 py-1 text-xs font-semibold text-blue-700 bg-blue-50 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900 flex items-center justify-center space-x-1 mx-auto"
+                                                className="px-3 py-1 text-xs font-semibold text-sky-700 bg-sky-50 dark:bg-sky-950 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900 flex items-center justify-center space-x-1 mx-auto transition-colors"
                                             >
-                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                                                </svg>
+                                                <Edit3 className="w-3.5 h-3.5 stroke-[1.5]" />
                                                 <span>Cài công thức</span>
                                             </button>
                                         </td>
@@ -281,13 +289,11 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
                         onClick={() => setIsCompact(!isCompact)}
                         className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border font-medium transition-colors ${
                             isCompact
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
                                 : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700'
                         }`}
                     >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
+                        <Rows3 className="w-4 h-4 stroke-[1.5]" />
                         <span>{isCompact ? 'Xem đầy đủ' : 'Thu gọn bảng'}</span>
                     </button>
 

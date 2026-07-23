@@ -70,11 +70,13 @@ export default function PagesManager({ pages }: Props) {
 
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [deletePassword, setDeletePassword] = useState('');
+    const [deleteErrorMsg, setDeleteErrorMsg] = useState<string | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     const openDeleteModal = (id: number) => {
         setDeleteId(id);
         setDeletePassword('');
+        setDeleteErrorMsg(null);
         setIsDeleteModalOpen(true);
     };
 
@@ -87,9 +89,10 @@ export default function PagesManager({ pages }: Props) {
                     setIsDeleteModalOpen(false);
                     setDeleteId(null);
                     setDeletePassword('');
+                    setDeleteErrorMsg(null);
                 },
                 onError: (err) => {
-                    alert(err.password || 'Mật khẩu không chính xác.');
+                    setDeleteErrorMsg(err.password || 'Mật khẩu xác nhận không chính xác.');
                 }
             });
         }
@@ -521,7 +524,7 @@ export default function PagesManager({ pages }: Props) {
                                             onChange={(e) => setData('group_name', e.target.value)}
                                             className="input-field flex-1"
                                         >
-                                            <option value="">-- Chọn nhóm chức năng --</option>
+                                            <option value="">— Chọn nhóm chức năng —</option>
                                             {existingGroups.map(g => (
                                                 <option key={g} value={g}>{g}</option>
                                             ))}
@@ -567,8 +570,16 @@ export default function PagesManager({ pages }: Props) {
                 title="Xác nhận xóa trang"
                 description="Hành động này không thể hoàn tác. Vui lòng nhập mật khẩu của bạn để xác nhận xóa trang."
                 passwordValue={deletePassword}
-                onPasswordChange={setDeletePassword}
-                onClose={() => setIsDeleteModalOpen(false)}
+                onPasswordChange={(val) => {
+                    setDeletePassword(val);
+                    setDeleteErrorMsg(null);
+                }}
+                errorMsg={deleteErrorMsg}
+                onClose={() => {
+                    setIsDeleteModalOpen(false);
+                    setDeletePassword('');
+                    setDeleteErrorMsg(null);
+                }}
                 onConfirm={confirmDelete}
             />
         </DashboardLayout>

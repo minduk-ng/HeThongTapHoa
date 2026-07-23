@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
+import { X, Plus, Trash2 } from 'lucide-react';
 import { ProductRecipeData } from './RecipeTable';
 
 interface Ingredient {
@@ -126,24 +127,23 @@ export default function RecipeFormDrawer({
             <div className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" onClick={onClose} />
 
             <div className="absolute inset-y-0 right-0 max-w-full flex pl-10 z-[101]">
-                <div className="w-screen max-w-xl bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col justify-between">
+                <div className="w-screen max-w-xl bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 shadow-xl flex flex-col justify-between">
                     {/* Header */}
                     <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
                         <div>
-                            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                            <h2 className="text-xl font-bold font-display text-zinc-900 dark:text-zinc-100">
                                 Định lượng công thức: {product.name}
                             </h2>
                             <p className="text-xs text-zinc-500 mt-1">
-                                Giá bán: <strong className="font-bold text-emerald-600 dark:text-emerald-400">{Number(product.price).toLocaleString('vi-VN')} đ</strong> &bull; Danh mục: {product.category?.name || 'Mặc định'}
+                                Giá bán: <strong className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{Number(product.price).toLocaleString('vi-VN')} đ</strong> &bull; Danh mục: {product.category?.name || 'Mặc định'}
                             </p>
                         </div>
                         <button
+                            type="button"
                             onClick={onClose}
-                            className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                            className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
                         >
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            <X className="w-6 h-6 stroke-[1.5]" />
                         </button>
                     </div>
 
@@ -153,30 +153,28 @@ export default function RecipeFormDrawer({
                         <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-center justify-between">
                             <div>
                                 <span className="text-xs font-semibold text-amber-800 dark:text-amber-300 block">Ước tính Giá vốn (COGS) / 1 món:</span>
-                                <span className="text-lg font-extrabold text-amber-900 dark:text-amber-100">
+                                <span className="text-lg font-extrabold text-amber-900 dark:text-amber-100 tabular-nums">
                                     {Math.round(cogs).toLocaleString('vi-VN')} đ
                                 </span>
                             </div>
                             <div className="text-right">
                                 <span className="text-xs font-semibold text-amber-800 dark:text-amber-300 block">Tỷ suất lợi nhuận gộp:</span>
-                                <span className={`text-base font-extrabold ${marginPercent >= 50 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                <span className={`text-base font-extrabold tabular-nums ${marginPercent >= 50 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                     {marginPercent}%
                                 </span>
                             </div>
                         </div>
 
                         <div className="flex justify-between items-center pb-2 border-b border-zinc-100 dark:border-zinc-800">
-                            <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                            <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
                                 Thành phần nguyên liệu vật tư ({lines.length})
                             </span>
                             <button
                                 type="button"
                                 onClick={handleAddLine}
-                                className="px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 flex items-center space-x-1"
+                                className="px-3 py-1.5 text-xs font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 rounded-lg hover:bg-sky-100 flex items-center space-x-1 transition-colors"
                             >
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
+                                <Plus className="w-3.5 h-3.5 stroke-[1.5]" />
                                 <span>Thêm nguyên liệu</span>
                             </button>
                         </div>
@@ -237,15 +235,14 @@ export default function RecipeFormDrawer({
                                                 {Math.round(lineCost).toLocaleString('vi-VN')} đ
                                             </div>
 
-                                            {/* Remove Line Button */}
                                             <button
                                                 type="button"
                                                 onClick={() => handleRemoveLine(idx)}
-                                                className="p-1 text-zinc-400 hover:text-rose-600 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                                className="p-1.5 text-zinc-400 hover:text-rose-600 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                                                title="Xóa nguyên liệu này"
+                                                aria-label="Xóa nguyên liệu"
                                             >
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
+                                                <Trash2 className="w-4 h-4 stroke-[1.5]" />
                                             </button>
                                         </div>
                                     );

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { ChevronUp, ChevronDown, Image as ImageIcon, Edit3, Trash2, Rows3, Package } from 'lucide-react';
 
 interface Category {
     id: number;
@@ -86,12 +87,12 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
 
     const renderSortIcon = (field: SortField) => {
         if (sortField !== field) {
-            return <span className="text-zinc-300 dark:text-zinc-600 ml-1 text-xs opacity-50">▲</span>;
+            return <ChevronUp className="w-3.5 h-3.5 ml-1 text-zinc-300 dark:text-zinc-600 opacity-50 inline" />;
         }
-        return (
-            <span className="text-blue-600 dark:text-blue-400 ml-1 text-xs font-bold">
-                {sortDirection === 'asc' ? '▲' : '▼'}
-            </span>
+        return sortDirection === 'asc' ? (
+            <ChevronUp className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
+        ) : (
+            <ChevronDown className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
         );
     };
 
@@ -176,8 +177,20 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
                     <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 text-zinc-800 dark:text-zinc-200">
                         {paginatedItems.length === 0 ? (
                             <tr>
-                                <td colSpan={isCompact ? 8 : 9} className="py-8 text-center text-zinc-400 dark:text-zinc-500">
-                                    Không có sản phẩm nào phù hợp.
+                                <td colSpan={isCompact ? 8 : 9} className="py-12 px-6">
+                                    <div className="flex items-start space-x-4 max-w-md">
+                                        <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 flex items-center justify-center shrink-0">
+                                            <Package className="w-5 h-5 stroke-[1.5]" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                                Không tìm thấy sản phẩm
+                                            </h4>
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">
+                                                Không có sản phẩm nào phù hợp với bộ lọc tìm kiếm hiện tại. Thử thay đổi từ khóa hoặc chọn lại danh mục.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         ) : (
@@ -188,7 +201,7 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
                                         key={item.id}
                                         className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors"
                                     >
-                                        <td className={`px-4 text-center text-zinc-500 text-xs ${isCompact ? 'py-1.5' : 'py-3'}`}>
+                                        <td className={`px-4 text-center text-zinc-500 text-xs tabular-nums ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {realIndex}
                                         </td>
                                         {!isCompact && (
@@ -197,14 +210,12 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
                                                     {item.image ? (
                                                         <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                                                     ) : (
-                                                        <svg className="w-5 h-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                        </svg>
+                                                        <ImageIcon className="w-5 h-5 text-zinc-400 stroke-[1.5]" />
                                                     )}
                                                 </div>
                                             </td>
                                         )}
-                                        <td className={`px-4 font-mono text-xs text-blue-600 dark:text-blue-400 font-medium ${isCompact ? 'py-1.5' : 'py-3'}`}>
+                                        <td className={`px-4 font-mono text-xs text-sky-600 dark:text-sky-400 font-medium tabular-nums ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {formatProductCode(item.id)}
                                         </td>
                                         <td className={`px-4 font-medium text-zinc-900 dark:text-zinc-100 ${isCompact ? 'py-1.5' : 'py-3'}`}>
@@ -213,10 +224,10 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
                                         <td className={`px-4 text-zinc-600 dark:text-zinc-400 ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {item.category?.name ?? '—'}
                                         </td>
-                                        <td className={`px-4 text-right font-medium text-emerald-600 dark:text-emerald-400 ${isCompact ? 'py-1.5' : 'py-3'}`}>
+                                        <td className={`px-4 text-right font-medium text-emerald-600 dark:text-emerald-400 tabular-nums ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {formatCurrency(item.price)}
                                         </td>
-                                        <td className={`px-4 text-center text-xs text-zinc-500 ${isCompact ? 'py-1.5' : 'py-3'}`}>
+                                        <td className={`px-4 text-center text-xs text-zinc-500 tabular-nums ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {Number(item.vat_rate)}%
                                         </td>
                                         <td className={`px-4 text-center ${isCompact ? 'py-1.5' : 'py-3'}`}>
@@ -233,22 +244,20 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
                                                 <button
                                                     type="button"
                                                     onClick={() => onEdit(item)}
-                                                    className="p-1 text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg"
+                                                    className="p-1.5 text-zinc-500 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                                                     title="Chỉnh sửa sản phẩm"
+                                                    aria-label="Chỉnh sửa sản phẩm"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                                                    </svg>
+                                                    <Edit3 className="w-4 h-4 stroke-[1.5]" />
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => onDelete(item)}
-                                                    className="p-1 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg"
+                                                    className="p-1.5 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                                                     title="Xóa sản phẩm"
+                                                    aria-label="Xóa sản phẩm"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
+                                                    <Trash2 className="w-4 h-4 stroke-[1.5]" />
                                                 </button>
                                             </div>
                                         </td>
@@ -270,14 +279,12 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
                         onClick={() => setIsCompact(!isCompact)}
                         className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border font-medium transition-colors ${
                             isCompact
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
                                 : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700'
                         }`}
                         title="Bật/Tắt chế độ hiển thị thu gọn (ẩn cột ảnh, thu hẹp khoảng cách dòng)"
                     >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
+                        <Rows3 className="w-4 h-4 stroke-[1.5]" />
                         <span>{isCompact ? 'Xem đầy đủ' : 'Thu gọn bảng'}</span>
                     </button>
 

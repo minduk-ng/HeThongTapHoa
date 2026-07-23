@@ -9,6 +9,7 @@ interface DeleteConfirmModalProps {
     onClose: () => void;
     onConfirm: (e: React.FormEvent) => void;
     processing?: boolean;
+    errorMsg?: string | null;
 }
 
 export default function DeleteConfirmModal({
@@ -20,6 +21,7 @@ export default function DeleteConfirmModal({
     onClose,
     onConfirm,
     processing = false,
+    errorMsg,
 }: DeleteConfirmModalProps) {
     if (!isOpen) return null;
 
@@ -44,6 +46,11 @@ export default function DeleteConfirmModal({
                             required
                             disabled={processing}
                         />
+                        {errorMsg && (
+                            <p className="mt-1.5 text-xs font-medium text-rose-600 dark:text-rose-400">
+                                {errorMsg}
+                            </p>
+                        )}
                     </div>
                     <div className="modal-footer">
                         <button 

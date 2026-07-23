@@ -1,21 +1,23 @@
 import React, { useState, useMemo } from 'react';
+import { FolderTree, Folder, ChevronRight, ChevronUp, ChevronDown, Edit3, Trash2, Rows3 } from 'lucide-react';
 
-export interface ChildItem {
+export interface CategoryItem {
     id: number;
+    category_id: number | null;
     name: string;
     price: number | string;
     is_available: boolean;
-    image?: string | null;
 }
 
 export interface CategoryData {
     id: number;
     name: string;
     description: string | null;
-    sort_order: number;
+    display_order: number;
+    sort_order?: number;
     items_count?: number;
     items_sum_price?: number | string | null;
-    items?: ChildItem[];
+    items?: CategoryItem[];
 }
 
 interface CategoryTableProps {
@@ -24,16 +26,16 @@ interface CategoryTableProps {
     onDelete: (category: CategoryData) => void;
 }
 
-type SortField = 'sort_order' | 'name' | 'items_count' | 'items_sum_price';
+type SortField = 'id' | 'name' | 'display_order' | 'items_count' | 'items_sum_price';
 type SortDirection = 'asc' | 'desc';
 
 export default function CategoryTable({ categories, onEdit, onDelete }: CategoryTableProps) {
-    const [expandedIds, setExpandedIds] = useState<Record<number, boolean>>({});
     const [isCompact, setIsCompact] = useState(false);
     const [pageSize, setPageSize] = useState<number>(20);
     const [currentPage, setCurrentPage] = useState<number>(1);
-    const [sortField, setSortField] = useState<SortField>('sort_order');
+    const [sortField, setSortField] = useState<SortField>('display_order');
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+    const [expandedIds, setExpandedIds] = useState<Record<number, boolean>>({});
 
     const toggleExpand = (id: number) => {
         setExpandedIds((prev) => ({
@@ -52,12 +54,11 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
         setCurrentPage(1);
     };
 
-    // Sort categories
     const sortedCategories = useMemo(() => {
         const sorted = [...categories];
         sorted.sort((a, b) => {
-            let valA: any = a[sortField];
-            let valB: any = b[sortField];
+            let valA: any = a[sortField as keyof CategoryData];
+            let valB: any = b[sortField as keyof CategoryData];
 
             if (sortField === 'items_count') {
                 valA = a.items_count ?? a.items?.length ?? 0;
@@ -77,7 +78,6 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
         return sorted;
     }, [categories, sortField, sortDirection]);
 
-    // Paginate sorted categories
     const totalPages = Math.max(1, Math.ceil(sortedCategories.length / pageSize));
     const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
 
@@ -86,38 +86,37 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
         return sortedCategories.slice(start, start + pageSize);
     }, [sortedCategories, safeCurrentPage, pageSize]);
 
-    const formatCurrency = (val?: number | string | null) => {
+    const formatCurrency = (val: number | string | null | undefined) => {
         if (val === null || val === undefined) return '0 đ';
         return Number(val).toLocaleString('vi-VN') + ' đ';
     };
 
     const renderSortIcon = (field: SortField) => {
         if (sortField !== field) {
-            return <span className="text-zinc-300 dark:text-zinc-600 ml-1 text-xs opacity-50">▲</span>;
+            return <ChevronUp className="w-3.5 h-3.5 ml-1 text-zinc-300 dark:text-zinc-600 opacity-50 inline" />;
         }
-        return (
-            <span className="text-blue-600 dark:text-blue-400 ml-1 text-xs font-bold">
-                {sortDirection === 'asc' ? '▲' : '▼'}
-            </span>
+        return sortDirection === 'asc' ? (
+            <ChevronUp className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
+        ) : (
+            <ChevronDown className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
         );
     };
 
     return (
         <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-zinc-900 rounded-2xl shadow-xs">
-            {/* Scrollable Data Area */}
             <div className="flex-1 overflow-auto min-h-0">
                 <table className="w-full text-left text-sm relative">
                     <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-800/90 backdrop-blur-xs text-zinc-600 dark:text-zinc-400 font-medium border-b border-zinc-200 dark:border-zinc-800 select-none">
                         <tr>
                             <th
-                                onClick={() => handleSort('sort_order')}
+                                onClick={() => handleSort('display_order')}
                                 className={`px-4 text-center cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
                                     isCompact ? 'py-2.5 w-16' : 'py-4 w-20'
                                 }`}
                             >
                                 <div className="flex items-center justify-center">
                                     <span>STT</span>
-                                    {renderSortIcon('sort_order')}
+                                    {renderSortIcon('display_order')}
                                 </div>
                             </th>
                             <th
@@ -159,8 +158,20 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                     <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 text-zinc-800 dark:text-zinc-200">
                         {paginatedCategories.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="py-8 text-center text-zinc-400 dark:text-zinc-500">
-                                    Chưa có danh mục nào phù hợp.
+                                <td colSpan={5} className="py-12 px-6">
+                                    <div className="flex items-start space-x-4 max-w-md mx-auto">
+                                        <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 flex items-center justify-center shrink-0">
+                                            <FolderTree className="w-5 h-5 stroke-[1.5]" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                                Không tìm thấy danh mục
+                                            </h4>
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">
+                                                Chưa có danh mục sản phẩm nào phù hợp với bộ lọc tìm kiếm. Thử thay đổi từ khóa tìm kiếm.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         ) : (
@@ -174,40 +185,33 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                                         {/* Category Parent Row */}
                                         <tr
                                             className={`hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer ${
-                                                isExpanded ? 'bg-blue-50/40 dark:bg-blue-950/30' : ''
+                                                isExpanded ? 'bg-sky-50/40 dark:bg-sky-950/30' : ''
                                             }`}
                                             onClick={() => toggleExpand(category.id)}
                                         >
-                                            <td className={`px-4 text-center ${isCompact ? 'py-2.5' : 'py-5'}`}>
-                                                <div className="flex items-center justify-center space-x-1.5">
+                                            <td className={`px-4 ${isCompact ? 'py-2.5' : 'py-5'}`}>
+                                                <div className="flex items-center space-x-2">
                                                     <button
                                                         type="button"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             toggleExpand(category.id);
                                                         }}
-                                                        className="p-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                                        className="p-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
                                                     >
-                                                        <svg
-                                                            className={`w-4 h-4 transform transition-transform duration-200 ${
-                                                                isExpanded ? 'rotate-90 text-blue-600 dark:text-blue-400' : ''
+                                                        <ChevronRight
+                                                            className={`w-4 h-4 transform transition-transform duration-200 stroke-[1.5] ${
+                                                                isExpanded ? 'rotate-90 text-sky-600 dark:text-sky-400' : ''
                                                             }`}
-                                                            fill="none"
-                                                            viewBox="0 0 24 24"
-                                                            stroke="currentColor"
-                                                        >
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                        </svg>
+                                                        />
                                                     </button>
-                                                    <span className="text-xs text-zinc-500">{realIndex}</span>
+                                                    <span className="text-xs text-zinc-500 tabular-nums">{realIndex}</span>
                                                 </div>
                                             </td>
 
                                             <td className={`px-4 font-semibold text-zinc-900 dark:text-zinc-100 ${isCompact ? 'py-2.5' : 'py-5'}`}>
                                                 <div className="flex items-center space-x-2">
-                                                    <svg className="w-5 h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                                                    </svg>
+                                                    <Folder className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0 stroke-[1.5]" />
                                                     <span>{category.name}</span>
                                                     {category.description && (
                                                         <span className="text-xs font-normal text-zinc-400 dark:text-zinc-500 ml-2">
@@ -218,12 +222,12 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                                             </td>
 
                                             <td className={`px-4 text-center ${isCompact ? 'py-2.5' : 'py-5'}`}>
-                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 tabular-nums">
                                                     {category.items_count ?? category.items?.length ?? 0} sản phẩm
                                                 </span>
                                             </td>
 
-                                            <td className={`px-4 text-right font-semibold text-emerald-600 dark:text-emerald-400 ${isCompact ? 'py-2.5' : 'py-5'}`}>
+                                            <td className={`px-4 text-right font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums ${isCompact ? 'py-2.5' : 'py-5'}`}>
                                                 {formatCurrency(category.items_sum_price)}
                                             </td>
 
@@ -232,22 +236,20 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                                                     <button
                                                         type="button"
                                                         onClick={() => onEdit(category)}
-                                                        className="p-1.5 text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg"
+                                                        className="p-1.5 text-zinc-500 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                                                         title="Sửa danh mục"
+                                                        aria-label="Sửa danh mục"
                                                     >
-                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                                                        </svg>
+                                                        <Edit3 className="w-4 h-4 stroke-[1.5]" />
                                                     </button>
                                                     <button
                                                         type="button"
                                                         onClick={() => onDelete(category)}
-                                                        className="p-1.5 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg"
+                                                        className="p-1.5 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                                                         title="Xóa danh mục"
+                                                        aria-label="Xóa danh mục"
                                                     >
-                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
+                                                        <Trash2 className="w-4 h-4 stroke-[1.5]" />
                                                     </button>
                                                 </div>
                                             </td>
@@ -333,9 +335,7 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                         }`}
                         title="Bật/Tắt chế độ hiển thị thu gọn"
                     >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
+                        <Rows3 className="w-4 h-4 stroke-[1.5]" />
                         <span>{isCompact ? 'Xem đầy đủ' : 'Thu gọn bảng'}</span>
                     </button>
 

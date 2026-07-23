@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Armchair } from 'lucide-react';
+import { Armchair, CheckCircle2, Users, Clock, AlertTriangle, ChevronUp, ChevronDown, Edit3, Trash2, Rows3 } from 'lucide-react';
 
 export interface TableData {
     id: number;
@@ -26,7 +26,7 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
     const [isCompact, setIsCompact] = useState(false);
     const [pageSize, setPageSize] = useState<number>(20);
     const [currentPage, setCurrentPage] = useState<number>(1);
-    const [sortField, setSortField] = useState<SortField>('area');
+    const [sortField, setSortField] = useState<SortField>('table_number');
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
     const handleSort = (field: SortField) => {
@@ -39,7 +39,7 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
         setCurrentPage(1);
     };
 
-    const sortedTables = useMemo(() => {
+    const sortedItems = useMemo(() => {
         const sorted = [...tables];
         sorted.sort((a, b) => {
             let valA: any = a[sortField as keyof TableData];
@@ -55,37 +55,41 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
         return sorted;
     }, [tables, sortField, sortDirection]);
 
-    const totalPages = Math.max(1, Math.ceil(sortedTables.length / pageSize));
+    const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize));
     const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
 
     const paginatedItems = useMemo(() => {
         const start = (safeCurrentPage - 1) * pageSize;
-        return sortedTables.slice(start, start + pageSize);
-    }, [sortedTables, safeCurrentPage, pageSize]);
+        return sortedItems.slice(start, start + pageSize);
+    }, [sortedItems, safeCurrentPage, pageSize]);
 
     const renderStatusBadge = (status: TableData['status']) => {
         switch (status) {
             case 'available':
                 return (
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
                         Bàn trống
                     </span>
                 );
             case 'occupied':
                 return (
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                        <Users className="w-3.5 h-3.5 mr-1" />
                         Đang dùng
                     </span>
                 );
             case 'reserved':
                 return (
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300">
+                        <Clock className="w-3.5 h-3.5 mr-1" />
                         Đã đặt trước
                     </span>
                 );
             case 'maintenance':
                 return (
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                        <AlertTriangle className="w-3.5 h-3.5 mr-1" />
                         Bảo trì
                     </span>
                 );
@@ -96,12 +100,12 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
 
     const renderSortIcon = (field: SortField) => {
         if (sortField !== field) {
-            return <span className="text-zinc-300 dark:text-zinc-600 ml-1 text-xs opacity-50">▲</span>;
+            return <ChevronUp className="w-3.5 h-3.5 ml-1 text-zinc-300 dark:text-zinc-600 opacity-50 inline" />;
         }
-        return (
-            <span className="text-blue-600 dark:text-blue-400 ml-1 text-xs font-bold">
-                {sortDirection === 'asc' ? '▲' : '▼'}
-            </span>
+        return sortDirection === 'asc' ? (
+            <ChevronUp className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
+        ) : (
+            <ChevronDown className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
         );
     };
 
@@ -163,8 +167,20 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
                     <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 text-zinc-800 dark:text-zinc-200">
                         {paginatedItems.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="py-8 text-center text-zinc-400 dark:text-zinc-500">
-                                    Chưa có bàn nào phù hợp.
+                                <td colSpan={6} className="py-12 px-6">
+                                    <div className="flex items-start space-x-4 max-w-md">
+                                        <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 flex items-center justify-center shrink-0">
+                                            <Armchair className="w-5 h-5 stroke-[1.5]" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                                Không tìm thấy bàn
+                                            </h4>
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">
+                                                Chưa có bàn nào phù hợp với điều kiện tìm kiếm. Thử thay đổi từ khóa hoặc bộ lọc khu vực.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         ) : (
@@ -175,7 +191,7 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
                                         key={item.id}
                                         className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors"
                                     >
-                                        <td className={`px-4 text-center text-zinc-500 text-xs ${isCompact ? 'py-1.5' : 'py-3'}`}>
+                                        <td className={`px-4 text-center text-zinc-500 text-xs tabular-nums ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {realIndex}
                                         </td>
                                         <td className={`px-4 font-bold text-zinc-900 dark:text-zinc-100 ${isCompact ? 'py-1.5' : 'py-3'}`}>
@@ -183,13 +199,13 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
                                                 <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">
                                                     <Armchair className="w-4 h-4 stroke-[1.5]" />
                                                 </div>
-                                                <span>{item.table_number}</span>
+                                                <span className="tabular-nums">{item.table_number}</span>
                                             </div>
                                         </td>
                                         <td className={`px-4 text-zinc-600 dark:text-zinc-400 font-medium ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {item.area || '—'}
                                         </td>
-                                        <td className={`px-4 text-center font-semibold text-zinc-800 dark:text-zinc-200 ${isCompact ? 'py-1.5' : 'py-3'}`}>
+                                        <td className={`px-4 text-center font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {item.capacity} ghế
                                         </td>
                                         <td className={`px-4 text-center ${isCompact ? 'py-1.5' : 'py-3'}`}>
@@ -201,26 +217,24 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
                                                     type="button"
                                                     disabled={item.status === 'occupied'}
                                                     onClick={() => onEdit(item)}
-                                                    className={`p-1 rounded-lg transition-colors ${
+                                                    className={`p-1.5 rounded-lg transition-colors ${
                                                         item.status === 'occupied'
                                                             ? 'text-zinc-300 dark:text-zinc-700 cursor-not-allowed opacity-50'
-                                                            : 'text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                                            : 'text-zinc-500 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                                     }`}
                                                     title={item.status === 'occupied' ? 'Bàn đang có khách sử dụng, không thể chỉnh sửa' : 'Chỉnh sửa bàn'}
+                                                    aria-label="Chỉnh sửa bàn"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                                                    </svg>
+                                                    <Edit3 className="w-4 h-4 stroke-[1.5]" />
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => onDelete(item)}
-                                                    className="p-1 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg"
+                                                    className="p-1.5 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                                                     title="Xóa bàn"
+                                                    aria-label="Xóa bàn"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
+                                                    <Trash2 className="w-4 h-4 stroke-[1.5]" />
                                                 </button>
                                             </div>
                                         </td>
@@ -240,13 +254,11 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
                         onClick={() => setIsCompact(!isCompact)}
                         className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border font-medium transition-colors ${
                             isCompact
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
                                 : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700'
                         }`}
                     >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
+                        <Rows3 className="w-4 h-4 stroke-[1.5]" />
                         <span>{isCompact ? 'Xem đầy đủ' : 'Thu gọn bảng'}</span>
                     </button>
 

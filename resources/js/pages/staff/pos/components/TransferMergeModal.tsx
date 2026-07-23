@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
-import { ArrowRightLeft, Layers, Split, AlertCircle } from 'lucide-react';
+import { ArrowRightLeft, Layers, Split, AlertCircle, X } from 'lucide-react';
 import { POSTableData } from '../types/pos.types';
 
 interface TransferMergeModalProps {
@@ -167,7 +167,7 @@ export default function TransferMergeModal({
                         onClick={onClose}
                         className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700"
                     >
-                        ✕
+                        <X className="w-5 h-5 stroke-[1.5]" />
                     </button>
                 </div>
 
@@ -243,7 +243,7 @@ export default function TransferMergeModal({
                                     onChange={(e) => setTargetTransferTableId(Number(e.target.value))}
                                     className="w-full px-3 py-2 text-sm border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 font-semibold focus:outline-hidden focus:ring-2 focus:ring-sky-500"
                                 >
-                                    <option value="">-- Chọn bàn trống --</option>
+                                    <option value="">— Chọn bàn trống —</option>
                                     {availableTransferTables.map((t) => (
                                         <option key={t.id} value={t.id}>
                                             {t.table_number} ({t.area}) — Sức chứa: {t.capacity} ghế
@@ -289,7 +289,7 @@ export default function TransferMergeModal({
                                     onChange={(e) => setTargetMergeTableId(Number(e.target.value))}
                                     className="w-full px-3 py-2 text-sm border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 font-semibold focus:outline-hidden focus:ring-2 focus:ring-sky-500"
                                 >
-                                    <option value="">-- Chọn bàn --</option>
+                                    <option value="">— Chọn bàn —</option>
                                     {availableMergeTables.map((t) => (
                                         <option key={t.id} value={t.id}>
                                             {t.table_number} ({t.area}) [{t.status === 'occupied' ? 'Đang dùng' : 'Trống'}]

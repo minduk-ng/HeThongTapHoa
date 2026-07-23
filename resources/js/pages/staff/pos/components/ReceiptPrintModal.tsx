@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Printer } from 'lucide-react';
+import { Printer, X } from 'lucide-react';
 import { POSTableData, CartItem } from '../types/pos.types';
 
 
@@ -105,7 +105,8 @@ export default function ReceiptPrintModal({
                             onClick={onClose}
                             className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center space-x-1"
                         >
-                            <span>✕ Đóng</span>
+                            <X className="w-3.5 h-3.5 stroke-[1.5]" />
+                            <span>Đóng</span>
                         </button>
                     </div>
                 </div>
@@ -133,18 +134,18 @@ export default function ReceiptPrintModal({
                                 <h3 className="text-sm font-black uppercase tracking-wider">
                                     PHIẾU THANH TOÁN
                                 </h3>
-                                <p className="text-[10px] font-mono text-zinc-600">Số: {invoiceCode}</p>
+                                <p className="text-[10px] font-mono text-zinc-600 tabular-nums">Số: {invoiceCode}</p>
                             </div>
 
                             <div className="grid grid-cols-2 text-[11px] pt-1 border-t border-dotted border-zinc-400">
                                 <div>
-                                    <p><span className="font-bold">Bàn số:</span> {selectedTable.table_number}</p>
-                                    <p><span className="font-bold">Giờ vào:</span> {timeNowStr}</p>
-                                    <p><span className="font-bold">Ngày:</span> {todayStr}</p>
+                                    <p><span className="font-bold">Bàn số:</span> <span className="tabular-nums">{selectedTable.table_number}</span></p>
+                                    <p><span className="font-bold">Giờ vào:</span> <span className="tabular-nums">{timeNowStr}</span></p>
+                                    <p><span className="font-bold">Ngày:</span> <span className="tabular-nums">{todayStr}</span></p>
                                 </div>
                                 <div className="text-right">
                                     <p><span className="font-bold">Khu:</span> {selectedTable.area || 'Trong nhà'}</p>
-                                    <p><span className="font-bold">Giờ ra:</span> {timeNowStr}</p>
+                                    <p><span className="font-bold">Giờ ra:</span> <span className="tabular-nums">{timeNowStr}</span></p>
                                     <p><span className="font-bold">NV:</span> Admin</p>
                                 </div>
                             </div>
@@ -164,7 +165,7 @@ export default function ReceiptPrintModal({
                             <tbody className="divide-y divide-dashed divide-zinc-300">
                                 {cartItems.map((item, idx) => (
                                     <tr key={idx} className="align-top">
-                                        <td className="py-1 font-mono text-[10px]">{idx + 1}</td>
+                                        <td className="py-1 font-mono text-[10px] tabular-nums">{idx + 1}</td>
                                         <td className="py-1 font-semibold pr-1">
                                             {item.name}
                                             {item.note && (
@@ -173,9 +174,9 @@ export default function ReceiptPrintModal({
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="py-1 text-center font-bold">{item.quantity}</td>
-                                        <td className="py-1 text-right font-mono">{item.unit_price.toLocaleString('vi-VN')}</td>
-                                        <td className="py-1 text-right font-bold font-mono">
+                                        <td className="py-1 text-center font-bold tabular-nums">{item.quantity}</td>
+                                        <td className="py-1 text-right font-mono tabular-nums">{item.unit_price.toLocaleString('vi-VN')}</td>
+                                        <td className="py-1 text-right font-bold font-mono tabular-nums">
                                             {(item.quantity * item.unit_price).toLocaleString('vi-VN')}
                                         </td>
                                     </tr>
@@ -187,15 +188,15 @@ export default function ReceiptPrintModal({
                         <div className="space-y-1 text-[11px] py-1 border-b border-dashed border-black">
                             <div className="flex justify-between">
                                 <span>Cộng tiền món:</span>
-                                <span className="font-mono font-bold">{subtotal.toLocaleString('vi-VN')}</span>
+                                <span className="font-mono font-bold tabular-nums">{subtotal.toLocaleString('vi-VN')}</span>
                             </div>
                             <div className="flex justify-between text-zinc-600">
                                 <span>Phí dịch vụ (0%):</span>
-                                <span className="font-mono">0</span>
+                                <span className="font-mono tabular-nums">0</span>
                             </div>
                             <div className="flex justify-between text-zinc-600">
                                 <span>Thuế GTGT ({vatTotal > 0 ? '8%' : '0%'}):</span>
-                                <span className="font-mono">{vatTotal.toLocaleString('vi-VN')}</span>
+                                <span className="font-mono tabular-nums">{vatTotal.toLocaleString('vi-VN')}</span>
                             </div>
                             <div className="flex justify-between font-bold text-zinc-900 border-t border-dotted border-zinc-400 pt-1">
                                 <span>Vị trí / Bàn thực hiện:</span>
@@ -203,7 +204,7 @@ export default function ReceiptPrintModal({
                             </div>
                             <div className="flex justify-between text-xs font-black pt-1 border-t border-black">
                                 <span>TỔNG THANH TOÁN:</span>
-                                <span className="font-mono text-sm">{totalAmount.toLocaleString('vi-VN')} đ</span>
+                                <span className="font-mono text-sm tabular-nums">{totalAmount.toLocaleString('vi-VN')} đ</span>
                             </div>
                         </div>
 

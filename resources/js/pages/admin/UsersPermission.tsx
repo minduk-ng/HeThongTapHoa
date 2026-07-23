@@ -32,6 +32,7 @@ export default function UsersPermission({ users, roles, filters }: Props) {
     const [bulkSelectedRoles, setBulkSelectedRoles] = useState<string[]>([]);
 
     const [deletePassword, setDeletePassword] = useState('');
+    const [deleteErrorMsg, setDeleteErrorMsg] = useState<string | null>(null);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [usersToDelete, setUsersToDelete] = useState<number[]>([]);
 
@@ -655,18 +656,23 @@ export default function UsersPermission({ users, roles, filters }: Props) {
 
             <DeleteConfirmModal
                 isOpen={isDeleteConfirmOpen}
-                title="Xác nhận xóa tài khoản người dùng"
-                description={`Hành động này không thể hoàn tác. Vui lòng nhập mật khẩu quản trị của bạn để xác nhận xóa ${usersToDelete.length} người dùng đã chọn khỏi hệ thống.`}
+                title="Xác nhận xóa tài khoản"
+                description={`Bạn có chắc chắn muốn xóa ${usersToDelete.length} tài khoản đã chọn? Hành động này không thể hoàn tác.`}
                 passwordValue={deletePassword}
-                onPasswordChange={setDeletePassword}
+                onPasswordChange={(val) => {
+                    setDeletePassword(val);
+                    setDeleteErrorMsg(null);
+                }}
+                errorMsg={deleteErrorMsg}
                 onClose={() => {
                     setIsDeleteConfirmOpen(false);
-                    setUsersToDelete([]);
                     setDeletePassword('');
+                    setDeleteErrorMsg(null);
+                    setUsersToDelete([]);
                 }}
                 onConfirm={(e) => {
                     e.preventDefault();
-                    router.post('/admin/permissions/bulk', {
+                    router.post('/admin/users/bulk-action', {
                         user_ids: usersToDelete,
                         action: 'delete_users',
                         password: deletePassword
@@ -675,10 +681,11 @@ export default function UsersPermission({ users, roles, filters }: Props) {
                             setIsDeleteConfirmOpen(false);
                             setUsersToDelete([]);
                             setDeletePassword('');
+                            setDeleteErrorMsg(null);
                             setSelectedUserIds([]);
                         },
                         onError: (err) => {
-                            alert(err.password || 'Mật khẩu xác nhận không chính xác.');
+                            setDeleteErrorMsg(err.password || 'Mật khẩu xác nhận không chính xác.');
                         }
                     });
                 }}

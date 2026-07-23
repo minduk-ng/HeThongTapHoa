@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
+import { X, Plus, Loader2, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { MenuItemData } from './ProductTable';
 import { compressAndResizeImage } from '../../../../utils/imageCompressor';
 
@@ -187,19 +188,18 @@ export default function ProductFormDrawer({
             />
 
             <div className="absolute inset-y-0 right-0 max-w-full flex pl-10 z-[101]">
-                <div className="w-screen max-w-xl bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col justify-between">
+                <div className="w-screen max-w-xl bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 shadow-xl flex flex-col justify-between">
                     {/* Header */}
                     <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
-                        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                        <h2 className="text-xl font-bold font-display text-zinc-900 dark:text-zinc-100">
                             {productToEdit ? 'Cập nhật hàng hóa' : 'Thêm sản phẩm mới'}
                         </h2>
                         <button
+                            type="button"
                             onClick={onClose}
-                            className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                            className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
                         >
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            <X className="w-6 h-6 stroke-[1.5]" />
                         </button>
                     </div>
 
@@ -234,7 +234,7 @@ export default function ProductFormDrawer({
                                         onChange={(e) => setCategoryId(e.target.value)}
                                         className="w-full px-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                                     >
-                                        <option value="">-- Chọn danh mục --</option>
+                                        <option value="">— Chọn danh mục —</option>
                                         {categories.map((cat) => (
                                             <option key={cat.id} value={cat.id}>
                                                 {cat.name}
@@ -282,20 +282,15 @@ export default function ProductFormDrawer({
                                     {/* Enlarged Image Preview Box (w-36 h-36) */}
                                     <div className="w-36 h-36 rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 flex items-center justify-center overflow-hidden relative shrink-0 shadow-xs">
                                         {isCompressingImage ? (
-                                            <div className="text-center p-2 text-blue-600 dark:text-blue-400">
-                                                <svg className="w-6 h-6 animate-spin mx-auto mb-1" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                                </svg>
+                                            <div className="text-center p-2 text-sky-600 dark:text-sky-400">
+                                                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-1 stroke-[1.5]" />
                                                 <span className="text-[10px] font-medium block">Đang nén 600x600 WebP...</span>
                                             </div>
                                         ) : imagePreview ? (
                                             <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                                         ) : (
                                             <div className="text-center p-3">
-                                                <svg className="w-8 h-8 text-zinc-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
+                                                <ImageIcon className="w-8 h-8 text-zinc-400 mx-auto stroke-[1.5]" />
                                                 <span className="text-xs text-zinc-400 block mt-1">Chưa có ảnh</span>
                                             </div>
                                         )}
@@ -307,7 +302,7 @@ export default function ProductFormDrawer({
                                             type="file"
                                             accept="image/*"
                                             onChange={handleImageChange}
-                                            className="block w-full text-xs text-zinc-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-zinc-800 dark:file:text-zinc-200 cursor-pointer"
+                                            className="block w-full text-xs text-zinc-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 dark:file:bg-zinc-800 dark:file:text-zinc-200 cursor-pointer"
                                         />
                                         {imagePreview && (
                                             <button
@@ -315,9 +310,7 @@ export default function ProductFormDrawer({
                                                 onClick={handleRemoveImage}
                                                 className="text-xs text-rose-600 dark:text-rose-400 font-medium hover:underline flex items-center space-x-1"
                                             >
-                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
+                                                <Trash2 className="w-3.5 h-3.5 stroke-[1.5]" />
                                                 <span>Xóa ảnh</span>
                                             </button>
                                         )}

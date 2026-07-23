@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react';
+import { Package, ChevronUp, ChevronDown, Plus, Edit3, Trash2, Rows3 } from 'lucide-react';
 
 export interface IngredientData {
     id: number;
-    code: string;
+    code?: string;
     name: string;
     unit: string;
     stock_quantity: number;
     min_stock_alert: number;
     cost_price: number;
-    expiry_date?: string | null;
 }
 
 interface IngredientTableProps {
@@ -30,8 +30,8 @@ export default function IngredientTable({
     const [isCompact, setIsCompact] = useState(false);
     const [pageSize, setPageSize] = useState<number>(20);
     const [currentPage, setCurrentPage] = useState<number>(1);
-    const [sortField, setSortField] = useState<SortField>('id');
-    const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+    const [sortField, setSortField] = useState<SortField>('name');
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -43,7 +43,7 @@ export default function IngredientTable({
         setCurrentPage(1);
     };
 
-    const sortedIngredients = useMemo(() => {
+    const sortedItems = useMemo(() => {
         const sorted = [...ingredients];
         sorted.sort((a, b) => {
             let valA: any = a[sortField as keyof IngredientData];
@@ -59,13 +59,13 @@ export default function IngredientTable({
         return sorted;
     }, [ingredients, sortField, sortDirection]);
 
-    const totalPages = Math.max(1, Math.ceil(sortedIngredients.length / pageSize));
+    const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize));
     const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
 
     const paginatedItems = useMemo(() => {
         const start = (safeCurrentPage - 1) * pageSize;
-        return sortedIngredients.slice(start, start + pageSize);
-    }, [sortedIngredients, safeCurrentPage, pageSize]);
+        return sortedItems.slice(start, start + pageSize);
+    }, [sortedItems, safeCurrentPage, pageSize]);
 
     const formatCurrency = (val: number) => {
         return Number(val).toLocaleString('vi-VN') + ' đ';
@@ -73,12 +73,12 @@ export default function IngredientTable({
 
     const renderSortIcon = (field: SortField) => {
         if (sortField !== field) {
-            return <span className="text-zinc-300 dark:text-zinc-600 ml-1 text-xs opacity-50">▲</span>;
+            return <ChevronUp className="w-3.5 h-3.5 ml-1 text-zinc-300 dark:text-zinc-600 opacity-50 inline" />;
         }
-        return (
-            <span className="text-blue-600 dark:text-blue-400 ml-1 text-xs font-bold">
-                {sortDirection === 'asc' ? '▲' : '▼'}
-            </span>
+        return sortDirection === 'asc' ? (
+            <ChevronUp className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
+        ) : (
+            <ChevronDown className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
         );
     };
 
@@ -152,8 +152,20 @@ export default function IngredientTable({
                     <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 text-zinc-800 dark:text-zinc-200">
                         {paginatedItems.length === 0 ? (
                             <tr>
-                                <td colSpan={8} className="py-8 text-center text-zinc-400 dark:text-zinc-500">
-                                    Chưa có nguyên liệu nào phù hợp.
+                                <td colSpan={8} className="py-12 px-6">
+                                    <div className="flex items-start space-x-4 max-w-md">
+                                        <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 flex items-center justify-center shrink-0">
+                                            <Package className="w-5 h-5 stroke-[1.5]" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                                Không tìm thấy nguyên liệu
+                                            </h4>
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">
+                                                Chưa có nguyên liệu nào phù hợp với điều kiện tìm kiếm. Vui lòng kiểm tra lại từ khóa hoặc trạng thái tồn kho.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         ) : (
@@ -166,10 +178,10 @@ export default function IngredientTable({
                                         key={item.id}
                                         className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors"
                                     >
-                                        <td className={`px-4 text-center text-zinc-500 text-xs ${isCompact ? 'py-1.5' : 'py-3'}`}>
+                                        <td className={`px-4 text-center text-zinc-500 text-xs tabular-nums ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {realIndex}
                                         </td>
-                                        <td className={`px-4 font-mono text-xs text-blue-600 dark:text-blue-400 font-medium ${isCompact ? 'py-1.5' : 'py-3'}`}>
+                                        <td className={`px-4 font-mono text-xs text-sky-600 dark:text-sky-400 font-medium tabular-nums ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {item.code || `NVL${String(item.id).padStart(5, '0')}`}
                                         </td>
                                         <td className={`px-4 font-medium text-zinc-900 dark:text-zinc-100 ${isCompact ? 'py-1.5' : 'py-3'}`}>
@@ -180,10 +192,10 @@ export default function IngredientTable({
                                                 {item.unit}
                                             </span>
                                         </td>
-                                        <td className={`px-4 text-right font-bold ${isLowStock ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100'} ${isCompact ? 'py-1.5' : 'py-3'}`}>
+                                        <td className={`px-4 text-right font-bold tabular-nums ${isLowStock ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100'} ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {item.stock_quantity.toLocaleString('vi-VN')} {item.unit}
                                         </td>
-                                        <td className={`px-4 text-right font-medium text-emerald-600 dark:text-emerald-400 ${isCompact ? 'py-1.5' : 'py-3'}`}>
+                                        <td className={`px-4 text-right font-medium text-emerald-600 dark:text-emerald-400 tabular-nums ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             {formatCurrency(item.cost_price)}/{item.unit}
                                         </td>
                                         <td className={`px-4 text-center ${isCompact ? 'py-1.5' : 'py-3'}`}>
@@ -200,33 +212,29 @@ export default function IngredientTable({
                                                 <button
                                                     type="button"
                                                     onClick={() => onImportStock(item)}
-                                                    className="px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900 flex items-center space-x-1"
+                                                    className="px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900 flex items-center space-x-1 transition-colors"
                                                     title="Nhập kho bổ sung"
                                                 >
-                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                                    </svg>
+                                                    <Plus className="w-3.5 h-3.5 stroke-[1.5]" />
                                                     <span>Nhập kho</span>
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => onEdit(item)}
-                                                    className="p-1 text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg"
+                                                    className="p-1.5 text-zinc-500 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                                                     title="Chỉnh sửa nguyên liệu"
+                                                    aria-label="Chỉnh sửa nguyên liệu"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                                                    </svg>
+                                                    <Edit3 className="w-4 h-4 stroke-[1.5]" />
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => onDelete(item)}
-                                                    className="p-1 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg"
+                                                    className="p-1.5 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                                                     title="Xóa nguyên liệu"
+                                                    aria-label="Xóa nguyên liệu"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
+                                                    <Trash2 className="w-4 h-4 stroke-[1.5]" />
                                                 </button>
                                             </div>
                                         </td>
@@ -247,14 +255,12 @@ export default function IngredientTable({
                         onClick={() => setIsCompact(!isCompact)}
                         className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border font-medium transition-colors ${
                             isCompact
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
                                 : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700'
                         }`}
                         title="Bật/Tắt chế độ hiển thị thu gọn"
                     >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
+                        <Rows3 className="w-4 h-4 stroke-[1.5]" />
                         <span>{isCompact ? 'Xem đầy đủ' : 'Thu gọn bảng'}</span>
                     </button>
 
