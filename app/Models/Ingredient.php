@@ -25,6 +25,16 @@ class Ingredient extends Model
         'cost_price' => 'float',
     ];
 
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            \Illuminate\Support\Facades\Cache::forget('pos_products');
+        });
+        static::deleted(function () {
+            \Illuminate\Support\Facades\Cache::forget('pos_products');
+        });
+    }
+
     public function recipes()
     {
         return $this->hasMany(ProductRecipe::class, 'ingredient_id');

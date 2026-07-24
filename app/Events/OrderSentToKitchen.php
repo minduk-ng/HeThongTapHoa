@@ -21,8 +21,6 @@ class OrderSentToKitchen implements ShouldBroadcastNow
         return [
             new Channel('kitchen-channel'),
             new Channel('pos-channel'),
-            new PrivateChannel('kitchen-channel'),
-            new PrivateChannel('pos-channel'),
         ];
     }
 

@@ -68,28 +68,19 @@ export function usePOSCart(
         if (!selectedTable) return;
         const tableId = selectedTable.id;
         const existingCart = tableCarts[tableId] || [];
-
-        const index = existingCart.findIndex((i) => i.menu_item_id === product.id);
         const maxServings = product.max_servings !== undefined ? product.max_servings : 999;
 
+        // Check if an unconfirmed draft item for this product already exists
+        const draftIndex = existingCart.findIndex((i) => i.menu_item_id === product.id && !i.isConfirmed);
+
         let updated: CartItem[];
-        if (index > -1) {
-            const existingItem = existingCart[index];
-            if (!existingItem.isConfirmed) {
-                updated = existingCart.filter((i) => i.menu_item_id !== product.id);
-            } else {
-                if (existingItem.quantity + 1 > maxServings) {
-                    alert(`Không đủ nguyên liệu trong kho! “${product.name}” chỉ còn phục vụ tối đa ${maxServings} phần.`);
-                    return;
-                }
-                updated = [...existingCart];
-                updated[index] = { ...existingItem, quantity: existingItem.quantity + 1 };
-            }
+        if (draftIndex > -1) {
+            const existingDraft = existingCart[draftIndex];
+            if (existingDraft.quantity + 1 > maxServings) return;
+            updated = [...existingCart];
+            updated[draftIndex] = { ...existingDraft, quantity: existingDraft.quantity + 1 };
         } else {
-            if (1 > maxServings) {
-                alert(`Không đủ nguyên liệu trong kho! “${product.name}” đã hết hàng.`);
-                return;
-            }
+            if (1 > maxServings) return;
             const newItem: CartItem = {
                 menu_item_id: product.id,
                 name: product.name,
@@ -114,20 +105,69 @@ export function usePOSCart(
         const product = products.find((p) => p.id === menuItemId);
         const maxServings = product?.max_servings !== undefined ? product.max_servings : 999;
 
-        const updated = existingCart
+        let updated = existingCart
             .map((item) => {
-                if (item.menu_item_id === menuItemId) {
-                    const minQty = item.isConfirmed ? (item.initialQuantity || 1) : 0;
+                if (item.menu_item_id === menuItemId && !item.isConfirmed) {
                     const newQty = item.quantity + delta;
-                    if (delta > 0 && newQty > maxServings) {
-                        alert(`Không đủ nguyên liệu trong kho! “${item.name}” chỉ còn phục vụ tối đa ${maxServings} phần.`);
-                        return item;
-                    }
-                    return newQty >= minQty ? { ...item, quantity: newQty } : item;
+                    if (delta > 0 && newQty > maxServings) return item;
+                    if (newQty <= 0) return null; // Automatically remove draft item when reduced to 0
+                    return { ...item, quantity: newQty };
                 }
                 return item;
             })
             .filter(Boolean) as CartItem[];
+
+        // If delta > 0 for a confirmed item (clicking "+" on a confirmed row), create or increment a draft item
+        if (delta > 0) {
+            const confirmedItem = existingCart.find((i) => i.menu_item_id === menuItemId && i.isConfirmed);
+            if (confirmedItem && product) {
+                const draftIndex = updated.findIndex((i) => i.menu_item_id === menuItemId && !i.isConfirmed);
+                if (draftIndex > -1) {
+                    const existingDraft = updated[draftIndex];
+                    if (existingDraft.quantity + 1 <= maxServings) {
+                        updated[draftIndex] = { ...existingDraft, quantity: existingDraft.quantity + 1 };
+                    }
+                } else {
+                    if (1 <= maxServings) {
+                        const newDraftItem: CartItem = {
+                            menu_item_id: product.id,
+                            name: product.name,
+                            quantity: 1,
+                            initialQuantity: 0,
+                            unit_price: Number(product.price),
+                            vat_rate: Number(product.vat_rate || 0),
+                            note: '',
+                            isConfirmed: false,
+                        };
+                        updated.push(newDraftItem);
+                    }
+                }
+            }
+        }
+
+        setTableCarts((prev) => ({ ...prev, [tableId]: updated }));
+        whisperDraftCart(tableId, updated);
+    };
+
+    const handleStageReduction = (orderItemId: number, reduceQty: number, reason: string, note?: string) => {
+        if (!selectedTable) return;
+        const tableId = selectedTable.id;
+        const existingCart = tableCarts[tableId] || [];
+
+        const updated = existingCart.map((item) => {
+            if (item.orderItemId === orderItemId && item.isConfirmed) {
+                const newStagedQty = (item.stagedReduceQty || 0) + reduceQty;
+                const currentEffectiveQty = Math.max(0, item.quantity - reduceQty);
+                return {
+                    ...item,
+                    quantity: currentEffectiveQty,
+                    stagedReduceQty: newStagedQty,
+                    stagedReason: reason,
+                    stagedNote: note,
+                };
+            }
+            return item;
+        });
 
         setTableCarts((prev) => ({ ...prev, [tableId]: updated }));
         whisperDraftCart(tableId, updated);
@@ -162,7 +202,12 @@ export function usePOSCart(
         if (!tableId) return;
         setTableCarts((prev) => {
             const existing = prev[tableId] || [];
-            const confirmedOnly = existing.filter((item) => item.isConfirmed);
+            const confirmedOnly = existing
+                .filter((item) => item.isConfirmed)
+                .map((item) => {
+                    const { stagedReduceQty, stagedReason, stagedNote, ...rest } = item;
+                    return rest;
+                });
             return {
                 ...prev,
                 [tableId]: confirmedOnly,
@@ -176,6 +221,7 @@ export function usePOSCart(
         currentCart,
         handleToggleProduct,
         handleUpdateQuantity,
+        handleStageReduction,
         handleRemoveItem,
         handleUpdateNote,
         clearTableCart,

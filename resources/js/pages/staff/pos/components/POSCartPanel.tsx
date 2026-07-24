@@ -3,6 +3,7 @@ import { usePage } from '@inertiajs/react';
 import { Armchair, ShoppingBag, Lock, Trash2, Send, CreditCard, ArrowRightLeft } from 'lucide-react';
 import { POSTableData, CartItem } from '../types/pos.types';
 import TransferMergeModal from './TransferMergeModal';
+import ReduceItemModal from './ReduceItemModal';
 
 import VoidItemModal from '@/pages/staff/kitchen/components/VoidItemModal';
 
@@ -11,6 +12,7 @@ interface POSCartPanelProps {
     tables?: POSTableData[];
     cartItems: CartItem[];
     onUpdateQuantity: (menuItemId: number, delta: number) => void;
+    onStageReduction: (orderItemId: number, reduceQty: number, reason: string, note?: string) => void;
     onRemoveItem: (menuItemId: number) => void;
     onUpdateNote: (menuItemId: number, note: string) => void;
     onSendToKitchen: () => void;
@@ -25,6 +27,7 @@ export default function POSCartPanel({
     tables = [],
     cartItems,
     onUpdateQuantity,
+    onStageReduction,
     onRemoveItem,
     onUpdateNote,
     onSendToKitchen,
@@ -39,7 +42,16 @@ export default function POSCartPanel({
     const [managerBypass, setManagerBypass] = useState(false);
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
-    // Cancel Modal State
+    // Reduce Item Modal State (staged reduction before sending to kitchen)
+    const [reduceModalState, setReduceModalState] = useState<{
+        isOpen: boolean;
+        item: CartItem | null;
+    }>({
+        isOpen: false,
+        item: null,
+    });
+
+    // Cancel Modal State (direct full order/item cancel)
     const [cancelModalState, setCancelModalState] = useState<{
         isOpen: boolean;
         mode: 'item' | 'order';
@@ -83,12 +95,14 @@ export default function POSCartPanel({
     const totalAmount = subtotal + vatTotal;
 
     const unconfirmedItems = cartItems.filter((i) => !i.isConfirmed);
-    const hasUnconfirmedItems = unconfirmedItems.length > 0;
+    const hasStagedReductions = cartItems.some((i) => (i.stagedReduceQty || 0) > 0);
+    const hasUnconfirmedChanges = unconfirmedItems.length > 0 || hasStagedReductions;
 
     const confirmedItems = cartItems.filter((i) => i.isConfirmed);
     const hasKitchenPendingOrders = confirmedItems.some((i) => !i.isKitchenCompleted);
 
-    const isPaymentBlocked = hasKitchenPendingOrders && !canBypassKitchen && !managerBypass;
+    const isKitchenBlocked = hasKitchenPendingOrders && !managerBypass;
+    const isPaymentBlocked = hasUnconfirmedChanges || isKitchenBlocked;
 
     return (
         <div className="h-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl flex flex-col justify-between overflow-hidden">
@@ -107,6 +121,15 @@ export default function POSCartPanel({
                 orderItemId={cancelModalState.orderItemId}
                 tableId={cancelModalState.tableId}
                 menuItemName={cancelModalState.menuItemName}
+            />
+
+            <ReduceItemModal
+                isOpen={reduceModalState.isOpen}
+                onClose={() => setReduceModalState({ isOpen: false, item: null })}
+                item={reduceModalState.item}
+                onConfirm={(orderItemId, reduceQty, reason, note) => {
+                    onStageReduction(orderItemId, reduceQty, reason, note);
+                }}
             />
 
             <TransferMergeModal 
@@ -187,8 +210,7 @@ export default function POSCartPanel({
                     </div>
                 ) : (
                     cartItems.map((item) => {
-                        const minQty = item.isConfirmed ? (item.initialQuantity || 1) : 0;
-                        const isMinusDisabled = item.isConfirmed && item.quantity <= minQty;
+                        const isMinusDisabled = !!(item.isConfirmed && (item.isKitchenCompleted || item.quantity <= 0));
                         const isDeleteDisabled = !!item.isConfirmed;
                         const itemKey = `${item.menu_item_id}_${item.isConfirmed ? (item.isKitchenCompleted ? 'completed' : 'pending') : 'draft'}`;
 
@@ -218,12 +240,17 @@ export default function POSCartPanel({
                                                     {item.isKitchenCompleted ? 'Đã chế biến' : 'Đang chế biến'}
                                                 </span>
                                             )}
+                                            {(item.stagedReduceQty || 0) > 0 && (
+                                                <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md border bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 shrink-0">
+                                                    Giảm {item.stagedReduceQty} — Chờ gửi Bếp
+                                                </span>
+                                            )}
                                         </div>
-                                        <span className="text-xs text-zinc-500">
+                                        <span className="text-xs text-zinc-500 tabular-nums">
                                             {item.unit_price.toLocaleString('vi-VN')} đ/món
                                         </span>
                                     </div>
-                                    <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                                    <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 tabular-nums">
                                         {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
                                     </span>
                                 </div>
@@ -243,13 +270,19 @@ export default function POSCartPanel({
                                             <button
                                                 type="button"
                                                 disabled={isMinusDisabled}
-                                                onClick={() => onUpdateQuantity(item.menu_item_id, -1)}
+                                                onClick={() => {
+                                                    if (!item.isConfirmed) {
+                                                        onUpdateQuantity(item.menu_item_id, -1);
+                                                    } else if (!item.isKitchenCompleted && item.quantity > 0) {
+                                                        setReduceModalState({ isOpen: true, item });
+                                                    }
+                                                }}
                                                 className="px-2 py-0.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-150"
-                                                title={isMinusDisabled ? 'Món đã gửi bếp không được giảm dưới số lượng đã đặt' : 'Giảm số lượng'}
+                                                title={item.isConfirmed ? 'Giảm số lượng món đang chế biến (kèm lý do)' : 'Giảm số lượng món nháp'}
                                             >
                                                 -
                                             </button>
-                                            <span className="px-2.5 py-0.5 text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                                            <span className="px-2.5 py-0.5 text-xs font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
                                                 {item.quantity}
                                             </span>
                                             <button
@@ -274,20 +307,9 @@ export default function POSCartPanel({
                                         ) : canCancel && item.orderItemId && !item.isKitchenCompleted ? (
                                             <button
                                                 type="button"
-                                                onClick={() =>
-                                                    setCancelModalState({
-                                                        isOpen: true,
-                                                        mode: 'item',
-                                                        orderItemId: item.orderItemId,
-                                                        menuItemName: item.name,
-                                                    })
-                                                }
+                                                onClick={() => setReduceModalState({ isOpen: true, item })}
                                                 className="p-1 text-rose-500 hover:text-rose-700 dark:hover:text-rose-300 rounded-md transition-colors duration-150"
-                                                title={
-                                                    confirmedItems.length === 1
-                                                        ? 'Đơn hàng chỉ còn 1 món. Vui lòng chọn "Hủy đơn" ở trên để hủy toàn bộ đơn'
-                                                        : 'Hủy món đã gửi bếp kèm lý do'
-                                                }
+                                                title="Giảm / Hủy món đang chế biến kèm lý do"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
@@ -325,15 +347,15 @@ export default function POSCartPanel({
                 <div className="space-y-1 text-xs">
                     <div className="flex justify-between text-zinc-500 dark:text-zinc-400">
                         <span>Tạm tính ({cartItems.reduce((s, i) => s + i.quantity, 0)} món):</span>
-                        <span className="font-semibold text-zinc-800 dark:text-zinc-200">{subtotal.toLocaleString('vi-VN')} đ</span>
+                        <span className="font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">{subtotal.toLocaleString('vi-VN')} đ</span>
                     </div>
                     <div className="flex justify-between text-zinc-500 dark:text-zinc-400">
                         <span>Thuế VAT:</span>
-                        <span className="font-semibold text-zinc-800 dark:text-zinc-200">{vatTotal.toLocaleString('vi-VN')} đ</span>
+                        <span className="font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">{vatTotal.toLocaleString('vi-VN')} đ</span>
                     </div>
                     <div className="flex justify-between text-sm font-bold text-zinc-900 dark:text-zinc-100 pt-1.5 border-t border-zinc-200/80 dark:border-zinc-700/80">
                         <span>Tổng thanh toán:</span>
-                        <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                        <span className="text-base font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
                             {totalAmount.toLocaleString('vi-VN')} đ
                         </span>
                     </div>
@@ -342,14 +364,14 @@ export default function POSCartPanel({
                 <div className="grid grid-cols-2 gap-3 pt-1">
                     <button
                         type="button"
-                        disabled={submitting || cartItems.length === 0 || !hasUnconfirmedItems || isCheckoutLocked}
+                        disabled={submitting || cartItems.length === 0 || !hasUnconfirmedChanges || isCheckoutLocked}
                         onClick={onSendToKitchen}
                         className={`py-2.5 px-3 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 transition-colors duration-150 ${
                             isCheckoutLocked
                                 ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border border-zinc-200 dark:border-zinc-700 cursor-not-allowed opacity-50'
                                 : 'text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50'
                         }`}
-                        title={isCheckoutLocked ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}` : 'Gửi món vừa chọn xuống Bếp'}
+                        title={isCheckoutLocked ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}` : 'Gửi món vừa chọn hoặc thay đổi xuống Bếp'}
                     >
                         <Send className="w-3.5 h-3.5" />
                         <span>{submitting ? 'Đang gửi...' : 'Gửi bếp chế biến'}</span>
@@ -369,7 +391,9 @@ export default function POSCartPanel({
                         title={
                             isCheckoutLocked
                                 ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}`
-                                : isPaymentBlocked
+                                : hasUnconfirmedChanges
+                                ? 'Vui lòng bấm “Gửi bếp chế biến” để lưu giỏ hàng trước khi thanh toán'
+                                : isKitchenBlocked
                                 ? 'Cần gửi toàn bộ món xuống Bếp và chờ Bếp làm xong mới được thanh toán'
                                 : 'Thanh toán đơn hàng'
                         }

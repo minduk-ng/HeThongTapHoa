@@ -18,7 +18,7 @@ class TableStatusUpdated implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('pos-channel'),
+            new Channel('pos-channel'),
         ];
     }
 

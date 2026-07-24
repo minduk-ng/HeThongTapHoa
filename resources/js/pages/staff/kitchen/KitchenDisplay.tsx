@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { Sparkles, Volume2, VolumeX, RefreshCw, Coffee, UtensilsCrossed, Layers } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
-import KitchenStatsHeader from './components/KitchenStatsHeader';
 import KitchenOrderCard, { KitchenOrderData } from './components/KitchenOrderCard';
 import VoidItemModal from './components/VoidItemModal';
+import KitchenLogPanel from './components/KitchenLogPanel';
+import { SystemLogEntry } from '../pos/components/POSLogTab';
 import { playKitchenChime } from './utils/kitchenAudio';
 
 interface KitchenDisplayProps {
@@ -21,6 +22,21 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
     const [nowTime, setNowTime] = useState<number>(Date.now());
     const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
     const [activeStation, setActiveStation] = useState<'all' | 'bar' | 'kitchen'>('all');
+    const [kitchenLogs, setKitchenLogs] = useState<SystemLogEntry[]>([]);
+
+    const addKitchenLog = useCallback((type: 'sent' | 'received', message: string, details?: string) => {
+        const d = new Date();
+        const timestamp = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+        const newEntry: SystemLogEntry = {
+            id: `${Date.now()}_${Math.random()}`,
+            timestamp,
+            type,
+            source: 'Kitchen',
+            message,
+            details,
+        };
+        setKitchenLogs((prev) => [newEntry, ...prev.slice(0, 99)]);
+    }, []);
 
     // Void Item/Order Modal state
     const [voidModalState, setVoidModalState] = useState<{
@@ -50,13 +66,27 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
         soundEnabledRef.current = soundEnabled;
     }, [soundEnabled]);
 
+    const lastEventRef = useRef<{ key: string; time: number }>({ key: '', time: 0 });
+
+    const isDuplicateEvent = useCallback((eventKey: string) => {
+        const now = Date.now();
+        if (lastEventRef.current.key === eventKey && now - lastEventRef.current.time < 1000) {
+            return true;
+        }
+        lastEventRef.current = { key: eventKey, time: now };
+        return false;
+    }, []);
+
     // Realtime WebSocket Listener via Reverb for instant new order tickets & completions & chime audio
     useEffect(() => {
         if (typeof window !== 'undefined' && window.Echo) {
-            const privateChannel = window.Echo.private('kitchen-channel');
-            const publicChannel = window.Echo.channel('kitchen-channel');
+            const channel = window.Echo.channel('kitchen-channel');
 
-            const handleOrderSent = () => {
+            const handleOrderSent = (payload?: any) => {
+                const eventKey = `OrderSentToKitchen_${payload?.order_id || ''}`;
+                if (isDuplicateEvent(eventKey)) return;
+
+                addKitchenLog('received', 'Nhận vé order chế biến mới từ POS', 'Bắt đầu chuẩn bị');
                 if (soundEnabledRef.current) {
                     playKitchenChime();
                 }
@@ -66,34 +96,27 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                 });
             };
 
-            const handleReload = () => {
+            const handleReload = (eventName: string, payload?: any) => {
+                const eventKey = `${eventName}_${payload?.order_id || payload?.table_id || ''}`;
+                if (isDuplicateEvent(eventKey)) return;
+
+                addKitchenLog('received', `Sự kiện ${eventName} từ POS`, 'Cập nhật lại danh sách vé');
                 router.reload({
                     only: ['orders', 'stats'],
                     onError: () => {},
                 });
             };
 
-            privateChannel
+            channel
                 .listen('.OrderSentToKitchen', handleOrderSent)
-                .listen('OrderSentToKitchen', handleOrderSent)
-                .listen('.OrderCompleted', handleReload)
-                .listen('OrderCompleted', handleReload)
-                .listen('.TableTransferred', handleReload)
-                .listen('TableTransferred', handleReload);
-
-            publicChannel
-                .listen('.OrderSentToKitchen', handleOrderSent)
-                .listen('OrderSentToKitchen', handleOrderSent)
-                .listen('.OrderCompleted', handleReload)
-                .listen('OrderCompleted', handleReload)
-                .listen('.TableTransferred', handleReload)
-                .listen('TableTransferred', handleReload);
+                .listen('.OrderCompleted', (data: any) => handleReload('OrderCompleted', data))
+                .listen('.TableTransferred', (data: any) => handleReload('TableTransferred', data));
 
             return () => {
                 window.Echo.leave('kitchen-channel');
             };
         }
-    }, []);
+    }, [addKitchenLog, isDuplicateEvent]);
 
     // Real-time calculation of warning orders on Frontend without server requests
     const liveWarningCount = orders.filter((o) => {
@@ -182,102 +205,110 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
             <div className="h-[calc(100vh-4rem)] w-full p-4 overflow-hidden">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full min-h-0">
                     {/* Left Sidebar (3.5 cols): Control Panel & Stats Cards Stack */}
-                    <div className="lg:col-span-4 xl:col-span-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-between h-full overflow-y-auto shadow-xs space-y-5">
-                        <div className="space-y-4">
-                            {/* Title & Actions */}
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h1 className="font-display text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+                    <div className="lg:col-span-4 xl:col-span-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between h-full min-h-0 shadow-xs space-y-3 overflow-hidden">
+                        <div className="shrink-0 space-y-3">
+                            {/* Title & Bell Icon Toggle */}
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center space-x-2">
+                                    <h1 className="font-display text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
                                         Màn hình Bếp
                                     </h1>
-                                    <p className="text-xs text-zinc-400 mt-0.5">Quản lý pha chế & chế biến</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSoundEnabled(!soundEnabled)}
+                                        className={`p-1.5 rounded-xl border transition-colors ${
+                                            soundEnabled
+                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                                                : 'bg-zinc-100 text-zinc-400 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-500 dark:border-zinc-700'
+                                        }`}
+                                        title={soundEnabled ? 'Chuông thông báo: Đang bật' : 'Chuông thông báo: Đã tắt'}
+                                    >
+                                        {soundEnabled ? <Volume2 className="w-4 h-4 stroke-[1.5]" /> : <VolumeX className="w-4 h-4 stroke-[1.5]" />}
+                                    </button>
                                 </div>
 
                                 <button
                                     type="button"
-                                    onClick={() => router.reload({ only: ['orders', 'stats'] })}
-                                    className="p-2 text-zinc-500 hover:text-sky-600 dark:hover:text-sky-400 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                    onClick={() => {
+                                        addKitchenLog('sent', 'Làm mới dữ liệu bếp');
+                                        router.reload({ only: ['orders', 'stats'] });
+                                    }}
+                                    className="p-1.5 text-zinc-500 hover:text-sky-600 dark:hover:text-sky-400 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                                     title="Làm mới dữ liệu bếp"
                                 >
                                     <RefreshCw className="w-4 h-4 stroke-[1.5]" />
                                 </button>
                             </div>
 
-                            {/* Sound Alert Chime Toggle Switch */}
-                            <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-between">
-                                <div className="flex items-center space-x-2 text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                                    {soundEnabled ? (
-                                        <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 stroke-[1.5]" />
-                                    ) : (
-                                        <VolumeX className="w-4 h-4 text-zinc-400 stroke-[1.5]" />
-                                    )}
-                                    <span>Âm thanh chuông báo</span>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setSoundEnabled(!soundEnabled)}
-                                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
-                                        soundEnabled
-                                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
-                                            : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'
-                                    }`}
-                                >
-                                    {soundEnabled ? 'Đang bật' : 'Đã tắt'}
-                                </button>
-                            </div>
-
                             {/* Station Filter Tabs */}
-                            <div className="space-y-1.5">
-                                <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                            <div className="space-y-1">
+                                <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
                                     Khu vực chế biến:
                                 </label>
                                 <div className="grid grid-cols-3 gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
                                     <button
                                         type="button"
                                         onClick={() => setActiveStation('all')}
-                                        className={`py-1.5 px-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center space-x-1 ${
+                                        className={`py-1 px-1.5 text-xs font-bold rounded-lg transition-colors flex items-center justify-center space-x-1 ${
                                             activeStation === 'all'
                                                 ? 'bg-white dark:bg-zinc-900 text-sky-600 dark:text-sky-400 shadow-xs'
                                                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
                                         }`}
                                     >
-                                        <Layers className="w-3.5 h-3.5" />
+                                        <Layers className="w-3.5 h-3.5 stroke-[1.5]" />
                                         <span>Tất cả</span>
                                     </button>
 
                                     <button
                                         type="button"
                                         onClick={() => setActiveStation('bar')}
-                                        className={`py-1.5 px-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center space-x-1 ${
+                                        className={`py-1 px-1.5 text-xs font-bold rounded-lg transition-colors flex items-center justify-center space-x-1 ${
                                             activeStation === 'bar'
                                                 ? 'bg-white dark:bg-zinc-900 text-sky-600 dark:text-sky-400 shadow-xs'
                                                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
                                         }`}
                                     >
-                                        <Coffee className="w-3.5 h-3.5" />
+                                        <Coffee className="w-3.5 h-3.5 stroke-[1.5]" />
                                         <span>Pha chế</span>
                                     </button>
 
                                     <button
                                         type="button"
                                         onClick={() => setActiveStation('kitchen')}
-                                        className={`py-1.5 px-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center space-x-1 ${
+                                        className={`py-1 px-1.5 text-xs font-bold rounded-lg transition-colors flex items-center justify-center space-x-1 ${
                                             activeStation === 'kitchen'
                                                 ? 'bg-white dark:bg-zinc-900 text-sky-600 dark:text-sky-400 shadow-xs'
                                                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
                                         }`}
                                     >
-                                        <UtensilsCrossed className="w-3.5 h-3.5" />
+                                        <UtensilsCrossed className="w-3.5 h-3.5 stroke-[1.5]" />
                                         <span>Bếp nóng</span>
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Vertical Stats Stack */}
-                            <div className="pt-2 border-t border-zinc-200/80 dark:border-zinc-800/80">
-                                <KitchenStatsHeader stats={computedStats} />
+                            {/* 2-Stat Row: Total Active Orders & Warnings */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="p-2.5 rounded-xl bg-sky-50/80 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-900/60 flex items-center justify-between">
+                                    <span className="text-xs font-semibold text-sky-800 dark:text-sky-200">Tổng đơn:</span>
+                                    <span className="text-sm font-bold tabular-nums text-sky-700 dark:text-sky-300">
+                                        {computedStats.total_orders}
+                                    </span>
+                                </div>
+                                <div className="p-2.5 rounded-xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 flex items-center justify-between">
+                                    <span className="text-xs font-semibold text-rose-800 dark:text-rose-200">Cảnh báo:</span>
+                                    <span className="text-sm font-bold tabular-nums text-rose-700 dark:text-rose-300">
+                                        {computedStats.warning_orders}
+                                    </span>
+                                </div>
                             </div>
                         </div>
+
+                        {/* Kitchen Event Log Box */}
+                        <KitchenLogPanel
+                            logs={kitchenLogs}
+                            onClearLogs={() => setKitchenLogs([])}
+                        />
                     </div>
 
                     {/* Right Main Panel (8.5 cols): Scrollable Order Cards Grid */}

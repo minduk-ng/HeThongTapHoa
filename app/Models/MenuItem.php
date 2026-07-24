@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+use Illuminate\Support\Facades\Cache;
+
 class MenuItem extends Model
 {
     protected $table = 'menu_items';
@@ -24,6 +26,16 @@ class MenuItem extends Model
         'vat_rate' => 'decimal:2',
         'is_available' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            Cache::forget('pos_products');
+        });
+        static::deleted(function () {
+            Cache::forget('pos_products');
+        });
+    }
 
     public function category(): BelongsTo
     {

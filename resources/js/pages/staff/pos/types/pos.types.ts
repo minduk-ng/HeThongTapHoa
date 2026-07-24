@@ -52,6 +52,14 @@ export interface POSProductData {
     max_servings?: number;
 }
 
+export interface StagedReduction {
+    orderItemId: number;
+    menuItemId: number;
+    reduceQuantity: number;
+    reason: string;
+    note?: string;
+}
+
 export interface CartItem {
     menu_item_id: number;
     name: string;
@@ -64,6 +72,9 @@ export interface CartItem {
     isKitchenCompleted?: boolean;
     orderStatus?: string;
     orderItemId?: number;
+    stagedReduceQty?: number;
+    stagedReason?: string;
+    stagedNote?: string;
 }
 
 export interface ReceiptModalState {

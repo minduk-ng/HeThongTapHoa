@@ -37,6 +37,7 @@ export default function VoidItemModal({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (submitting) return;
         setSubmitting(true);
         setErrorMsg(null);
 
@@ -50,9 +51,13 @@ export default function VoidItemModal({
                 setSubmitting(false);
                 onClose();
             },
-            onError: (errs) => {
+            onError: (errs: any) => {
                 setSubmitting(false);
-                setErrorMsg(errs.error || 'Thao tác hủy thất bại. Vui lòng kiểm tra lại phân quyền.');
+                const msg = errs?.error || errs?.message || (typeof errs === 'string' ? errs : 'Thao tác hủy thất bại. Vui lòng kiểm tra lại phân quyền.');
+                setErrorMsg(msg);
+            },
+            onFinish: () => {
+                setSubmitting(false);
             },
         });
     };

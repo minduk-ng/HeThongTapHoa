@@ -18,7 +18,10 @@ export default function POSMenuTab({
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
 
-    const filteredProducts = products.filter((product) => {
+    const safeProducts = Array.isArray(products) ? products : [];
+    const safeCategories = Array.isArray(categories) ? categories : [];
+
+    const filteredProducts = safeProducts.filter((product) => {
         const matchesCategory =
             selectedCategoryId === 'all' || String(product.category_id) === selectedCategoryId;
         const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -26,12 +29,13 @@ export default function POSMenuTab({
     });
 
     const isProductInCart = (productId: number) => {
-        return cartItems.some((item) => item.menu_item_id === productId);
+        return cartItems.some((item) => item.menu_item_id === productId && item.quantity > 0);
     };
 
     const getCartItemQuantity = (productId: number) => {
-        const item = cartItems.find((i) => i.menu_item_id === productId);
-        return item ? item.quantity : 0;
+        return cartItems
+            .filter((item) => item.menu_item_id === productId)
+            .reduce((sum, item) => sum + item.quantity, 0);
     };
 
     return (
@@ -61,10 +65,10 @@ export default function POSMenuTab({
                                 : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
                         }`}
                     >
-                        Tất cả món ({products.length})
+                        Tất cả món ({safeProducts.length})
                     </button>
-                    {categories.map((cat) => {
-                        const count = products.filter((p) => p.category_id === cat.id).length;
+                    {safeCategories.map((cat) => {
+                        const count = safeProducts.filter((p) => p.category_id === cat.id).length;
                         const isSelected = selectedCategoryId === String(cat.id);
                         return (
                             <button

@@ -1,137 +1,136 @@
-# Laravel 13 + React + Inertia: Modern Authentication & Role Authorization System
+# 🏪 Tạp Hóa POS — Hệ Thống Quản Lý Bán Hàng & Màn Hình Bếp Realtime
 
-Dự án mẫu xây dựng hệ thống đăng nhập, đăng ký và phân quyền toàn diện, sử dụng các công nghệ tiên tiến nhất bao gồm: **Laravel 13**, **React 19**, **Inertia.js v3** và **TailwindCSS v4**.
-
----
-
-## 🚀 Các Tính Năng Nổi Bật
-
-### 🔐 1. Hệ Thống Authentication & Bảo Mật OTP
-- **Đăng ký & Đăng nhập**: Tích hợp xác thực email/mật khẩu tiêu chuẩn.
-- **Xác thực qua Google OAuth**: Đăng nhập nhanh bằng tài khoản Google sử dụng Laravel Socialite.
-- **Quên mật khẩu & Kích hoạt tài khoản bằng mã OTP**: Mã OTP gửi qua email, tự động hết hạn sau 10 phút.
-- **Trải nghiệm OTP kiểu Telegram**:
-  - Tự động kiểm tra và gửi yêu cầu xác thực ngay khi người dùng điền đủ 6 số.
-  - Tự động focus vào ô nhập số đầu tiên khi tải trang.
-  - Hiệu ứng **rung lắc và đổi màu đỏ** kèm xóa sạch số khi nhập sai OTP.
-  - Hiệu ứng **phóng to nhẹ và đổi màu xanh lá cây** hiển thị trong 800ms trước khi chuyển hướng khi nhập đúng OTP.
-  - **Bộ đếm ngược thời gian hiệu lực OTP**: Hiển thị bộ đếm giây trực quan từ 10:00 về 00:00 để cảnh báo người dùng thời gian hết hiệu lực của mã.
-  - **Chặn gửi lại mã (Resend Cooldown)**: Ép buộc chờ 60 giây ở lần gửi đầu tiên và tự động nhân đôi thời gian chờ ở các lần tiếp theo nhằm chống spam.
-- **Bảo vệ chống Brute-force & Dò quét thông tin**:
-  - **Google reCAPTCHA v2**: Tự động theo dõi số lần đăng nhập sai theo IP + Email. Trên 5 lần đăng nhập sai, hệ thống bắt buộc giải reCAPTCHA v2 trước khi ấn nút gửi.
-  - **Rate Limiting mạnh mẽ (Throttling)**: Áp dụng giới hạn tần suất gửi yêu cầu trên hệ thống cho các hành động nhạy cảm: Đăng nhập (10 lần/phút), Đăng ký (5 lần/phút), Quên/Đặt lại mật khẩu (5 lần/phút), Xác thực OTP (10 lần/phút).
-  - **Bảo mật phản hồi Quên mật khẩu**: Trả về thông báo thành công chung cho tất cả địa chỉ email mà không tiết lộ email đó đã đăng ký trong hệ thống hay chưa, ngăn chặn việc dò quét dữ liệu tài khoản.
-  - **Chặn truy cập tài khoản chưa kích hoạt**: Chặn và đăng xuất ngay lập tức các tài khoản đăng nhập thành công nhưng chưa xác minh OTP, chuyển hướng về trang xác thực kèm thông báo lỗi chi tiết.
-
-### 🛡️ 2. Hệ Thống Phân Quyền Vai Trò (Roles & Permissions)
-- **Middleware CheckPageAccess nghiêm ngặt**: Quản lý truy cập tất cả các route của admin động theo database. Nếu route không được đăng ký trong bảng `pages`, hệ thống mặc định từ chối truy cập và trả về lỗi `403`.
-- **Làm sạch Cache quyền tự động 3 tầng**:
-  - Giảm thời gian sống của cache quyền hạn User xuống còn **15 phút** thay vì 24 giờ.
-  - Sử dụng các custom Pivot Models (`UserRole` và `RolePermission`) kết hợp Eloquent model events để tự động xóa sạch cache quyền liên quan ngay lập tức khi: Vai trò của User thay đổi, quyền hạn liên kết với Vai trò được cập nhật/xóa, hoặc cập nhật/xóa bản ghi Vai trò/Quyền hạn gốc.
-- **Quản lý Nhóm Quyền (RolesManager)**:
-  - Cho phép tạo mới, sửa, hoặc xóa vai trò tùy chỉnh.
-  - Phân quyền động: Lựa chọn vai trò nào được phép xem nhóm chức năng hoặc trang cụ thể.
-  - Xác thực bảo mật: Bắt buộc xác nhận mật khẩu admin và hiển thị cảnh báo đỏ về ảnh hưởng quyền lợi người dùng trước khi xóa bất kỳ nhóm quyền nào.
-
-### 📁 3. Quản Lý Trang & Sắp Xếp Trực Quan (PagesManager)
-- **Giao diện phân tầng**: Menu con được thụt lề (`pl-10`) và hiển thị phân cấp trực quan bằng đường kẻ biên.
-- **Kéo thả sắp xếp (Drag & Drop UI)**:
-  - Chuyển đổi linh hoạt sang chế độ sắp xếp kéo thả sử dụng HTML5 Drag and Drop API.
-  - Cho phép kéo thả các trang con đổi vị trí hoặc kéo đè sang nhóm chức năng khác (nhận nhóm mới tức thì).
-  - Cho phép kéo thả cả ô Nhóm chức năng để thay đổi thứ tự nhóm.
-  - **Nhấp đúp chuột để thu gọn**: Nhấp đúp chuột vào bất kỳ ô card nhóm chức năng nào để thu gọn/mở rộng nhóm nhanh chóng.
-  - Giao diện kéo thả dọc toàn màn hình dễ thao tác.
-  - Tự động cập nhật giao diện ngay lập tức khi lưu thay đổi thành công.
-- **Đếm số lượng người truy cập**: Cột hiển thị số lượng người dùng thực tế có quyền truy cập vào chức năng (được đếm động theo vai trò được cấp).
-
-### 👥 4. Quản Lý Người Dùng & Thao Tác Hàng Loạt (UsersPermission)
-- **Bộ lọc thông minh**: Tìm kiếm nhanh theo tên/email, lọc theo vai trò, và tùy chọn ẩn/hiện cột trực tiếp.
-- **Phân trang cục bộ**: Chia trang hiển thị tối đa 20 người dùng trên trang.
-- **Chế độ Chỉnh sửa Nhóm (Bulk Edit Mode)**:
-  - Tích chọn nhiều user cùng lúc bằng cách **nhấp chuột vào bất kỳ vị trí nào trên dòng (row)**.
-  - Checkbox chọn tất cả nằm ở tiêu đề được thiết kế lớn và chỉ áp dụng chọn các user trên trang hiện tại.
-  - Thanh công cụ thao tác nhanh: **Gán nhanh quyền** (hiển thị popup checklist vai trò), **Xóa sạch quyền** (khôi phục về Guest), và **Xóa tài khoản khỏi hệ thống**.
-  - Tính năng "Xóa" trên từng dòng user đơn lẻ hiển thị menu đa lựa chọn tương tự.
-  - Bảo vệ: Tự động khóa và loại trừ tài khoản Super Admin khỏi các hành động xóa/chỉnh sửa nhóm.
-
-### 👤 5. Hồ Sơ & Cài Đặt Tài Khoản (Profile Settings)
-- **Quản lý thông tin cá nhân**:
-  - Giao diện bố cục chia cột tỉ lệ 1:2 (`md:grid-cols-3`): cột bên trái (1/3 chiều rộng) hiển thị Avatar, tên người dùng và email với đường kẻ chia dọc tinh tế; cột bên phải (2/3 chiều rộng) hiển thị các biểu mẫu chỉnh sửa thông tin. Điều này tối ưu hóa khoảng trống trên các thiết bị màn hình lớn.
-  - Cho phép người dùng chỉnh sửa trực tiếp tên hiển thị trên giao diện, đổi địa chỉ email cá nhân hoặc thay đổi/thiết lập mật khẩu.
-- **Bảo mật OTP & Chống Spam/DOS Email**:
-  - Khi thay đổi email hoặc mật khẩu, hệ thống yêu cầu xác thực qua mã OTP được gửi về địa chỉ email tương ứng.
-  - **Chống Spam/DOS**: Backend tự động kiểm tra sự tồn tại của mã OTP chưa hết hạn. Nếu đã có OTP hiệu lực, hệ thống tái sử dụng mã đó thay vì tạo mới và gửi email tiếp theo, hạn chế việc lạm dụng gửi spam mail.
-  - **Bộ đếm thời gian gửi lại OTP bền bỉ (Persistent Cooldown)**: Thời gian chờ 60 giây gửi lại mã được quản lý tập trung ở component cha giúp tiếp tục đếm ngược chính xác ngay cả khi người dùng tắt và mở lại overlay nhập mã OTP.
-
-### 🔔 6. Phản Hồi Trải Nghiệm Giao Diện (UX Polish)
-- **Double-submit Prevention**: Toàn bộ nút gửi tại màn hình Đăng nhập, Đăng ký, OTP, Quên/Đặt lại mật khẩu sẽ tự động bị vô hiệu hóa khi đang xử lý và hiển thị vòng xoay spinner tải hiệu ứng premium.
-- **Floating Toast Notification**: Tích hợp thanh thông báo nổi ở phía trên bên phải tại Dashboard của admin để hiển thị kết quả thành công/thất bại tức thì khi admin phân vai trò, gán trang, hoặc cập nhật thông tin hệ thống.
+> **Dự án**: Hệ Thống Bán Hàng POS, Màn Hình Chế Biến Bếp (KDS), Quản Lý Định Lượng Kho Nguyên Liệu & Phân Quyền Vai Trò Toàn Diện.  
+> **Công nghệ**: Laravel 11/13 + React 19 + Inertia.js 2.x (TypeScript) + Laravel Reverb (WebSockets) + Docker Redis.
 
 ---
 
-## 🛠️ Công Nghệ Sử Dụng
+## 🚀 Tính Năng Nổi Bật
 
-- **Backend**: Laravel 13, PHP 8.2+, SQLite.
-- **Frontend**: React 19, Inertia.js v3, TypeScript.
-- **Styling**: TailwindCSS v4, Vanilla CSS (hỗ trợ Dark & Light Mode đồng bộ).
+### 🛒 1. Màn Hình Bán Hàng POS Thông Minh (`/staff/pos`)
+- **Sơ đồ Khu vực & Bàn**: Quản lý nhiều khu vực bàn (Tầng 1, Tầng 2, Sân vườn, Mang đi). Hỗ trợ **gộp bàn**, **chuyển bàn**, **tách bàn** linh hoạt.
+- **Giỏ hàng & Nháp món**:
+  - Chọn món tự động tăng số lượng nháp.
+  - Tự động xóa dòng món nháp khi giảm số lượng về `0`.
+  - Giảm món đã gửi Bếp: Mở **Modal chọn lý do giảm món** (`Khách đổi ý`, `Món bị hỏng`, `Hết nguyên liệu`,...) và lưu trạng thái **chờ giảm (Staged Reduction)**.
+- **Khóa Nút Thanh Toán Bảo Vệ**:
+  - Tự động khóa nút Thanh toán khi có giỏ hàng nháp chưa gửi Bếp (bắt buộc phải gửi Bếp trước).
+  - Tự động khóa nút Thanh toán khi bàn có món đang chế biến tại Bếp trừ khi Admin/Quản lý mở nút **"Duyệt khẩn cấp"** (`pos.bypass_kitchen_lock`).
+- **In Hóa Đơn & Đa Phương Thức Thanh Toán**: Hỗ trợ Tiền mặt, Chuyển khoản QR, Thẻ ngân hàng, tính tiền thừa tự động.
 
 ---
 
-## 💻 Cài Đặt Hệ Thống
+### 👨‍🍳 2. Màn Hình Hiển Thị Bếp Realtime — Kitchen Display (`/staff/kitchen`)
+- **Vé Order Chế Biến Tức Thời**: Nhận tín hiệu Order mới từ POS qua WebSockets trong dưới **100ms** kèm **Âm thanh chuông báo**.
+- **Lọc Theo Trạm Chế Biến (Station Filter)**: Lọc danh sách món theo trạm **Tất cả**, **Pha chế (Bar)** hoặc **Bếp nóng (Kitchen)**.
+- **Header & Stats Tối Giản**:
+  - Nút bật/tắt âm thanh chuông dạng icon **Chuông** (`Volume2`/`VolumeX`) nhỏ cạnh tiêu đề.
+  - 2 thẻ thống kê chỉ số nằm gọn trong 1 hàng: **Tổng số đơn active** & **Cảnh báo (Chờ > 10 phút hoặc gọi thêm món)**.
+- **Màn Hình Nhật Ký Event Bếp (Kitchen Event Log Box)**: Hiển thị dòng log realtime các sự kiện gửi/nhận dạng `HH:mm:ss : [Gửi/Nhận] <Nội dung>`.
+- **Hủy Món / Hủy Đơn Hàng Từ Bếp**: Cho phép Bếp hủy từng món hoặc hủy cả đơn kèm lý do, tự động đồng bộ về POS và giải phóng bàn khi đơn trống.
 
-### 1. Clone repository và cài đặt Dependencies
+---
+
+### ⚡ 3. Đồng Bộ Realtime Bếp ↔ POS qua Laravel Reverb
+- Tự động đồng bộ sơ đồ bàn, vé đơn Bếp, và giỏ hàng local giữa các thiết bị mà **không cần tải lại trang (F5)**.
+- **Bộ Lọc Chống Trùng Event (`isDuplicateEvent`)**: Sử dụng cửa sổ thời gian 1.000ms triệt tiêu các sự kiện lặp lại, đảm bảo dữ liệu reload và log chỉ ghi đúng 1 lần duy nhất.
+
+---
+
+### 🚀 4. Tối Ưu Hiệu Năng Với Docker Redis Cache
+- **Cấu hình Redis Container (`my-redis:6379`)**: Sử dụng Redis cho `CACHE_STORE`, `SESSION_DRIVER`, và `QUEUE_CONNECTION`.
+- **Cache Dữ liệu Thực Đơn**: Lưu trữ danh mục (`pos_categories`) và sản phẩm (`pos_products`) dạng mảng JSON thuần trên RAM của Redis, **giảm 80-90% số lượng truy vấn Query vào MySQL DB**.
+- **Tự Động Xóa Cache Khi Thay Đổi (Model Observers)**: Tự động xóa cache Redis ngay lập tức khi Admin/Quản lý thay đổi Sản phẩm (`MenuItem`), Danh mục (`MenuCategory`), hoặc Tồn kho nguyên liệu (`Ingredient`).
+
+---
+
+### 📦 5. Quản Lý Định Lượng Công Thức & Kho Nguyên Liệu (`/manager/inventory`)
+- Quản lý chi tiết danh mục nguyên liệu, tồn kho, đơn vị tính, cảnh báo sắp hết hàng.
+- Định lượng công thức chế biến cho từng món (ví dụ: 1 Cà phê sữa = 25g Cà phê + 40ml Sữa đặc).
+- **Tự Động Tính Số Phần Tối Đa (`max_servings`)**: Tính toán realtime số lượng đĩa/ly tối đa có thể phục vụ dựa trên tồn kho thực tế.
+
+---
+
+### 🛡️ 6. Phân Quyền Vai Trò & Bảo Mật OTP (`/admin/roles`, `/admin/permissions`)
+- **Phân Quyền Đa Vai Trò (RBAC)**: Tự động gom nhóm quyền theo từng trang, phân quyền chi tiết cho từng hành động (`pos.bypass_kitchen_lock`, `products.export`, `users.edit`).
+- **Xác Thực Bảo Mật**: Đăng nhập Email/Mật khẩu, Google OAuth, mã OTP 6 số qua Email, chống dò quét Brute-force reCAPTCHA v2.
+
+---
+
+## 🛠️ Công Nghệ Sử Dụng (Tech Stack)
+
+| Thành Phần | Công Nghệ |
+| :--- | :--- |
+| **Backend Framework** | Laravel 11.x / 13.x (PHP 8.2+) |
+| **Database** | MySQL 8.0 / MariaDB |
+| **Cache & Session** | Docker Redis Container (`redis:latest`, `predis/predis`) |
+| **Realtime WebSockets** | Laravel Reverb + Laravel Echo |
+| **Frontend Framework** | React 19 + Inertia.js 2.x (TypeScript) |
+| **Styling & UI** | Tailwind CSS v4 + Lucide React Icons |
+| **Fonts** | Google Fonts (`Plus Jakarta Sans` & `Inter`) |
+
+---
+
+## 💻 Hướng Dẫn Cài Đặt & Khởi Động
+
+### 1. Clone Repository & Cài Đặt Dependencies
 ```bash
 git clone <repository_url>
-cd <project_dir>
+cd TapHoa
 composer install
 npm install
 ```
 
-### 2. Cấu hình biến môi trường
+### 2. Khởi Động Container Redis (Docker)
+Chạy container Redis trên cổng 6379:
+```bash
+docker run -d --name my-redis -p 6379:6379 redis:latest
+```
+
+### 3. Cấu Hình File `.env`
+Sao chép mẫu `.env` và tạo APP_KEY:
 ```bash
 cp .env.example .env
 php artisan key:generate
 ```
-*Mở file `.env` và cập nhật thông tin SMTP để gửi mail OTP (nên cấu hình Queue driver để tăng hiệu năng gửi mail bất đồng bộ), Google Client ID/Secret, và các thông tin thiết lập tài khoản admin ban đầu:*
-```env
-ADMIN_EMAIL=admin@admin.com
-ADMIN_DEFAULT_PASSWORD=244466666
+Cập nhật các thông số kết nối Database & Redis trong `.env`:
+```ini
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=HeThongTapHoa
+DB_USERNAME=root
+DB_PASSWORD=your_mysql_password
+
+CACHE_STORE=redis
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+
+REDIS_CLIENT=predis
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
 ```
 
-### 3. Thiết lập Database & Seed dữ liệu
+### 4. Chạy Migration & Nạp Dữ Liệu Mau
 ```bash
-# Tạo file SQLite trống
-touch database/database.sqlite
-
-# Chạy Migrations và nạp Seed mẫu
 php artisan migrate:fresh --seed
 ```
 
-### 4. Khởi động Development Servers & Queue Worker
-Chạy server Laravel:
+### 5. Khởi Động Lệnh Chạy Tự Động (Dev Server All-in-One)
 ```bash
-php artisan serve
+npm run dev:all
 ```
-Chạy server biên dịch Assets (Vite) trong tab Terminal thứ hai:
-```bash
-npm run dev
-```
-Chạy hàng đợi gửi thư điện tử (Queue Worker) trong tab Terminal thứ ba:
-```bash
-php artisan queue:work
-```
-
-### 5. Thiết lập Scheduler để tự động dọn dẹp OTP hết hạn
-Cài đặt cronjob trên server chạy mỗi phút:
-```bash
-* * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
-```
-*(Trong môi trường local, bạn có thể chạy thử nghiệm qua câu lệnh: `php artisan schedule:work`)*
+*Lệnh trên sẽ khởi động đồng thời cả Laravel Web Server (`php artisan serve`), Vite Client assets compiler (`vite`), Reverb WebSockets Server (`php artisan reverb:start`), và Queue Worker.*
 
 ---
 
-## 🧪 Chạy Kiểm Thử Tự Động (Testing)
-Dự án được tích hợp sẵn bộ kiểm thử sử dụng **Pest**. Bạn có thể chạy các bài test về luồng đăng nhập, xác thực OTP, bảo mật middleware phân quyền bằng lệnh:
-```bash
-php artisan test
-```
+## 🔐 Tài Khoản Đăng Nhập Mặc Định
+
+| Vai Trò | Email | Mật Khẩu |
+| :--- | :--- | :--- |
+| **Super Admin / Quản Lý** | `minhducqwe0123@gmail.com` | `minhduc123` |
+
+---
+
+## 📖 Tài Liệu Kiến Trúc & Routing Chi Tiết
+Để xem chi tiết sơ đồ Routing, danh sách Controller và các quy tắc thiết kế hệ thống, xem tại file [docs/PROJECT_CONTEXT_AND_ROUTING.md](file:///d:/Projects/TapHoa/docs/PROJECT_CONTEXT_AND_ROUTING.md).

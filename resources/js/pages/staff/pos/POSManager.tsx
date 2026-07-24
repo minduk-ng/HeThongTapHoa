@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Armchair, UtensilsCrossed } from 'lucide-react';
+import { Armchair, UtensilsCrossed, Activity } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import POSTableTab from './components/POSTableTab';
 import POSMenuTab from './components/POSMenuTab';
 import POSCartPanel from './components/POSCartPanel';
+import POSLogTab, { SystemLogEntry } from './components/POSLogTab';
 import PaymentDrawer from './components/PaymentDrawer';
 import ReceiptPrintModal from './components/ReceiptPrintModal';
 import ReservationConfirmModal from './components/ReservationConfirmModal';
@@ -15,13 +16,29 @@ import { usePOSCart } from './hooks/usePOSCart';
 import { usePOSCheckout } from './hooks/usePOSCheckout';
 
 export default function POSManager({ tables, categories, products }: POSManagerProps) {
-    const [activeTab, setActiveTab] = useState<'tables' | 'menu'>('tables');
+    const [activeTab, setActiveTab] = useState<'tables' | 'menu' | 'log'>('tables');
+    const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([]);
+
+    const addLogEntry = useCallback((type: 'sent' | 'received', message: string, details?: string) => {
+        const d = new Date();
+        const timestamp = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+        const newEntry: SystemLogEntry = {
+            id: `${Date.now()}_${Math.random()}`,
+            timestamp,
+            type,
+            source: 'POS',
+            message,
+            details,
+        };
+        setSystemLogs((prev) => [newEntry, ...prev.slice(0, 99)]);
+    }, []);
 
     // Realtime listener for inventory stock & recipe updates via Reverb
     useEffect(() => {
         if (typeof window !== 'undefined' && window.Echo) {
             const channel = window.Echo.private('inventory-channel');
             channel.listen('.IngredientStockUpdated', () => {
+                addLogEntry('received', 'Cập nhật định lượng / tồn kho nguyên liệu');
                 router.reload({
                     only: ['products'],
                     onError: () => {},
@@ -32,7 +49,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 window.Echo.leave('inventory-channel');
             };
         }
-    }, []);
+    }, [addLogEntry]);
 
     const {
         selectedTable,
@@ -47,23 +64,65 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         currentCart,
         handleToggleProduct,
         handleUpdateQuantity,
+        handleStageReduction,
         handleRemoveItem,
         handleUpdateNote,
         clearTableCart,
         clearUnconfirmedDraft,
     } = usePOSCart(selectedTable, tables, products);
 
-    // Clear unconfirmed local draft when OrderSentToKitchen WebSocket event fires
+    const lastEventRef = useRef<{ key: string; time: number }>({ key: '', time: 0 });
+
+    const isDuplicateEvent = useCallback((eventKey: string) => {
+        const now = Date.now();
+        if (lastEventRef.current.key === eventKey && now - lastEventRef.current.time < 1000) {
+            return true;
+        }
+        lastEventRef.current = { key: eventKey, time: now };
+        return false;
+    }, []);
+
+    // Realtime WebSocket Listener via Reverb for POS tables & orders updates
     useEffect(() => {
         if (typeof window !== 'undefined' && window.Echo) {
-            const channel = window.Echo.private('pos-channel');
-            channel.listen('.OrderSentToKitchen', () => {
+            const channel = window.Echo.channel('pos-channel');
+
+            const handleTableReload = (eventName: string, payload?: any) => {
+                const eventKey = `${eventName}_${payload?.order_id || payload?.table_id || ''}`;
+                if (isDuplicateEvent(eventKey)) return;
+
+                addLogEntry('received', `Sự kiện ${eventName} từ hệ thống`, 'Cập nhật lại sơ đồ bàn');
+                router.reload({
+                    only: ['tables'],
+                    onError: () => {},
+                });
+            };
+
+            const handleOrderSent = (payload?: any) => {
+                const eventKey = `OrderSentToKitchen_${payload?.order_id || ''}`;
+                if (isDuplicateEvent(eventKey)) return;
+
                 if (selectedTable) {
                     clearUnconfirmedDraft(selectedTable.id);
                 }
-            });
+                addLogEntry('received', 'Sự kiện OrderSentToKitchen từ hệ thống', 'Cập nhật lại sơ đồ bàn');
+                router.reload({
+                    only: ['tables'],
+                    onError: () => {},
+                });
+            };
+
+            channel
+                .listen('.OrderSentToKitchen', handleOrderSent)
+                .listen('.OrderCompleted', (data: any) => handleTableReload('OrderCompleted', data))
+                .listen('.TableStatusUpdated', (data: any) => handleTableReload('TableStatusUpdated', data))
+                .listen('.TableTransferred', (data: any) => handleTableReload('TableTransferred', data));
+
+            return () => {
+                window.Echo.leave('pos-channel');
+            };
         }
-    }, [selectedTable, clearUnconfirmedDraft]);
+    }, [selectedTable, clearUnconfirmedDraft, addLogEntry, isDuplicateEvent]);
 
     const {
         submitting,
@@ -111,7 +170,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('tables')}
-                                className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-colors duration-150 flex items-center justify-center space-x-2 ${
+                                className={`flex-1 py-2.5 px-3 text-xs font-bold rounded-xl transition-colors duration-150 flex items-center justify-center space-x-1.5 ${
                                     activeTab === 'tables'
                                         ? 'bg-blue-600 text-white shadow-xs'
                                         : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
@@ -120,7 +179,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                 <Armchair className="w-4 h-4" />
                                 <span>Chọn bàn</span>
                                 {selectedTable && (
-                                    <span className="ml-1.5 px-2 py-0.5 rounded-full bg-white/20 text-[10px]">
+                                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px]">
                                         {selectedTable.table_number}
                                     </span>
                                 )}
@@ -129,7 +188,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('menu')}
-                                className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-colors duration-150 flex items-center justify-center space-x-2 ${
+                                className={`flex-1 py-2.5 px-3 text-xs font-bold rounded-xl transition-colors duration-150 flex items-center justify-center space-x-1.5 ${
                                     activeTab === 'menu'
                                         ? 'bg-blue-600 text-white shadow-xs'
                                         : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
@@ -138,8 +197,26 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                 <UtensilsCrossed className="w-4 h-4" />
                                 <span>Chọn món</span>
                                 {currentCart.length > 0 && (
-                                    <span className="ml-1.5 px-2 py-0.5 rounded-full bg-amber-400 text-amber-950 font-bold text-[10px]">
+                                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-400 text-amber-950 font-bold text-[10px]">
                                         {currentCart.reduce((s, i) => s + i.quantity, 0)}
+                                    </span>
+                                )}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('log')}
+                                className={`py-2.5 px-3 text-xs font-bold rounded-xl transition-colors duration-150 flex items-center justify-center space-x-1.5 ${
+                                    activeTab === 'log'
+                                        ? 'bg-blue-600 text-white shadow-xs'
+                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
+                                }`}
+                            >
+                                <Activity className="w-4 h-4" />
+                                <span>Nhật ký Event</span>
+                                {systemLogs.length > 0 && (
+                                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-sky-400 text-sky-950 font-bold text-[10px]">
+                                        {systemLogs.length}
                                     </span>
                                 )}
                             </button>
@@ -155,12 +232,17 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                     lockedCheckoutTables={lockedCheckoutTables}
                                     draftTableCounts={draftTableCounts}
                                 />
-                            ) : (
+                            ) : activeTab === 'menu' ? (
                                 <POSMenuTab
                                     products={products}
                                     categories={categories}
                                     cartItems={currentCart}
                                     onToggleProduct={handleToggleProduct}
+                                />
+                            ) : (
+                                <POSLogTab
+                                    logs={systemLogs}
+                                    onClearLogs={() => setSystemLogs([])}
                                 />
                             )}
                         </div>
@@ -173,6 +255,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                             tables={tables}
                             cartItems={currentCart}
                             onUpdateQuantity={handleUpdateQuantity}
+                            onStageReduction={handleStageReduction}
                             onRemoveItem={handleRemoveItem}
                             onUpdateNote={handleUpdateNote}
                             onSendToKitchen={() =>

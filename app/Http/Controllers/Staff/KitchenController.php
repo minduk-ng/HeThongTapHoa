@@ -126,10 +126,6 @@ class KitchenController extends Controller
 
                 $order = $item->order;
                 if ($order) {
-                    $activeItemsCount = $order->items()->where('status', '!=', 'cancelled')->count();
-                    if ($activeItemsCount <= 1) {
-                        throw new \InvalidArgumentException('Đơn hàng chỉ còn 1 món. Vui lòng chọn "Hủy đơn" để hủy toàn bộ đơn hàng này!');
-                    }
                     $targetOrder = $order;
                     $targetTable = $order->table ?? Table::find($order->table_id);
                 }
@@ -139,7 +135,7 @@ class KitchenController extends Controller
                 $item->update([
                     'status' => 'cancelled',
                     'cancellation_reason' => $reasonStr,
-                    'cancelled_by_user_id' => $request->user()->id,
+                    'cancelled_by_user_id' => $request->user()?->id,
                     'cancelled_at' => now(),
                 ]);
 
@@ -148,7 +144,15 @@ class KitchenController extends Controller
                     if ($remainingActiveCount === 0) {
                         $order->update(['status' => 'cancelled']);
                         if ($targetTable) {
-                            $targetTable->update(['status' => 'available', 'merged_into_table_id' => null]);
+                            $hasOtherActiveOrders = Order::where('table_id', $targetTable->id)
+                                ->where('id', '!=', $order->id)
+                                ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                                ->whereHas('items', fn ($q) => $q->where('status', '!=', 'cancelled'))
+                                ->exists();
+
+                            if (! $hasOtherActiveOrders) {
+                                $targetTable->update(['status' => 'available', 'merged_into_table_id' => null]);
+                            }
                         }
                     }
                 }

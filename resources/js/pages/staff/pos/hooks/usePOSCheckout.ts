@@ -64,29 +64,25 @@ export function usePOSCheckout(
         if (!selectedTable || currentCart.length === 0 || submitting) return;
 
         const newDeltaItems = currentCart
-            .map((item) => {
-                const initialQty = item.isConfirmed ? (item.initialQuantity || 0) : 0;
-                const newDelta = item.quantity - initialQty;
-                if (newDelta > 0) {
-                    return {
-                        menu_item_id: item.menu_item_id,
-                        quantity: newDelta,
-                        unit_price: item.unit_price,
-                        note: item.note || null,
-                        vat_rate: item.vat_rate,
-                    };
-                }
-                return null;
-            })
-            .filter(Boolean) as Array<{
-                menu_item_id: number;
-                quantity: number;
-                unit_price: number;
-                note: string | null;
-                vat_rate: number;
-            }>;
+            .filter((item) => !item.isConfirmed && item.quantity > 0)
+            .map((item) => ({
+                menu_item_id: item.menu_item_id,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                note: item.note || null,
+                vat_rate: item.vat_rate,
+            }));
 
-        if (newDeltaItems.length === 0) return;
+        const reducedItems = currentCart
+            .filter((item) => item.isConfirmed && (item.stagedReduceQty || 0) > 0 && item.orderItemId)
+            .map((item) => ({
+                order_item_id: item.orderItemId!,
+                reduce_quantity: item.stagedReduceQty!,
+                cancellation_reason: item.stagedReason || 'Khách đổi ý / Khách giảm số lượng',
+                note: item.stagedNote || '',
+            }));
+
+        if (newDeltaItems.length === 0 && reducedItems.length === 0) return;
 
         setSubmitting(true);
 
@@ -94,7 +90,6 @@ export function usePOSCheckout(
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => {
             setSubmitting(false);
-            alert('Kết nối cơ sở dữ liệu/máy chủ quá thời gian chờ (Timeout). Vui lòng bấm gửi lại!');
         }, 8000);
 
         const subtotal = newDeltaItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
@@ -109,6 +104,7 @@ export function usePOSCheckout(
         const payload = {
             table_id: selectedTable.id,
             items: newDeltaItems,
+            reduced_items: reducedItems,
             subtotal,
             vat_amount: vatTotal,
             total: totalAmount,
@@ -125,11 +121,9 @@ export function usePOSCheckout(
                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 setSubmitting(false);
             },
-            onError: (errors) => {
+            onError: () => {
                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 setSubmitting(false);
-                const msg = errors.error || errors.message || 'Gửi đơn thất bại do kết nối CSDL chập chờn. Vui lòng gửi lại!';
-                alert(msg);
             },
         });
     };
@@ -145,8 +139,10 @@ export function usePOSCheckout(
     ) => {
         if (!selectedTable || submitting) return;
 
+        const hasUnconfirmedDrafts = currentCart.some((i) => !i.isConfirmed || (i.stagedReduceQty || 0) > 0);
+        if (hasUnconfirmedDrafts) return;
+
         if (lockedCheckoutTables[selectedTable.id]) {
-            alert(`Không thể thanh toán: Bàn này đang được thanh toán bởi ${lockedCheckoutTables[selectedTable.id].employeeName}!`);
             return;
         }
 

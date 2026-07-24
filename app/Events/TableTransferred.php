@@ -25,8 +25,6 @@ class TableTransferred implements ShouldBroadcastNow
         return [
             new Channel('pos-channel'),
             new Channel('kitchen-channel'),
-            new PrivateChannel('pos-channel'),
-            new PrivateChannel('kitchen-channel'),
         ];
     }
 

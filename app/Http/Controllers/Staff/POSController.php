@@ -28,26 +28,34 @@ class POSController extends Controller
         $tables = Table::with(['mergedIntoTable', 'activeOrders.items' => function ($query) {
             $query->where('status', '!=', 'cancelled')->with('menuItem');
         }])->where('status', '!=', 'maintenance')->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
-        $categories = MenuCategory::orderBy('sort_order', 'asc')->get();
-        $products = MenuItem::with(['category', 'recipes.ingredient'])->where('is_available', true)->get();
 
-        // Calculate max_servings for each product based on ingredient inventory
-        $products->transform(function ($product) {
-            if ($product->recipes && $product->recipes->count() > 0) {
-                $possibleServings = [];
-                foreach ($product->recipes as $recipe) {
-                    if ($recipe->ingredient && (float) $recipe->amount > 0) {
-                        $stock = (float) $recipe->ingredient->stock_quantity;
-                        $possible = (int) floor($stock / (float) $recipe->amount);
-                        $possibleServings[] = max(0, $possible);
+        $categories = Cache::remember('pos_categories', 3600, function () {
+            return MenuCategory::orderBy('sort_order', 'asc')->get()->toArray();
+        });
+
+        $products = Cache::remember('pos_products', 300, function () {
+            $prods = MenuItem::with(['category', 'recipes.ingredient'])->where('is_available', true)->get();
+
+            // Calculate max_servings for each product based on ingredient inventory
+            $prods->transform(function ($product) {
+                if ($product->recipes && $product->recipes->count() > 0) {
+                    $possibleServings = [];
+                    foreach ($product->recipes as $recipe) {
+                        if ($recipe->ingredient && (float) $recipe->amount > 0) {
+                            $stock = (float) $recipe->ingredient->stock_quantity;
+                            $possible = (int) floor($stock / (float) $recipe->amount);
+                            $possibleServings[] = max(0, $possible);
+                        }
                     }
+                    $product->max_servings = count($possibleServings) > 0 ? min($possibleServings) : 999;
+                } else {
+                    $product->max_servings = 999;
                 }
-                $product->max_servings = count($possibleServings) > 0 ? min($possibleServings) : 999;
-            } else {
-                $product->max_servings = 999; // Unlimited if no recipe defined
-            }
 
-            return $product;
+                return $product;
+            });
+
+            return $prods->toArray();
         });
 
         // Consolidate group orders so every table in a merged group shares the exact same active orders list
@@ -74,11 +82,16 @@ class POSController extends Controller
     {
         $validated = $request->validate([
             'table_id' => 'required|exists:tables,id',
-            'items' => 'required|array|min:1',
-            'items.*.menu_item_id' => 'required|exists:menu_items,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.unit_price' => 'required|numeric|min:0',
+            'items' => 'nullable|array',
+            'items.*.menu_item_id' => 'required_with:items|exists:menu_items,id',
+            'items.*.quantity' => 'required_with:items|integer|min:1',
+            'items.*.unit_price' => 'required_with:items|numeric|min:0',
             'items.*.note' => 'nullable|string|max:255',
+            'reduced_items' => 'nullable|array',
+            'reduced_items.*.order_item_id' => 'required_with:reduced_items|exists:order_items,id',
+            'reduced_items.*.reduce_quantity' => 'required_with:reduced_items|integer|min:1',
+            'reduced_items.*.cancellation_reason' => 'required_with:reduced_items|string|max:255',
+            'reduced_items.*.note' => 'nullable|string|max:255',
             'subtotal' => 'required|numeric|min:0',
             'vat_amount' => 'required|numeric|min:0',
             'total' => 'required|numeric|min:0',
@@ -95,50 +108,94 @@ class POSController extends Controller
         }
 
         try {
-            $createdOrder = DB::transaction(function () use ($validated, $request) {
+            $primaryOrder = DB::transaction(function () use ($validated, $request) {
                 $table = Table::findOrFail($validated['table_id']);
 
-                // Check if table already has previous orders in this session
-                $hasPreviousOrders = Order::where('table_id', $table->id)
-                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
-                    ->exists();
+                // 1. Handle staged reductions
+                if (! empty($validated['reduced_items'])) {
+                    foreach ($validated['reduced_items'] as $red) {
+                        $orderItem = OrderItem::lockForUpdate()->find($red['order_item_id']);
+                        if (! $orderItem || $orderItem->status === 'completed' || $orderItem->order?->status === 'completed') {
+                            continue;
+                        }
 
-                // Create a fresh Kitchen Ticket order for the newly added items
-                $orderCode = 'ORD-'.strtoupper(Str::random(6));
-                $employeeId = DB::table('employees')->where('id', $request->user()->id)->exists() ? $request->user()->id : null;
+                        $reduceQty = min($orderItem->quantity, (int) $red['reduce_quantity']);
+                        $newQty = $orderItem->quantity - $reduceQty;
+                        $reasonStr = $red['cancellation_reason'].($red['note'] ? ': '.$red['note'] : '');
 
-                $order = Order::create([
-                    'order_code' => $orderCode,
-                    'table_id' => $table->id,
-                    'employee_id' => $employeeId,
-                    'subtotal' => $validated['subtotal'],
-                    'vat_amount' => $validated['vat_amount'],
-                    'total' => $validated['total'],
-                    'status' => 'pending',
-                    'has_additional_items' => $hasPreviousOrders, // Flag alert for kitchen if table calls for extra items!
-                ]);
+                        if ($newQty <= 0) {
+                            $orderItem->update([
+                                'quantity' => 0,
+                                'subtotal' => 0,
+                                'status' => 'cancelled',
+                                'cancellation_reason' => $reasonStr,
+                                'cancelled_by_user_id' => $request->user()?->id,
+                                'cancelled_at' => now(),
+                            ]);
+                        } else {
+                            $orderItem->update([
+                                'quantity' => $newQty,
+                                'subtotal' => $newQty * $orderItem->unit_price,
+                                'note' => ($orderItem->note ? $orderItem->note.' | ' : '')."[Giảm {$reduceQty} phần: {$reasonStr}]",
+                            ]);
+                        }
 
-                // Update table status to occupied
-                $table->update(['status' => 'occupied']);
+                        $parentOrder = $orderItem->order;
+                        if ($parentOrder) {
+                            $activeSubtotal = (float) $parentOrder->items()->where('status', '!=', 'cancelled')->sum('subtotal');
+                            $parentOrder->update([
+                                'subtotal' => $activeSubtotal,
+                                'total' => $activeSubtotal + (float) $parentOrder->vat_amount,
+                            ]);
 
-                // Insert new order ticket items
-                foreach ($validated['items'] as $item) {
-                    OrderItem::create([
-                        'order_id' => $order->id,
-                        'menu_item_id' => $item['menu_item_id'],
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $item['unit_price'],
-                        'subtotal' => $item['quantity'] * $item['unit_price'],
-                        'note' => $item['note'] ?? null,
-                    ]);
+                            if ($parentOrder->items()->where('status', '!=', 'cancelled')->count() === 0) {
+                                $parentOrder->update(['status' => 'cancelled']);
+                            }
+                        }
+                    }
                 }
 
-                return $order;
+                // 2. Handle new items ticket creation
+                $createdOrder = null;
+                if (! empty($validated['items'])) {
+                    $hasPreviousOrders = Order::where('table_id', $table->id)
+                        ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                        ->exists();
+
+                    $orderCode = 'ORD-'.strtoupper(Str::random(6));
+                    $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
+
+                    $createdOrder = Order::create([
+                        'order_code' => $orderCode,
+                        'table_id' => $table->id,
+                        'employee_id' => $employeeId,
+                        'subtotal' => $validated['subtotal'],
+                        'vat_amount' => $validated['vat_amount'],
+                        'total' => $validated['total'],
+                        'status' => 'pending',
+                        'has_additional_items' => $hasPreviousOrders,
+                    ]);
+
+                    $table->update(['status' => 'occupied']);
+
+                    foreach ($validated['items'] as $item) {
+                        OrderItem::create([
+                            'order_id' => $createdOrder->id,
+                            'menu_item_id' => $item['menu_item_id'],
+                            'quantity' => $item['quantity'],
+                            'unit_price' => $item['unit_price'],
+                            'subtotal' => $item['quantity'] * $item['unit_price'],
+                            'note' => $item['note'] ?? null,
+                        ]);
+                    }
+                }
+
+                return $createdOrder ?? Order::where('table_id', $table->id)->latest()->first() ?? new Order;
             });
 
-            $this->safeDispatch(fn () => OrderSentToKitchen::dispatch($createdOrder));
+            $this->safeDispatch(fn () => OrderSentToKitchen::dispatch($primaryOrder));
 
-            return back()->with('success', 'Đã gửi đơn order chế biến xuống bếp thành công!');
+            return back()->with('success', 'Đã cập nhật đơn order và gửi xuống bếp chế biến thành công!');
         } catch (\Throwable $e) {
             Log::error('POS sendToKitchen DB error: '.$e->getMessage());
 
@@ -189,7 +246,8 @@ class POSController extends Controller
                     return in_array($order->status, ['draft', 'pending', 'confirmed', 'processing']);
                 });
 
-                if ($hasUncompletedOrders && ! $request->user()->hasPermission('pos.bypass_kitchen_lock')) {
+                $canBypass = $request->user()->hasPermission('pos.bypass_kitchen_lock');
+                if ($hasUncompletedOrders && ! $canBypass) {
                     throw new \Exception('Bạn không có quyền duyệt khẩn cấp thanh toán khi món chưa được Bếp hoàn tất.');
                 }
 
@@ -212,18 +270,20 @@ class POSController extends Controller
                     });
                 });
 
-                // Create Invoice record
+                // Create or update Invoice record safely
                 $invoiceCode = 'INV-'.date('Ymd').strtoupper(Str::random(4));
-                Invoice::create([
-                    'order_id' => $primaryOrder->id,
-                    'invoice_code' => $invoiceCode,
-                    'table_name' => $tableNameStr,
-                    'total_amount' => $totalAmount,
-                    'payment_method' => $validated['payment_method'],
-                    'amount_received' => $validated['amount_received'],
-                    'change_amount' => $validated['change_amount'],
-                    'issued_at' => now(),
-                ]);
+                Invoice::updateOrCreate(
+                    ['order_id' => $primaryOrder->id],
+                    [
+                        'invoice_code' => $invoiceCode,
+                        'table_name' => $tableNameStr,
+                        'total_amount' => $totalAmount,
+                        'payment_method' => $validated['payment_method'],
+                        'amount_received' => $validated['amount_received'],
+                        'change_amount' => $validated['change_amount'],
+                        'issued_at' => now(),
+                    ]
+                );
 
                 // Release all tables in the group to available
                 foreach ($allGroupTables as $grpTable) {
