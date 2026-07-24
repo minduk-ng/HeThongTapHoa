@@ -18,8 +18,8 @@
             })();
         </script>
 
-        <link rel="icon" href="/logo/minilogo.png" type="image/png">
-        <link rel="apple-touch-icon" href="/logo/minilogo.png">
+        <link rel="icon" href="/logo/minilogo_v2.png" type="image/png">
+        <link rel="apple-touch-icon" href="/logo/minilogo_v2.png">
 
         @fonts
 
