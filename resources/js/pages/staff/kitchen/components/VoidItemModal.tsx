@@ -51,11 +51,11 @@ export default function VoidItemModal({
         router.post(endpoint, payload, {
             onSuccess: () => {
                 setSubmitting(false);
+                onClose();
                 if (onLogEvent) {
                     const actionText = mode === 'order' ? `Đã xác nhận hủy toàn bộ đơn ${menuItemName}` : `Đã hủy món ${menuItemName}`;
                     onLogEvent('sent', actionText, `Lý do: ${reason}`);
                 }
-                onClose();
             },
             onError: (errs: any) => {
                 setSubmitting(false);

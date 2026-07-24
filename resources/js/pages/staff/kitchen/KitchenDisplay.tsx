@@ -83,14 +83,22 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
             const channel = window.Echo.channel('kitchen-channel');
 
             const handleOrderSent = (payload?: any) => {
-                const eventKey = `OrderSentToKitchen_${payload?.order_id || ''}`;
+                const eventKey = `OrderSentToKitchen_${payload?.order_id || ''}_${payload?.action_type || ''}`;
                 if (isDuplicateEvent(eventKey)) return;
 
                 const tableStr = payload?.table_number ? `Bàn #${payload.table_number}` : 'vé order';
-                addKitchenLog('received', `Nhận vé order mới từ ${tableStr}`, 'Bắt đầu chế biến');
-                if (soundEnabledRef.current) {
-                    playKitchenChime();
+
+                if (payload?.action_type === 'cancel_order') {
+                    addKitchenLog('received', `Hủy toàn bộ đơn hàng tại ${tableStr}`, payload?.log_message || 'Xóa khỏi danh sách vé');
+                } else if (payload?.action_type === 'cancel_item') {
+                    addKitchenLog('received', `Đã hủy 1 món khỏi ${tableStr}`, payload?.log_message || 'Cập nhật danh sách vé');
+                } else {
+                    addKitchenLog('received', `Nhận vé order mới từ ${tableStr}`, 'Bắt đầu chế biến');
+                    if (soundEnabledRef.current) {
+                        playKitchenChime();
+                    }
                 }
+
                 router.reload({
                     only: ['orders', 'stats'],
                     onError: () => {},

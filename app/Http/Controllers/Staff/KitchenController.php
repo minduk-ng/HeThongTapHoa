@@ -120,8 +120,8 @@ class KitchenController extends Controller
             DB::transaction(function () use ($validated, $request, &$targetTable, &$targetOrder) {
                 $item = OrderItem::lockForUpdate()->findOrFail($validated['order_item_id']);
 
-                if ($item->status === 'completed' || $item->order?->status === 'completed') {
-                    throw new \InvalidArgumentException('Món ăn/Đơn hàng đã hoàn thành chế biến, không thể hủy!');
+                if ($item->status === 'cancelled') {
+                    return;
                 }
 
                 $order = $item->order;

@@ -508,24 +508,25 @@ class POSController extends Controller
         ]);
 
         try {
-            DB::transaction(function () use ($validated, $request) {
-                $table = Table::findOrFail($validated['table_id']);
-                $primaryId = $table->merged_into_table_id ?? $table->id;
-                $allGroupTables = Table::where('id', $primaryId)->orWhere('merged_into_table_id', $primaryId)->get();
+            $table = Table::findOrFail($validated['table_id']);
+            $primaryId = $table->merged_into_table_id ?? $table->id;
+            $allGroupTables = Table::where('id', $primaryId)->orWhere('merged_into_table_id', $primaryId)->get();
+
+            $activeOrders = DB::transaction(function () use ($validated, $request, $allGroupTables) {
                 $allGroupTableIds = $allGroupTables->pluck('id');
 
-                $activeOrders = Order::with('items')->whereIn('table_id', $allGroupTableIds)
+                $orders = Order::with('items')->whereIn('table_id', $allGroupTableIds)
                     ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
                     ->lockForUpdate()
                     ->get();
 
-                if ($activeOrders->isEmpty()) {
+                if ($orders->isEmpty()) {
                     throw new \InvalidArgumentException('Không tìm thấy đơn hàng cần hủy!');
                 }
 
                 $reasonStr = $validated['cancellation_reason'].($validated['note'] ? ': '.$validated['note'] : '');
 
-                foreach ($activeOrders as $order) {
+                foreach ($orders as $order) {
                     foreach ($order->items as $item) {
                         if ($item->status !== 'cancelled') {
                             $item->update([
@@ -544,6 +545,8 @@ class POSController extends Controller
                     'status' => 'available',
                     'merged_into_table_id' => null,
                 ]);
+
+                return $orders;
             });
 
             $this->safeDispatch(function () use ($allGroupTables, $activeOrders, $validated) {
