@@ -304,7 +304,7 @@ export default function POSCartPanel({
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
-                                        ) : canCancel && item.orderItemId && !item.isKitchenCompleted ? (
+                                        ) : canCancel && item.orderItemId && !item.isKitchenCompleted && (item.stagedReduceQty || 0) < item.quantity ? (
                                             <button
                                                 type="button"
                                                 onClick={() => setReduceModalState({ isOpen: true, item })}
@@ -313,6 +313,10 @@ export default function POSCartPanel({
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
+                                        ) : (item.stagedReduceQty || 0) >= item.quantity ? (
+                                            <span className="p-1 text-amber-500 dark:text-amber-400 cursor-not-allowed" title="Món đã được giảm về 0, ấn 'Gửi bếp chế biến' để xác nhận">
+                                                <Lock className="w-3.5 h-3.5" />
+                                            </span>
                                         ) : (
                                             <span className="p-1 text-zinc-300 dark:text-zinc-600 cursor-not-allowed" title={item.isKitchenCompleted ? 'Món đã hoàn thành chế biến, không thể hủy' : 'Món đã gửi bếp không được xóa'}>
                                                 <Lock className="w-3.5 h-3.5 text-zinc-400" />
