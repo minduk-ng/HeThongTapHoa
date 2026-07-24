@@ -523,22 +523,11 @@ class POSController extends Controller
                     throw new \InvalidArgumentException('Không tìm thấy đơn hàng cần hủy!');
                 }
 
-                foreach ($activeOrders as $order) {
-                    if ($order->status === 'completed') {
-                        throw new \InvalidArgumentException('Đơn hàng đã hoàn thành chế biến, không thể hủy!');
-                    }
-
-                    $uncompletedItems = $order->items->filter(fn ($i) => $i->status !== 'completed' && $i->status !== 'cancelled');
-                    if ($uncompletedItems->isEmpty() && $order->items->where('status', '!=', 'cancelled')->count() > 0) {
-                        throw new \InvalidArgumentException('Tất cả món trong đơn đã hoàn thành chế biến, không thể hủy!');
-                    }
-                }
-
                 $reasonStr = $validated['cancellation_reason'].($validated['note'] ? ': '.$validated['note'] : '');
 
                 foreach ($activeOrders as $order) {
                     foreach ($order->items as $item) {
-                        if ($item->status !== 'completed' && $item->status !== 'cancelled') {
+                        if ($item->status !== 'cancelled') {
                             $item->update([
                                 'status' => 'cancelled',
                                 'cancellation_reason' => $reasonStr,
@@ -557,9 +546,10 @@ class POSController extends Controller
                 ]);
             });
 
-            $this->safeDispatch(function () use ($allGroupTables, $activeOrders) {
+            $this->safeDispatch(function () use ($allGroupTables, $activeOrders, $validated) {
                 $primaryOrder = $activeOrders->first() ?? Order::first() ?? new Order;
-                OrderSentToKitchen::dispatch($primaryOrder);
+                $cancelMsg = 'Hủy toàn bộ đơn hàng (Lý do: '.$validated['cancellation_reason'].')';
+                OrderSentToKitchen::dispatch($primaryOrder, 'cancel_order', $cancelMsg);
                 foreach ($allGroupTables as $grpTable) {
                     TableStatusUpdated::dispatch($grpTable);
                 }

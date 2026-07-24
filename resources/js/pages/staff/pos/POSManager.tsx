@@ -118,7 +118,10 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                     clearUnconfirmedDraft(selectedTable.id);
                 }
 
-                if (payload?.action_type === 'cancel_item') {
+                if (payload?.action_type === 'cancel_order') {
+                    const tableStr = payload?.table_number ? `Bàn #${payload.table_number}` : 'đơn hàng';
+                    addLogEntry('received', `Đã hủy toàn bộ đơn hàng tại ${tableStr}`, payload?.log_message || 'Giải phóng bàn');
+                } else if (payload?.action_type === 'cancel_item') {
                     const tableStr = payload?.table_number ? `Bàn #${payload.table_number}` : 'đơn hàng';
                     addLogEntry('received', `Bếp vừa hủy 1 món tại ${tableStr}`, payload?.log_message || 'Cập nhật lại đơn hàng');
                 } else {
