@@ -24,7 +24,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
     const [activeStation, setActiveStation] = useState<'all' | 'bar' | 'kitchen'>('all');
     const [kitchenLogs, setKitchenLogs] = useState<SystemLogEntry[]>([]);
 
-    const addKitchenLog = useCallback((type: 'sent' | 'received', message: string, details?: string) => {
+    const addKitchenLog = useCallback((type: 'sent' | 'received' | 'error', message: string, details?: string) => {
         const d = new Date();
         const timestamp = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
         const newEntry: SystemLogEntry = {
@@ -86,7 +86,8 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                 const eventKey = `OrderSentToKitchen_${payload?.order_id || ''}`;
                 if (isDuplicateEvent(eventKey)) return;
 
-                addKitchenLog('received', 'Nhận vé order chế biến mới từ POS', 'Bắt đầu chuẩn bị');
+                const tableStr = payload?.table_number ? `Bàn #${payload.table_number}` : 'vé order';
+                addKitchenLog('received', `Nhận vé order mới từ ${tableStr}`, 'Bắt đầu chế biến');
                 if (soundEnabledRef.current) {
                     playKitchenChime();
                 }
@@ -100,7 +101,14 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                 const eventKey = `${eventName}_${payload?.order_id || payload?.table_id || ''}`;
                 if (isDuplicateEvent(eventKey)) return;
 
-                addKitchenLog('received', `Sự kiện ${eventName} từ POS`, 'Cập nhật lại danh sách vé');
+                if (eventName === 'OrderCompleted') {
+                    addKitchenLog('sent', 'Đã xác nhận hoàn thành chế biến đơn hàng');
+                } else if (eventName === 'TableTransferred') {
+                    addKitchenLog('received', 'Cập nhật lại tên bàn chuyển / gộp từ POS');
+                } else {
+                    addKitchenLog('received', 'Cập nhật lại danh sách vé order chế biến');
+                }
+
                 router.reload({
                     only: ['orders', 'stats'],
                     onError: () => {},
@@ -199,6 +207,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                 orderItemId={voidModalState.orderItemId}
                 tableId={voidModalState.tableId}
                 menuItemName={voidModalState.menuItemName}
+                onLogEvent={addKitchenLog}
             />
 
             {/* Split Screen Container (Left Sidebar Stats ↔ Right Order Cards Grid) */}

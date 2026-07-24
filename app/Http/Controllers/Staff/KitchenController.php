@@ -158,8 +158,13 @@ class KitchenController extends Controller
                 }
             });
 
-            $this->safeDispatch(function () use ($targetTable, $targetOrder) {
-                OrderSentToKitchen::dispatch($targetOrder ?? Order::first() ?? new Order);
+            $this->safeDispatch(function () use ($targetTable, $targetOrder, $validated) {
+                $cancelMsg = 'Hủy / giảm món (Lý do: '.$validated['cancellation_reason'].')';
+                OrderSentToKitchen::dispatch(
+                    $targetOrder ?? Order::first() ?? new Order,
+                    'cancel_item',
+                    $cancelMsg
+                );
                 if ($targetTable) {
                     TableStatusUpdated::dispatch($targetTable);
                 }

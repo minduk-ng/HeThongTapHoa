@@ -1,10 +1,10 @@
 import React from 'react';
-import { Activity, ArrowDownLeft, ArrowUpRight, Trash2 } from 'lucide-react';
+import { Activity, AlertCircle, ArrowDownLeft, ArrowUpRight, Trash2 } from 'lucide-react';
 
 export interface SystemLogEntry {
     id: string;
     timestamp: string;
-    type: 'sent' | 'received';
+    type: 'sent' | 'received' | 'error';
     source: 'POS' | 'Kitchen';
     message: string;
     details?: string;
@@ -21,7 +21,7 @@ export default function POSLogTab({ logs, onClearLogs }: POSLogTabProps) {
             <div className="shrink-0 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
                 <div className="flex items-center space-x-2 text-zinc-900 dark:text-zinc-100">
                     <Activity className="w-4 h-4 text-sky-600 dark:text-sky-400 stroke-[1.5]" />
-                    <h3 className="font-display text-sm font-bold">Lịch sử Event Realtime</h3>
+                    <h3 className="font-display text-sm font-bold">Lịch sử Hoạt động Realtime</h3>
                 </div>
                 {logs.length > 0 && (
                     <button
@@ -30,7 +30,7 @@ export default function POSLogTab({ logs, onClearLogs }: POSLogTabProps) {
                         className="px-2 py-1 text-[11px] font-semibold text-zinc-500 hover:text-rose-600 dark:text-zinc-400 dark:hover:text-rose-400 flex items-center space-x-1"
                     >
                         <Trash2 className="w-3 h-3 stroke-[1.5]" />
-                        <span>Xóa log</span>
+                        <span>Xóa nhật ký</span>
                     </button>
                 )}
             </div>
@@ -39,25 +39,35 @@ export default function POSLogTab({ logs, onClearLogs }: POSLogTabProps) {
                 {logs.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-zinc-400 text-xs py-8 space-y-1">
                         <Activity className="w-8 h-8 stroke-[1.5] text-zinc-300 dark:text-zinc-700" />
-                        <span>Chưa có sự kiện event nào được ghi nhận.</span>
+                        <span>Chưa có nhật ký hoạt động nào được ghi nhận.</span>
                     </div>
                 ) : (
                     logs.map((log) => (
                         <div
                             key={log.id}
-                            className="p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 flex items-start space-x-2 transition-colors"
+                            className={`p-2.5 rounded-xl border flex items-start space-x-2 transition-colors ${
+                                log.type === 'error'
+                                    ? 'bg-rose-50/90 dark:bg-rose-950/50 border-rose-300 dark:border-rose-900/80 text-rose-900 dark:text-rose-200 font-semibold'
+                                    : 'bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200/80 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200'
+                            }`}
                         >
-                            <span className="tabular-nums font-bold text-zinc-400 shrink-0">
+                            <span className={`tabular-nums font-bold shrink-0 ${log.type === 'error' ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-400'}`}>
                                 {log.timestamp}
                             </span>
                             <span
                                 className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md uppercase shrink-0 flex items-center gap-0.5 ${
-                                    log.type === 'sent'
+                                    log.type === 'error'
+                                        ? 'bg-rose-600 text-white border border-rose-700 shadow-xs'
+                                        : log.type === 'sent'
                                         ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-200 dark:border-sky-800'
                                         : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                                 }`}
                             >
-                                {log.type === 'sent' ? (
+                                {log.type === 'error' ? (
+                                    <>
+                                        <AlertCircle className="w-3 h-3 stroke-[1.5]" /> Lỗi
+                                    </>
+                                ) : log.type === 'sent' ? (
                                     <>
                                         <ArrowUpRight className="w-3 h-3 stroke-[1.5]" /> Gửi
                                     </>
@@ -67,10 +77,10 @@ export default function POSLogTab({ logs, onClearLogs }: POSLogTabProps) {
                                     </>
                                 )}
                             </span>
-                            <div className="flex-1 text-zinc-800 dark:text-zinc-200 break-words">
+                            <div className="flex-1 break-words">
                                 {log.message}
                                 {log.details && (
-                                    <span className="block text-[11px] text-zinc-400 mt-0.5">
+                                    <span className={`block text-[11px] mt-0.5 ${log.type === 'error' ? 'text-rose-700 dark:text-rose-300 font-normal' : 'text-zinc-400 font-normal'}`}>
                                         {log.details}
                                     </span>
                                 )}

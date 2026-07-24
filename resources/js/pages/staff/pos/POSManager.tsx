@@ -18,8 +18,9 @@ import { usePOSCheckout } from './hooks/usePOSCheckout';
 export default function POSManager({ tables, categories, products }: POSManagerProps) {
     const [activeTab, setActiveTab] = useState<'tables' | 'menu' | 'log'>('tables');
     const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([]);
+    const [unreadErrorCount, setUnreadErrorCount] = useState<number>(0);
 
-    const addLogEntry = useCallback((type: 'sent' | 'received', message: string, details?: string) => {
+    const addLogEntry = useCallback((type: 'sent' | 'received' | 'error', message: string, details?: string) => {
         const d = new Date();
         const timestamp = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
         const newEntry: SystemLogEntry = {
@@ -31,14 +32,16 @@ export default function POSManager({ tables, categories, products }: POSManagerP
             details,
         };
         setSystemLogs((prev) => [newEntry, ...prev.slice(0, 99)]);
+        if (type === 'error') {
+            setUnreadErrorCount((prev) => prev + 1);
+        }
     }, []);
 
-    // Realtime listener for inventory stock & recipe updates via Reverb
+    // Silent background reload for ingredient stock updates
     useEffect(() => {
         if (typeof window !== 'undefined' && window.Echo) {
             const channel = window.Echo.private('inventory-channel');
             channel.listen('.IngredientStockUpdated', () => {
-                addLogEntry('received', 'Cập nhật định lượng / tồn kho nguyên liệu');
                 router.reload({
                     only: ['products'],
                     onError: () => {},
@@ -49,7 +52,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 window.Echo.leave('inventory-channel');
             };
         }
-    }, [addLogEntry]);
+    }, []);
 
     const {
         selectedTable,
@@ -91,7 +94,16 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 const eventKey = `${eventName}_${payload?.order_id || payload?.table_id || ''}`;
                 if (isDuplicateEvent(eventKey)) return;
 
-                addLogEntry('received', `Sự kiện ${eventName} từ hệ thống`, 'Cập nhật lại sơ đồ bàn');
+                if (eventName === 'OrderCompleted') {
+                    addLogEntry('received', 'Bếp vừa chế biến hoàn thành đơn hàng', 'Món ăn đã sẵn sàng phục vụ');
+                } else if (eventName === 'TableTransferred') {
+                    const sourceStr = payload?.source_table_number ? `Bàn ${payload.source_table_number}` : 'Bàn';
+                    const targetStr = payload?.target_table_number ? `Bàn ${payload.target_table_number}` : 'Bàn';
+                    addLogEntry('received', `Đã chuyển / gộp ${sourceStr} sang ${targetStr}`, 'Cập nhật sơ đồ bàn');
+                } else {
+                    addLogEntry('received', 'Cập nhật trạng thái bàn phục vụ', 'Đồng bộ hệ thống');
+                }
+
                 router.reload({
                     only: ['tables'],
                     onError: () => {},
@@ -99,13 +111,20 @@ export default function POSManager({ tables, categories, products }: POSManagerP
             };
 
             const handleOrderSent = (payload?: any) => {
-                const eventKey = `OrderSentToKitchen_${payload?.order_id || ''}`;
+                const eventKey = `OrderSentToKitchen_${payload?.order_id || ''}_${payload?.action_type || ''}`;
                 if (isDuplicateEvent(eventKey)) return;
 
                 if (selectedTable) {
                     clearUnconfirmedDraft(selectedTable.id);
                 }
-                addLogEntry('received', 'Sự kiện OrderSentToKitchen từ hệ thống', 'Cập nhật lại sơ đồ bàn');
+
+                if (payload?.action_type === 'cancel_item') {
+                    const tableStr = payload?.table_number ? `Bàn #${payload.table_number}` : 'đơn hàng';
+                    addLogEntry('received', `Bếp vừa hủy 1 món tại ${tableStr}`, payload?.log_message || 'Cập nhật lại đơn hàng');
+                } else {
+                    addLogEntry('received', 'Bếp đã xác nhận nhận vé order chế biến', 'Đơn hàng đang chuẩn bị');
+                }
+
                 router.reload({
                     only: ['tables'],
                     onError: () => {},
@@ -176,7 +195,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                         : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
                                 }`}
                             >
-                                <Armchair className="w-4 h-4" />
+                                <Armchair className="w-4 h-4 stroke-[1.5]" />
                                 <span>Chọn bàn</span>
                                 {selectedTable && (
                                     <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px]">
@@ -194,7 +213,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                         : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
                                 }`}
                             >
-                                <UtensilsCrossed className="w-4 h-4" />
+                                <UtensilsCrossed className="w-4 h-4 stroke-[1.5]" />
                                 <span>Chọn món</span>
                                 {currentCart.length > 0 && (
                                     <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-400 text-amber-950 font-bold text-[10px]">
@@ -205,18 +224,21 @@ export default function POSManager({ tables, categories, products }: POSManagerP
 
                             <button
                                 type="button"
-                                onClick={() => setActiveTab('log')}
-                                className={`py-2.5 px-3 text-xs font-bold rounded-xl transition-colors duration-150 flex items-center justify-center space-x-1.5 ${
+                                onClick={() => {
+                                    setActiveTab('log');
+                                    setUnreadErrorCount(0);
+                                }}
+                                className={`p-2.5 text-xs font-bold rounded-xl transition-colors duration-150 flex items-center justify-center relative ${
                                     activeTab === 'log'
                                         ? 'bg-blue-600 text-white shadow-xs'
                                         : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
                                 }`}
+                                title="Nhật ký hoạt động hệ thống"
                             >
-                                <Activity className="w-4 h-4" />
-                                <span>Nhật ký Event</span>
-                                {systemLogs.length > 0 && (
-                                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-sky-400 text-sky-950 font-bold text-[10px]">
-                                        {systemLogs.length}
+                                <Activity className="w-4 h-4 stroke-[1.5]" />
+                                {unreadErrorCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-rose-600 text-white font-bold text-[10px] tabular-nums animate-pulse border border-white dark:border-zinc-900 shadow-xs">
+                                        {unreadErrorCount}
                                     </span>
                                 )}
                             </button>

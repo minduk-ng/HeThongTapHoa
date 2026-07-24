@@ -9,6 +9,7 @@ interface VoidItemModalProps {
     orderItemId?: number | null;
     tableId?: number | null;
     menuItemName: string;
+    onLogEvent?: (type: 'sent' | 'received' | 'error', message: string, details?: string) => void;
 }
 
 const CANCEL_REASONS = [
@@ -25,6 +26,7 @@ export default function VoidItemModal({
     orderItemId,
     tableId,
     menuItemName,
+    onLogEvent,
 }: VoidItemModalProps) {
     const [reason, setReason] = useState<string>(CANCEL_REASONS[0]);
     const [note, setNote] = useState<string>('');
@@ -49,12 +51,20 @@ export default function VoidItemModal({
         router.post(endpoint, payload, {
             onSuccess: () => {
                 setSubmitting(false);
+                if (onLogEvent) {
+                    const actionText = mode === 'order' ? `Đã xác nhận hủy toàn bộ đơn ${menuItemName}` : `Đã hủy món ${menuItemName}`;
+                    onLogEvent('sent', actionText, `Lý do: ${reason}`);
+                }
                 onClose();
             },
             onError: (errs: any) => {
                 setSubmitting(false);
                 const msg = errs?.error || errs?.message || (typeof errs === 'string' ? errs : 'Thao tác hủy thất bại. Vui lòng kiểm tra lại phân quyền.');
                 setErrorMsg(msg);
+                if (onLogEvent) {
+                    const actionText = mode === 'order' ? `Hủy đơn thất bại (${menuItemName})` : `Hủy món thất bại (${menuItemName})`;
+                    onLogEvent('error', actionText, msg);
+                }
             },
             onFinish: () => {
                 setSubmitting(false);

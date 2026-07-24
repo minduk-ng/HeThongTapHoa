@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, ArrowDownLeft, ArrowUpRight, Trash2 } from 'lucide-react';
+import { Activity, AlertCircle, ArrowDownLeft, ArrowUpRight, Trash2 } from 'lucide-react';
 import { SystemLogEntry } from '@/pages/staff/pos/components/POSLogTab';
 
 interface KitchenLogPanelProps {
@@ -13,7 +13,7 @@ export default function KitchenLogPanel({ logs, onClearLogs }: KitchenLogPanelPr
             <div className="shrink-0 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
                 <div className="flex items-center space-x-1.5 text-zinc-800 dark:text-zinc-200">
                     <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 stroke-[1.5]" />
-                    <span className="font-display text-xs font-bold">Nhật ký Event Bếp</span>
+                    <span className="font-display text-xs font-bold">Nhật ký Bếp</span>
                 </div>
                 {logs.length > 0 && (
                     <button
@@ -36,19 +36,29 @@ export default function KitchenLogPanel({ logs, onClearLogs }: KitchenLogPanelPr
                     logs.map((log) => (
                         <div
                             key={log.id}
-                            className="p-1.5 rounded-lg border border-zinc-200/60 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 flex items-start space-x-1.5"
+                            className={`p-1.5 rounded-lg border flex items-start space-x-1.5 ${
+                                log.type === 'error'
+                                    ? 'bg-rose-50/90 dark:bg-rose-950/60 border-rose-300 dark:border-rose-900 text-rose-900 dark:text-rose-200 font-semibold'
+                                    : 'bg-white dark:bg-zinc-900/60 border-zinc-200/60 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200'
+                            }`}
                         >
-                            <span className="tabular-nums font-bold text-zinc-400 shrink-0">
+                            <span className={`tabular-nums font-bold shrink-0 ${log.type === 'error' ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-400'}`}>
                                 {log.timestamp}
                             </span>
                             <span
                                 className={`px-1 py-0.2 text-[9px] font-bold rounded-sm uppercase shrink-0 flex items-center gap-0.5 ${
-                                    log.type === 'sent'
+                                    log.type === 'error'
+                                        ? 'bg-rose-600 text-white border border-rose-700 shadow-xs'
+                                        : log.type === 'sent'
                                         ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                                         : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                                 }`}
                             >
-                                {log.type === 'sent' ? (
+                                {log.type === 'error' ? (
+                                    <>
+                                        <AlertCircle className="w-2.5 h-2.5 stroke-[1.5]" /> Lỗi
+                                    </>
+                                ) : log.type === 'sent' ? (
                                     <>
                                         <ArrowUpRight className="w-2.5 h-2.5 stroke-[1.5]" /> Gửi
                                     </>
@@ -58,7 +68,7 @@ export default function KitchenLogPanel({ logs, onClearLogs }: KitchenLogPanelPr
                                     </>
                                 )}
                             </span>
-                            <span className="text-zinc-800 dark:text-zinc-200 break-words flex-1">
+                            <span className="break-words flex-1">
                                 {log.message}
                             </span>
                         </div>
