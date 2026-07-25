@@ -25,9 +25,25 @@ test('pos table list is cached and flushed on table updates', function () {
     $response = $this->get('/staff/pos');
     $response->assertStatus(200);
 
+    // Kiểm tra tables prop trong Inertia là mảng có key tuần tự từ 0
+    $pageData = $response->original->getData()['page'];
+    $tablesProp = $pageData['props']['tables'];
+    $array = $tablesProp instanceof \Illuminate\Support\Collection ? $tablesProp->all() : $tablesProp;
+    $keys = array_keys($array);
+    expect($keys)->toEqual(range(0, count($array) - 1));
+
     expect(Cache::tags(['pos_tables'])->has('pos_tables_list'))->toBeTrue();
 
-    // Thay đổi trạng thái bàn
+    // Thay đổi trạng thái bàn để xóa cache và tải lại
     $table->update(['status' => 'occupied']);
     expect(Cache::tags(['pos_tables'])->has('pos_tables_list'))->toBeFalse();
+
+    // Truy cập lại sau khi xóa cache và kiểm tra tiếp
+    $newResponse = $this->get('/staff/pos');
+    $newResponse->assertStatus(200);
+    $newTablesProp = $newResponse->original->getData()['page']['props']['tables'];
+    $newArray = $newTablesProp instanceof \Illuminate\Support\Collection ? $newTablesProp->all() : $newTablesProp;
+    $newKeys = array_keys($newArray);
+    expect($newKeys)->toEqual(range(0, count($newArray) - 1));
 });
+

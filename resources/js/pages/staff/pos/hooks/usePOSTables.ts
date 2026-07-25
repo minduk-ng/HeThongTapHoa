@@ -57,13 +57,14 @@ export function usePOSTables(tables: POSTableData[]) {
 
     // Sync selectedTable when Inertia reloads tables prop
     useEffect(() => {
+        const safeTables = (Array.isArray(tables) ? tables : Object.values(tables || {})) as POSTableData[];
         if (selectedTable) {
-            const updated = tables.find((t) => t.id === selectedTable.id);
+            const updated = safeTables.find((t) => t.id === selectedTable.id);
             if (updated) {
                 setSelectedTable(updated);
             }
-        } else if (tables.length > 0) {
-            setSelectedTable(tables[0]);
+        } else if (safeTables.length > 0) {
+            setSelectedTable(safeTables[0] || null);
         }
     }, [tables]);
 

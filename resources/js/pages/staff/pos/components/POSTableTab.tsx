@@ -12,7 +12,8 @@ interface POSTableTabProps {
 }
 
 export default function POSTableTab({ tables, selectedTable, onSelectTable, lockedCheckoutTables = {}, draftTableCounts = {} }: POSTableTabProps) {
-    const groupedAreas = tables.reduce((acc, table) => {
+    const safeTables = (Array.isArray(tables) ? tables : Object.values(tables || {})) as POSTableData[];
+    const groupedAreas = safeTables.reduce((acc, table) => {
         const areaName = table.area || 'Khác';
         if (!acc[areaName]) acc[areaName] = [];
         acc[areaName].push(table);
@@ -55,7 +56,7 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable, lock
                                 : '';
 
                             const grpId = table.merged_into_table_id || table.id;
-                            const grpTableIds = tables.filter((t) => t.id === grpId || t.merged_into_table_id === grpId).map((t) => t.id);
+                            const grpTableIds = safeTables.filter((t) => t.id === grpId || t.merged_into_table_id === grpId).map((t) => t.id);
                             const groupLockInfo = grpTableIds.map((id) => lockedCheckoutTables[id]).find(Boolean);
 
                             return (

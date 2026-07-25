@@ -16,7 +16,8 @@ export default function TransferMergeModal({
     selectedTable,
     tables,
 }: TransferMergeModalProps) {
-    const isMerged = !!(selectedTable && (selectedTable.merged_into_table_id || tables.some((t) => t.merged_into_table_id === selectedTable.id)));
+    const safeTables = (Array.isArray(tables) ? tables : Object.values(tables || {})) as POSTableData[];
+    const isMerged = !!(selectedTable && (selectedTable.merged_into_table_id || safeTables.some((t) => t.merged_into_table_id === selectedTable.id)));
     const [activeTab, setActiveTab] = useState<'transfer' | 'merge' | 'unmerge'>('transfer');
 
     // Transfer state
@@ -47,18 +48,18 @@ export default function TransferMergeModal({
 
     if (!isOpen || !selectedTable) return null;
 
-    const availableTransferTables = tables.filter(
+    const availableTransferTables = safeTables.filter(
         (t) => t.id !== selectedTable.id && t.status === 'available' && !t.merged_into_table_id
     );
 
     // Only allow merging with tables that are NOT already merged into another table
-    const availableMergeTables = tables.filter(
+    const availableMergeTables = safeTables.filter(
         (t) => t.id !== selectedTable.id && !t.merged_into_table_id
     );
 
     // Group tables for unmerge selection
     const groupId = selectedTable.merged_into_table_id || selectedTable.id;
-    const currentGroupTables = tables.filter(
+    const currentGroupTables = safeTables.filter(
         (t) => t.id === groupId || t.merged_into_table_id === groupId
     );
 

@@ -43,7 +43,7 @@ class POSController extends Controller
                     }
                 });
 
-                return $tables;
+                return $tables->values()->toArray();
             });
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Redis connection failed in POSController tables loading: " . $e->getMessage());
@@ -62,6 +62,7 @@ class POSController extends Controller
                     $table->setRelation('activeOrder', $allGroupOrders->first());
                 }
             });
+            $tables = $tables->values()->toArray();
         }
 
         try {

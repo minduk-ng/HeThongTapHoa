@@ -9,9 +9,10 @@ export function usePOSCart(
     const [tableCarts, setTableCarts] = useState<Record<number, CartItem[]>>({});
 
     useEffect(() => {
+        const safeTables = (Array.isArray(tables) ? tables : Object.values(tables || {})) as POSTableData[];
         setTableCarts((prevCarts) => {
             const nextCarts: Record<number, CartItem[]> = {};
-            tables.forEach((table) => {
+            safeTables.forEach((table) => {
                 const mergedMap: Record<string, CartItem> = {};
                 const allOrders = table.active_orders || (table.active_order ? [table.active_order] : []);
 
