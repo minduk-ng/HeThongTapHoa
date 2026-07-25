@@ -207,7 +207,17 @@ class POSController extends Controller
                         ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
                         ->exists();
 
-                    $orderCode = 'ORD-'.strtoupper(Str::random(6));
+                    // Normalize table number to uppercase, remove Vietnamese accents and spaces
+                    $normalized = str_replace('-', '', strtoupper(Str::slug($table->table_number)));
+
+                    // Count orders on this table created today
+                    $todayCount = Order::where('table_id', $table->id)
+                        ->whereDate('created_at', today())
+                        ->count();
+                    $seq = str_pad($todayCount + 1, 2, '0', STR_PAD_LEFT);
+
+                    $dateStr = date('ymd'); // YYMMDD format
+                    $orderCode = "{$normalized}-{$dateStr}-{$seq}";
                     $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
 
                     $createdOrder = Order::create([
