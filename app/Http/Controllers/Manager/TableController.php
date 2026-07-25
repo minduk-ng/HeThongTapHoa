@@ -13,23 +13,16 @@ class TableController extends Controller
 {
     public function index(Request $request)
     {
-        // Auto-seed takeaway virtual tables if not present
-        if (! Table::where('table_number', 'Mang đi 01')->exists()) {
+        // Auto-seed takeaway virtual table if not present
+        if (! Table::where('table_number', 'Mang đi')->exists()) {
             Table::create([
-                'table_number' => 'Mang đi 01',
+                'table_number' => 'Mang đi',
                 'capacity' => 1,
                 'area' => 'Mang đi (Takeaway)',
                 'status' => 'available',
             ]);
         }
-        if (! Table::where('table_number', 'Mang đi 02')->exists()) {
-            Table::create([
-                'table_number' => 'Mang đi 02',
-                'capacity' => 1,
-                'area' => 'Mang đi (Takeaway)',
-                'status' => 'available',
-            ]);
-        }
+        Table::where('table_number', 'like', 'Mang đi %')->delete();
 
         $query = Table::query();
 
