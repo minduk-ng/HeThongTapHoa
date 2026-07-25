@@ -37,37 +37,95 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
-        $roles = $user ? $user->roles->pluck('name')->toArray() : [];
-        $permissions = $user ? $user->getAllPermissions() : [];
-        $isAdmin = $user ? $user->isAdmin() : false;
-
-        $navigation = [];
+        $cachedData = [];
         if ($user) {
-            $user->load('roles.pages');
-
-            if ($user->isAdmin()) {
-                $allowedPageIds = Page::pluck('id')->toArray();
-            } else {
-                $allowedPageIds = [];
-                foreach ($user->roles as $role) {
-                    $allowedPageIds = array_merge($allowedPageIds, $role->pages->pluck('id')->toArray());
-                }
-                $allowedPageIds = array_unique($allowedPageIds);
-            }
-
-            $pages = Page::orderBy('sort_order')->get();
-            foreach ($pages as $page) {
-                if ($page->route_path === '/' || in_array($page->id, $allowedPageIds)) {
-                    if (! isset($navigation[$page->group_name])) {
-                        $navigation[$page->group_name] = [];
+            try {
+                $cachedData = \Illuminate\Support\Facades\Cache::tags(['user_inertia', "user_{$user->id}"])
+                    ->remember("user_inertia_data:{$user->id}", 7200, function () use ($user) {
+                        $roles = $user->roles->pluck('name')->toArray();
+                        $permissions = $user->getAllPermissions();
+                        $isAdmin = $user->isAdmin();
+                        $navigation = [];
+                        
+                        $user->load('roles.pages');
+                        if ($isAdmin) {
+                            $allowedPageIds = Page::pluck('id')->toArray();
+                        } else {
+                            $allowedPageIds = [];
+                            foreach ($user->roles as $role) {
+                                $allowedPageIds = array_merge($allowedPageIds, $role->pages->pluck('id')->toArray());
+                            }
+                            $allowedPageIds = array_unique($allowedPageIds);
+                        }
+                        
+                        $pages = Page::orderBy('sort_order')->get();
+                        foreach ($pages as $page) {
+                            if ($page->route_path === '/' || in_array($page->id, $allowedPageIds)) {
+                                if (! isset($navigation[$page->group_name])) {
+                                    $navigation[$page->group_name] = [];
+                                }
+                                $navigation[$page->group_name][] = [
+                                    'id' => $page->id,
+                                    'name' => $page->name,
+                                    'route_path' => $page->route_path,
+                                ];
+                            }
+                        }
+                        
+                        return [
+                            'roles' => $roles,
+                            'permissions' => $permissions,
+                            'is_admin' => $isAdmin,
+                            'navigation' => $navigation,
+                        ];
+                    });
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Redis connection failed in HandleInertiaRequests: " . $e->getMessage());
+                // Fallback directly to database
+                $roles = $user->roles->pluck('name')->toArray();
+                $permissions = $user->getAllPermissions();
+                $isAdmin = $user->isAdmin();
+                $navigation = [];
+                
+                $user->load('roles.pages');
+                if ($isAdmin) {
+                    $allowedPageIds = Page::pluck('id')->toArray();
+                } else {
+                    $allowedPageIds = [];
+                    foreach ($user->roles as $role) {
+                        $allowedPageIds = array_merge($allowedPageIds, $role->pages->pluck('id')->toArray());
                     }
-                    $navigation[$page->group_name][] = [
-                        'id' => $page->id,
-                        'name' => $page->name,
-                        'route_path' => $page->route_path,
-                    ];
+                    $allowedPageIds = array_unique($allowedPageIds);
                 }
+                
+                $pages = Page::orderBy('sort_order')->get();
+                foreach ($pages as $page) {
+                    if ($page->route_path === '/' || in_array($page->id, $allowedPageIds)) {
+                        if (! isset($navigation[$page->group_name])) {
+                            $navigation[$page->group_name] = [];
+                        }
+                        $navigation[$page->group_name][] = [
+                            'id' => $page->id,
+                            'name' => $page->name,
+                            'route_path' => $page->route_path,
+                        ];
+                    }
+                }
+                
+                $cachedData = [
+                    'roles' => $roles,
+                    'permissions' => $permissions,
+                    'is_admin' => $isAdmin,
+                    'navigation' => $navigation,
+                ];
             }
+        } else {
+            $cachedData = [
+                'roles' => [],
+                'permissions' => [],
+                'is_admin' => false,
+                'navigation' => [],
+            ];
         }
 
         return [
@@ -80,11 +138,11 @@ class HandleInertiaRequests extends Middleware
                     'avatar' => $user->avatar,
                     'has_password' => $user->password !== null,
                 ] : null,
-                'roles' => $roles,
-                'permissions' => $permissions,
-                'is_admin' => $isAdmin,
+                'roles' => $cachedData['roles'],
+                'permissions' => $cachedData['permissions'],
+                'is_admin' => $cachedData['is_admin'],
             ],
-            'navigation' => $navigation,
+            'navigation' => $cachedData['navigation'],
             'failedAttempts' => 0,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

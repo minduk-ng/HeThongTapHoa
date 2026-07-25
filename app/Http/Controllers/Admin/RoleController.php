@@ -71,6 +71,9 @@ class RoleController extends Controller
         }
 
         Cache::forget('system_page_roles');
+        try {
+            \Illuminate\Support\Facades\Cache::tags(['user_inertia'])->flush();
+        } catch (\Exception $e) {}
 
         return redirect()->back()->with('success', 'Tạo nhóm quyền thành công.');
     }
@@ -109,6 +112,9 @@ class RoleController extends Controller
         }
 
         Cache::forget('system_page_roles');
+        try {
+            \Illuminate\Support\Facades\Cache::tags(['user_inertia'])->flush();
+        } catch (\Exception $e) {}
 
         $userIds = \DB::table('user_roles')->where('role_id', $role->id)->pluck('user_id');
         foreach ($userIds as $id) {
