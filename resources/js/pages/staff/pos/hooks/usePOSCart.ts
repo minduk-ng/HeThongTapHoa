@@ -6,54 +6,80 @@ export function usePOSCart(
     tables: POSTableData[],
     products: POSProductData[]
 ) {
-    const [tableCarts, setTableCarts] = useState<Record<number, CartItem[]>>({});
+    const [tableCarts, setTableCarts] = useState<Record<number, Record<string, CartItem[]>>>({});
+    const [activeInvoiceId, setActiveInvoiceId] = useState<Record<number, string>>({});
 
     useEffect(() => {
         const safeTables = (Array.isArray(tables) ? tables : Object.values(tables || {})) as POSTableData[];
-        setTableCarts((prevCarts) => {
-            const nextCarts: Record<number, CartItem[]> = {};
+        
+        setActiveInvoiceId((prevActive) => {
+            const nextActive = { ...prevActive };
             safeTables.forEach((table) => {
-                const mergedMap: Record<string, CartItem> = {};
+                const allOrders = table.active_orders || (table.active_order ? [table.active_order] : []);
+                const currentActive = nextActive[table.id];
+                const hasCurrentActive = allOrders.some(o => (o.order_code || `order_${o.id}`) === currentActive) || (currentActive && currentActive.startsWith('draft_'));
+                
+                if (!currentActive || !hasCurrentActive) {
+                    if (allOrders.length > 0) {
+                        nextActive[table.id] = allOrders[0].order_code || `order_${allOrders[0].id}`;
+                    } else {
+                        nextActive[table.id] = 'draft_default';
+                    }
+                }
+            });
+            return nextActive;
+        });
+
+        setTableCarts((prevCarts) => {
+            const nextCarts: Record<number, Record<string, CartItem[]>> = {};
+            safeTables.forEach((table) => {
+                const tableInvoices: Record<string, CartItem[]> = {};
                 const allOrders = table.active_orders || (table.active_order ? [table.active_order] : []);
 
                 allOrders.forEach((order) => {
                     const isOrderCompleted = order.status === 'completed';
+                    const key = order.order_code || `order_${order.id}`;
+                    if (!tableInvoices[key]) tableInvoices[key] = [];
+
                     if (order.items) {
                         order.items.forEach((item) => {
                             if (item.status === 'cancelled') return;
-                            const key = `${item.menu_item_id}_${isOrderCompleted ? 'completed' : 'pending'}`;
-                            const existing = mergedMap[key];
-                            if (existing) {
-                                existing.quantity += item.quantity;
-                                existing.initialQuantity = (existing.initialQuantity || 0) + item.quantity;
-                            } else {
-                                mergedMap[key] = {
-                                    menu_item_id: item.menu_item_id,
-                                    name: item.menu_item?.name || 'Món',
-                                    quantity: item.quantity,
-                                    initialQuantity: item.quantity,
-                                    unit_price: item.unit_price,
-                                    vat_rate: item.menu_item?.vat_rate || 0,
-                                    note: item.note || '',
-                                    isConfirmed: true,
-                                    isKitchenCompleted: isOrderCompleted,
-                                    orderItemId: item.id,
-                                };
-                            }
+                            tableInvoices[key].push({
+                                menu_item_id: item.menu_item_id,
+                                name: item.menu_item?.name || 'Món',
+                                quantity: item.quantity,
+                                initialQuantity: item.quantity,
+                                unit_price: Number(item.unit_price),
+                                vat_rate: Number(item.menu_item?.vat_rate || 0),
+                                note: item.note || '',
+                                isConfirmed: true,
+                                isKitchenCompleted: isOrderCompleted,
+                                orderItemId: item.id,
+                            });
                         });
                     }
                 });
 
-                const existingUnconfirmed = (prevCarts[table.id] || []).filter((item) => !item.isConfirmed);
-                const confirmedItems = Object.values(mergedMap);
+                // Keep local unconfirmed drafts
+                const prevTableCarts = prevCarts[table.id] || {};
+                Object.keys(prevTableCarts).forEach((key) => {
+                    if (key.startsWith('draft_')) {
+                        tableInvoices[key] = prevTableCarts[key];
+                    }
+                });
 
-                nextCarts[table.id] = [...confirmedItems, ...existingUnconfirmed];
+                if (Object.keys(tableInvoices).length === 0) {
+                    tableInvoices['draft_default'] = [];
+                }
+
+                nextCarts[table.id] = tableInvoices;
             });
             return nextCarts;
         });
     }, [tables]);
 
-    const currentCart = selectedTable ? tableCarts[selectedTable.id] || [] : [];
+    const activeInvId = selectedTable ? (activeInvoiceId[selectedTable.id] || 'draft_default') : 'draft_default';
+    const currentCart = selectedTable && tableCarts[selectedTable.id] ? (tableCarts[selectedTable.id][activeInvId] || []) : [];
 
     const whisperDraftCart = (tableId: number, items: CartItem[]) => {
         if (typeof window !== 'undefined' && window.Echo) {
@@ -65,13 +91,58 @@ export function usePOSCart(
         }
     };
 
+    const addNewDraftInvoice = (tableId: number) => {
+        const nextTempId = `draft_${Date.now()}`;
+        setTableCarts((prev) => {
+            const prevTableCarts = prev[tableId] || {};
+            return {
+                ...prev,
+                [tableId]: {
+                    ...prevTableCarts,
+                    [nextTempId]: [],
+                }
+            };
+        });
+        setActiveInvoiceId((prev) => ({
+            ...prev,
+            [tableId]: nextTempId,
+        }));
+    };
+
+    const removeDraftInvoice = (tableId: number, tempId: string) => {
+        setTableCarts((prev) => {
+            const nextTableCarts = { ...(prev[tableId] || {}) };
+            delete nextTableCarts[tempId];
+            if (Object.keys(nextTableCarts).length === 0) {
+                nextTableCarts['draft_default'] = [];
+            }
+            return {
+                ...prev,
+                [tableId]: nextTableCarts,
+            };
+        });
+        setActiveInvoiceId((prev) => {
+            const currentActive = prev[tableId];
+            if (currentActive === tempId) {
+                const nextTableCarts = tableCarts[tableId] || {};
+                const keys = Object.keys(nextTableCarts).filter(k => k !== tempId);
+                const nextActive = keys.length > 0 ? keys[0] : 'draft_default';
+                return {
+                    ...prev,
+                    [tableId]: nextActive,
+                };
+            }
+            return prev;
+        });
+    };
+
     const handleToggleProduct = (product: POSProductData) => {
         if (!selectedTable) return;
         const tableId = selectedTable.id;
-        const existingCart = tableCarts[tableId] || [];
+        const activeId = activeInvoiceId[tableId] || 'draft_default';
+        const existingCart = (tableCarts[tableId] || {})[activeId] || [];
         const maxServings = product.max_servings !== undefined ? product.max_servings : 999;
 
-        // Check if an unconfirmed draft item for this product already exists
         const draftIndex = existingCart.findIndex((i) => i.menu_item_id === product.id && !i.isConfirmed);
 
         let updated: CartItem[];
@@ -95,14 +166,21 @@ export function usePOSCart(
             updated = [...existingCart, newItem];
         }
 
-        setTableCarts((prev) => ({ ...prev, [tableId]: updated }));
+        setTableCarts((prev) => ({
+            ...prev,
+            [tableId]: {
+                ...(prev[tableId] || {}),
+                [activeId]: updated,
+            }
+        }));
         whisperDraftCart(tableId, updated);
     };
 
     const handleUpdateQuantity = (menuItemId: number, delta: number) => {
         if (!selectedTable) return;
         const tableId = selectedTable.id;
-        const existingCart = tableCarts[tableId] || [];
+        const activeId = activeInvoiceId[tableId] || 'draft_default';
+        const existingCart = (tableCarts[tableId] || {})[activeId] || [];
         const product = products.find((p) => p.id === menuItemId);
         const maxServings = product?.max_servings !== undefined ? product.max_servings : 999;
 
@@ -111,14 +189,13 @@ export function usePOSCart(
                 if (item.menu_item_id === menuItemId && !item.isConfirmed) {
                     const newQty = item.quantity + delta;
                     if (delta > 0 && newQty > maxServings) return item;
-                    if (newQty <= 0) return null; // Automatically remove draft item when reduced to 0
+                    if (newQty <= 0) return null;
                     return { ...item, quantity: newQty };
                 }
                 return item;
             })
             .filter(Boolean) as CartItem[];
 
-        // If delta > 0 for a confirmed item (clicking "+" on a confirmed row), create or increment a draft item
         if (delta > 0) {
             const confirmedItem = existingCart.find((i) => i.menu_item_id === menuItemId && i.isConfirmed);
             if (confirmedItem && product) {
@@ -146,14 +223,21 @@ export function usePOSCart(
             }
         }
 
-        setTableCarts((prev) => ({ ...prev, [tableId]: updated }));
+        setTableCarts((prev) => ({
+            ...prev,
+            [tableId]: {
+                ...(prev[tableId] || {}),
+                [activeId]: updated,
+            }
+        }));
         whisperDraftCart(tableId, updated);
     };
 
     const handleStageReduction = (orderItemId: number, reduceQty: number, reason: string, note?: string) => {
         if (!selectedTable) return;
         const tableId = selectedTable.id;
-        const existingCart = tableCarts[tableId] || [];
+        const activeId = activeInvoiceId[tableId] || 'draft_default';
+        const existingCart = (tableCarts[tableId] || {})[activeId] || [];
 
         const updated = existingCart.map((item) => {
             if (item.orderItemId === orderItemId && item.isConfirmed) {
@@ -170,39 +254,67 @@ export function usePOSCart(
             return item;
         });
 
-        setTableCarts((prev) => ({ ...prev, [tableId]: updated }));
+        setTableCarts((prev) => ({
+            ...prev,
+            [tableId]: {
+                ...(prev[tableId] || {}),
+                [activeId]: updated,
+            }
+        }));
         whisperDraftCart(tableId, updated);
     };
 
     const handleRemoveItem = (menuItemId: number) => {
         if (!selectedTable) return;
         const tableId = selectedTable.id;
-        const existingCart = tableCarts[tableId] || [];
+        const activeId = activeInvoiceId[tableId] || 'draft_default';
+        const existingCart = (tableCarts[tableId] || {})[activeId] || [];
         const updated = existingCart.filter((item) => item.menu_item_id !== menuItemId || item.isConfirmed);
-        setTableCarts((prev) => ({ ...prev, [tableId]: updated }));
+        setTableCarts((prev) => ({
+            ...prev,
+            [tableId]: {
+                ...(prev[tableId] || {}),
+                [activeId]: updated,
+            }
+        }));
         whisperDraftCart(tableId, updated);
     };
 
     const handleUpdateNote = (menuItemId: number, note: string) => {
         if (!selectedTable) return;
         const tableId = selectedTable.id;
-        const existingCart = tableCarts[tableId] || [];
+        const activeId = activeInvoiceId[tableId] || 'draft_default';
+        const existingCart = (tableCarts[tableId] || {})[activeId] || [];
         const updated = existingCart.map((item) =>
             item.menu_item_id === menuItemId ? { ...item, note } : item
         );
-        setTableCarts((prev) => ({ ...prev, [tableId]: updated }));
+        setTableCarts((prev) => ({
+            ...prev,
+            [tableId]: {
+                ...(prev[tableId] || {}),
+                [activeId]: updated,
+            }
+        }));
     };
 
     const clearTableCart = (tableId?: number) => {
         if (!tableId) return;
-        setTableCarts((prev) => ({ ...prev, [tableId]: [] }));
+        const activeId = activeInvoiceId[tableId] || 'draft_default';
+        setTableCarts((prev) => ({
+            ...prev,
+            [tableId]: {
+                ...(prev[tableId] || {}),
+                [activeId]: [],
+            }
+        }));
         whisperDraftCart(tableId, []);
     };
 
     const clearUnconfirmedDraft = (tableId?: number) => {
         if (!tableId) return;
+        const activeId = activeInvoiceId[tableId] || 'draft_default';
         setTableCarts((prev) => {
-            const existing = prev[tableId] || [];
+            const existing = (prev[tableId] || {})[activeId] || [];
             const confirmedOnly = existing
                 .filter((item) => item.isConfirmed)
                 .map((item) => {
@@ -211,7 +323,10 @@ export function usePOSCart(
                 });
             return {
                 ...prev,
-                [tableId]: confirmedOnly,
+                [tableId]: {
+                    ...(prev[tableId] || {}),
+                    [activeId]: confirmedOnly,
+                }
             };
         });
         whisperDraftCart(tableId, []);
@@ -220,6 +335,10 @@ export function usePOSCart(
     return {
         tableCarts,
         currentCart,
+        activeInvoiceId,
+        setActiveInvoiceId,
+        addNewDraftInvoice,
+        removeDraftInvoice,
         handleToggleProduct,
         handleUpdateQuantity,
         handleStageReduction,
