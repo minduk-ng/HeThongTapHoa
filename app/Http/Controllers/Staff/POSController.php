@@ -127,6 +127,7 @@ class POSController extends Controller
     {
         $validated = $request->validate([
             'table_id' => 'required|exists:tables,id',
+            'order_id' => 'nullable|exists:orders,id',
             'items' => 'nullable|array',
             'items.*.menu_item_id' => 'required_with:items|exists:menu_items,id',
             'items.*.quantity' => 'required_with:items|integer|min:1',
@@ -203,33 +204,44 @@ class POSController extends Controller
                 // 2. Handle new items ticket creation
                 $createdOrder = null;
                 if (! empty($validated['items'])) {
-                    $hasPreviousOrders = Order::where('table_id', $table->id)
-                        ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
-                        ->exists();
+                    if (! empty($validated['order_id'])) {
+                        $createdOrder = Order::lockForUpdate()->findOrFail($validated['order_id']);
+                        $createdOrder->update([
+                            'subtotal' => $createdOrder->subtotal + $validated['subtotal'],
+                            'vat_amount' => $createdOrder->vat_amount + $validated['vat_amount'],
+                            'total' => $createdOrder->total + $validated['total'],
+                            'status' => 'pending',
+                            'has_additional_items' => true,
+                        ]);
+                    } else {
+                        $hasPreviousOrders = Order::where('table_id', $table->id)
+                            ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                            ->exists();
 
-                    // Normalize table number to uppercase, remove Vietnamese accents and spaces
-                    $normalized = str_replace('-', '', strtoupper(Str::slug($table->table_number)));
+                        // Normalize table number to uppercase, remove Vietnamese accents and spaces
+                        $normalized = str_replace('-', '', strtoupper(Str::slug($table->table_number)));
 
-                    // Count orders on this table created today
-                    $todayCount = Order::where('table_id', $table->id)
-                        ->whereDate('created_at', today())
-                        ->count();
-                    $seq = str_pad($todayCount + 1, 2, '0', STR_PAD_LEFT);
+                        // Count orders on this table created today
+                        $todayCount = Order::where('table_id', $table->id)
+                            ->whereDate('created_at', today())
+                            ->count();
+                        $seq = str_pad($todayCount + 1, 2, '0', STR_PAD_LEFT);
 
-                    $dateStr = date('ymd'); // YYMMDD format
-                    $orderCode = "{$normalized}-{$dateStr}-{$seq}";
-                    $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
+                        $dateStr = date('ymd'); // YYMMDD format
+                        $orderCode = "{$normalized}-{$dateStr}-{$seq}";
+                        $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
 
-                    $createdOrder = Order::create([
-                        'order_code' => $orderCode,
-                        'table_id' => $table->id,
-                        'employee_id' => $employeeId,
-                        'subtotal' => $validated['subtotal'],
-                        'vat_amount' => $validated['vat_amount'],
-                        'total' => $validated['total'],
-                        'status' => 'pending',
-                        'has_additional_items' => $hasPreviousOrders,
-                    ]);
+                        $createdOrder = Order::create([
+                            'order_code' => $orderCode,
+                            'table_id' => $table->id,
+                            'employee_id' => $employeeId,
+                            'subtotal' => $validated['subtotal'],
+                            'vat_amount' => $validated['vat_amount'],
+                            'total' => $validated['total'],
+                            'status' => 'pending',
+                            'has_additional_items' => $hasPreviousOrders,
+                        ]);
+                    }
 
                     $table->update(['status' => 'occupied']);
 
@@ -281,7 +293,7 @@ class POSController extends Controller
             $targetTable = DB::transaction(function () use ($validated, $request) {
                 $order = Order::with('items')->lockForUpdate()->findOrFail($validated['order_id']);
 
-                if (in_array($order->status, ['paid', 'cancelled'])) {
+                if (in_array($order->status, ['completed', 'cancelled'])) {
                     throw new \Exception('Đơn hàng này đã được thanh toán hoặc đã hủy.');
                 }
 
@@ -295,8 +307,8 @@ class POSController extends Controller
                     throw new \Exception('Bạn không có quyền duyệt khẩn cấp thanh toán khi món chưa được Bếp hoàn tất.');
                 }
 
-                // Mark only this order as paid
-                $order->update(['status' => 'paid']);
+                // Mark only this order as paid/completed
+                $order->update(['status' => 'completed']);
 
                 $targetTable = Table::findOrFail($order->table_id);
 
@@ -329,9 +341,8 @@ class POSController extends Controller
                     ]
                 );
 
-                // Check if other active orders remain for this table group
                 $hasOtherActive = Order::whereIn('table_id', $allGroupTableIds)
-                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing'])
                     ->exists();
 
                 if (!$hasOtherActive) {
