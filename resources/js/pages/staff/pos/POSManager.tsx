@@ -64,7 +64,12 @@ export default function POSManager({ tables, categories, products }: POSManagerP
     } = usePOSTables(tables);
 
     const {
+        tableCarts,
         currentCart,
+        activeInvoiceId,
+        setActiveInvoiceId,
+        addNewDraftInvoice,
+        removeDraftInvoice,
         handleToggleProduct,
         handleUpdateQuantity,
         handleStageReduction,
@@ -279,15 +284,23 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                             selectedTable={selectedTable}
                             tables={tables}
                             cartItems={currentCart}
+                            activeInvoiceId={selectedTable ? (activeInvoiceId[selectedTable.id] || 'draft_default') : 'draft_default'}
+                            tableCarts={selectedTable ? (tableCarts[selectedTable.id] || {}) : {}}
+                            onSelectInvoice={(invId) => selectedTable && setActiveInvoiceId(prev => ({ ...prev, [selectedTable.id]: invId }))}
+                            onAddInvoice={() => selectedTable && addNewDraftInvoice(selectedTable.id)}
+                            onRemoveInvoice={(invId) => selectedTable && removeDraftInvoice(selectedTable.id, invId)}
                             onUpdateQuantity={handleUpdateQuantity}
                             onStageReduction={handleStageReduction}
                             onRemoveItem={handleRemoveItem}
                             onUpdateNote={handleUpdateNote}
-                            onSendToKitchen={() =>
-                                handleSendToKitchen(selectedTable, currentCart, () => {
-                                    if (selectedTable) clearUnconfirmedDraft(selectedTable.id);
-                                })
-                            }
+                            onSendToKitchen={() => {
+                                if (selectedTable) {
+                                    const activeId = activeInvoiceId[selectedTable.id] || 'draft_default';
+                                    handleSendToKitchen(selectedTable, currentCart, activeId, () => {
+                                        clearUnconfirmedDraft(selectedTable.id);
+                                    });
+                                }
+                            }}
                             onOpenPayment={() => setIsPaymentDrawerOpen(true)}
                             submitting={submitting}
                             isCheckoutLocked={isCurrentTableCheckoutLocked}
@@ -311,17 +324,21 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 onClose={() => setIsPaymentDrawerOpen(false)}
                 selectedTable={selectedTable}
                 cartItems={currentCart}
-                onConfirmPayment={(paymentMethod, amountReceived, changeAmount, shouldPrint) =>
-                    handleConfirmPayment(
-                        selectedTable,
-                        currentCart,
-                        paymentMethod,
-                        amountReceived,
-                        changeAmount,
-                        shouldPrint,
-                        () => clearTableCart(selectedTable?.id)
-                    )
-                }
+                onConfirmPayment={(paymentMethod, amountReceived, changeAmount, shouldPrint) => {
+                    if (selectedTable) {
+                        const activeId = activeInvoiceId[selectedTable.id] || 'draft_default';
+                        handleConfirmPayment(
+                            selectedTable,
+                            currentCart,
+                            activeId,
+                            paymentMethod,
+                            amountReceived,
+                            changeAmount,
+                            shouldPrint,
+                            () => clearTableCart(selectedTable.id)
+                        );
+                    }
+                }}
                 submitting={submitting}
             />
 

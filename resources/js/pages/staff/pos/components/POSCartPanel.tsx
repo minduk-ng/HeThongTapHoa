@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePage } from '@inertiajs/react';
-import { Armchair, ShoppingBag, Lock, Trash2, Send, CreditCard, ArrowRightLeft } from 'lucide-react';
+import { Armchair, ShoppingBag, Lock, Trash2, Send, CreditCard, ArrowRightLeft, Plus, X } from 'lucide-react';
 import { POSTableData, CartItem } from '../types/pos.types';
 import TransferMergeModal from './TransferMergeModal';
 import ReduceItemModal from './ReduceItemModal';
@@ -11,6 +11,11 @@ interface POSCartPanelProps {
     selectedTable: POSTableData | null;
     tables?: POSTableData[];
     cartItems: CartItem[];
+    activeInvoiceId: string;
+    tableCarts: Record<string, CartItem[]>;
+    onSelectInvoice: (invoiceId: string) => void;
+    onAddInvoice: () => void;
+    onRemoveInvoice: (invoiceId: string) => void;
     onUpdateQuantity: (menuItemId: number, delta: number) => void;
     onStageReduction: (orderItemId: number, reduceQty: number, reason: string, note?: string) => void;
     onRemoveItem: (menuItemId: number) => void;
@@ -26,6 +31,11 @@ export default function POSCartPanel({
     selectedTable,
     tables = [],
     cartItems,
+    activeInvoiceId,
+    tableCarts,
+    onSelectInvoice,
+    onAddInvoice,
+    onRemoveInvoice,
     onUpdateQuantity,
     onStageReduction,
     onRemoveItem,
@@ -102,7 +112,7 @@ export default function POSCartPanel({
     const hasKitchenPendingOrders = confirmedItems.some((i) => !i.isKitchenCompleted);
 
     const isKitchenBlocked = hasKitchenPendingOrders && !managerBypass;
-    const isPaymentBlocked = hasUnconfirmedChanges || isKitchenBlocked;
+    const isPaymentBlocked = hasUnconfirmedChanges || isKitchenBlocked || activeInvoiceId.startsWith('draft_');
 
     return (
         <div className="h-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl flex flex-col justify-between overflow-hidden">
@@ -139,58 +149,115 @@ export default function POSCartPanel({
                 tables={tables}
             />
             {/* Header (Fixed Top) */}
-            <div className="shrink-0 p-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between">
-                <div>
-                    <div className="flex items-center space-x-2">
-                        <h2 className="font-display text-2xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100">
-                            {selectedTable.table_number}
-                        </h2>
-                        {(selectedTable.merged_into_table || selectedTable.merged_into_table_id) && (
-                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
-                                Gộp với {selectedTable.merged_into_table?.table_number || `Bàn #${selectedTable.merged_into_table_id}`}
-                            </span>
-                        )}
+            <div className="shrink-0 p-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-800/40">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="flex items-center space-x-2">
+                            <h2 className="font-display text-2xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100">
+                                {selectedTable.table_number}
+                            </h2>
+                            {(selectedTable.merged_into_table || selectedTable.merged_into_table_id) && (
+                                <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
+                                    Gộp với {selectedTable.merged_into_table?.table_number || `Bàn #${selectedTable.merged_into_table_id}`}
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-xs text-zinc-400 mt-0.5">Sức chứa: {selectedTable.capacity} ghế</p>
                     </div>
-                    <p className="text-xs text-zinc-400 mt-0.5">Sức chứa: {selectedTable.capacity} ghế</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                    {confirmedItems.length > 0 && canCancel && confirmedItems.some((i) => !i.isKitchenCompleted) && (
+                    <div className="flex items-center space-x-2">
+                        {confirmedItems.length > 0 && canCancel && confirmedItems.some((i) => !i.isKitchenCompleted) && (
+                            <button
+                                type="button"
+                                disabled={submitting || isCheckoutLocked}
+                                onClick={() =>
+                                    setCancelModalState({
+                                        isOpen: true,
+                                        mode: 'order',
+                                        tableId: selectedTable.id,
+                                        menuItemName: `Toàn bộ đơn ${selectedTable.table_number}`,
+                                    })
+                                }
+                                className="px-2.5 py-1 text-xs font-semibold rounded-md border bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800 flex items-center gap-1 transition-colors disabled:opacity-40"
+                                title="Hủy toàn bộ đơn hàng của bàn này"
+                            >
+                                <Trash2 className="w-3.5 h-3.5 stroke-[1.5]" />
+                                <span>Hủy đơn</span>
+                            </button>
+                        )}
+
                         <button
                             type="button"
                             disabled={submitting || isCheckoutLocked}
-                            onClick={() =>
-                                setCancelModalState({
-                                    isOpen: true,
-                                    mode: 'order',
-                                    tableId: selectedTable.id,
-                                    menuItemName: `Toàn bộ đơn ${selectedTable.table_number}`,
-                                })
-                            }
-                            className="px-2.5 py-1 text-xs font-semibold rounded-md border bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800 flex items-center gap-1 transition-colors disabled:opacity-40"
-                            title="Hủy toàn bộ đơn hàng của bàn này"
+                            onClick={() => setIsTransferModalOpen(true)}
+                            className="px-2.5 py-1 text-xs font-semibold rounded-md border bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800 flex items-center gap-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={isCheckoutLocked ? 'Bàn đang thực hiện thanh toán, không thể chuyển/gộp' : 'Chuyển, Gộp hoặc Tách bàn'}
                         >
-                            <Trash2 className="w-3.5 h-3.5 stroke-[1.5]" />
-                            <span>Hủy đơn</span>
+                            <ArrowRightLeft className="w-3.5 h-3.5 stroke-[1.5]" />
+                            <span>Chuyển/Gộp</span>
                         </button>
-                    )}
+                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${
+                            selectedTable.status === 'occupied'
+                                ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/60'
+                                : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60'
+                        }`}>
+                            {selectedTable.status === 'occupied' ? 'Đang phục vụ' : 'Bàn trống'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Tabs bar: Dòng 2 chứa danh sách các hóa đơn */}
+                <div className="flex items-center space-x-1.5 mt-3 pt-2 border-t border-zinc-200/50 dark:border-zinc-800/50 overflow-x-auto scrollbar-none shrink-0 select-none">
+                    {Object.keys(tableCarts).map((invoiceId, idx) => {
+                        const isDraft = invoiceId.startsWith('draft_');
+                        const isActive = activeInvoiceId === invoiceId;
+                        const invoiceCart = tableCarts[invoiceId] || [];
+                        const isCompleted = invoiceCart.length > 0 && invoiceCart.every(i => i.isKitchenCompleted);
+
+                        let label = invoiceId;
+                        if (isDraft) {
+                            label = `Đơn mới #${idx + 1}`;
+                        }
+
+                        return (
+                            <div
+                                key={invoiceId}
+                                onClick={() => onSelectInvoice(invoiceId)}
+                                className={`group flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all duration-150 shrink-0 ${
+                                    isActive
+                                        ? isDraft
+                                            ? 'bg-zinc-100 border-zinc-300 text-zinc-900 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-100'
+                                            : isCompleted
+                                                ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-300'
+                                                : 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:border-amber-900/60 dark:text-amber-300'
+                                        : 'bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-500 dark:bg-zinc-900 dark:hover:bg-zinc-800/50 dark:border-zinc-800 dark:text-zinc-400'
+                                } ${isDraft ? 'border-dashed' : ''}`}
+                            >
+                                <span>{label}</span>
+                                {isDraft && invoiceCart.length === 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onRemoveInvoice(invoiceId);
+                                        }}
+                                        className="text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 p-0.5 rounded-full transition-colors"
+                                        title="Xóa hóa đơn nháp này"
+                                    >
+                                        <X className="w-3 h-3 stroke-[1.5]" />
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
 
                     <button
                         type="button"
-                        disabled={submitting || isCheckoutLocked}
-                        onClick={() => setIsTransferModalOpen(true)}
-                        className="px-2.5 py-1 text-xs font-semibold rounded-md border bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800 flex items-center gap-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        title={isCheckoutLocked ? 'Bàn đang thực hiện thanh toán, không thể chuyển/gộp' : 'Chuyển, Gộp hoặc Tách bàn'}
+                        onClick={onAddInvoice}
+                        className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors shrink-0"
+                        title="Thêm hóa đơn mới"
                     >
-                        <ArrowRightLeft className="w-3.5 h-3.5 stroke-[1.5]" />
-                        <span>Chuyển/Gộp</span>
+                        <Plus className="w-3.5 h-3.5 stroke-2" />
                     </button>
-                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${
-                        selectedTable.status === 'occupied'
-                            ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/60'
-                            : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60'
-                    }`}>
-                        {selectedTable.status === 'occupied' ? 'Đang phục vụ' : 'Bàn trống'}
-                    </span>
                 </div>
             </div>
 

@@ -59,9 +59,20 @@ export function usePOSCheckout(
     const handleSendToKitchen = (
         selectedTable: POSTableData | null,
         currentCart: CartItem[],
+        activeInvoiceId?: string | null,
         onSuccessCallback?: () => void
     ) => {
         if (!selectedTable || currentCart.length === 0 || submitting) return;
+
+        let orderId: number | null = null;
+        if (activeInvoiceId && !activeInvoiceId.startsWith('draft_')) {
+            const matchedOrder = selectedTable.active_orders?.find(
+                (o) => o.order_code === activeInvoiceId || `order_${o.id}` === activeInvoiceId
+            ) || selectedTable.active_order;
+            if (matchedOrder) {
+                orderId = matchedOrder.id;
+            }
+        }
 
         const newDeltaItems = currentCart
             .filter((item) => !item.isConfirmed && item.quantity > 0)
@@ -103,6 +114,7 @@ export function usePOSCheckout(
 
         const payload = {
             table_id: selectedTable.id,
+            order_id: orderId,
             items: newDeltaItems,
             reduced_items: reducedItems,
             subtotal,
@@ -131,6 +143,7 @@ export function usePOSCheckout(
     const handleConfirmPayment = (
         selectedTable: POSTableData | null,
         currentCart: CartItem[],
+        activeInvoiceId: string | null,
         paymentMethod: 'cash' | 'bank_transfer',
         amountReceived: number,
         changeAmount: number,
@@ -138,6 +151,21 @@ export function usePOSCheckout(
         onSuccessClearCart: () => void
     ) => {
         if (!selectedTable || submitting) return;
+
+        let orderId: number | null = null;
+        if (activeInvoiceId && !activeInvoiceId.startsWith('draft_')) {
+            const matchedOrder = selectedTable.active_orders?.find(
+                (o) => o.order_code === activeInvoiceId || `order_${o.id}` === activeInvoiceId
+            ) || selectedTable.active_order;
+            if (matchedOrder) {
+                orderId = matchedOrder.id;
+            }
+        }
+
+        if (!orderId) {
+            alert('Không thể thanh toán đơn nháp chưa gửi bếp chế biến!');
+            return;
+        }
 
         const hasUnconfirmedDrafts = currentCart.some((i) => !i.isConfirmed || (i.stagedReduceQty || 0) > 0);
         if (hasUnconfirmedDrafts) return;
@@ -155,10 +183,10 @@ export function usePOSCheckout(
             alert('Kết nối cơ sở dữ liệu/máy chủ quá thời gian chờ (Timeout). Vui lòng thử thanh toán lại!');
         }, 8000);
 
-        const idempotencyKey = `pos_pay_${selectedTable.id}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        const idempotencyKey = `pos_pay_${orderId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
         const payload = {
-            table_id: selectedTable.id,
+            order_id: orderId,
             payment_method: paymentMethod,
             amount_received: amountReceived,
             change_amount: changeAmount,
