@@ -261,7 +261,7 @@ class POSController extends Controller
     public function checkout(Request $request)
     {
         $validated = $request->validate([
-            'table_id' => 'required|exists:tables,id',
+            'order_id' => 'required|exists:orders,id',
             'payment_method' => 'required|in:cash,bank_transfer',
             'amount_received' => 'required|numeric|min:0',
             'change_amount' => 'required|numeric|min:0',
@@ -279,56 +279,45 @@ class POSController extends Controller
 
         try {
             $targetTable = DB::transaction(function () use ($validated, $request) {
-                $targetTable = Table::findOrFail($validated['table_id']);
+                $order = Order::with('items')->lockForUpdate()->findOrFail($validated['order_id']);
+
+                if (in_array($order->status, ['paid', 'cancelled'])) {
+                    throw new \Exception('Đơn hàng này đã được thanh toán hoặc đã hủy.');
+                }
+
+                // Check if this order is still pending/processing in kitchen
+                $hasUncompletedItems = $order->items->contains(function ($item) {
+                    return in_array($item->status, ['pending', 'processing']);
+                });
+
+                $canBypass = $request->user()->hasPermission('pos.bypass_kitchen_lock');
+                if ($hasUncompletedItems && ! $canBypass) {
+                    throw new \Exception('Bạn không có quyền duyệt khẩn cấp thanh toán khi món chưa được Bếp hoàn tất.');
+                }
+
+                // Mark only this order as paid
+                $order->update(['status' => 'paid']);
+
+                $targetTable = Table::findOrFail($order->table_id);
 
                 // Determine primary group table ID and all tables in this merged group
                 $primaryId = $targetTable->merged_into_table_id ?? $targetTable->id;
                 $allGroupTables = Table::where('id', $primaryId)->orWhere('merged_into_table_id', $primaryId)->get();
                 $allGroupTableIds = $allGroupTables->pluck('id');
 
-                // Find all active orders for all tables in this merged group
-                $activeOrders = Order::with('items')->whereIn('table_id', $allGroupTableIds)
-                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
-                    ->lockForUpdate()
-                    ->get();
-
-                if ($activeOrders->isEmpty()) {
-                    throw new \Exception('Đơn hàng của bàn này đã được thanh toán bởi nhân viên khác hoặc không còn tồn tại.');
-                }
-
-                // Check if any order is still pending/processing in kitchen
-                $hasUncompletedOrders = $activeOrders->contains(function ($order) {
-                    return in_array($order->status, ['draft', 'pending', 'confirmed', 'processing']);
-                });
-
-                $canBypass = $request->user()->hasPermission('pos.bypass_kitchen_lock');
-                if ($hasUncompletedOrders && ! $canBypass) {
-                    throw new \Exception('Bạn không có quyền duyệt khẩn cấp thanh toán khi món chưa được Bếp hoàn tất.');
-                }
-
-                // Mark all orders in this group as paid
-                foreach ($activeOrders as $order) {
-                    $order->update(['status' => 'paid']);
-                }
-
-                // Primary order for invoice association
-                $primaryOrder = $activeOrders->first();
-
                 // Compute total amount and table name string for invoice record
                 $primaryTableObj = $allGroupTables->firstWhere('id', $primaryId);
                 $subTableNumbers = $allGroupTables->where('id', '!=', $primaryId)->pluck('table_number')->implode(', ');
                 $tableNameStr = $subTableNumbers ? "{$primaryTableObj->table_number} (Gộp {$subTableNumbers})" : $primaryTableObj->table_number;
 
-                $totalAmount = $activeOrders->sum(function ($order) {
-                    return $order->items->sum(function ($item) {
-                        return (float) $item->quantity * (float) $item->unit_price;
-                    });
+                $totalAmount = $order->items->sum(function ($item) {
+                    return (float) $item->quantity * (float) $item->unit_price;
                 });
 
                 // Create or update Invoice record safely
                 $invoiceCode = 'INV-'.date('Ymd').strtoupper(Str::random(4));
                 Invoice::updateOrCreate(
-                    ['order_id' => $primaryOrder->id],
+                    ['order_id' => $order->id],
                     [
                         'invoice_code' => $invoiceCode,
                         'table_name' => $tableNameStr,
@@ -340,13 +329,19 @@ class POSController extends Controller
                     ]
                 );
 
-                // Release all tables in the group to available
-                foreach ($allGroupTables as $grpTable) {
-                    $grpTable->update([
-                        'status' => 'available',
-                        'merged_into_table_id' => null,
-                    ]);
-                    $this->safeDispatch(fn () => TableStatusUpdated::dispatch($grpTable));
+                // Check if other active orders remain for this table group
+                $hasOtherActive = Order::whereIn('table_id', $allGroupTableIds)
+                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                    ->exists();
+
+                if (!$hasOtherActive) {
+                    foreach ($allGroupTables as $grpTable) {
+                        $grpTable->update([
+                            'status' => 'available',
+                            'merged_into_table_id' => null,
+                        ]);
+                        $this->safeDispatch(fn () => TableStatusUpdated::dispatch($grpTable));
+                    }
                 }
 
                 return $targetTable;
@@ -362,6 +357,7 @@ class POSController extends Controller
             return back()->withErrors(['error' => 'Thanh toán thất bại: '.$e->getMessage()]);
         }
     }
+
 
     public function transferTable(Request $request)
     {
