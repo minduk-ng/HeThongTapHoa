@@ -293,7 +293,7 @@ class POSController extends Controller
             $targetTable = DB::transaction(function () use ($validated, $request) {
                 $order = Order::with('items')->lockForUpdate()->findOrFail($validated['order_id']);
 
-                if (in_array($order->status, ['completed', 'cancelled'])) {
+                if (in_array($order->status, ['paid', 'cancelled'])) {
                     throw new \Exception('Đơn hàng này đã được thanh toán hoặc đã hủy.');
                 }
 
@@ -308,7 +308,7 @@ class POSController extends Controller
                 }
 
                 // Mark only this order as paid/completed
-                $order->update(['status' => 'completed']);
+                $order->update(['status' => 'paid']);
 
                 $targetTable = Table::findOrFail($order->table_id);
 
@@ -342,7 +342,7 @@ class POSController extends Controller
                 );
 
                 $hasOtherActive = Order::whereIn('table_id', $allGroupTableIds)
-                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing'])
+                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
                     ->exists();
 
                 if (!$hasOtherActive) {

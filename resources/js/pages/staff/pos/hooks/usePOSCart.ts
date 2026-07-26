@@ -17,13 +17,20 @@ export function usePOSCart(
             safeTables.forEach((table) => {
                 const allOrders = table.active_orders || (table.active_order ? [table.active_order] : []);
                 const currentActive = nextActive[table.id];
-                const hasCurrentActive = allOrders.some(o => (o.order_code || `order_${o.id}`) === currentActive) || (currentActive && currentActive.startsWith('draft_'));
                 
-                if (!currentActive || !hasCurrentActive) {
+                if (currentActive && currentActive.startsWith('draft_')) {
                     if (allOrders.length > 0) {
-                        nextActive[table.id] = allOrders[0].order_code || `order_${allOrders[0].id}`;
-                    } else {
-                        nextActive[table.id] = 'draft_default';
+                        const latestOrder = allOrders[allOrders.length - 1];
+                        nextActive[table.id] = latestOrder.order_code || `order_${latestOrder.id}`;
+                    }
+                } else {
+                    const hasCurrentActive = allOrders.some(o => (o.order_code || `order_${o.id}`) === currentActive);
+                    if (!currentActive || !hasCurrentActive) {
+                        if (allOrders.length > 0) {
+                            nextActive[table.id] = allOrders[0].order_code || `order_${allOrders[0].id}`;
+                        } else {
+                            nextActive[table.id] = 'draft_default';
+                        }
                     }
                 }
             });
@@ -64,7 +71,10 @@ export function usePOSCart(
                 const prevTableCarts = prevCarts[table.id] || {};
                 Object.keys(prevTableCarts).forEach((key) => {
                     if (key.startsWith('draft_')) {
-                        tableInvoices[key] = prevTableCarts[key];
+                        const draftItems = prevTableCarts[key];
+                        if (draftItems && draftItems.length > 0 && draftItems.some(i => !i.isConfirmed)) {
+                            tableInvoices[key] = draftItems;
+                        }
                     }
                 });
 
@@ -297,22 +307,32 @@ export function usePOSCart(
         }));
     };
 
-    const clearTableCart = (tableId?: number) => {
+    const clearTableCart = (tableId?: number, invoiceId?: string) => {
         if (!tableId) return;
-        const activeId = activeInvoiceId[tableId] || 'draft_default';
-        setTableCarts((prev) => ({
-            ...prev,
-            [tableId]: {
-                ...(prev[tableId] || {}),
-                [activeId]: [],
-            }
-        }));
+        const activeId = invoiceId || activeInvoiceId[tableId] || 'draft_default';
+        setTableCarts((prev) => {
+            const nextTableCarts = { ...(prev[tableId] || {}) };
+            delete nextTableCarts[activeId];
+            
+            setActiveInvoiceId((prevActive) => {
+                if (prevActive[tableId] === activeId) {
+                    const keys = Object.keys(nextTableCarts);
+                    return { ...prevActive, [tableId]: keys.length > 0 ? keys[0] : 'draft_default' };
+                }
+                return prevActive;
+            });
+            
+            return {
+                ...prev,
+                [tableId]: nextTableCarts,
+            };
+        });
         whisperDraftCart(tableId, []);
     };
 
-    const clearUnconfirmedDraft = (tableId?: number) => {
+    const clearUnconfirmedDraft = (tableId?: number, invoiceId?: string) => {
         if (!tableId) return;
-        const activeId = activeInvoiceId[tableId] || 'draft_default';
+        const activeId = invoiceId || activeInvoiceId[tableId] || 'draft_default';
         setTableCarts((prev) => {
             const existing = (prev[tableId] || {})[activeId] || [];
             const confirmedOnly = existing
@@ -321,12 +341,17 @@ export function usePOSCart(
                     const { stagedReduceQty, stagedReason, stagedNote, ...rest } = item;
                     return rest;
                 });
+            
+            const nextTableCarts = { ...(prev[tableId] || {}) };
+            if (confirmedOnly.length === 0 && activeId.startsWith('draft_')) {
+                delete nextTableCarts[activeId];
+            } else {
+                nextTableCarts[activeId] = confirmedOnly;
+            }
+
             return {
                 ...prev,
-                [tableId]: {
-                    ...(prev[tableId] || {}),
-                    [activeId]: confirmedOnly,
-                }
+                [tableId]: nextTableCarts,
             };
         });
         whisperDraftCart(tableId, []);

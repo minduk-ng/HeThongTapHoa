@@ -14,7 +14,7 @@ export interface POSOrderItemData {
 export interface POSOrderData {
     id: number;
     order_code?: string;
-    status: 'pending' | 'confirmed' | 'processing' | 'completed' | 'cancelled';
+    status: 'pending' | 'confirmed' | 'processing' | 'completed' | 'paid' | 'cancelled';
     items?: POSOrderItemData[];
 }
 

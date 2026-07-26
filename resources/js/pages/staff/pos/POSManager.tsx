@@ -297,7 +297,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                 if (selectedTable) {
                                     const activeId = activeInvoiceId[selectedTable.id] || 'draft_default';
                                     handleSendToKitchen(selectedTable, currentCart, activeId, () => {
-                                        clearUnconfirmedDraft(selectedTable.id);
+                                        clearUnconfirmedDraft(selectedTable.id, activeId);
                                     });
                                 }
                             }}
@@ -335,7 +335,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                             amountReceived,
                             changeAmount,
                             shouldPrint,
-                            () => clearTableCart(selectedTable.id)
+                            () => clearTableCart(selectedTable.id, activeId)
                         );
                     }
                 }}
