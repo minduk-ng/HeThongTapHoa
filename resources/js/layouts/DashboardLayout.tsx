@@ -5,9 +5,10 @@ import { usePage } from '@inertiajs/react';
 interface DashboardLayoutProps {
     children: ReactNode;
     fullWidth?: boolean;
+    hideNavbar?: boolean;
 }
 
-export default function DashboardLayout({ children, fullWidth = false }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, fullWidth = false, hideNavbar = false }: DashboardLayoutProps) {
     const { flash } = usePage().props as any;
     const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -28,7 +29,7 @@ export default function DashboardLayout({ children, fullWidth = false }: Dashboa
             fullWidth ? 'h-screen w-screen overflow-hidden' : 'min-h-screen'
         }`}>
             {/* Top Navigation Bar Header */}
-            <Sidebar />
+            {!hideNavbar && <Sidebar />}
             
             <main className="relative flex flex-1 flex-col w-full min-h-0 overflow-hidden">
                 {/* Floating Notification Toast */}
