@@ -351,14 +351,20 @@ class POSController extends Controller
                             'status' => 'available',
                             'merged_into_table_id' => null,
                         ]);
-                        $this->safeDispatch(fn () => TableStatusUpdated::dispatch($grpTable));
+                        $this->safeDispatch(fn () => TableStatusUpdated::dispatch($grpTable, 'checkout', [
+                            'order_code' => $order->order_code,
+                            'total_amount' => $totalAmount
+                        ]));
                     }
                 }
 
                 return $targetTable;
             });
 
-            $this->safeDispatch(fn () => TableStatusUpdated::dispatch($targetTable));
+            $this->safeDispatch(fn () => TableStatusUpdated::dispatch($targetTable, 'checkout', [
+                'order_code' => $order->order_code,
+                'total_amount' => $totalAmount
+            ]));
             $this->safeDispatch(fn () => IngredientStockUpdated::dispatch(['source' => 'checkout']));
 
             return back()->with('success', 'Thanh toán hoàn tất thành công!');

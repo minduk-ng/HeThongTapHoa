@@ -13,7 +13,11 @@ class TableStatusUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(public Table $table) {}
+    public function __construct(
+        public Table $table,
+        public ?string $action = null,
+        public ?array $meta = []
+    ) {}
 
     public function broadcastOn(): array
     {
@@ -31,7 +35,10 @@ class TableStatusUpdated implements ShouldBroadcastNow
     {
         return [
             'table_id' => $this->table->id,
+            'table_number' => $this->table->table_number,
             'status' => $this->table->status,
+            'action' => $this->action,
+            'meta' => $this->meta,
         ];
     }
 }

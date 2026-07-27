@@ -148,17 +148,20 @@ export function usePOSCheckout(
         amountReceived: number,
         changeAmount: number,
         shouldPrint: boolean,
-        onSuccessClearCart: () => void
+        onSuccessClearCart: () => void,
+        onLogEntry?: (type: 'sent' | 'received' | 'error', message: string, details?: string) => void
     ) => {
         if (!selectedTable || submitting) return;
 
         let orderId: number | null = null;
+        let matchedOrderObj: any = null;
         if (activeInvoiceId && !activeInvoiceId.startsWith('draft_')) {
             const matchedOrder = selectedTable.active_orders?.find(
                 (o) => o.order_code === activeInvoiceId || `order_${o.id}` === activeInvoiceId
             ) || selectedTable.active_order;
             if (matchedOrder) {
                 orderId = matchedOrder.id;
+                matchedOrderObj = matchedOrder;
             }
         }
 
@@ -201,6 +204,13 @@ export function usePOSCheckout(
                 togglePaymentDrawer(false);
                 onSuccessClearCart();
 
+                const invoiceCode = 'INV-' + dateCode();
+                onLogEntry?.(
+                    'sent',
+                    'Thanh toán thành công',
+                    `Đã thanh toán thành công hóa đơn ${matchedOrderObj?.order_code || ''} tại Bàn ${selectedTable.table_number}`
+                );
+
                 if (shouldPrint) {
                     setReceiptModal({
                         isOpen: true,
@@ -209,7 +219,7 @@ export function usePOSCheckout(
                         changeAmount,
                         cartItems: snapshotCart,
                         table: snapshotTable,
-                        invoiceCode: 'INV-' + dateCode(),
+                        invoiceCode,
                     });
                 }
             },
@@ -221,6 +231,11 @@ export function usePOSCheckout(
                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 setSubmitting(false);
                 const msg = errors.error || errors.message || 'Thanh toán thất bại do kết nối CSDL chập chờn. Vui lòng thử lại!';
+                onLogEntry?.(
+                    'error',
+                    'Thanh toán thất bại',
+                    `Hóa đơn ${matchedOrderObj?.order_code || ''} tại Bàn ${selectedTable.table_number}: ${msg}`
+                );
                 alert(msg);
             },
         });

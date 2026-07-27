@@ -116,6 +116,10 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                     const sourceStr = payload?.source_table_number ? `Bàn ${payload.source_table_number}` : 'Bàn';
                     const targetStr = payload?.target_table_number ? `Bàn ${payload.target_table_number}` : 'Bàn';
                     addLogEntry('received', `Đã chuyển / gộp ${sourceStr} sang ${targetStr}`, 'Cập nhật sơ đồ bàn');
+                } else if (eventName === 'TableStatusUpdated' && payload?.action === 'checkout') {
+                    const orderCode = payload.meta?.order_code ? `Hóa đơn #${payload.meta.order_code}` : 'Hóa đơn';
+                    const tblNum = payload.table_number ? `Bàn ${payload.table_number}` : `Bàn #${payload.table_id}`;
+                    addLogEntry('received', 'Thanh toán thành công', `${orderCode} tại ${tblNum} đã được thanh toán thành công`);
                 } else {
                     addLogEntry('received', 'Cập nhật trạng thái bàn phục vụ', 'Đồng bộ hệ thống');
                 }
@@ -303,7 +307,8 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                             amountReceived,
                             changeAmount,
                             shouldPrint,
-                            () => clearTableCart(selectedTable.id, activeId)
+                            () => clearTableCart(selectedTable.id, activeId),
+                            addLogEntry
                         );
                     }
                 }}
