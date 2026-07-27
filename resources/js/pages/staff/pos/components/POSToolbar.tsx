@@ -82,7 +82,7 @@ export default function POSToolbar({
     };
 
     const handleReload = () => {
-        window.location.reload();
+        router.reload({ only: ['tables', 'categories', 'products'] });
     };
 
     const handleLogout = (e: React.MouseEvent) => {
