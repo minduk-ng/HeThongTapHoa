@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 
@@ -16,6 +16,7 @@ export interface KitchenOrderData {
         id: number;
         quantity: number;
         unit_price: number;
+        status: 'pending' | 'completed' | 'cancelled';
         note?: string | null;
         menu_item?: {
             id: number;
@@ -35,8 +36,29 @@ interface KitchenOrderCardProps {
 }
 
 export default function KitchenOrderCard({ order, onCancelItem, onCancelOrder }: KitchenOrderCardProps) {
-    const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({});
+    const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>(() => {
+        const initial: Record<number, boolean> = {};
+        order.items.forEach((item) => {
+            if (item.status === 'completed') {
+                initial[item.id] = true;
+            }
+        });
+        return initial;
+    });
     const [submitting, setSubmitting] = useState(false);
+
+    // Sync state when order items change (e.g. from real-time extra items calls)
+    useEffect(() => {
+        setCheckedItems((prev) => {
+            const next = { ...prev };
+            order.items.forEach((item) => {
+                if (item.status === 'completed') {
+                    next[item.id] = true;
+                }
+            });
+            return next;
+        });
+    }, [order.items]);
 
     // Calculate elapsed time in minutes
     const createdAtTime = new Date(order.created_at).getTime();
@@ -124,7 +146,7 @@ export default function KitchenOrderCard({ order, onCancelItem, onCancelOrder }:
 
             {/* Items Checklist (Spacious layout without height truncation) */}
             <div className="p-4 flex-1 space-y-2.5 overflow-y-auto pr-1 min-h-[160px]">
-                {order.items.map((item) => {
+                {order.items.filter(item => item.status !== 'completed').map((item) => {
                     const isChecked = !!checkedItems[item.id];
                     return (
                         <div

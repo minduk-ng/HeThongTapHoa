@@ -72,9 +72,14 @@ class KitchenController extends Controller
                 $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
 
                 foreach ($order->items as $item) {
-                    if ($item->status === 'cancelled') {
+                    if ($item->status === 'cancelled' || $item->status === 'completed') {
                         continue;
                     }
+
+                    $item->update([
+                        'status' => 'completed',
+                    ]);
+
                     $recipes = ProductRecipe::where('menu_item_id', $item->menu_item_id)->get();
                     foreach ($recipes as $recipe) {
                         $ingredient = Ingredient::find($recipe->ingredient_id);

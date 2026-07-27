@@ -60,7 +60,7 @@ export function usePOSCart(
                                 vat_rate: Number(item.menu_item?.vat_rate || 0),
                                 note: item.note || '',
                                 isConfirmed: true,
-                                isKitchenCompleted: isOrderCompleted,
+                                isKitchenCompleted: item.status === 'completed' || isOrderCompleted,
                                 orderItemId: item.id,
                             });
                         });

@@ -30,3 +30,7 @@ yarn-error.log
 /docs
 /.agents
 skill-lock.json
+
+/.ua
+/.claude
+agents.md
