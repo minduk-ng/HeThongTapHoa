@@ -42,6 +42,19 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
         }
     };
 
+    const [isWsPopoverOpen, setIsWsPopoverOpen] = useState(false);
+    const wsPopoverRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (wsPopoverRef.current && !wsPopoverRef.current.contains(event.target as Node)) {
+                setIsWsPopoverOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const statusConfig = {
         connected: {
             dotClass: 'bg-emerald-500',
@@ -282,16 +295,46 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                                     </button>
 
                                     {/* WebSocket Status Indicator */}
-                                    <button
-                                        type="button"
-                                        className="flex items-center space-x-1.5 px-2 py-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group relative"
-                                        title={wsConfig.tooltip}
-                                    >
-                                        <span className={`w-2 h-2 rounded-full ${wsConfig.dotClass}`} />
-                                        <span className="text-[10px] font-semibold tabular-nums text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200">
-                                            {wsConfig.label}
-                                        </span>
-                                    </button>
+                                    <div className="relative" ref={wsPopoverRef}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsWsPopoverOpen(!isWsPopoverOpen)}
+                                            className="flex items-center space-x-1.5 px-2 py-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group"
+                                            title="Xem chi tiết kết nối mạng"
+                                        >
+                                            <span className={`w-2 h-2 rounded-full ${wsConfig.dotClass}`} />
+                                            <span className="text-[10px] font-semibold tabular-nums text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200">
+                                                {wsConfig.label}
+                                            </span>
+                                        </button>
+
+                                        {isWsPopoverOpen && (
+                                            <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-zinc-950 border border-zinc-250/80 dark:border-zinc-800 rounded-xl p-3.5 shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-150 flex flex-col gap-2.5 text-zinc-700 dark:text-zinc-300">
+                                                <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 pb-2">
+                                                    <span className="font-display text-xs font-semibold text-zinc-900 dark:text-zinc-100">Thông tin mạng</span>
+                                                    <span className={`w-2 h-2 rounded-full ${wsConfig.dotClass}`} />
+                                                </div>
+                                                <div className="flex flex-col gap-1.5 text-[11px]">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-zinc-400 dark:text-zinc-550">Kết nối:</span>
+                                                        <span className="font-medium text-zinc-800 dark:text-zinc-200">WebSocket (Reverb)</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-zinc-400 dark:text-zinc-550">Trạng thái:</span>
+                                                        <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                                                            {reverbStatus === 'connected' ? 'Đã kết nối' : reverbStatus === 'connecting' ? 'Đang kết nối' : 'Mất kết nối'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-zinc-400 dark:text-zinc-550">Độ trễ (Ping):</span>
+                                                        <span className="font-bold tabular-nums text-sky-600 dark:text-sky-400">
+                                                            {latencyMs !== null ? `${latencyMs}ms` : '—'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Fullscreen Toggle */}
