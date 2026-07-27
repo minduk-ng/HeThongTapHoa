@@ -313,6 +313,10 @@ export function usePOSCart(
         setTableCarts((prev) => {
             const nextTableCarts = { ...(prev[tableId] || {}) };
             delete nextTableCarts[activeId];
+
+            if (Object.keys(nextTableCarts).length === 0) {
+                nextTableCarts['draft_default'] = [];
+            }
             
             setActiveInvoiceId((prevActive) => {
                 if (prevActive[tableId] === activeId) {

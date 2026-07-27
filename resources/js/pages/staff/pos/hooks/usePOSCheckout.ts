@@ -256,6 +256,11 @@ export function usePOSCheckout(
                     }
                     onSuccessClearCart();
 
+                    router.reload({
+                        only: ['tables'],
+                        onError: () => {},
+                    });
+
                     const invoiceCode = 'INV-' + dateCode();
                     onLogEntry?.(
                         'sent',
