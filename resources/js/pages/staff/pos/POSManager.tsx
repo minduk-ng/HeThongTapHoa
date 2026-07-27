@@ -19,6 +19,17 @@ export default function POSManager({ tables, categories, products }: POSManagerP
     const [activeTab, setActiveTab] = useState<'tables' | 'menu' | 'log'>('tables');
     const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([]);
     const [unreadErrorCount, setUnreadErrorCount] = useState<number>(0);
+    const [autoSwitchToMenu, setAutoSwitchToMenu] = useState<boolean>(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('pos_auto_switch_to_menu') === 'true';
+        }
+        return false;
+    });
+
+    const handleAutoSwitchChange = useCallback((value: boolean) => {
+        setAutoSwitchToMenu(value);
+        localStorage.setItem('pos_auto_switch_to_menu', String(value));
+    }, []);
 
     const addLogEntry = useCallback((type: 'sent' | 'received' | 'error', message: string, details?: string) => {
         const d = new Date();
@@ -208,9 +219,16 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                 <POSTableTab
                                     tables={tables}
                                     selectedTable={selectedTable}
-                                    onSelectTable={handleSelectTable}
+                                    onSelectTable={(table) => {
+                                        handleSelectTable(table);
+                                        if (autoSwitchToMenu) {
+                                            setActiveTab('menu');
+                                        }
+                                    }}
                                     lockedCheckoutTables={lockedCheckoutTables}
                                     draftTableCounts={draftTableCounts}
+                                    autoSwitchToMenu={autoSwitchToMenu}
+                                    onAutoSwitchChange={handleAutoSwitchChange}
                                 />
                             ) : activeTab === 'menu' ? (
                                 <POSMenuTab

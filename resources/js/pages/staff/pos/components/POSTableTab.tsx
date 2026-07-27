@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Check } from 'lucide-react';
+import { Users, Check, ArrowRightLeft } from 'lucide-react';
 import { POSTableData } from '../types/pos.types';
 import { CheckoutLockInfo } from '../hooks/usePOSCheckoutLock';
 
@@ -9,9 +9,11 @@ interface POSTableTabProps {
     onSelectTable: (table: POSTableData) => void;
     lockedCheckoutTables?: Record<number, CheckoutLockInfo>;
     draftTableCounts?: Record<number, number>;
+    autoSwitchToMenu?: boolean;
+    onAutoSwitchChange?: (value: boolean) => void;
 }
 
-export default function POSTableTab({ tables, selectedTable, onSelectTable, lockedCheckoutTables = {}, draftTableCounts = {} }: POSTableTabProps) {
+export default function POSTableTab({ tables, selectedTable, onSelectTable, lockedCheckoutTables = {}, draftTableCounts = {}, autoSwitchToMenu = false, onAutoSwitchChange }: POSTableTabProps) {
     const safeTables = (Array.isArray(tables) ? tables : Object.values(tables || {})) as POSTableData[];
     const groupedAreas = safeTables.reduce((acc, table) => {
         const areaName = table.area || 'Khác';
@@ -73,7 +75,7 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable, lock
 
             {/* Scrollable Table Grid */}
             <div className="flex-1 overflow-y-auto pr-1 min-h-0">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pt-2">
                     {filteredTables.map((table) => {
                         const isSelected = selectedTable?.id === table.id;
                         const isOccupied = table.status === 'occupied';
@@ -166,6 +168,29 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable, lock
                         );
                     })}
                 </div>
+            </div>
+
+            {/* Auto-switch to menu toggle */}
+            <div className="shrink-0 pt-2 border-t border-zinc-200/80 dark:border-zinc-800/80">
+                <button
+                    type="button"
+                    onClick={() => onAutoSwitchChange?.(!autoSwitchToMenu)}
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 ${
+                        autoSwitchToMenu
+                            ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
+                            : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                    }`}
+                >
+                    <div className={`relative w-7 h-4 rounded-full transition-colors duration-150 ${
+                        autoSwitchToMenu ? 'bg-sky-600' : 'bg-zinc-300 dark:bg-zinc-600'
+                    }`}>
+                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-transform duration-150 ${
+                            autoSwitchToMenu ? 'translate-x-3.5' : 'translate-x-0.5'
+                        }`} />
+                    </div>
+                    <ArrowRightLeft className="w-3.5 h-3.5 stroke-[1.5]" />
+                    <span>Mở menu khi chọn bàn</span>
+                </button>
             </div>
         </div>
     );

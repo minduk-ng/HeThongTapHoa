@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Sparkles, Volume2, VolumeX, RefreshCw, Coffee, UtensilsCrossed, Layers } from 'lucide-react';
+import { Sparkles, Volume2, VolumeX, RefreshCw, Coffee, UtensilsCrossed, Layers, Maximize2, Minimize2 } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import KitchenOrderCard, { KitchenOrderData } from './components/KitchenOrderCard';
 import VoidItemModal from './components/VoidItemModal';
@@ -26,6 +26,21 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
     const [kitchenLogs, setKitchenLogs] = useState<SystemLogEntry[]>([]);
     
     const { status: reverbStatus, latencyMs } = useReverbStatus();
+
+    // Fullscreen toggle
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    useEffect(() => {
+        const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+            document.exitFullscreen().catch(() => {});
+        }
+    };
 
     const statusConfig = {
         connected: {
@@ -279,6 +294,21 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                                     </button>
                                 </div>
 
+                                {/* Fullscreen Toggle */}
+                                <button
+                                    type="button"
+                                    onClick={toggleFullscreen}
+                                    className="p-1.5 text-zinc-500 hover:text-sky-600 dark:hover:text-sky-400 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                    title={isFullscreen ? 'Thoát toàn màn hình' : 'Mở toàn màn hình'}
+                                >
+                                    {isFullscreen ? (
+                                        <Minimize2 className="w-4 h-4 stroke-[1.5]" />
+                                    ) : (
+                                        <Maximize2 className="w-4 h-4 stroke-[1.5]" />
+                                    )}
+                                </button>
+
+                                {/* Reload */}
                                 <button
                                     type="button"
                                     onClick={() => {
