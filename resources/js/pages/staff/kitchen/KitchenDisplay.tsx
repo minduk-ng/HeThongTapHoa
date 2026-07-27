@@ -197,7 +197,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
     };
 
     return (
-        <DashboardLayout fullWidth={true}>
+        <DashboardLayout fullWidth={true} hideNavbar={true}>
             <Head title="Màn hình Bếp & Chế biến món" />
 
             <VoidItemModal
@@ -219,7 +219,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
             />
 
             {/* Split Screen Container (Left Sidebar Stats ↔ Right Order Cards Grid) */}
-            <div className="h-[calc(100vh-4rem)] w-full p-4 overflow-hidden">
+            <div className="h-full w-full p-4 overflow-hidden">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full min-h-0">
                     {/* Left Sidebar (3.5 cols): Control Panel & Stats Cards Stack */}
                     <div className="lg:col-span-4 xl:col-span-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 flex flex-col justify-between h-full min-h-0 shadow-xs space-y-3 overflow-hidden">
