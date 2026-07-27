@@ -19,29 +19,35 @@ export function useReverbStatus(): UseReverbStatusReturn {
             const pusher = (window.Echo as any).connector?.pusher;
             if (!pusher || pusher.connection?.state !== 'connected') return;
 
-            const start = performance.now();
-            // Pusher internally handles pong responses; we use the send_event
-            // on the connection socket to measure round-trip time
             const socket = pusher.connection?.socket;
-            if (socket && typeof socket.send === 'function') {
-                // Send a ping frame and measure when the pong comes back
+            if (socket && typeof socket.send === 'function' && typeof socket.addEventListener === 'function') {
+                const start = performance.now();
+                
+                const handleMessage = (event: MessageEvent) => {
+                    try {
+                        const payload = JSON.parse(event.data);
+                        if (payload.event === 'pusher:pong') {
+                            const rtt = Math.round(performance.now() - start);
+                            setLatencyMs(rtt);
+                            socket.removeEventListener('message', handleMessage);
+                        }
+                    } catch {
+                        // ignore non-json
+                    }
+                };
+
+                socket.addEventListener('message', handleMessage);
+                
                 try {
                     socket.send(JSON.stringify({ event: 'pusher:ping', data: {} }));
-                    // Listen for pong — Pusher fires 'pong' event on connection
-                    const onPong = () => {
-                        const rtt = Math.round(performance.now() - start);
-                        setLatencyMs(rtt);
-                        pusher.connection.unbind('pong', onPong);
-                    };
-                    pusher.connection.bind('pong', onPong);
-
-                    // Safety timeout — if no pong in 5s, unbind
-                    setTimeout(() => {
-                        pusher.connection.unbind('pong', onPong);
-                    }, 5000);
                 } catch {
-                    // Socket send failed — ignore silently
+                    socket.removeEventListener('message', handleMessage);
                 }
+
+                // Safety timeout — if no pong in 4s, unbind
+                setTimeout(() => {
+                    socket.removeEventListener('message', handleMessage);
+                }, 4000);
             }
         } catch {
             // Pusher internal API access failed — ignore

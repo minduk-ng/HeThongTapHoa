@@ -77,7 +77,7 @@ export default function POSToolbar({
     };
 
     const handleReload = () => {
-        router.reload({ onError: () => {} });
+        window.location.reload();
     };
 
     const handleLogout = (e: React.MouseEvent) => {
@@ -90,12 +90,12 @@ export default function POSToolbar({
     const statusConfig = {
         connected: {
             dotClass: 'bg-emerald-500',
-            label: latencyMs !== null ? `${latencyMs}ms` : 'Kết nối ổn',
-            tooltip: latencyMs !== null ? `Kết nối ổn định — ${latencyMs}ms` : 'Kết nối ổn định',
+            label: 'Socket',
+            tooltip: latencyMs !== null ? `${latencyMs}ms` : 'Kết nối ổn',
         },
         connecting: {
             dotClass: 'bg-amber-500 animate-pulse',
-            label: 'Đang nối…',
+            label: 'Kết nối…',
             tooltip: 'Đang kết nối lại WebSocket…',
         },
         disconnected: {
@@ -108,7 +108,7 @@ export default function POSToolbar({
     const wsConfig = statusConfig[reverbStatus];
 
     const tabButtonClass = (tab: string) =>
-        `py-1.5 px-2.5 text-xs font-bold rounded-lg transition-colors duration-150 flex items-center space-x-1.5 ${
+        `py-2 px-3.5 text-sm font-bold rounded-lg transition-colors duration-150 flex items-center space-x-1.5 ${
             activeTab === tab
                 ? 'bg-sky-600 text-white shadow-xs'
                 : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
@@ -155,7 +155,7 @@ export default function POSToolbar({
                         onTabChange('log');
                         onClearUnread();
                     }}
-                    className={`p-1.5 text-xs font-bold rounded-lg transition-colors duration-150 flex items-center justify-center relative ${
+                    className={`p-2 text-sm font-bold rounded-lg transition-colors duration-150 flex items-center justify-center relative ${
                         activeTab === 'log'
                             ? 'bg-sky-600 text-white shadow-xs'
                             : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'

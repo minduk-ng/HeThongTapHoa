@@ -7,6 +7,7 @@ import VoidItemModal from './components/VoidItemModal';
 import KitchenLogPanel from './components/KitchenLogPanel';
 import { SystemLogEntry } from '../pos/components/POSLogTab';
 import { playKitchenChime } from './utils/kitchenAudio';
+import { useReverbStatus } from '../pos/hooks/useReverbStatus';
 
 interface KitchenDisplayProps {
     orders: KitchenOrderData[];
@@ -23,6 +24,28 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
     const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
     const [activeStation, setActiveStation] = useState<'all' | 'bar' | 'kitchen'>('all');
     const [kitchenLogs, setKitchenLogs] = useState<SystemLogEntry[]>([]);
+    
+    const { status: reverbStatus, latencyMs } = useReverbStatus();
+
+    const statusConfig = {
+        connected: {
+            dotClass: 'bg-emerald-500',
+            label: 'Socket',
+            tooltip: latencyMs !== null ? `${latencyMs}ms` : 'Kết nối ổn',
+        },
+        connecting: {
+            dotClass: 'bg-amber-500 animate-pulse',
+            label: 'Kết nối…',
+            tooltip: 'Đang kết nối lại WebSocket…',
+        },
+        disconnected: {
+            dotClass: 'bg-rose-500',
+            label: 'Mất kết nối',
+            tooltip: 'Mất kết nối WebSocket — dữ liệu có thể không cập nhật tức thời',
+        },
+    };
+
+    const wsConfig = statusConfig[reverbStatus];
 
     const addKitchenLog = useCallback((type: 'sent' | 'received' | 'error', message: string, details?: string) => {
         const d = new Date();
@@ -241,6 +264,18 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                                         title={soundEnabled ? 'Chuông thông báo: Đang bật' : 'Chuông thông báo: Đã tắt'}
                                     >
                                         {soundEnabled ? <Volume2 className="w-4 h-4 stroke-[1.5]" /> : <VolumeX className="w-4 h-4 stroke-[1.5]" />}
+                                    </button>
+
+                                    {/* WebSocket Status Indicator */}
+                                    <button
+                                        type="button"
+                                        className="flex items-center space-x-1.5 px-2 py-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group relative"
+                                        title={wsConfig.tooltip}
+                                    >
+                                        <span className={`w-2 h-2 rounded-full ${wsConfig.dotClass}`} />
+                                        <span className="text-[10px] font-semibold tabular-nums text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200">
+                                            {wsConfig.label}
+                                        </span>
                                     </button>
                                 </div>
 

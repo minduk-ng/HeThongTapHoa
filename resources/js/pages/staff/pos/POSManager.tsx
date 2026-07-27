@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Armchair, UtensilsCrossed, Activity } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import POSTableTab from './components/POSTableTab';
 import POSMenuTab from './components/POSMenuTab';
@@ -9,6 +8,7 @@ import POSLogTab, { SystemLogEntry } from './components/POSLogTab';
 import PaymentDrawer from './components/PaymentDrawer';
 import ReceiptPrintModal from './components/ReceiptPrintModal';
 import ReservationConfirmModal from './components/ReservationConfirmModal';
+import POSToolbar from './components/POSToolbar';
 
 import { POSManagerProps } from './types/pos.types';
 import { usePOSTables } from './hooks/usePOSTables';
@@ -184,74 +184,24 @@ export default function POSManager({ tables, categories, products }: POSManagerP
     }, [selectedTable, tables, lockedCheckoutTables]);
 
     return (
-        <DashboardLayout fullWidth={true}>
+        <DashboardLayout fullWidth={true} hideNavbar={true}>
             <Head title="Đặt hàng POS & Quản lý bàn bán hàng" />
 
+            {/* Custom POS Toolbar — 44px */}
+            <POSToolbar
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                selectedTable={selectedTable}
+                cartItemCount={currentCart.reduce((s, i) => s + i.quantity, 0)}
+                unreadErrorCount={unreadErrorCount}
+                onClearUnread={() => setUnreadErrorCount(0)}
+            />
+
             {/* Full Width & Height Split Screen Container */}
-            <div className="h-full w-full min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full min-h-0">
                     {/* Left Panel (7 columns): Standalone Card for Tabs */}
                     <div className="lg:col-span-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 flex flex-col h-full min-h-0 shadow-xs">
-                        {/* Top Fixed Tab Selector */}
-                        <div className="shrink-0 flex items-center space-x-2 border-b border-zinc-200 dark:border-zinc-800 pb-3 mb-3">
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('tables')}
-                                className={`flex-1 py-2.5 px-3 text-xs font-bold rounded-xl transition-colors duration-150 flex items-center justify-center space-x-1.5 ${
-                                    activeTab === 'tables'
-                                        ? 'bg-blue-600 text-white shadow-xs'
-                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
-                                }`}
-                            >
-                                <Armchair className="w-4 h-4 stroke-[1.5]" />
-                                <span>Chọn bàn</span>
-                                {selectedTable && (
-                                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px]">
-                                        {selectedTable.table_number}
-                                    </span>
-                                )}
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('menu')}
-                                className={`flex-1 py-2.5 px-3 text-xs font-bold rounded-xl transition-colors duration-150 flex items-center justify-center space-x-1.5 ${
-                                    activeTab === 'menu'
-                                        ? 'bg-blue-600 text-white shadow-xs'
-                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
-                                }`}
-                            >
-                                <UtensilsCrossed className="w-4 h-4 stroke-[1.5]" />
-                                <span>Chọn món</span>
-                                {currentCart.length > 0 && (
-                                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-400 text-amber-950 font-bold text-[10px]">
-                                        {currentCart.reduce((s, i) => s + i.quantity, 0)}
-                                    </span>
-                                )}
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setActiveTab('log');
-                                    setUnreadErrorCount(0);
-                                }}
-                                className={`p-2.5 text-xs font-bold rounded-xl transition-colors duration-150 flex items-center justify-center relative ${
-                                    activeTab === 'log'
-                                        ? 'bg-blue-600 text-white shadow-xs'
-                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
-                                }`}
-                                title="Nhật ký hoạt động hệ thống"
-                            >
-                                <Activity className="w-4 h-4 stroke-[1.5]" />
-                                {unreadErrorCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-rose-600 text-white font-bold text-[10px] tabular-nums animate-pulse border border-white dark:border-zinc-900 shadow-xs">
-                                        {unreadErrorCount}
-                                    </span>
-                                )}
-                            </button>
-                        </div>
-
                         {/* Content Area with Independent Scroll */}
                         <div className="flex-1 overflow-hidden min-h-0">
                             {activeTab === 'tables' ? (
