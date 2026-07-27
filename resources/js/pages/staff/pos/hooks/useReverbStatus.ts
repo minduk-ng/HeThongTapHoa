@@ -19,8 +19,22 @@ export function useReverbStatus(): UseReverbStatusReturn {
             const pusher = (window.Echo as any).connector?.pusher;
             if (!pusher || pusher.connection?.state !== 'connected') return;
 
-            const socket = pusher.connection?.socket;
-            if (socket && typeof socket.send === 'function' && typeof socket.addEventListener === 'function') {
+            const transport = pusher.connection?.socket;
+            if (!transport) return;
+
+            // Defensively extract the raw browser WebSocket instance from Pusher's wrapper
+            let rawSocket: any = null;
+            if (typeof transport.addEventListener === 'function') {
+                rawSocket = transport;
+            } else if (transport.socket && typeof transport.socket.addEventListener === 'function') {
+                rawSocket = transport.socket;
+            } else if (transport.realSocket && typeof transport.realSocket.addEventListener === 'function') {
+                rawSocket = transport.realSocket;
+            } else if (transport.conn && typeof transport.conn.addEventListener === 'function') {
+                rawSocket = transport.conn;
+            }
+
+            if (rawSocket && typeof rawSocket.send === 'function' && typeof rawSocket.addEventListener === 'function') {
                 const start = performance.now();
                 
                 const handleMessage = (event: MessageEvent) => {
@@ -29,28 +43,28 @@ export function useReverbStatus(): UseReverbStatusReturn {
                         if (payload.event === 'pusher:pong') {
                             const rtt = Math.round(performance.now() - start);
                             setLatencyMs(rtt);
-                            socket.removeEventListener('message', handleMessage);
+                            rawSocket.removeEventListener('message', handleMessage);
                         }
                     } catch {
                         // ignore non-json
                     }
                 };
 
-                socket.addEventListener('message', handleMessage);
+                rawSocket.addEventListener('message', handleMessage);
                 
                 try {
-                    socket.send(JSON.stringify({ event: 'pusher:ping', data: {} }));
+                    rawSocket.send(JSON.stringify({ event: 'pusher:ping', data: {} }));
                 } catch {
-                    socket.removeEventListener('message', handleMessage);
+                    rawSocket.removeEventListener('message', handleMessage);
                 }
 
                 // Safety timeout — if no pong in 4s, unbind
                 setTimeout(() => {
-                    socket.removeEventListener('message', handleMessage);
+                    rawSocket.removeEventListener('message', handleMessage);
                 }, 4000);
             }
-        } catch {
-            // Pusher internal API access failed — ignore
+        } catch (e) {
+            // Ignore or log in debug
         }
     }, []);
 
