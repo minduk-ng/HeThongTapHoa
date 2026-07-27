@@ -1,7 +1,12 @@
 export function playKitchenChime() {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
+        const AudioContext =
+            window.AudioContext || (window as any).webkitAudioContext;
+
+        if (!AudioContext) {
+            return;
+        }
+
         const ctx = new AudioContext();
 
         // Tone 1: High Ding (D5 - 587.33Hz)
