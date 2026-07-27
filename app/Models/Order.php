@@ -9,6 +9,8 @@ class Order extends Model
 {
     use HasFactory;
 
+    public $afterCommit = true;
+
     protected $fillable = [
         'order_code',
         'table_id',

@@ -9,6 +9,8 @@ class Table extends Model
 {
     use HasFactory;
 
+    public $afterCommit = true;
+
     protected $table = 'tables';
 
     protected $fillable = [

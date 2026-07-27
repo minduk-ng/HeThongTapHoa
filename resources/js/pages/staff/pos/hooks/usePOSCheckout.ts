@@ -199,9 +199,15 @@ export function usePOSCheckout(
         const snapshotCart = [...currentCart];
         const snapshotTable = { ...selectedTable };
 
+        if (!shouldPrint) {
+            togglePaymentDrawer(false);
+        }
+
         router.post('/staff/pos/checkout', payload, {
             onSuccess: () => {
-                togglePaymentDrawer(false);
+                if (shouldPrint) {
+                    togglePaymentDrawer(false);
+                }
                 onSuccessClearCart();
 
                 const invoiceCode = 'INV-' + dateCode();
