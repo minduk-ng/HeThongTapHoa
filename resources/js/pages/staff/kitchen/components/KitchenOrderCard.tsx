@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
-import { AlertTriangle, Trash2 } from 'lucide-react';
+import { AlertTriangle, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 
 export interface KitchenOrderData {
     id: number;
@@ -31,20 +31,21 @@ export interface KitchenOrderData {
 
 interface KitchenOrderCardProps {
     order: KitchenOrderData;
-    onCancelItem?: (itemId: number, itemName: string) => void;
-    onCancelOrder?: (tableId: number, orderCode: string) => void;
 }
 
-export default function KitchenOrderCard({ order, onCancelItem, onCancelOrder }: KitchenOrderCardProps) {
-    const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>(() => {
-        const initial: Record<number, boolean> = {};
-        order.items.forEach((item) => {
-            if (item.status === 'completed') {
-                initial[item.id] = true;
-            }
-        });
-        return initial;
-    });
+export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
+    const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>(
+        () => {
+            const initial: Record<number, boolean> = {};
+            order.items.forEach((item) => {
+                if (item.status === 'completed') {
+                    initial[item.id] = true;
+                }
+            });
+
+            return initial;
+        },
+    );
     const [submitting, setSubmitting] = useState(false);
 
     // Sync state when order items change (e.g. from real-time extra items calls)
@@ -56,6 +57,7 @@ export default function KitchenOrderCard({ order, onCancelItem, onCancelOrder }:
                     next[item.id] = true;
                 }
             });
+
             return next;
         });
     }, [order.items]);
@@ -63,13 +65,17 @@ export default function KitchenOrderCard({ order, onCancelItem, onCancelOrder }:
     // Calculate elapsed time in minutes
     const createdAtTime = new Date(order.created_at).getTime();
     const nowTime = new Date().getTime();
-    const elapsedMinutes = Math.max(1, Math.floor((nowTime - createdAtTime) / 60000));
+    const elapsedMinutes = Math.max(
+        1,
+        Math.floor((nowTime - createdAtTime) / 60000),
+    );
 
     const isOver10Mins = elapsedMinutes >= 10;
     const hasAdditional = order.has_additional_items;
 
     const totalItems = order.items.reduce((s, i) => s + i.quantity, 0);
-    const completedItemsCount = Object.values(checkedItems).filter(Boolean).length;
+    const completedItemsCount =
+        Object.values(checkedItems).filter(Boolean).length;
 
     const toggleCheckItem = (itemId: number) => {
         setCheckedItems((prev) => ({
@@ -79,7 +85,10 @@ export default function KitchenOrderCard({ order, onCancelItem, onCancelOrder }:
     };
 
     const handleCompleteOrder = () => {
-        if (submitting) return;
+        if (submitting) {
+            return;
+        }
+
         setSubmitting(true);
 
         const timeout = setTimeout(() => {
@@ -87,18 +96,25 @@ export default function KitchenOrderCard({ order, onCancelItem, onCancelOrder }:
             alert('Kết nối CSDL/Máy chủ quá thời gian chờ. Vui lòng thử lại!');
         }, 8000);
 
-        router.post(`/staff/kitchen/complete/${order.id}`, {}, {
-            onFinish: () => {
-                clearTimeout(timeout);
-                setSubmitting(false);
+        router.post(
+            `/staff/kitchen/complete/${order.id}`,
+            {},
+            {
+                onFinish: () => {
+                    clearTimeout(timeout);
+                    setSubmitting(false);
+                },
+                onError: (errors: any) => {
+                    clearTimeout(timeout);
+                    setSubmitting(false);
+                    const msg =
+                        errors.error ||
+                        errors.message ||
+                        'Không thể hoàn thành đơn do kết nối CSDL chập chờn.';
+                    alert(msg);
+                },
             },
-            onError: (errors: any) => {
-                clearTimeout(timeout);
-                setSubmitting(false);
-                const msg = errors.error || errors.message || 'Không thể hoàn thành đơn do kết nối CSDL chập chờn.';
-                alert(msg);
-            },
-        });
+        );
     };
 
     // Soft, gentle color themes for card header
@@ -114,121 +130,106 @@ export default function KitchenOrderCard({ order, onCancelItem, onCancelOrder }:
     }
 
     return (
-        <div className={`bg-white dark:bg-zinc-900 border ${cardBorderClass} rounded-2xl overflow-hidden shadow-md flex flex-col justify-between h-full transition-all min-h-[340px]`}>
+        <div
+            className={`border bg-white dark:bg-zinc-900 ${cardBorderClass} flex h-full min-h-[340px] flex-col justify-between overflow-hidden rounded-2xl shadow-md transition-all`}
+        >
             {/* Order Card Header */}
             <div className={`p-4 ${headerBgClass} space-y-2 shadow-xs`}>
                 {hasAdditional && (
-                    <div className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-md bg-amber-300/30 text-amber-100 font-semibold text-[11px] border border-amber-300/40">
-                        <AlertTriangle className="w-3.5 h-3.5 stroke-[1.5]" />
+                    <div className="inline-flex items-center space-x-1 rounded-md border border-amber-300/40 bg-amber-300/30 px-2.5 py-0.5 text-[11px] font-semibold text-amber-100">
+                        <AlertTriangle className="h-3.5 w-3.5 stroke-[1.5]" />
                         <span>Bàn gọi thêm đồ</span>
                     </div>
                 )}
 
-                <div className="flex justify-between items-start">
+                <div className="flex items-start justify-between">
                     <div>
-                        <span className="text-[11px] font-bold text-white/80 uppercase tracking-wider block">
+                        <span className="block text-[11px] font-bold tracking-wider text-white/80 uppercase">
                             {order.order_code}
                         </span>
-                        <h3 className="text-xl font-black text-white leading-tight">
-                            {order.table?.table_number || 'Mang về'} – {order.table?.area || 'Trong nhà'}
+                        <h3 className="text-xl leading-tight font-black text-white">
+                            {order.table?.table_number || 'Mang về'} –{' '}
+                            {order.table?.area || 'Trong nhà'}
                         </h3>
                     </div>
-                    <div className="px-3 py-1 rounded-full bg-black/25 text-white font-black text-xs shrink-0">
+                    <div className="shrink-0 rounded-full bg-black/25 px-3 py-1 text-xs font-black text-white">
                         {elapsedMinutes}'
                     </div>
                 </div>
 
-                <div className="flex justify-between items-center text-xs pt-1.5 border-t border-white/20">
-                    <span className="font-semibold opacity-90">Tiến độ pha chế</span>
-                    <span className="font-extrabold px-2 py-0.5 rounded-md bg-white/20">{completedItemsCount}/{order.items.length} món</span>
+                <div className="flex items-center justify-between border-t border-white/20 pt-1.5 text-xs">
+                    <span className="font-semibold opacity-90">
+                        Tiến độ pha chế
+                    </span>
+                    <span className="rounded-md bg-white/20 px-2 py-0.5 font-extrabold">
+                        {completedItemsCount}/{order.items.length} món
+                    </span>
                 </div>
             </div>
 
             {/* Items Checklist (Spacious layout without height truncation) */}
-            <div className="p-4 flex-1 space-y-2.5 overflow-y-auto pr-1 min-h-[160px]">
-                {order.items.filter(item => item.status !== 'completed').map((item) => {
-                    const isChecked = !!checkedItems[item.id];
-                    return (
-                        <div
-                            key={item.id}
-                            onClick={() => toggleCheckItem(item.id)}
-                            className={`p-3 rounded-xl border cursor-pointer select-none transition-all flex items-center justify-between gap-3 ${
-                                isChecked
-                                    ? 'bg-zinc-100 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700 opacity-60 line-through'
-                                    : 'bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700 hover:border-blue-400 dark:hover:border-blue-600'
-                            }`}
-                        >
-                            <div className="flex items-center space-x-3 min-w-0 flex-1">
-                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-bold shrink-0 ${
-                                    isChecked
-                                        ? 'bg-blue-600 text-white border-blue-600'
-                                        : 'border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800'
-                                }`}>
-                                    {isChecked && '✓'}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 block truncate">
-                                        {item.menu_item?.name || 'Món ăn'}
-                                    </span>
-                                    {item.note && (
-                                        <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold block mt-0.5">
-                                            Ghi chú: {item.note}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
+            <div className="min-h-[160px] flex-1 space-y-2.5 overflow-y-auto p-4 pr-1">
+                {order.items
+                    .filter((item) => item.status !== 'completed')
+                    .map((item) => {
+                        const isChecked = !!checkedItems[item.id];
 
-                            <div className="flex items-center space-x-2 shrink-0">
-                                <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-200 font-black text-xs border border-blue-200 dark:border-blue-800">
-                                    {item.quantity} ly/phần
-                                </span>
-                                {onCancelItem && !isChecked && (
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onCancelItem(item.id, item.menu_item?.name || 'Món ăn');
-                                        }}
-                                        className="p-1 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
-                                        title={
-                                            order.items.length === 1
-                                                ? 'Đơn hàng chỉ còn 1 món. Vui lòng chọn "Hủy đơn" ở dưới để hủy toàn bộ đơn'
-                                                : 'Hủy món này'
-                                        }
+                        return (
+                            <div
+                                key={item.id}
+                                onClick={() => toggleCheckItem(item.id)}
+                                className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl border p-3 transition-all select-none ${
+                                    isChecked
+                                        ? 'border-zinc-200 bg-zinc-100 line-through opacity-60 dark:border-zinc-700 dark:bg-zinc-800/60'
+                                        : 'border-zinc-200 bg-zinc-50 hover:border-blue-400 dark:border-zinc-700 dark:bg-zinc-800/40 dark:hover:border-blue-600'
+                                }`}
+                            >
+                                <div className="flex min-w-0 flex-1 items-center space-x-3">
+                                    <div
+                                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${
+                                            isChecked
+                                                ? 'border-blue-600 bg-blue-600 text-white'
+                                                : 'border-zinc-300 bg-white dark:border-zinc-600 dark:bg-zinc-800'
+                                        }`}
                                     >
-                                        <Trash2 className="w-3.5 h-3.5 stroke-[1.5]" />
-                                    </button>
-                                )}
+                                        {isChecked && '✓'}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <span className="block truncate text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                                            {item.menu_item?.name || 'Món ăn'}
+                                        </span>
+                                        {item.note && (
+                                            <span className="mt-0.5 block text-xs font-semibold text-amber-600 dark:text-amber-400">
+                                                Ghi chú: {item.note}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="flex shrink-0 items-center space-x-2">
+                                    <span className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        {item.quantity} ly/phần
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
             </div>
 
-            {/* Complete Order & Cancel Order Footer */}
-            <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex items-center gap-2">
-                {onCancelOrder && order.table?.id && completedItemsCount < order.items.length && (
-                    <button
-                        type="button"
-                        disabled={submitting}
-                        onClick={() => onCancelOrder(order.table!.id, order.order_code)}
-                        className="py-3 px-3 text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-xl disabled:opacity-50 transition-colors flex items-center justify-center space-x-1 shrink-0"
-                        title="Hủy toàn bộ đơn hàng này"
-                    >
-                        <Trash2 className="w-3.5 h-3.5 stroke-[1.5]" />
-                        <span>Hủy đơn</span>
-                    </button>
-                )}
+            {/* Complete Order Footer */}
+            <div className="border-t border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-800/50">
                 <button
                     type="button"
                     disabled={submitting}
                     onClick={handleCompleteOrder}
-                    className="flex-1 py-3 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 rounded-xl shadow-md disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
+                    className="flex w-full items-center justify-center space-x-2 rounded-xl bg-blue-600 py-3 text-xs font-extrabold text-white shadow-md transition-colors hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500"
                 >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>{submitting ? 'Đang cập nhật...' : 'Xác nhận hoàn thành đơn'}</span>
+                    <Check className="h-4 w-4 stroke-[1.5]" />
+                    <span>
+                        {submitting
+                            ? 'Đang cập nhật...'
+                            : 'Xác nhận hoàn thành đơn'}
+                    </span>
                 </button>
             </div>
         </div>
