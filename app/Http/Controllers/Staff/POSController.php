@@ -367,9 +367,22 @@ class POSController extends Controller
             ]));
             $this->safeDispatch(fn () => IngredientStockUpdated::dispatch(['source' => 'checkout']));
 
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Thanh toán hoàn tất thành công!',
+                ]);
+            }
+
             return back()->with('success', 'Thanh toán hoàn tất thành công!');
         } catch (\Throwable $e) {
             Log::error('POS checkout DB error: '.$e->getMessage());
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'error' => 'Thanh toán thất bại: '.$e->getMessage()
+                ], 422);
+            }
 
             return back()->withErrors(['error' => 'Thanh toán thất bại: '.$e->getMessage()]);
         }

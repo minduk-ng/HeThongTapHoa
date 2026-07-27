@@ -3,13 +3,38 @@ import { router, usePage } from '@inertiajs/react';
 import { POSTableData, CartItem, ReceiptModalState } from '../types/pos.types';
 import { usePOSCheckoutLock } from './usePOSCheckoutLock';
 
+function getCsrfTokenFromCookie(): string {
+    if (typeof document === 'undefined') return '';
+    const name = 'XSRF-TOKEN=';
+    const decodedCookie = decodeURIComponent(document.cookie);
+    const ca = decodedCookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') {
+            c = c.substring(1);
+        }
+        if (c.indexOf(name) === 0) {
+            return c.substring(name.length, c.length);
+        }
+    }
+    return '';
+}
+
 export function usePOSCheckout(
     selectedTable: POSTableData | null = null,
     tables: POSTableData[] = []
 ) {
     const { auth } = usePage<any>().props;
-    const [submitting, setSubmitting] = useState(false);
+    const [processingOrders, setProcessingOrders] = useState<Record<number, boolean>>({});
+    const [kitchenSubmitting, setKitchenSubmitting] = useState(false);
     const [isPaymentDrawerOpen, setIsPaymentDrawerOpen] = useState(false);
+
+    const submitting = kitchenSubmitting || (selectedTable
+        ? (() => {
+              const orders = selectedTable.active_orders || (selectedTable.active_order ? [selectedTable.active_order] : []);
+              return orders.some((o) => !!processingOrders[o.id]);
+          })()
+        : false);
     const { lockedCheckoutTables, lockTableCheckout, unlockTableCheckout } = usePOSCheckoutLock();
     const [receiptModal, setReceiptModal] = useState<ReceiptModalState>({
         isOpen: false,
@@ -95,12 +120,12 @@ export function usePOSCheckout(
 
         if (newDeltaItems.length === 0 && reducedItems.length === 0) return;
 
-        setSubmitting(true);
+        setKitchenSubmitting(true);
 
         // Safety timeout (8s) if DB/Server hangs indefinitely
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => {
-            setSubmitting(false);
+            setKitchenSubmitting(false);
         }, 8000);
 
         const subtotal = newDeltaItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
@@ -131,11 +156,11 @@ export function usePOSCheckout(
             },
             onFinish: () => {
                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
-                setSubmitting(false);
+                setKitchenSubmitting(false);
             },
             onError: () => {
                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
-                setSubmitting(false);
+                setKitchenSubmitting(false);
             },
         });
     };
@@ -151,7 +176,7 @@ export function usePOSCheckout(
         onSuccessClearCart: () => void,
         onLogEntry?: (type: 'sent' | 'received' | 'error', message: string, details?: string) => void
     ) => {
-        if (!selectedTable || submitting) return;
+        if (!selectedTable) return;
 
         let orderId: number | null = null;
         let matchedOrderObj: any = null;
@@ -170,6 +195,9 @@ export function usePOSCheckout(
             return;
         }
 
+        // Prevent duplicate processing
+        if (processingOrders[orderId]) return;
+
         const hasUnconfirmedDrafts = currentCart.some((i) => !i.isConfirmed || (i.stagedReduceQty || 0) > 0);
         if (hasUnconfirmedDrafts) return;
 
@@ -177,14 +205,15 @@ export function usePOSCheckout(
             return;
         }
 
-        setSubmitting(true);
+        // Lock order status to processing
+        setProcessingOrders((prev) => ({ ...prev, [orderId]: true }));
 
-        // Safety timeout (8s) if DB/Server hangs indefinitely
+        // Safety timeout (15s for background tasks) if DB/Server hangs indefinitely
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => {
-            setSubmitting(false);
+            setProcessingOrders((prev) => ({ ...prev, [orderId]: false }));
             alert('Kết nối cơ sở dữ liệu/máy chủ quá thời gian chờ (Timeout). Vui lòng thử thanh toán lại!');
-        }, 8000);
+        }, 15000);
 
         const idempotencyKey = `pos_pay_${orderId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
@@ -203,48 +232,70 @@ export function usePOSCheckout(
             togglePaymentDrawer(false);
         }
 
-        router.post('/staff/pos/checkout', payload, {
-            onSuccess: () => {
-                if (shouldPrint) {
-                    togglePaymentDrawer(false);
-                }
-                onSuccessClearCart();
+        const csrfToken = getCsrfTokenFromCookie();
+        const currentOrderId = orderId;
 
-                const invoiceCode = 'INV-' + dateCode();
-                onLogEntry?.(
-                    'sent',
-                    'Thanh toán thành công',
-                    `Đã thanh toán thành công hóa đơn ${matchedOrderObj?.order_code || ''} tại Bàn ${selectedTable.table_number}`
-                );
+        fetch('/staff/pos/checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-XSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify(payload),
+        })
+            .then(async (response) => {
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                setProcessingOrders((prev) => ({ ...prev, [currentOrderId]: false }));
 
-                if (shouldPrint) {
-                    setReceiptModal({
-                        isOpen: true,
-                        paymentMethod,
-                        amountReceived,
-                        changeAmount,
-                        cartItems: snapshotCart,
-                        table: snapshotTable,
-                        invoiceCode,
-                    });
+                const data = await response.json().catch(() => ({}));
+                if (response.ok && data.success) {
+                    if (shouldPrint) {
+                        togglePaymentDrawer(false);
+                    }
+                    onSuccessClearCart();
+
+                    const invoiceCode = 'INV-' + dateCode();
+                    onLogEntry?.(
+                        'sent',
+                        'Thanh toán thành công',
+                        `Đã thanh toán thành công hóa đơn ${matchedOrderObj?.order_code || ''} tại Bàn ${selectedTable.table_number}`
+                    );
+
+                    if (shouldPrint) {
+                        setReceiptModal({
+                            isOpen: true,
+                            paymentMethod,
+                            amountReceived,
+                            changeAmount,
+                            cartItems: snapshotCart,
+                            table: snapshotTable,
+                            invoiceCode,
+                        });
+                    }
+                } else {
+                    const errorMsg = data.error || data.message || 'Thanh toán thất bại do kết nối CSDL chập chờn. Vui lòng thử lại!';
+                    onLogEntry?.(
+                        'error',
+                        'Thanh toán thất bại',
+                        `Hóa đơn ${matchedOrderObj?.order_code || ''} tại Bàn ${selectedTable.table_number}: ${errorMsg}`
+                    );
+                    alert(errorMsg);
                 }
-            },
-            onFinish: () => {
+            })
+            .catch((error) => {
                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
-                setSubmitting(false);
-            },
-            onError: (errors) => {
-                if (timeoutRef.current) clearTimeout(timeoutRef.current);
-                setSubmitting(false);
-                const msg = errors.error || errors.message || 'Thanh toán thất bại do kết nối CSDL chập chờn. Vui lòng thử lại!';
+                setProcessingOrders((prev) => ({ ...prev, [currentOrderId]: false }));
+
+                const errorMsg = error?.message || 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng!';
                 onLogEntry?.(
                     'error',
                     'Thanh toán thất bại',
-                    `Hóa đơn ${matchedOrderObj?.order_code || ''} tại Bàn ${selectedTable.table_number}: ${msg}`
+                    `Hóa đơn ${matchedOrderObj?.order_code || ''} tại Bàn ${selectedTable.table_number}: ${errorMsg}`
                 );
-                alert(msg);
-            },
-        });
+                alert(errorMsg);
+            });
     };
 
     return {
