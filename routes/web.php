@@ -16,6 +16,7 @@ use App\Http\Controllers\Manager\RecipeController;
 use App\Http\Controllers\Manager\TableController;
 use App\Http\Controllers\Staff\KitchenController;
 use App\Http\Controllers\Staff\POSController;
+use App\Http\Controllers\Staff\ServingController;
 use App\Http\Middleware\CheckPageAccess;
 use Illuminate\Support\Facades\Route;
 
@@ -130,6 +131,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/kitchen/complete-items', [KitchenController::class, 'completeItems'])->middleware('permission:kitchen.update');
         Route::post('/kitchen/complete/{order}', [KitchenController::class, 'completeOrder'])->middleware('permission:kitchen.update');
         Route::post('/kitchen/cancel-item', [KitchenController::class, 'cancelItem'])->middleware('permission:kitchen.cancel_item|pos.cancel_item');
+
+        // Serving Display
+        Route::get('/serving', [ServingController::class, 'index'])->middleware('permission:serving.view');
+        Route::post('/serving/mark-served', [ServingController::class, 'markServed'])->middleware('permission:serving.update');
     });
 
 });

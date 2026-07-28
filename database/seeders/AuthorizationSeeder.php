@@ -80,6 +80,12 @@ class AuthorizationSeeder extends Seeder
                 'group_name' => 'Nhân viên',
                 'sort_order' => 31,
             ],
+            [
+                'name' => 'Phục vụ',
+                'route_path' => '/staff/serving',
+                'group_name' => 'Nhân viên',
+                'sort_order' => 32,
+            ],
         ];
 
         foreach ($pages as $page) {
@@ -116,6 +122,7 @@ class AuthorizationSeeder extends Seeder
             'tables.view', 'tables.create', 'tables.edit', 'tables.delete',
             'pos.view', 'pos.create', 'pos.bypass_kitchen_lock', 'pos.cancel_item',
             'kitchen.view', 'kitchen.update', 'kitchen.cancel_item',
+            'serving.view', 'serving.update',
         ];
 
         foreach ($permissions as $permission) {
