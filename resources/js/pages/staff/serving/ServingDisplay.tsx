@@ -8,6 +8,9 @@ import {
     Minimize2,
     ClipboardList,
     Layers,
+    CheckSquare,
+    Square,
+    CheckCheck,
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
@@ -77,6 +80,8 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isWsPopoverOpen, setIsWsPopoverOpen] = useState(false);
     const wsPopoverRef = useRef<HTMLDivElement>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [batchSubmitting, setBatchSubmitting] = useState(false);
 
     // Sync when Inertia reloads props
     useEffect(() => {
@@ -193,6 +198,7 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
             .then(data => {
                 if (data.success) {
                     setQueue(prev => prev.filter(c => c.id !== card.id));
+                    setSelectedIds(prev => { const n = new Set(prev); n.delete(card.id); return n; });
                 }
             })
             .catch((err) => {
@@ -227,6 +233,69 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
         : queue.filter(c => c.table_number === activeFilter);
 
     const totalItems = queue.reduce((sum, c) => sum + c.items.reduce((s, i) => s + i.quantity, 0), 0);
+
+    // Toggle card selection
+    const toggleSelect = useCallback((cardId: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(cardId)) {
+                next.delete(cardId);
+            } else {
+                next.add(cardId);
+            }
+            return next;
+        });
+    }, []);
+
+    // Select all visible (filtered) cards
+    const selectAll = useCallback(() => {
+        setSelectedIds(new Set(filteredQueue.map(c => c.id)));
+    }, [filteredQueue]);
+
+    // Clear selection
+    const clearSelection = useCallback(() => {
+        setSelectedIds(new Set());
+    }, []);
+
+    // Batch mark served
+    const handleBatchServed = useCallback(() => {
+        if (batchSubmitting || selectedIds.size === 0) return;
+        setBatchSubmitting(true);
+
+        const allItemIds = queue
+            .filter(c => selectedIds.has(c.id))
+            .flatMap(c => c.items.map(i => i.id));
+
+        const timeoutId = setTimeout(() => setBatchSubmitting(false), 8000);
+
+        fetch('/staff/serving/mark-served', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-XSRF-TOKEN': getXSRFToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ item_ids: allItemIds }),
+        })
+            .then(res => {
+                if (!res.ok) throw new Error('Lỗi máy chủ hoặc kết nối mạng.');
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    setQueue(prev => prev.filter(c => !selectedIds.has(c.id)));
+                    setSelectedIds(new Set());
+                }
+            })
+            .catch((err) => {
+                console.error('Serving batch mark-served failed:', err);
+            })
+            .finally(() => {
+                clearTimeout(timeoutId);
+                setBatchSubmitting(false);
+            });
+    }, [batchSubmitting, selectedIds, queue]);
 
     // WS status config
     const statusConfig = {
@@ -287,43 +356,76 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                         </div>
                     </div>
 
-                    {/* Center: Filter Pills (scrollable) */}
+                    {/* Center: Selection Action Bar OR Filter Pills */}
                     <div className="flex-1 min-w-0 overflow-x-auto">
-                        <div className="flex items-center gap-1.5">
-                            <button
-                                type="button"
-                                onClick={() => setActiveFilter('all')}
-                                className={`flex shrink-0 items-center space-x-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition-colors ${
-                                    activeFilter === 'all'
-                                        ? 'bg-sky-600 text-white shadow-xs'
-                                        : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
-                                }`}
-                            >
-                                <Layers className="h-3.5 w-3.5 stroke-[1.5]" />
-                                <span>Tất cả</span>
-                            </button>
-                            {tableFilters.map(f => (
+                        {selectedIds.size > 0 ? (
+                            <div className="flex items-center gap-2">
+                                <span className="flex shrink-0 items-center gap-1.5 rounded-lg bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
+                                    <CheckSquare className="h-3.5 w-3.5 stroke-[1.5]" />
+                                    <span className="tabular-nums">Đã chọn {selectedIds.size} đơn</span>
+                                </span>
                                 <button
-                                    key={f.tableNumber}
                                     type="button"
-                                    onClick={() => setActiveFilter(f.tableNumber)}
+                                    onClick={selectAll}
+                                    className="shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-bold text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                >
+                                    Chọn tất cả
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={clearSelection}
+                                    className="shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-bold text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                >
+                                    Bỏ chọn
+                                </button>
+                                <div className="h-4 w-px shrink-0 bg-zinc-200 dark:bg-zinc-700" />
+                                <button
+                                    type="button"
+                                    onClick={handleBatchServed}
+                                    disabled={batchSubmitting}
+                                    className="flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <CheckCheck className="h-3.5 w-3.5 stroke-[1.5]" />
+                                    <span>{batchSubmitting ? 'Đang xử lý…' : `Phục vụ đã chọn (${selectedIds.size})`}</span>
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveFilter('all')}
                                     className={`flex shrink-0 items-center space-x-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition-colors ${
-                                        activeFilter === f.tableNumber
+                                        activeFilter === 'all'
                                             ? 'bg-sky-600 text-white shadow-xs'
                                             : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
                                     }`}
                                 >
-                                    <span>{f.tableNumber}</span>
-                                    <span className={`ml-0.5 px-1 py-0.5 rounded-full text-[9px] tabular-nums ${
-                                        activeFilter === f.tableNumber
-                                            ? 'bg-white/20'
-                                            : 'bg-zinc-200 dark:bg-zinc-700'
-                                    }`}>
-                                        {f.count}
-                                    </span>
+                                    <Layers className="h-3.5 w-3.5 stroke-[1.5]" />
+                                    <span>Tất cả</span>
                                 </button>
-                            ))}
-                        </div>
+                                {tableFilters.map(f => (
+                                    <button
+                                        key={f.tableNumber}
+                                        type="button"
+                                        onClick={() => setActiveFilter(f.tableNumber)}
+                                        className={`flex shrink-0 items-center space-x-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                                            activeFilter === f.tableNumber
+                                                ? 'bg-sky-600 text-white shadow-xs'
+                                                : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
+                                        }`}
+                                    >
+                                        <span>{f.tableNumber}</span>
+                                        <span className={`ml-0.5 px-1 py-0.5 rounded-full text-[9px] tabular-nums ${
+                                            activeFilter === f.tableNumber
+                                                ? 'bg-white/20'
+                                                : 'bg-zinc-200 dark:bg-zinc-700'
+                                        }`}>
+                                            {f.count}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Right: Stats + Actions + Avatar */}
@@ -389,59 +491,71 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                            {filteredQueue.map((card) => (
-                                <div
-                                    key={card.id}
-                                    className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-xs flex flex-col overflow-hidden"
-                                >
-                                    <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <ConciergeBell className="w-4 h-4 stroke-[1.5] text-sky-600 dark:text-sky-400 shrink-0" />
-                                            <span className="font-display font-bold text-sm text-zinc-900 dark:text-zinc-100 truncate">
-                                                {card.table_number}
-                                            </span>
-                                            {card.table_area && (
-                                                <span className="text-[10px] font-medium text-zinc-400 truncate">
-                                                    {card.table_area}
+                            {filteredQueue.map((card) => {
+                                const isSelected = selectedIds.has(card.id);
+                                return (
+                                    <div
+                                        key={card.id}
+                                        className={`bg-white dark:bg-zinc-900 border rounded-2xl shadow-xs flex flex-col overflow-hidden cursor-pointer transition-all duration-150 ${
+                                            isSelected
+                                                ? 'border-sky-300 ring-2 ring-sky-500 dark:border-sky-700'
+                                                : 'border-zinc-200/80 dark:border-zinc-800/80'
+                                        }`}
+                                        onClick={() => toggleSelect(card.id)}
+                                    >
+                                        <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                {isSelected ? (
+                                                    <CheckSquare className="w-4 h-4 stroke-[1.5] text-sky-600 dark:text-sky-400 shrink-0" />
+                                                ) : (
+                                                    <Square className="w-4 h-4 stroke-[1.5] text-zinc-300 dark:text-zinc-600 shrink-0" />
+                                                )}
+                                                <span className="font-display font-bold text-sm text-zinc-900 dark:text-zinc-100 truncate">
+                                                    {card.table_number}
                                                 </span>
-                                            )}
-                                        </div>
-                                        <ElapsedTimer completedAt={card.completed_at} />
-                                    </div>
-
-                                    <div className="flex-1 px-4 py-2.5 space-y-1.5 min-h-0">
-                                        {card.items.map((item) => (
-                                            <div key={item.id} className="flex items-start justify-between gap-2">
-                                                <div className="flex items-center gap-1.5 min-w-0">
-                                                    <span className="tabular-nums text-xs font-bold text-zinc-900 dark:text-zinc-100 shrink-0">
-                                                        {item.quantity}x
-                                                    </span>
-                                                    <span className="text-xs text-zinc-600 dark:text-zinc-400 truncate">
-                                                        {item.name}
-                                                    </span>
-                                                </div>
-                                                {item.note && (
-                                                    <span className="text-[10px] text-amber-600 dark:text-amber-400 shrink-0 italic max-w-[120px] truncate">
-                                                        {item.note}
+                                                {card.table_area && (
+                                                    <span className="text-[10px] font-medium text-zinc-400 truncate">
+                                                        {card.table_area}
                                                     </span>
                                                 )}
                                             </div>
-                                        ))}
-                                    </div>
+                                            <ElapsedTimer completedAt={card.completed_at} />
+                                        </div>
 
-                                    <div className="px-4 py-2.5 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleServed(card)}
-                                            disabled={submittingIds.has(card.id)}
-                                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
-                                        >
-                                            <CheckCircle className="w-3.5 h-3.5 stroke-[1.5]" />
-                                            {submittingIds.has(card.id) ? 'Đang xử lý…' : 'Đã phục vụ'}
-                                        </button>
+                                        <div className="flex-1 px-4 py-2.5 space-y-1.5 min-h-0">
+                                            {card.items.map((item) => (
+                                                <div key={item.id} className="flex items-start justify-between gap-2">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <span className="tabular-nums text-xs font-bold text-zinc-900 dark:text-zinc-100 shrink-0">
+                                                            {item.quantity}x
+                                                        </span>
+                                                        <span className="text-xs text-zinc-600 dark:text-zinc-400 truncate">
+                                                            {item.name}
+                                                        </span>
+                                                    </div>
+                                                    {item.note && (
+                                                        <span className="text-[10px] text-amber-600 dark:text-amber-400 shrink-0 italic max-w-[120px] truncate">
+                                                            {item.note}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="px-4 py-2.5 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); handleServed(card); }}
+                                                disabled={submittingIds.has(card.id)}
+                                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
+                                            >
+                                                <CheckCircle className="w-3.5 h-3.5 stroke-[1.5]" />
+                                                {submittingIds.has(card.id) ? 'Đang xử lý…' : 'Đã phục vụ'}
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
