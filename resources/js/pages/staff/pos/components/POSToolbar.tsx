@@ -3,7 +3,6 @@ import { Link, router, usePage } from '@inertiajs/react';
 import {
     Armchair,
     UtensilsCrossed,
-    ConciergeBell,
     Activity,
     Maximize2,
     Minimize2,
@@ -16,14 +15,13 @@ import type { POSTableData } from '../types/pos.types';
 import AvatarDropdown from '../../../../components/AvatarDropdown';
 import { useReverbStatus } from '../hooks/useReverbStatus';
 
-type POSToolbarTab = 'tables' | 'menu' | 'serving' | 'log';
+type POSToolbarTab = 'tables' | 'menu' | 'log';
 
 interface POSToolbarProps {
     activeTab: POSToolbarTab;
     onTabChange: (tab: POSToolbarTab) => void;
     selectedTable: POSTableData | null;
     cartItemCount: number;
-    servingCount: number;
     unreadErrorCount: number;
     onClearUnread: () => void;
     searchQuery: string;
@@ -36,7 +34,6 @@ export default function POSToolbar({
     onTabChange,
     selectedTable,
     cartItemCount,
-    servingCount,
     unreadErrorCount,
     onClearUnread,
     searchQuery,
@@ -146,19 +143,6 @@ export default function POSToolbar({
                     )}
                 </button>
 
-                <button
-                    type="button"
-                    onClick={() => onTabChange('serving')}
-                    className={tabButtonClass('serving')}
-                >
-                    <ConciergeBell className="w-3.5 h-3.5 stroke-[1.5]" />
-                    <span>Phục vụ</span>
-                    {servingCount > 0 && (
-                        <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-sky-500 text-white font-bold text-[10px] tabular-nums">
-                            {servingCount}
-                        </span>
-                    )}
-                </button>
             </div>
 
             {/* Middle — Flexible Search Input (stretches to fill all available space) */}

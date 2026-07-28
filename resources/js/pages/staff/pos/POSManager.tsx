@@ -4,23 +4,21 @@ import DashboardLayout from '../../../layouts/DashboardLayout';
 import POSTableTab from './components/POSTableTab';
 import POSMenuTab from './components/POSMenuTab';
 import POSCartPanel from './components/POSCartPanel';
-import POSServingTab from './components/POSServingTab';
 import POSLogTab, { SystemLogEntry } from './components/POSLogTab';
 import PaymentDrawer from './components/PaymentDrawer';
 import ReceiptPrintModal from './components/ReceiptPrintModal';
 import ReservationConfirmModal from './components/ReservationConfirmModal';
 import POSToolbar from './components/POSToolbar';
 
-import { POSManagerProps, ServingItem } from './types/pos.types';
+import { POSManagerProps } from './types/pos.types';
 import { usePOSTables } from './hooks/usePOSTables';
 import { usePOSCart } from './hooks/usePOSCart';
 import { usePOSCheckout } from './hooks/usePOSCheckout';
 
 export default function POSManager({ tables, categories, products }: POSManagerProps) {
-    const [activeTab, setActiveTab] = useState<'tables' | 'menu' | 'serving' | 'log'>('tables');
+    const [activeTab, setActiveTab] = useState<'tables' | 'menu' | 'log'>('tables');
     const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([]);
     const [unreadErrorCount, setUnreadErrorCount] = useState<number>(0);
-    const [servingQueue, setServingQueue] = useState<ServingItem[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [autoSwitchToMenu, setAutoSwitchToMenu] = useState<boolean>(() => {
         if (typeof window !== 'undefined') {
@@ -51,15 +49,6 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         }
     }, []);
 
-    // Load initial serving queue
-    useEffect(() => {
-        fetch('/staff/pos/serving-queue')
-            .then(res => res.json())
-            .then(data => {
-                if (Array.isArray(data)) setServingQueue(data);
-            })
-            .catch(() => {});
-    }, []);
 
     // Silent background reload for ingredient stock updates
     useEffect(() => {
@@ -167,33 +156,10 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 });
             };
 
-            const handleItemsReady = (payload: any) => {
-                const eventKey = `ItemsReadyToServe_${payload?.order_id}`;
-                if (isDuplicateEvent(eventKey)) return;
-
-                const newCard: ServingItem = {
-                    id: `${payload.order_id}_${Date.now()}`,
-                    order_id: payload.order_id,
-                    order_code: payload.order_code,
-                    table_number: payload.table_number,
-                    table_area: payload.table_area,
-                    items: (payload.completed_items || []).map((i: any) => ({
-                        id: i.id,
-                        name: i.name,
-                        quantity: i.quantity,
-                        note: i.note || null,
-                    })),
-                    completed_at: payload.completed_at,
-                };
-
-                setServingQueue(prev => [newCard, ...prev]);
-                addLogEntry('received', 'Bếp vừa hoàn thành món', `${payload.table_number} - ${(payload.completed_items || []).map((i: any) => i.name).join(', ')}`);
-            };
 
             channel
                 .listen('.OrderSentToKitchen', handleOrderSent)
                 .listen('.OrderCompleted', (data: any) => handleTableReload('OrderCompleted', data))
-                .listen('.ItemsReadyToServe', handleItemsReady)
                 .listen('.TableStatusUpdated', (data: any) => handleTableReload('TableStatusUpdated', data))
                 .listen('.TableTransferred', (data: any) => handleTableReload('TableTransferred', data));
 
@@ -235,15 +201,6 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         return lockedId ? lockedCheckoutTables[lockedId].employeeName : '';
     }, [selectedTable, tables, lockedCheckoutTables]);
 
-    const handleMarkServed = useCallback((itemIds: number[]) => {
-        setServingQueue(prev =>
-            prev.filter(card => !card.items.every(i => itemIds.includes(i.id)))
-        );
-        router.reload({
-            only: ['tables'],
-            onError: () => {},
-        });
-    }, []);
 
     return (
         <DashboardLayout fullWidth={true} hideNavbar={true}>
@@ -255,7 +212,6 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 onTabChange={setActiveTab}
                 selectedTable={selectedTable}
                 cartItemCount={currentCart.reduce((s, i) => s + i.quantity, 0)}
-                servingCount={servingQueue.length}
                 unreadErrorCount={unreadErrorCount}
                 onClearUnread={() => setUnreadErrorCount(0)}
                 onOpenLog={() => setUnreadErrorCount(0)}
@@ -293,11 +249,6 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                     cartItems={currentCart}
                                     onToggleProduct={handleToggleProduct}
                                     searchQuery={searchQuery}
-                                />
-                            ) : activeTab === 'serving' ? (
-                                <POSServingTab
-                                    servingQueue={servingQueue}
-                                    onMarkServed={handleMarkServed}
                                 />
                             ) : (
                                 <POSLogTab
