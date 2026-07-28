@@ -80,23 +80,7 @@ class KitchenController extends Controller
                         'status' => 'completed',
                     ]);
 
-                    $recipes = ProductRecipe::where('menu_item_id', $item->menu_item_id)->get();
-                    foreach ($recipes as $recipe) {
-                        $ingredient = Ingredient::find($recipe->ingredient_id);
-                        if ($ingredient) {
-                            $deductQuantity = (float) $recipe->amount * (int) $item->quantity;
-                            $ingredient->decrement('stock_quantity', $deductQuantity);
-
-                            InventoryTransaction::create([
-                                'ingredient_id' => $ingredient->id,
-                                'employee_id' => $employeeId,
-                                'type' => 'export',
-                                'quantity' => $deductQuantity,
-                                'reason' => "Xuất kho tự động cho đơn {$order->order_code}",
-                                'transacted_at' => now(),
-                            ]);
-                        }
-                    }
+                    $this->deductIngredients($item, $employeeId, $order->order_code);
                 }
             });
 
@@ -107,6 +91,72 @@ class KitchenController extends Controller
             Log::error('Kitchen completeOrder DB error: '.$e->getMessage());
 
             return back()->withErrors(['error' => 'Hoàn thành đơn thất bại: Không thể kết nối hoặc lưu cơ sở dữ liệu. Vui lòng thử lại.']);
+        }
+    }
+
+    public function completeItems(Request $request)
+    {
+        $validated = $request->validate([
+            'order_id' => 'required|exists:orders,id',
+            'item_ids' => 'required|array|min:1',
+            'item_ids.*' => 'exists:order_items,id',
+        ]);
+
+        try {
+            $order = Order::findOrFail($validated['order_id']);
+            $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
+
+            DB::transaction(function () use ($validated, $order, $employeeId) {
+                $items = OrderItem::whereIn('id', $validated['item_ids'])
+                    ->where('order_id', $order->id)
+                    ->whereIn('status', ['pending', 'processing'])
+                    ->get();
+
+                foreach ($items as $item) {
+                    $item->update(['status' => 'completed']);
+                    $this->deductIngredients($item, $employeeId, $order->order_code);
+                }
+
+                $remainingActive = $order->items()
+                    ->whereNotIn('status', ['cancelled', 'completed'])
+                    ->count();
+
+                if ($remainingActive === 0) {
+                    $order->update([
+                        'status' => 'completed',
+                        'has_additional_items' => false,
+                    ]);
+                }
+            });
+
+            $this->safeDispatch(fn () => OrderCompleted::dispatch($order));
+
+            return back()->with('success', 'Đã xác nhận hoàn thành các món đã chọn và tự động trừ nguyên liệu kho thành công!');
+        } catch (\Throwable $e) {
+            Log::error('Kitchen completeItems DB error: '.$e->getMessage());
+
+            return back()->withErrors(['error' => 'Hoàn thành món thất bại: Không thể kết nối hoặc lưu cơ sở dữ liệu. Vui lòng thử lại.']);
+        }
+    }
+
+    private function deductIngredients(OrderItem $item, ?int $employeeId, string $orderCode): void
+    {
+        $recipes = ProductRecipe::where('menu_item_id', $item->menu_item_id)->get();
+        foreach ($recipes as $recipe) {
+            $ingredient = Ingredient::find($recipe->ingredient_id);
+            if ($ingredient) {
+                $deductQuantity = (float) $recipe->amount * (int) $item->quantity;
+                $ingredient->decrement('stock_quantity', $deductQuantity);
+
+                InventoryTransaction::create([
+                    'ingredient_id' => $ingredient->id,
+                    'employee_id' => $employeeId,
+                    'type' => 'export',
+                    'quantity' => $deductQuantity,
+                    'reason' => "Xuất kho tự động cho đơn {$orderCode}",
+                    'transacted_at' => now(),
+                ]);
+            }
         }
     }
 

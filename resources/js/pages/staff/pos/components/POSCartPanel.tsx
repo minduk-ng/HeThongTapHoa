@@ -1,11 +1,24 @@
 import React, { useState } from 'react';
 import { usePage } from '@inertiajs/react';
-import { Armchair, ShoppingBag, Lock, Trash2, Send, CreditCard, ArrowRightLeft, Plus, X } from 'lucide-react';
+import {
+    Armchair,
+    ShoppingBag,
+    Lock,
+    Trash2,
+    Send,
+    CreditCard,
+    ArrowRightLeft,
+    Plus,
+    X,
+    Menu,
+    StickyNote,
+} from 'lucide-react';
 import { POSTableData, CartItem } from '../types/pos.types';
 import TransferMergeModal from './TransferMergeModal';
 import ReduceItemModal from './ReduceItemModal';
 
 import VoidItemModal from '@/pages/staff/kitchen/components/VoidItemModal';
+import NotePopupModal from './NotePopupModal';
 
 interface POSCartPanelProps {
     selectedTable: POSTableData | null;
@@ -17,7 +30,12 @@ interface POSCartPanelProps {
     onAddInvoice: () => void;
     onRemoveInvoice: (invoiceId: string) => void;
     onUpdateQuantity: (menuItemId: number, delta: number) => void;
-    onStageReduction: (orderItemId: number, reduceQty: number, reason: string, note?: string) => void;
+    onStageReduction: (
+        orderItemId: number,
+        reduceQty: number,
+        reason: string,
+        note?: string,
+    ) => void;
     onRemoveItem: (menuItemId: number) => void;
     onUpdateNote: (menuItemId: number, note: string) => void;
     onSendToKitchen: () => void;
@@ -47,13 +65,29 @@ export default function POSCartPanel({
     checkoutLockedBy = '',
 }: POSCartPanelProps) {
     const { auth } = usePage<any>().props;
-    const canBypassKitchen = !!(auth?.is_admin || auth?.permissions?.includes('pos.bypass_kitchen_lock'));
-    const canCancel = !!(auth?.is_admin || auth?.permissions?.includes('pos.cancel_item') || auth?.permissions?.includes('kitchen.cancel_item'));
+    const canBypassKitchen = !!(
+        auth?.is_admin || auth?.permissions?.includes('pos.bypass_kitchen_lock')
+    );
+    const canCancel = !!(
+        auth?.is_admin ||
+        auth?.permissions?.includes('pos.cancel_item') ||
+        auth?.permissions?.includes('kitchen.cancel_item')
+    );
     const [managerBypass, setManagerBypass] = useState(false);
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+    const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
 
     // Reduce Item Modal State (staged reduction before sending to kitchen)
     const [reduceModalState, setReduceModalState] = useState<{
+        isOpen: boolean;
+        item: CartItem | null;
+    }>({
+        isOpen: false,
+        item: null,
+    });
+
+    // Note Popup Modal State
+    const [noteModalState, setNoteModalState] = useState<{
         isOpen: boolean;
         item: CartItem | null;
     }>({
@@ -78,17 +112,18 @@ export default function POSCartPanel({
 
     if (!selectedTable) {
         return (
-            <div className="h-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-6 flex flex-col justify-between">
+            <div className="flex h-full flex-col justify-between rounded-2xl border border-zinc-200/80 bg-white p-6 dark:border-zinc-800/80 dark:bg-zinc-900">
                 <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-500 shrink-0 border border-zinc-200/60 dark:border-zinc-700/60">
-                        <Armchair className="w-6 h-6 stroke-[1.5]" />
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-zinc-200/60 bg-zinc-100 text-zinc-500 dark:border-zinc-700/60 dark:bg-zinc-800/80">
+                        <Armchair className="h-6 w-6 stroke-[1.5]" />
                     </div>
                     <div>
-                        <h3 className="font-display text-xl font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">
+                        <h3 className="font-display text-xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100">
                             Chưa chọn bàn phục vụ
                         </h3>
-                        <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                            Vui lòng nhấp chọn một bàn từ sơ đồ khu vực bên trái để bắt đầu tạo giỏ hàng và gửi order xuống Bếp.
+                        <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                            Vui lòng nhấp chọn một bàn từ sơ đồ khu vực bên trái
+                            để bắt đầu tạo giỏ hàng và gửi order xuống Bếp.
                         </p>
                     </div>
                 </div>
@@ -97,7 +132,10 @@ export default function POSCartPanel({
     }
 
     // Calculations
-    const subtotal = cartItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+    const subtotal = cartItems.reduce(
+        (sum, item) => sum + item.quantity * item.unit_price,
+        0,
+    );
     const vatTotal = cartItems.reduce((sum, item) => {
         const itemSubtotal = item.quantity * item.unit_price;
         return sum + itemSubtotal * ((item.vat_rate || 0) / 100);
@@ -105,17 +143,25 @@ export default function POSCartPanel({
     const totalAmount = subtotal + vatTotal;
 
     const unconfirmedItems = cartItems.filter((i) => !i.isConfirmed);
-    const hasStagedReductions = cartItems.some((i) => (i.stagedReduceQty || 0) > 0);
-    const hasUnconfirmedChanges = unconfirmedItems.length > 0 || hasStagedReductions;
+    const hasStagedReductions = cartItems.some(
+        (i) => (i.stagedReduceQty || 0) > 0,
+    );
+    const hasUnconfirmedChanges =
+        unconfirmedItems.length > 0 || hasStagedReductions;
 
     const confirmedItems = cartItems.filter((i) => i.isConfirmed);
-    const hasKitchenPendingOrders = confirmedItems.some((i) => !i.isKitchenCompleted);
+    const hasKitchenPendingOrders = confirmedItems.some(
+        (i) => !i.isKitchenCompleted,
+    );
 
     const isKitchenBlocked = hasKitchenPendingOrders && !managerBypass;
-    const isPaymentBlocked = hasUnconfirmedChanges || isKitchenBlocked || activeInvoiceId.startsWith('draft_');
+    const isPaymentBlocked =
+        hasUnconfirmedChanges ||
+        isKitchenBlocked ||
+        activeInvoiceId.startsWith('draft_');
 
     return (
-        <div className="h-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl flex flex-col justify-between overflow-hidden">
+        <div className="flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200/80 bg-white dark:border-zinc-800/80 dark:bg-zinc-900">
             <VoidItemModal
                 isOpen={cancelModalState.isOpen}
                 onClose={() =>
@@ -135,83 +181,133 @@ export default function POSCartPanel({
 
             <ReduceItemModal
                 isOpen={reduceModalState.isOpen}
-                onClose={() => setReduceModalState({ isOpen: false, item: null })}
+                onClose={() =>
+                    setReduceModalState({ isOpen: false, item: null })
+                }
                 item={reduceModalState.item}
                 onConfirm={(orderItemId, reduceQty, reason, note) => {
                     onStageReduction(orderItemId, reduceQty, reason, note);
                 }}
             />
 
-            <TransferMergeModal 
+            <NotePopupModal
+                isOpen={noteModalState.isOpen}
+                item={noteModalState.item}
+                onSave={(menuItemId, note) => onUpdateNote(menuItemId, note)}
+                onClose={() => setNoteModalState({ isOpen: false, item: null })}
+            />
+
+            <TransferMergeModal
                 isOpen={isTransferModalOpen}
                 onClose={() => setIsTransferModalOpen(false)}
                 selectedTable={selectedTable}
                 tables={tables}
             />
             {/* Header (Fixed Top) */}
-            <div className="shrink-0 p-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-800/40">
+            <div className="shrink-0 border-b border-zinc-200/80 bg-zinc-50/60 px-4 py-3 dark:border-zinc-800/80 dark:bg-zinc-800/40">
                 <div className="flex items-center justify-between">
-                    <div>
-                        <div className="flex items-center space-x-2">
-                            <h2 className="font-display text-2xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100">
-                                {selectedTable.table_number}
-                            </h2>
-                            {(selectedTable.merged_into_table || selectedTable.merged_into_table_id) && (
-                                <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
-                                    Gộp với {selectedTable.merged_into_table?.table_number || `Bàn #${selectedTable.merged_into_table_id}`}
-                                </span>
-                            )}
-                        </div>
-                        <p className="text-xs text-zinc-400 mt-0.5">Sức chứa: {selectedTable.capacity} ghế</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        {confirmedItems.length > 0 && canCancel && confirmedItems.some((i) => !i.isKitchenCompleted) && (
-                            <button
-                                type="button"
-                                disabled={submitting || isCheckoutLocked}
-                                onClick={() =>
-                                    setCancelModalState({
-                                        isOpen: true,
-                                        mode: 'order',
-                                        tableId: selectedTable.id,
-                                        menuItemName: `Toàn bộ đơn ${selectedTable.table_number}`,
-                                    })
-                                }
-                                className="px-2.5 py-1 text-xs font-semibold rounded-md border bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800 flex items-center gap-1 transition-colors disabled:opacity-40"
-                                title="Hủy toàn bộ đơn hàng của bàn này"
-                            >
-                                <Trash2 className="w-3.5 h-3.5 stroke-[1.5]" />
-                                <span>Hủy đơn</span>
-                            </button>
+                    <div className="flex min-w-0 items-center space-x-2">
+                        <h2 className="font-display text-2xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100">
+                            {selectedTable.table_number}
+                        </h2>
+                        {(selectedTable.merged_into_table ||
+                            selectedTable.merged_into_table_id) && (
+                            <span className="shrink-0 rounded-md border border-amber-200 bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-300">
+                                Gộp với{' '}
+                                {selectedTable.merged_into_table
+                                    ?.table_number ||
+                                    `Bàn #${selectedTable.merged_into_table_id}`}
+                            </span>
                         )}
+                        <span
+                            className={`shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
+                                selectedTable.status === 'occupied'
+                                    ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/60 dark:text-amber-300'
+                                    : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/60 dark:text-emerald-300'
+                            }`}
+                        >
+                            {selectedTable.status === 'occupied'
+                                ? 'Đang phục vụ'
+                                : 'Bàn trống'}
+                        </span>
+                    </div>
 
+                    {/* Actions Menu Dropdown */}
+                    <div className="relative shrink-0">
                         <button
                             type="button"
-                            disabled={submitting || isCheckoutLocked}
-                            onClick={() => setIsTransferModalOpen(true)}
-                            className="px-2.5 py-1 text-xs font-semibold rounded-md border bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800 flex items-center gap-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            title={isCheckoutLocked ? 'Bàn đang thực hiện thanh toán, không thể chuyển/gộp' : 'Chuyển, Gộp hoặc Tách bàn'}
+                            onClick={() =>
+                                setIsActionsMenuOpen(!isActionsMenuOpen)
+                            }
+                            className="flex items-center justify-center rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                            title="Thao tác khác"
                         >
-                            <ArrowRightLeft className="w-3.5 h-3.5 stroke-[1.5]" />
-                            <span>Chuyển/Gộp</span>
+                            <Menu className="h-4 w-4 stroke-[1.5]" />
                         </button>
-                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${
-                            selectedTable.status === 'occupied'
-                                ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/60'
-                                : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60'
-                        }`}>
-                            {selectedTable.status === 'occupied' ? 'Đang phục vụ' : 'Bàn trống'}
-                        </span>
+
+                        {isActionsMenuOpen && (
+                            <>
+                                <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setIsActionsMenuOpen(false)}
+                                />
+                                <div className="animate-in fade-in slide-in-from-top-1 absolute top-full right-0 z-50 mt-1 w-44 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg duration-100 dark:border-zinc-800 dark:bg-zinc-950">
+                                    {confirmedItems.length > 0 &&
+                                        canCancel &&
+                                        confirmedItems.some(
+                                            (i) => !i.isKitchenCompleted,
+                                        ) && (
+                                            <button
+                                                type="button"
+                                                disabled={
+                                                    submitting ||
+                                                    isCheckoutLocked
+                                                }
+                                                onClick={() => {
+                                                    setIsActionsMenuOpen(false);
+                                                    setCancelModalState({
+                                                        isOpen: true,
+                                                        mode: 'order',
+                                                        tableId:
+                                                            selectedTable.id,
+                                                        menuItemName: `Toàn bộ đơn ${selectedTable.table_number}`,
+                                                    });
+                                                }}
+                                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-50 disabled:opacity-40 dark:text-rose-300 dark:hover:bg-rose-950/50"
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5 stroke-[1.5]" />
+                                                <span>Hủy đơn</span>
+                                            </button>
+                                        )}
+                                    <button
+                                        type="button"
+                                        disabled={
+                                            submitting || isCheckoutLocked
+                                        }
+                                        onClick={() => {
+                                            setIsActionsMenuOpen(false);
+                                            setIsTransferModalOpen(true);
+                                        }}
+                                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                    >
+                                        <ArrowRightLeft className="h-3.5 w-3.5 stroke-[1.5]" />
+                                        <span>Chuyển / Gộp</span>
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
 
                 {/* Tabs bar: Dòng 2 chứa danh sách các hóa đơn */}
-                <div className="flex items-center space-x-1.5 mt-3 pt-2 border-t border-zinc-200/50 dark:border-zinc-800/50 overflow-x-auto scrollbar-none shrink-0 select-none">
+                <div className="mt-3 flex shrink-0 scrollbar-none items-center space-x-1.5 overflow-x-auto border-t border-zinc-200/50 pt-2 select-none dark:border-zinc-800/50">
                     {Object.keys(tableCarts).map((invoiceId, idx) => {
                         const isDraft = invoiceId.startsWith('draft_');
                         const isActive = activeInvoiceId === invoiceId;
                         const invoiceCart = tableCarts[invoiceId] || [];
-                        const isCompleted = invoiceCart.length > 0 && invoiceCart.every(i => i.isKitchenCompleted);
+                        const isCompleted =
+                            invoiceCart.length > 0 &&
+                            invoiceCart.every((i) => i.isKitchenCompleted);
 
                         let label = invoiceId;
                         if (isDraft) {
@@ -222,14 +318,14 @@ export default function POSCartPanel({
                             <div
                                 key={invoiceId}
                                 onClick={() => onSelectInvoice(invoiceId)}
-                                className={`group flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all duration-150 shrink-0 ${
+                                className={`group flex shrink-0 cursor-pointer items-center space-x-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all duration-150 ${
                                     isActive
                                         ? isDraft
-                                            ? 'bg-zinc-100 border-zinc-300 text-zinc-900 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-100'
+                                            ? 'border-zinc-300 bg-zinc-100 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100'
                                             : isCompleted
-                                                ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-300'
-                                                : 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:border-amber-900/60 dark:text-amber-300'
-                                        : 'bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-500 dark:bg-zinc-900 dark:hover:bg-zinc-800/50 dark:border-zinc-800 dark:text-zinc-400'
+                                              ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                              : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300'
+                                        : 'border-zinc-200 bg-white text-zinc-500 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50'
                                 } ${isDraft ? 'border-dashed' : ''}`}
                             >
                                 <span>{label}</span>
@@ -240,10 +336,10 @@ export default function POSCartPanel({
                                             e.stopPropagation();
                                             onRemoveInvoice(invoiceId);
                                         }}
-                                        className="text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 p-0.5 rounded-full transition-colors"
+                                        className="rounded-full p-0.5 text-zinc-400 transition-colors hover:text-rose-600 dark:hover:text-rose-400"
                                         title="Xóa hóa đơn nháp này"
                                     >
-                                        <X className="w-3 h-3 stroke-[1.5]" />
+                                        <X className="h-3 w-3 stroke-[1.5]" />
                                     </button>
                                 )}
                             </div>
@@ -253,140 +349,203 @@ export default function POSCartPanel({
                     <button
                         type="button"
                         onClick={onAddInvoice}
-                        className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors shrink-0"
+                        className="shrink-0 rounded-lg border border-zinc-200 p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                         title="Thêm hóa đơn mới"
                     >
-                        <Plus className="w-3.5 h-3.5 stroke-2" />
+                        <Plus className="h-3.5 w-3.5 stroke-2" />
                     </button>
                 </div>
             </div>
 
             {/* Cart Items List (Independent Scroll Area) */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
                 {cartItems.length === 0 ? (
-                    <div className="h-full flex flex-col justify-center p-4">
+                    <div className="flex h-full flex-col justify-center p-4">
                         <div className="flex items-start space-x-3 text-zinc-400">
-                            <ShoppingBag className="w-5 h-5 text-zinc-400 shrink-0 mt-0.5 stroke-[1.5]" />
+                            <ShoppingBag className="mt-0.5 h-5 w-5 shrink-0 stroke-[1.5] text-zinc-400" />
                             <div>
-                                <h4 className="font-display text-lg text-zinc-700 dark:text-zinc-300">Giỏ hàng trống</h4>
-                                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                                    Chưa có món nào được chọn cho bàn này. Bạn có thể chuyển sang tab “Chọn món” để thêm sản phẩm.
+                                <h4 className="font-display text-lg text-zinc-700 dark:text-zinc-300">
+                                    Giỏ hàng trống
+                                </h4>
+                                <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                                    Chưa có món nào được chọn cho bàn này. Bạn
+                                    có thể chuyển sang tab “Chọn món” để thêm
+                                    sản phẩm.
                                 </p>
                             </div>
                         </div>
                     </div>
                 ) : (
                     cartItems.map((item) => {
-                        const isMinusDisabled = !!(item.isConfirmed && (item.isKitchenCompleted || item.quantity <= 0));
+                        const isMinusDisabled = !!(
+                            item.isConfirmed &&
+                            (item.isKitchenCompleted || item.quantity <= 0)
+                        );
                         const isDeleteDisabled = !!item.isConfirmed;
                         const itemKey = `${item.menu_item_id}_${item.isConfirmed ? (item.isKitchenCompleted ? 'completed' : 'pending') : 'draft'}`;
 
                         return (
                             <div
                                 key={itemKey}
-                                className={`p-3 border rounded-xl space-y-2 transition-colors duration-150 ${
+                                className={`group space-y-1.5 rounded-xl border p-3 transition-colors duration-150 ${
                                     item.isConfirmed
-                                        ? 'bg-zinc-50 dark:bg-zinc-800/60 border-zinc-200/80 dark:border-zinc-700/80'
-                                        : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
+                                        ? 'border-zinc-200/80 bg-zinc-50 dark:border-zinc-700/80 dark:bg-zinc-800/60'
+                                        : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
                                 }`}
                             >
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                                            <h4 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
-                                                {item.name}
-                                            </h4>
-                                            {item.isConfirmed && (
-                                                <span
-                                                    className={`px-2 py-0.5 text-[10px] font-medium rounded-md border shrink-0 ${
-                                                        item.isKitchenCompleted
-                                                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60'
-                                                            : 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/60'
-                                                    }`}
-                                                >
-                                                    {item.isKitchenCompleted ? 'Đã chế biến' : 'Đang chế biến'}
-                                                </span>
-                                            )}
-                                            {(item.stagedReduceQty || 0) > 0 && (
-                                                <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md border bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 shrink-0">
-                                                    Giảm {item.stagedReduceQty} — Chờ gửi Bếp
-                                                </span>
-                                            )}
-                                        </div>
-                                        <span className="text-xs text-zinc-500 tabular-nums">
-                                            {item.unit_price.toLocaleString('vi-VN')} đ/món
-                                        </span>
+                                {/* Row 1: Name + Status | Total */}
+                                <div className="flex items-start justify-between">
+                                    <div className="flex min-w-0 flex-wrap items-center space-x-2 gap-y-1">
+                                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                            {item.name}
+                                        </h4>
+                                        {item.isConfirmed && (
+                                            <span
+                                                className={`shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-medium ${
+                                                    item.isKitchenCompleted
+                                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                                        : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/60 dark:text-amber-300'
+                                                }`}
+                                            >
+                                                {item.isKitchenCompleted
+                                                    ? 'Đã chế biến'
+                                                    : 'Đang chế biến'}
+                                            </span>
+                                        )}
+                                        {(item.stagedReduceQty || 0) > 0 && (
+                                            <span className="shrink-0 rounded-md border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                                                Giảm {item.stagedReduceQty}
+                                            </span>
+                                        )}
                                     </div>
-                                    <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 tabular-nums">
-                                        {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
+                                    <span className="ml-2 shrink-0 text-sm font-bold text-zinc-900 tabular-nums dark:text-zinc-100">
+                                        {(
+                                            item.quantity * item.unit_price
+                                        ).toLocaleString('vi-VN')}{' '}
+                                        đ
                                     </span>
                                 </div>
 
-                                {/* Quantity Controls & Remove */}
-                                <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800/60 gap-2">
-                                    <input
-                                        type="text"
-                                        value={item.note || ''}
-                                        onChange={(e) => onUpdateNote(item.menu_item_id, e.target.value)}
-                                        placeholder="Ghi chú (ít đường, nhiều đá...)"
-                                        className="flex-1 px-2.5 py-1 text-xs border rounded-lg bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 transition-colors duration-150"
-                                    />
+                                {/* Row 2: Note preview (click popup) */}
+                                <div
+                                    onClick={() =>
+                                        setNoteModalState({
+                                            isOpen: true,
+                                            item,
+                                        })
+                                    }
+                                    className="cursor-pointer rounded-md border border-dashed border-transparent px-1 py-0.5 text-[11px] text-zinc-400 transition-colors hover:border-zinc-300 hover:text-zinc-600 dark:hover:border-zinc-600 dark:hover:text-zinc-300"
+                                >
+                                    {item.note ? (
+                                        <span className="line-clamp-1">
+                                            {item.note}
+                                        </span>
+                                    ) : (
+                                        <span className="italic">
+                                            Thêm ghi chú…
+                                        </span>
+                                    )}
+                                </div>
 
-                                    <div className="flex items-center space-x-2 shrink-0">
-                                        <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden bg-white dark:bg-zinc-800">
-                                            <button
-                                                type="button"
-                                                disabled={isMinusDisabled}
-                                                onClick={() => {
-                                                    if (!item.isConfirmed) {
-                                                        onUpdateQuantity(item.menu_item_id, -1);
-                                                    } else if (!item.isKitchenCompleted && item.quantity > 0) {
-                                                        setReduceModalState({ isOpen: true, item });
-                                                    }
-                                                }}
-                                                className="px-2 py-0.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-150"
-                                                title={item.isConfirmed ? 'Giảm số lượng món đang chế biến (kèm lý do)' : 'Giảm số lượng món nháp'}
-                                            >
-                                                -
-                                            </button>
-                                            <span className="px-2.5 py-0.5 text-xs font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
-                                                {item.quantity}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => onUpdateQuantity(item.menu_item_id, 1)}
-                                                className="px-2 py-0.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 font-bold transition-colors duration-150"
-                                                title="Gọi thêm món"
-                                            >
-                                                +
-                                            </button>
-                                        </div>
+                                {/* Row 3: Quantity Controls + Hidden Delete */}
+                                <div className="flex items-center justify-between pt-0.5">
+                                    <div className="flex items-center overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
+                                        <button
+                                            type="button"
+                                            disabled={isMinusDisabled}
+                                            onClick={() => {
+                                                if (!item.isConfirmed) {
+                                                    onUpdateQuantity(
+                                                        item.menu_item_id,
+                                                        -1,
+                                                    );
+                                                } else if (
+                                                    !item.isKitchenCompleted &&
+                                                    item.quantity > 0
+                                                ) {
+                                                    setReduceModalState({
+                                                        isOpen: true,
+                                                        item,
+                                                    });
+                                                }
+                                            }}
+                                            className="px-3 py-1.5 text-sm font-bold text-zinc-600 transition-colors duration-150 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                                            title={
+                                                item.isConfirmed
+                                                    ? 'Giảm số lượng món đang chế biến (kèm lý do)'
+                                                    : 'Giảm số lượng món nháp'
+                                            }
+                                        >
+                                            -
+                                        </button>
+                                        <span className="border-x border-zinc-200 px-3 py-1.5 text-xs font-bold text-zinc-900 tabular-nums dark:border-zinc-700 dark:text-zinc-100">
+                                            {item.quantity}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                onUpdateQuantity(
+                                                    item.menu_item_id,
+                                                    1,
+                                                )
+                                            }
+                                            className="px-3 py-1.5 text-sm font-bold text-zinc-600 transition-colors duration-150 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                                            title="Gọi thêm món"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
 
+                                    <div className="flex items-center space-x-1">
                                         {!isDeleteDisabled ? (
                                             <button
                                                 type="button"
-                                                onClick={() => onRemoveItem(item.menu_item_id)}
-                                                className="p-1 text-zinc-400 hover:text-rose-600 rounded-md transition-colors duration-150"
+                                                onClick={() =>
+                                                    onRemoveItem(
+                                                        item.menu_item_id,
+                                                    )
+                                                }
+                                                className="rounded-md p-1.5 text-zinc-400 opacity-0 transition-all duration-150 group-hover:opacity-100 hover:text-rose-600"
                                                 title="Hủy chọn món nháp"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="h-3.5 w-3.5" />
                                             </button>
-                                        ) : canCancel && item.orderItemId && !item.isKitchenCompleted && (item.stagedReduceQty || 0) < item.quantity ? (
+                                        ) : canCancel &&
+                                          item.orderItemId &&
+                                          !item.isKitchenCompleted &&
+                                          (item.stagedReduceQty || 0) <
+                                              item.quantity ? (
                                             <button
                                                 type="button"
-                                                onClick={() => setReduceModalState({ isOpen: true, item })}
-                                                className="p-1 text-rose-500 hover:text-rose-700 dark:hover:text-rose-300 rounded-md transition-colors duration-150"
+                                                onClick={() =>
+                                                    setReduceModalState({
+                                                        isOpen: true,
+                                                        item,
+                                                    })
+                                                }
+                                                className="rounded-md p-1.5 text-rose-500 transition-colors duration-150 hover:text-rose-700 dark:hover:text-rose-300"
                                                 title="Giảm / Hủy món đang chế biến kèm lý do"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="h-3.5 w-3.5" />
                                             </button>
-                                        ) : (item.stagedReduceQty || 0) >= item.quantity ? (
-                                            <span className="p-1 text-amber-500 dark:text-amber-400 cursor-not-allowed" title="Món đã được giảm về 0, ấn 'Gửi bếp chế biến' để xác nhận">
-                                                <Lock className="w-3.5 h-3.5" />
+                                        ) : (item.stagedReduceQty || 0) >=
+                                          item.quantity ? (
+                                            <span
+                                                className="cursor-not-allowed p-1.5 text-amber-500 dark:text-amber-400"
+                                                title="Món đã được giảm về 0, ấn 'Gửi bếp chế biến' để xác nhận"
+                                            >
+                                                <Lock className="h-3.5 w-3.5" />
                                             </span>
                                         ) : (
-                                            <span className="p-1 text-zinc-300 dark:text-zinc-600 cursor-not-allowed" title={item.isKitchenCompleted ? 'Món đã hoàn thành chế biến, không thể hủy' : 'Món đã gửi bếp không được xóa'}>
-                                                <Lock className="w-3.5 h-3.5 text-zinc-400" />
+                                            <span
+                                                className="cursor-not-allowed p-1.5 text-zinc-300 opacity-0 transition-all duration-150 group-hover:opacity-100 dark:text-zinc-600"
+                                                title={
+                                                    item.isKitchenCompleted
+                                                        ? 'Món đã hoàn thành chế biến, không thể hủy'
+                                                        : 'Món đã gửi bếp không được xóa'
+                                                }
+                                            >
+                                                <Lock className="h-3.5 w-3.5 text-zinc-400" />
                                             </span>
                                         )}
                                     </div>
@@ -398,18 +557,20 @@ export default function POSCartPanel({
             </div>
 
             {/* Financial Summary & Actions Footer (Fixed Bottom) */}
-            <div className="shrink-0 p-4 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-800/40 space-y-3">
+            <div className="shrink-0 space-y-3 border-t border-zinc-200/80 bg-zinc-50/60 p-4 dark:border-zinc-800/80 dark:bg-zinc-800/40">
                 {/* Kitchen completion status notice */}
                 {hasKitchenPendingOrders && (
-                    <div className="p-2.5 border border-amber-200 dark:border-amber-900/60 bg-amber-50/80 dark:bg-amber-950/40 rounded-xl text-xs text-amber-800 dark:text-amber-200 flex items-center justify-between">
+                    <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/80 p-2.5 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
                         <span>Đang chờ Bếp hoàn tất món ăn...</span>
                         {canBypassKitchen && (
                             <button
                                 type="button"
                                 onClick={() => setManagerBypass(!managerBypass)}
-                                className="font-semibold text-amber-700 dark:text-amber-300 hover:underline ml-2"
+                                className="ml-2 font-semibold text-amber-700 hover:underline dark:text-amber-300"
                             >
-                                {managerBypass ? 'Bắt buộc khóa' : 'Duyệt khẩn cấp'}
+                                {managerBypass
+                                    ? 'Bắt buộc khóa'
+                                    : 'Duyệt khẩn cấp'}
                             </button>
                         )}
                     </div>
@@ -417,16 +578,24 @@ export default function POSCartPanel({
 
                 <div className="space-y-1 text-xs">
                     <div className="flex justify-between text-zinc-500 dark:text-zinc-400">
-                        <span>Tạm tính ({cartItems.reduce((s, i) => s + i.quantity, 0)} món):</span>
-                        <span className="font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">{subtotal.toLocaleString('vi-VN')} đ</span>
+                        <span>
+                            Tạm tính (
+                            {cartItems.reduce((s, i) => s + i.quantity, 0)}{' '}
+                            món):
+                        </span>
+                        <span className="font-semibold text-zinc-800 tabular-nums dark:text-zinc-200">
+                            {subtotal.toLocaleString('vi-VN')} đ
+                        </span>
                     </div>
                     <div className="flex justify-between text-zinc-500 dark:text-zinc-400">
                         <span>Thuế VAT:</span>
-                        <span className="font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">{vatTotal.toLocaleString('vi-VN')} đ</span>
+                        <span className="font-semibold text-zinc-800 tabular-nums dark:text-zinc-200">
+                            {vatTotal.toLocaleString('vi-VN')} đ
+                        </span>
                     </div>
-                    <div className="flex justify-between text-sm font-bold text-zinc-900 dark:text-zinc-100 pt-1.5 border-t border-zinc-200/80 dark:border-zinc-700/80">
+                    <div className="flex justify-between border-t border-zinc-200/80 pt-1.5 text-sm font-bold text-zinc-900 dark:border-zinc-700/80 dark:text-zinc-100">
                         <span>Tổng thanh toán:</span>
-                        <span className="text-base font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                        <span className="text-base font-bold text-emerald-600 tabular-nums dark:text-emerald-400">
                             {totalAmount.toLocaleString('vi-VN')} đ
                         </span>
                     </div>
@@ -435,42 +604,66 @@ export default function POSCartPanel({
                 <div className="grid grid-cols-2 gap-3 pt-1">
                     <button
                         type="button"
-                        disabled={submitting || cartItems.length === 0 || !hasUnconfirmedChanges || isCheckoutLocked}
-                        onClick={onSendToKitchen}
-                        className={`py-2.5 px-3 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 transition-colors duration-150 ${
+                        disabled={
+                            submitting ||
+                            cartItems.length === 0 ||
+                            !hasUnconfirmedChanges ||
                             isCheckoutLocked
-                                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border border-zinc-200 dark:border-zinc-700 cursor-not-allowed opacity-50'
-                                : 'text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50'
+                        }
+                        onClick={onSendToKitchen}
+                        className={`flex items-center justify-center space-x-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors duration-150 ${
+                            isCheckoutLocked
+                                ? 'cursor-not-allowed border border-zinc-200 bg-zinc-100 text-zinc-400 opacity-50 dark:border-zinc-700 dark:bg-zinc-800'
+                                : 'bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-50'
                         }`}
-                        title={isCheckoutLocked ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}` : 'Gửi món vừa chọn hoặc thay đổi xuống Bếp'}
+                        title={
+                            isCheckoutLocked
+                                ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}`
+                                : 'Gửi món vừa chọn hoặc thay đổi xuống Bếp'
+                        }
                     >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>{submitting ? 'Đang gửi...' : 'Gửi bếp chế biến'}</span>
+                        <Send className="h-3.5 w-3.5" />
+                        <span>
+                            {submitting ? 'Đang gửi...' : 'Gửi bếp chế biến'}
+                        </span>
                     </button>
 
                     <button
                         type="button"
-                        disabled={submitting || cartItems.length === 0 || isPaymentBlocked || isCheckoutLocked}
-                        onClick={onOpenPayment}
-                        className={`py-2.5 px-3 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 transition-colors duration-150 ${
+                        disabled={
+                            submitting ||
+                            cartItems.length === 0 ||
+                            isPaymentBlocked ||
                             isCheckoutLocked
-                                ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 cursor-not-allowed opacity-90 font-bold'
+                        }
+                        onClick={onOpenPayment}
+                        className={`flex items-center justify-center space-x-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors duration-150 ${
+                            isCheckoutLocked
+                                ? 'cursor-not-allowed border border-rose-300 bg-rose-100 font-bold text-rose-700 opacity-90 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
                                 : isPaymentBlocked
-                                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border border-zinc-200 dark:border-zinc-700 cursor-not-allowed opacity-60'
-                                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                  ? 'cursor-not-allowed border border-zinc-200 bg-zinc-100 text-zinc-400 opacity-60 dark:border-zinc-700 dark:bg-zinc-800'
+                                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
                         }`}
                         title={
                             isCheckoutLocked
                                 ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}`
                                 : hasUnconfirmedChanges
-                                ? 'Vui lòng bấm “Gửi bếp chế biến” để lưu giỏ hàng trước khi thanh toán'
-                                : isKitchenBlocked
-                                ? 'Cần gửi toàn bộ món xuống Bếp và chờ Bếp làm xong mới được thanh toán'
-                                : 'Thanh toán đơn hàng'
+                                  ? 'Vui lòng bấm “Gửi bếp chế biến” để lưu giỏ hàng trước khi thanh toán'
+                                  : isKitchenBlocked
+                                    ? 'Cần gửi toàn bộ món xuống Bếp và chờ Bếp làm xong mới được thanh toán'
+                                    : 'Thanh toán đơn hàng'
                         }
                     >
-                        {isCheckoutLocked ? <Lock className="w-3.5 h-3.5" /> : <CreditCard className="w-3.5 h-3.5" />}
-                        <span>{isCheckoutLocked ? `Đang thanh toán: ${checkoutLockedBy}` : 'Thanh toán'}</span>
+                        {isCheckoutLocked ? (
+                            <Lock className="h-3.5 w-3.5" />
+                        ) : (
+                            <CreditCard className="h-3.5 w-3.5" />
+                        )}
+                        <span>
+                            {isCheckoutLocked
+                                ? `Đang thanh toán: ${checkoutLockedBy}`
+                                : 'Thanh toán'}
+                        </span>
                     </button>
                 </div>
             </div>

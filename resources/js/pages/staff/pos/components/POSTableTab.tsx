@@ -13,14 +13,36 @@ interface POSTableTabProps {
     onAutoSwitchChange?: (value: boolean) => void;
 }
 
-export default function POSTableTab({ tables, selectedTable, onSelectTable, lockedCheckoutTables = {}, draftTableCounts = {}, autoSwitchToMenu = false, onAutoSwitchChange }: POSTableTabProps) {
-    const safeTables = (Array.isArray(tables) ? tables : Object.values(tables || {})) as POSTableData[];
-    const groupedAreas = safeTables.reduce((acc, table) => {
-        const areaName = table.area || 'Khác';
-        if (!acc[areaName]) acc[areaName] = [];
-        acc[areaName].push(table);
-        return acc;
-    }, {} as Record<string, POSTableData[]>);
+export default function POSTableTab({
+    tables,
+    selectedTable,
+    onSelectTable,
+    lockedCheckoutTables = {},
+    draftTableCounts = {},
+    autoSwitchToMenu = false,
+    onAutoSwitchChange,
+}: POSTableTabProps) {
+    const safeTables = (
+        Array.isArray(tables) ? tables : Object.values(tables || {})
+    ) as POSTableData[];
+    const groupedAreas = safeTables.reduce(
+        (acc, table) => {
+            const areaName = table.area || 'Khác';
+            if (!acc[areaName]) acc[areaName] = [];
+            acc[areaName].push(table);
+            return acc;
+        },
+        {} as Record<string, POSTableData[]>,
+    );
+
+    // Sort tables by table_number within each area (natural sort)
+    Object.values(groupedAreas).forEach((areaTables) => {
+        areaTables.sort((a, b) =>
+            a.table_number.localeCompare(b.table_number, undefined, {
+                numeric: true,
+            }),
+        );
+    });
 
     // Ensure "Mang đi (Takeaway)" appears first
     const sortedAreaEntries = Object.entries(groupedAreas).sort(([a], [b]) => {
@@ -38,21 +60,22 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable, lock
     }));
 
     // Filter displayed entries based on selected area
-    const filteredTables = selectedArea === 'all'
-        ? sortedAreaEntries.flatMap(([_, areaTables]) => areaTables)
-        : safeTables.filter(t => (t.area || 'Khác') === selectedArea);
+    const filteredTables =
+        selectedArea === 'all'
+            ? sortedAreaEntries.flatMap(([_, areaTables]) => areaTables)
+            : safeTables.filter((t) => (t.area || 'Khác') === selectedArea);
 
     return (
-        <div className="h-full flex flex-col min-h-0 space-y-3">
+        <div className="flex h-full min-h-0 flex-col space-y-3">
             {/* Area Filter Pills */}
-            <div className="shrink-0 flex items-center space-x-2 overflow-x-auto pb-1 no-scrollbar">
+            <div className="no-scrollbar flex shrink-0 items-center space-x-2 overflow-x-auto pb-1">
                 <button
                     type="button"
                     onClick={() => setSelectedArea('all')}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors duration-150 ${
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors duration-150 ${
                         selectedArea === 'all'
                             ? 'bg-sky-600 text-white'
-                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
+                            : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300'
                     }`}
                 >
                     Tất cả ({safeTables.length})
@@ -62,10 +85,10 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable, lock
                         key={area.name}
                         type="button"
                         onClick={() => setSelectedArea(area.name)}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors duration-150 ${
+                        className={`rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors duration-150 ${
                             selectedArea === area.name
                                 ? 'bg-sky-600 text-white'
-                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
+                                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300'
                         }`}
                     >
                         {area.name} ({area.count})
@@ -74,82 +97,102 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable, lock
             </div>
 
             {/* Scrollable Table Grid */}
-            <div className="flex-1 overflow-y-auto pr-1 min-h-0">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pt-2">
+            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 gap-3 pt-2 sm:grid-cols-3 lg:grid-cols-4">
                     {filteredTables.map((table) => {
                         const isSelected = selectedTable?.id === table.id;
                         const isOccupied = table.status === 'occupied';
                         const isReserved = table.status === 'reserved';
                         const draftCount = draftTableCounts[table.id] || 0;
-                        const isDrafting = !isOccupied && !isReserved && draftCount > 0;
+                        const isDrafting =
+                            !isOccupied && !isReserved && draftCount > 0;
 
                         // Total count of items across all orders in current table session
                         const totalSessionItemsCount = table.active_orders
-                            ? table.active_orders.reduce((sum, order) => sum + (order.items?.length || 0), 0)
+                            ? table.active_orders.reduce(
+                                  (sum, order) =>
+                                      sum + (order.items?.length || 0),
+                                  0,
+                              )
                             : table.active_order?.items?.length || 0;
 
                         const resTimeStr = table.reservation_time
-                            ? new Date(table.reservation_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+                            ? new Date(
+                                  table.reservation_time,
+                              ).toLocaleTimeString('vi-VN', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                              })
                             : '';
 
                         const grpId = table.merged_into_table_id || table.id;
-                        const grpTableIds = safeTables.filter((t) => t.id === grpId || t.merged_into_table_id === grpId).map((t) => t.id);
-                        const groupLockInfo = grpTableIds.map((id) => lockedCheckoutTables[id]).find(Boolean);
+                        const grpTableIds = safeTables
+                            .filter(
+                                (t) =>
+                                    t.id === grpId ||
+                                    t.merged_into_table_id === grpId,
+                            )
+                            .map((t) => t.id);
+                        const groupLockInfo = grpTableIds
+                            .map((id) => lockedCheckoutTables[id])
+                            .find(Boolean);
 
                         return (
                             <div
                                 key={table.id}
                                 onClick={() => onSelectTable(table)}
-                                className={`relative cursor-pointer p-3.5 rounded-xl border transition-colors duration-150 select-none flex flex-col justify-between h-28 ${
+                                className={`relative flex h-28 cursor-pointer flex-col justify-between rounded-xl border p-3.5 transition-colors duration-150 select-none ${
                                     isSelected
                                         ? 'border-sky-600 bg-sky-50/70 dark:bg-sky-950/50'
                                         : isOccupied
-                                        ? 'border-amber-300 bg-amber-50/60 dark:bg-amber-950/30 hover:border-amber-400'
-                                        : isReserved
-                                        ? 'border-purple-300 bg-purple-50/60 dark:bg-purple-950/30 hover:border-purple-400'
-                                        : isDrafting
-                                        ? 'border-amber-200 bg-amber-50/40 dark:bg-amber-950/20 hover:border-amber-300'
-                                        : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700'
+                                          ? 'border-amber-300 bg-amber-50/60 hover:border-amber-400 dark:bg-amber-950/30'
+                                          : isReserved
+                                            ? 'border-purple-300 bg-purple-50/60 hover:border-purple-400 dark:bg-purple-950/30'
+                                            : isDrafting
+                                              ? 'border-amber-200 bg-amber-50/40 hover:border-amber-300 dark:bg-amber-950/20'
+                                              : 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700'
                                 }`}
                             >
-                                <div className="flex justify-between items-start">
+                                <div className="flex items-start justify-between">
                                     <span className="font-display text-xl font-normal text-zinc-900 dark:text-zinc-100">
                                         {table.table_number}
                                     </span>
                                     <div className="flex flex-col items-end gap-1">
                                         <span
-                                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+                                            className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
                                                 isOccupied
-                                                    ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/60'
+                                                    ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/60 dark:text-amber-300'
                                                     : isReserved
-                                                    ? 'bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-900/60'
-                                                    : isDrafting
-                                                    ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/60 dark:text-amber-200 dark:border-amber-800/80 font-bold'
-                                                    : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900/60'
+                                                      ? 'border-purple-200 bg-purple-50 text-purple-800 dark:border-purple-900/60 dark:bg-purple-950/60 dark:text-purple-300'
+                                                      : isDrafting
+                                                        ? 'border-amber-300 bg-amber-100 font-bold text-amber-900 dark:border-amber-800/80 dark:bg-amber-900/60 dark:text-amber-200'
+                                                        : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/60 dark:text-emerald-300'
                                             }`}
                                         >
-                                            {table.merged_into_table_id || table.merged_into_table
+                                            {table.merged_into_table_id ||
+                                            table.merged_into_table
                                                 ? `Gộp với ${table.merged_into_table?.table_number || `Bàn #${table.merged_into_table_id}`}`
                                                 : isOccupied
-                                                ? 'Đang dùng'
-                                                : isReserved
-                                                ? `Đặt trước ${resTimeStr ? `(${resTimeStr})` : ''}`
-                                                : isDrafting
-                                                ? `Chuẩn bị (${draftCount} món)`
-                                                : 'Trống'}
+                                                  ? 'Đang dùng'
+                                                  : isReserved
+                                                    ? `Đặt trước ${resTimeStr ? `(${resTimeStr})` : ''}`
+                                                    : isDrafting
+                                                      ? `Chuẩn bị (${draftCount} món)`
+                                                      : 'Trống'}
                                         </span>
 
                                         {groupLockInfo && (
-                                            <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800/60">
-                                                Đang thanh toán: {groupLockInfo.employeeName}
+                                            <span className="rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-600 dark:border-rose-800/60 dark:bg-rose-950/60">
+                                                Đang thanh toán:{' '}
+                                                {groupLockInfo.employeeName}
                                             </span>
                                         )}
                                     </div>
                                 </div>
 
-                                <div className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
+                                <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
                                     <span className="flex items-center gap-1">
-                                        <Users className="w-3.5 h-3.5 stroke-[1.5]" />
+                                        <Users className="h-3.5 w-3.5 stroke-[1.5]" />
                                         {table.capacity} ghế
                                     </span>
                                     {totalSessionItemsCount > 0 && (
@@ -160,8 +203,8 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable, lock
                                 </div>
 
                                 {isSelected && (
-                                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-sky-600 text-white text-xs flex items-center justify-center font-bold">
-                                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                                    <div className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-sky-600 text-xs font-bold text-white">
+                                        <Check className="h-3.5 w-3.5 stroke-[2.5]" />
                                     </div>
                                 )}
                             </div>
@@ -171,24 +214,32 @@ export default function POSTableTab({ tables, selectedTable, onSelectTable, lock
             </div>
 
             {/* Auto-switch to menu toggle */}
-            <div className="shrink-0 pt-2 border-t border-zinc-200/80 dark:border-zinc-800/80">
+            <div className="shrink-0 border-t border-zinc-200/80 pt-2 dark:border-zinc-800/80">
                 <button
                     type="button"
                     onClick={() => onAutoSwitchChange?.(!autoSwitchToMenu)}
-                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 ${
+                    className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 ${
                         autoSwitchToMenu
                             ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
-                            : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                            : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
                     }`}
                 >
-                    <div className={`relative w-7 h-4 rounded-full transition-colors duration-150 ${
-                        autoSwitchToMenu ? 'bg-sky-600' : 'bg-zinc-300 dark:bg-zinc-600'
-                    }`}>
-                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-transform duration-150 ${
-                            autoSwitchToMenu ? 'translate-x-3.5' : 'translate-x-0.5'
-                        }`} />
+                    <div
+                        className={`relative h-4 w-7 rounded-full transition-colors duration-150 ${
+                            autoSwitchToMenu
+                                ? 'bg-sky-600'
+                                : 'bg-zinc-300 dark:bg-zinc-600'
+                        }`}
+                    >
+                        <div
+                            className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-transform duration-150 ${
+                                autoSwitchToMenu
+                                    ? 'translate-x-3.5'
+                                    : 'translate-x-0.5'
+                            }`}
+                        />
                     </div>
-                    <ArrowRightLeft className="w-3.5 h-3.5 stroke-[1.5]" />
+                    <ArrowRightLeft className="h-3.5 w-3.5 stroke-[1.5]" />
                     <span>Mở menu khi chọn bàn</span>
                 </button>
             </div>

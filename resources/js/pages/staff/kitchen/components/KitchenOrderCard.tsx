@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { AlertTriangle, Check } from 'lucide-react';
+import { AlertTriangle, Check, XCircle } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 export interface KitchenOrderData {
@@ -47,6 +47,7 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
         },
     );
     const [submitting, setSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     // Sync state when order items change (e.g. from real-time extra items calls)
     useEffect(() => {
@@ -84,37 +85,65 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
         }));
     };
 
-    const handleCompleteOrder = () => {
-        if (submitting) {
-            return;
-        }
+    const pendItems = order.items.filter((i) => i.status !== 'completed');
+    const checkedItemIds = pendItems
+        .filter((i) => checkedItems[i.id])
+        .map((i) => i.id);
+    const isPartial = checkedItemIds.length > 0;
 
+    const handleCompleteOrder = () => {
+        if (submitting) return;
+        setErrorMessage(null);
         setSubmitting(true);
 
         const timeout = setTimeout(() => {
             setSubmitting(false);
-            alert('Kết nối CSDL/Máy chủ quá thời gian chờ. Vui lòng thử lại!');
+            setErrorMessage(
+                'Kết nối CSDL/Máy chủ quá thời gian chờ. Vui lòng thử lại!',
+            );
         }, 8000);
 
-        router.post(
-            `/staff/kitchen/complete/${order.id}`,
-            {},
-            {
-                onFinish: () => {
-                    clearTimeout(timeout);
-                    setSubmitting(false);
+        if (isPartial) {
+            router.post(
+                '/staff/kitchen/complete-items',
+                { order_id: order.id, item_ids: checkedItemIds },
+                {
+                    onFinish: () => {
+                        clearTimeout(timeout);
+                        setSubmitting(false);
+                    },
+                    onError: (errors: any) => {
+                        clearTimeout(timeout);
+                        setSubmitting(false);
+                        const msg =
+                            errors.error ||
+                            errors.message ||
+                            'Không thể hoàn thành món.';
+                        setErrorMessage(msg);
+                    },
                 },
-                onError: (errors: any) => {
-                    clearTimeout(timeout);
-                    setSubmitting(false);
-                    const msg =
-                        errors.error ||
-                        errors.message ||
-                        'Không thể hoàn thành đơn do kết nối CSDL chập chờn.';
-                    alert(msg);
+            );
+        } else {
+            router.post(
+                `/staff/kitchen/complete/${order.id}`,
+                {},
+                {
+                    onFinish: () => {
+                        clearTimeout(timeout);
+                        setSubmitting(false);
+                    },
+                    onError: (errors: any) => {
+                        clearTimeout(timeout);
+                        setSubmitting(false);
+                        const msg =
+                            errors.error ||
+                            errors.message ||
+                            'Không thể hoàn thành đơn.';
+                        setErrorMessage(msg);
+                    },
                 },
-            },
-        );
+            );
+        }
     };
 
     // Soft, gentle color themes for card header
@@ -217,7 +246,13 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
             </div>
 
             {/* Complete Order Footer */}
-            <div className="border-t border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-800/50">
+            <div className="space-y-2 border-t border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-800/50">
+                {errorMessage && (
+                    <div className="flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
+                        <XCircle className="h-3.5 w-3.5 shrink-0 stroke-[1.5]" />
+                        <span>{errorMessage}</span>
+                    </div>
+                )}
                 <button
                     type="button"
                     disabled={submitting}
@@ -228,7 +263,9 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
                     <span>
                         {submitting
                             ? 'Đang cập nhật...'
-                            : 'Xác nhận hoàn thành đơn'}
+                            : isPartial
+                              ? `Hoàn thành ${checkedItemIds.length}/${pendItems.length} món`
+                              : 'Hoàn thành toàn bộ đơn'}
                     </span>
                 </button>
             </div>

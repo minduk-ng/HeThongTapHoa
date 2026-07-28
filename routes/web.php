@@ -125,6 +125,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/pos/cancel-order', [POSController::class, 'cancelOrder'])->middleware('permission:pos.cancel_item|kitchen.cancel_item');
 
         Route::get('/kitchen', [KitchenController::class, 'index'])->middleware('permission:kitchen.view');
+        Route::post('/kitchen/complete-items', [KitchenController::class, 'completeItems'])->middleware('permission:kitchen.update');
         Route::post('/kitchen/complete/{order}', [KitchenController::class, 'completeOrder'])->middleware('permission:kitchen.update');
         Route::post('/kitchen/cancel-item', [KitchenController::class, 'cancelItem'])->middleware('permission:kitchen.cancel_item|pos.cancel_item');
     });
