@@ -157,11 +157,22 @@ export default function POSManager({ tables, categories, products }: POSManagerP
             };
 
 
+            const handleItemsServed = (payload: any) => {
+                const eventKey = `ItemsServed_${payload?.order_ids?.join('_') || ''}`;
+                if (isDuplicateEvent(eventKey)) return;
+
+                const tableStr = payload?.table_number ? `Bàn ${payload.table_number}` : 'đơn hàng';
+                addLogEntry('received', `Nhân viên đã phục vụ ${payload?.served_count || 0} món tại ${tableStr}`, 'Cập nhật trạng thái giỏ hàng');
+
+                router.reload({ only: ['tables'], onError: () => {} });
+            };
+
             channel
                 .listen('.OrderSentToKitchen', handleOrderSent)
                 .listen('.OrderCompleted', (data: any) => handleTableReload('OrderCompleted', data))
                 .listen('.TableStatusUpdated', (data: any) => handleTableReload('TableStatusUpdated', data))
-                .listen('.TableTransferred', (data: any) => handleTableReload('TableTransferred', data));
+                .listen('.TableTransferred', (data: any) => handleTableReload('TableTransferred', data))
+                .listen('.ItemsServed', handleItemsServed);
 
             return () => {
                 window.Echo.leave('pos-channel');
