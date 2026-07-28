@@ -87,6 +87,8 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
     useEffect(() => {
         const safe = (Array.isArray(servingQueue) ? servingQueue : Object.values(servingQueue || {})) as ServingItemData[];
         setQueue(safe);
+        const validIds = new Set(safe.map(c => c.id));
+        setSelectedIds(prev => new Set([...prev].filter(id => validIds.has(id))));
     }, [servingQueue]);
 
     // Fullscreen
