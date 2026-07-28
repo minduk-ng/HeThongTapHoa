@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ConciergeBell, CheckCircle, Clock } from 'lucide-react';
-import { router } from '@inertiajs/react';
 
 interface ServingItem {
     id: string;
@@ -46,6 +45,12 @@ function ElapsedTimer({ completedAt }: { completedAt: string }) {
     );
 }
 
+function getXSRFToken(): string {
+    if (typeof document === 'undefined') return '';
+    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+    return match ? decodeURIComponent(match[1]) : '';
+}
+
 export default function POSServingTab({ servingQueue, onMarkServed }: POSServingTabProps) {
     const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set());
 
@@ -54,18 +59,26 @@ export default function POSServingTab({ servingQueue, onMarkServed }: POSServing
         setSubmittingIds(prev => new Set(prev).add(card.id));
 
         const itemIds = card.items.map(i => i.id);
+        const xsrfToken = getXSRFToken();
 
-        router.post('/staff/pos/mark-served', { item_ids: itemIds }, {
-            preserveState: true,
-            preserveScroll: true,
-            onSuccess: () => {
+        fetch('/staff/pos/mark-served', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': xsrfToken },
+            body: JSON.stringify({ item_ids: itemIds }),
+        })
+            .then(res => {
+                if (!res.ok) throw new Error();
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    onMarkServed(itemIds);
+                }
+            })
+            .catch(() => {})
+            .finally(() => {
                 setSubmittingIds(prev => { const n = new Set(prev); n.delete(card.id); return n; });
-                onMarkServed(itemIds);
-            },
-            onError: () => {
-                setSubmittingIds(prev => { const n = new Set(prev); n.delete(card.id); return n; });
-            },
-        });
+            });
     }, [submittingIds, onMarkServed]);
 
     if (servingQueue.length === 0) {
