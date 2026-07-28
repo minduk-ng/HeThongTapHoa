@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Staff;
 
+use App\Events\ItemsReadyToServe;
 use App\Events\OrderCompleted;
 use App\Events\OrderSentToKitchen;
 use App\Events\TableStatusUpdated;
@@ -63,7 +64,9 @@ class KitchenController extends Controller
     public function completeOrder(Request $request, Order $order)
     {
         try {
-            DB::transaction(function () use ($order, $request) {
+            $completedItems = collect();
+
+            DB::transaction(function () use ($order, $request, &$completedItems) {
                 $order->update([
                     'status' => 'completed',
                     'has_additional_items' => false,
@@ -80,11 +83,17 @@ class KitchenController extends Controller
                         'status' => 'completed',
                     ]);
 
+                    $completedItems->push($item);
+
                     $this->deductIngredients($item, $employeeId, $order->order_code);
                 }
             });
 
             $this->safeDispatch(fn () => OrderCompleted::dispatch($order));
+
+            if ($completedItems->isNotEmpty()) {
+                $this->safeDispatch(fn () => ItemsReadyToServe::dispatch($order, $completedItems));
+            }
 
             return back()->with('success', 'Đã xác nhận hoàn thành đơn order và tự động trừ nguyên liệu kho thành công!');
         } catch (\Throwable $e) {
@@ -106,13 +115,15 @@ class KitchenController extends Controller
             $order = Order::findOrFail($validated['order_id']);
             $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
 
-            DB::transaction(function () use ($validated, $order, $employeeId) {
-                $items = OrderItem::whereIn('id', $validated['item_ids'])
+            $completedItems = collect();
+
+            DB::transaction(function () use ($validated, $order, $employeeId, &$completedItems) {
+                $completedItems = OrderItem::whereIn('id', $validated['item_ids'])
                     ->where('order_id', $order->id)
                     ->whereIn('status', ['pending', 'processing'])
                     ->get();
 
-                foreach ($items as $item) {
+                foreach ($completedItems as $item) {
                     $item->update(['status' => 'completed']);
                     $this->deductIngredients($item, $employeeId, $order->order_code);
                 }
@@ -130,6 +141,10 @@ class KitchenController extends Controller
             });
 
             $this->safeDispatch(fn () => OrderCompleted::dispatch($order));
+
+            if ($completedItems->isNotEmpty()) {
+                $this->safeDispatch(fn () => ItemsReadyToServe::dispatch($order, $completedItems));
+            }
 
             return back()->with('success', 'Đã xác nhận hoàn thành các món đã chọn và tự động trừ nguyên liệu kho thành công!');
         } catch (\Throwable $e) {

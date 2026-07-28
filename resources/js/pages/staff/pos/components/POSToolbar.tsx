@@ -3,6 +3,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import {
     Armchair,
     UtensilsCrossed,
+    ConciergeBell,
     Activity,
     Maximize2,
     Minimize2,
@@ -19,15 +20,19 @@ import type { POSTableData } from '../types/pos.types';
 import ThemeToggle from '../../../../components/ThemeToggle';
 import { useReverbStatus } from '../hooks/useReverbStatus';
 
+type POSToolbarTab = 'tables' | 'menu' | 'serving' | 'log';
+
 interface POSToolbarProps {
-    activeTab: 'tables' | 'menu' | 'log';
-    onTabChange: (tab: 'tables' | 'menu' | 'log') => void;
+    activeTab: POSToolbarTab;
+    onTabChange: (tab: POSToolbarTab) => void;
     selectedTable: POSTableData | null;
     cartItemCount: number;
+    servingCount: number;
     unreadErrorCount: number;
     onClearUnread: () => void;
     searchQuery: string;
     onSearchChange: (value: string) => void;
+    onOpenLog: () => void;
 }
 
 export default function POSToolbar({
@@ -35,10 +40,12 @@ export default function POSToolbar({
     onTabChange,
     selectedTable,
     cartItemCount,
+    servingCount,
     unreadErrorCount,
     onClearUnread,
     searchQuery,
     onSearchChange,
+    onOpenLog,
 }: POSToolbarProps) {
     const { auth } = usePage<PageProps>().props;
     const user = auth.user;
@@ -162,21 +169,14 @@ export default function POSToolbar({
 
                 <button
                     type="button"
-                    onClick={() => {
-                        onTabChange('log');
-                        onClearUnread();
-                    }}
-                    className={`p-2 text-sm font-bold rounded-lg transition-colors duration-150 flex items-center justify-center relative ${
-                        activeTab === 'log'
-                            ? 'bg-sky-600 text-white shadow-xs'
-                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                    }`}
-                    title="Nhật ký hoạt động hệ thống"
+                    onClick={() => onTabChange('serving')}
+                    className={tabButtonClass('serving')}
                 >
-                    <Activity className="w-3.5 h-3.5 stroke-[1.5]" />
-                    {unreadErrorCount > 0 && (
-                        <span className="absolute -top-1 -right-1 px-1 py-0.5 rounded-full bg-rose-600 text-white font-bold text-[9px] tabular-nums animate-pulse border border-white dark:border-zinc-900 shadow-xs">
-                            {unreadErrorCount}
+                    <ConciergeBell className="w-3.5 h-3.5 stroke-[1.5]" />
+                    <span>Phục vụ</span>
+                    {servingCount > 0 && (
+                        <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-sky-500 text-white font-bold text-[10px] tabular-nums">
+                            {servingCount}
                         </span>
                     )}
                 </button>
@@ -244,6 +244,24 @@ export default function POSToolbar({
                         </div>
                     )}
                 </div>
+
+                {/* Log Button (moved from left tab to right utility area) */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        onTabChange('log');
+                        onOpenLog();
+                    }}
+                    className={`${utilityButtonClass} relative`}
+                    title="Nhật ký hoạt động hệ thống"
+                >
+                    <Activity className="w-4 h-4 stroke-[1.5]" />
+                    {unreadErrorCount > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 px-1 py-0.5 rounded-full bg-rose-600 text-white font-bold text-[9px] tabular-nums animate-pulse border border-white dark:border-zinc-900 shadow-xs">
+                            {unreadErrorCount}
+                        </span>
+                    )}
+                </button>
 
                 {/* Divider */}
                 <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700 mx-0.5" />

@@ -88,6 +88,21 @@ export interface ReceiptModalState {
     invoiceCode?: string;
 }
 
+export interface ServingItem {
+    id: string;
+    order_id: number;
+    order_code: string;
+    table_number: string;
+    table_area: string;
+    items: Array<{
+        id: number;
+        name: string;
+        quantity: number;
+        note?: string | null;
+    }>;
+    completed_at: string;
+}
+
 export interface POSManagerProps {
     tables: POSTableData[];
     categories: CategoryData[];

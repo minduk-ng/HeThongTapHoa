@@ -35,7 +35,7 @@
 ### 2.2 Màn Hình Nhân Viên (Staff Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
-| `/staff/pos` | `Staff\POSController` | `resources/js/pages/staff/pos/POSManager.tsx` | Bán hàng POS (không header Sidebar, sử dụng `POSToolbar` 44px tích hợp nút Fullscreen, Reload, và chấm xanh theo dõi Reverb latency) |
+| `/staff/pos` | `Staff\POSController` | `resources/js/pages/staff/pos/POSManager.tsx` | Bán hàng POS (không header Sidebar, sử dụng `POSToolbar` 44px tích hợp nút Fullscreen, Reload, và chấm xanh theo dõi Reverb). Gồm 4 tab: Chọn bàn, Chọn món, Phục vụ (hàng chờ món từ bếp), Nhật ký Event. |
 | `/staff/kitchen` | `Staff\KitchenController` | `resources/js/pages/staff/kitchen/KitchenDisplay.tsx` | Màn hình Bếp (chế độ tràn màn hình, thanh công cụ compact 1 dòng trên cùng với filter khu vực + thống kê + actions, grid cards full-width, đã loại bỏ nút hủy món/đơn và KitchenLogPanel) |
 
 ### 2.3 Màn Hình Quản Lý (Manager Routes)
@@ -73,8 +73,8 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
 
 ### 4.1 Các Kênh Truyền Thông (Broadcast Channels - `routes/channels.php`)
 - **`private-pos-channel`**:
-  - Tín hiệu: `OrderCompleted`, `TableStatusUpdated`, `OrderSentToKitchen`, `TableTransferred`.
-  - Nhiệm vụ: Làm mới danh sách bàn, trạng thái đơn hàng, và đồng bộ sơ đồ bàn khi có chuyển/gộp/tách bàn trên các màn hình POS & Quản lý bàn.
+  - Tín hiệu: `OrderCompleted`, `ItemsReadyToServe`, `TableStatusUpdated`, `OrderSentToKitchen`, `TableTransferred`.
+  - Nhiệm vụ: Làm mới danh sách bàn, trạng thái đơn hàng, đồng bộ sơ đồ bàn, và thêm món mới hoàn thành vào hàng chờ Phục vụ trên POS.
 - **`private-kitchen-channel`**:
   - Tín hiệu: `OrderSentToKitchen`, `OrderCompleted`, `TableTransferred`.
   - Nhiệm vụ: Tự động tải vé đơn mới, ẩn vé đơn hoàn thành, và cập nhật tên bàn thực tế trên thẻ vé đơn Bếp khi có chuyển/gộp bàn.
@@ -164,7 +164,7 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
 - **Khóa khi món đang chế biến**: Khi đơn hàng có món đang chờ Bếp làm (`hasKitchenPendingOrders`), nút Thanh toán bị khóa trừ khi Quản lý/Admin bấm "Duyệt khẩn cấp".
 
 ### 8.5 Đồng bộ Realtime Bếp ↔ POS qua Reverb (`POSManager.tsx`)
-- `POSManager.tsx` đăng ký đầy đủ các sự kiện `.OrderSentToKitchen`, `.OrderCompleted`, `.TableStatusUpdated`, `.TableTransferred` trên `pos-channel`.
+- `POSManager.tsx` đăng ký đầy đủ các sự kiện `.OrderSentToKitchen`, `.OrderCompleted`, `.ItemsReadyToServe`, `.TableStatusUpdated`, `.TableTransferred` trên `pos-channel`.
 - Khi Bếp hoàn thành món/đơn, POS tự động làm mới dữ liệu bàn (`router.reload({ only: ['tables'] })`) ngay lập tức mà không cần bấm F5 / tải lại trang thủ công.
 - **Lưu ý**: Bếp không còn quyền hủy món hoặc hủy đơn. Việc hủy/giảm món chỉ được thực hiện từ POS qua luồng `ReduceItemModal` (xem 8.3).
 
@@ -189,6 +189,15 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
   - `UserPermissionController` ➔ Dọn dẹp thẻ của user cụ thể `user_{userId}` ngay sau khi đồng bộ vai trò.
   - `RoleController` ➔ Dọn dẹp thẻ nhóm `user_inertia` ngay sau khi thay đổi quyền hoặc gán trang mới cho vai trò.
 - **Bảo vệ Inertia SSR (`resources/js/echo.ts`)**: Bọc kiểm tra `if (typeof window !== 'undefined')` trước khi khởi tạo Echo/Pusher để đảm bảo Server-Side Rendering (SSR) không ném lỗi `ReferenceError: window is not defined`.
+
+### 8.10 Hàng Chờ Phục Vụ (Serving Queue) — `POSServingTab.tsx`
+- **Luồng**: Bếp hoàn thành món (`KitchenController`) → dispatch `ItemsReadyToServe` event → POS nhận qua Reverb → thêm vào `servingQueue` state + badge đếm trên tab "Phục vụ".
+- **API endpoints**:
+  - `GET /staff/pos/serving-queue` — Lấy danh sách items `status = completed` + `served_at IS NULL` (chỉ order hôm nay).
+  - `POST /staff/pos/mark-served` — Nhận `item_ids: number[]`, set `served_at = now()`.
+- **Tab "Phục vụ"**: Nút `ConciergeBell` trên `POSToolbar` với badge đếm số lượng card đang chờ. Log (Activity) chuyển sang bên phải toolbar.
+- **Card serving**: Hiển thị tên bàn (font-display), đồng hồ đếm thời gian chờ (ElapsedTimer), danh sách món (tên + số lượng + ghi chú), nút "Đã phục vụ" (emerald).
+- **DB**: `order_items.served_at` (timestamp, nullable) — `status = completed` + `served_at IS NULL` = đang chờ phục vụ.
 
 ### 8.9 Phòng Vệ Tuần Tự Hóa & Ép Kiểu Dữ Liệu Props (Array Values & Serialization Resiliency)
 - **Tại Backend**: Khi lưu danh sách Bàn gộp vào Redis cache trong `POSController.php`, bắt buộc gọi `$tables->values()->toArray()` để đảm bảo mảng luôn có các chỉ số số nguyên tuần tự (`0, 1, 2...`), giúp serializer của Laravel/Inertia xuất ra JSON Array `[...]` thay vì JSON Object `{...}`.
