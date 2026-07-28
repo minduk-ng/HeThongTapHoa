@@ -42,7 +42,7 @@ export default function POSToolbar({
 }: POSToolbarProps) {
     const { auth } = usePage<PageProps>().props;
     const user = auth.user;
-    const { status: reverbStatus, latencyMs } = useReverbStatus();
+    const { status: reverbStatus } = useReverbStatus();
 
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isAvatarOpen, setIsAvatarOpen] = useState(false);
@@ -102,7 +102,7 @@ export default function POSToolbar({
         connected: {
             dotClass: 'bg-emerald-500',
             label: 'Socket',
-            tooltip: latencyMs !== null ? `${latencyMs}ms` : 'Kết nối ổn',
+            tooltip: 'Kết nối ổn',
         },
         connecting: {
             dotClass: 'bg-amber-500 animate-pulse',
@@ -238,12 +238,6 @@ export default function POSToolbar({
                                     <span className="text-zinc-400 dark:text-zinc-500">Trạng thái:</span>
                                     <span className="font-medium text-zinc-800 dark:text-zinc-200">
                                         {reverbStatus === 'connected' ? 'Đã kết nối' : reverbStatus === 'connecting' ? 'Đang kết nối' : 'Mất kết nối'}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-zinc-400 dark:text-zinc-550">Độ trễ (Ping):</span>
-                                    <span className="font-bold tabular-nums text-sky-600 dark:text-sky-400">
-                                        {latencyMs !== null ? `${latencyMs}ms` : '—'}
                                     </span>
                                 </div>
                             </div>

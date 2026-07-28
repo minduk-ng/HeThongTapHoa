@@ -37,7 +37,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
         'all' | 'bar' | 'kitchen'
     >('all');
 
-    const { status: reverbStatus, latencyMs } = useReverbStatus();
+    const { status: reverbStatus } = useReverbStatus();
 
     // Fullscreen toggle
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -82,7 +82,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
         connected: {
             dotClass: 'bg-emerald-500',
             label: 'Socket',
-            tooltip: latencyMs !== null ? `${latencyMs}ms` : 'Kết nối ổn',
+            tooltip: 'Kết nối ổn',
         },
         connecting: {
             dotClass: 'bg-amber-500 animate-pulse',
@@ -294,16 +294,6 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                                                         'connecting'
                                                       ? 'Đang kết nối'
                                                       : 'Mất kết nối'}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="dark:text-zinc-550 text-zinc-400">
-                                                Độ trễ (Ping):
-                                            </span>
-                                            <span className="font-bold text-sky-600 tabular-nums dark:text-sky-400">
-                                                {latencyMs !== null
-                                                    ? `${latencyMs}ms`
-                                                    : '—'}
                                             </span>
                                         </div>
                                     </div>
