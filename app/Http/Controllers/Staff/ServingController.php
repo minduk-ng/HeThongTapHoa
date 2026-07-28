@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Staff;
 
+use App\Events\ItemsServed;
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,6 +35,23 @@ class ServingController extends Controller
                 ->where('status', 'completed')
                 ->whereNull('served_at')
                 ->update(['served_at' => now()]);
+
+            // Broadcast ItemsServed event for realtime POS sync
+            $orderIds = OrderItem::whereIn('id', $validated['item_ids'])
+                ->distinct()
+                ->pluck('order_id')
+                ->toArray();
+
+            $tableNumber = Order::whereIn('id', $orderIds)
+                ->with('table')
+                ->first()
+                ?->table?->table_number ?? '';
+
+            try {
+                event(new ItemsServed($validated['item_ids'], $orderIds, $tableNumber, $count));
+            } catch (\Throwable $e) {
+                Log::warning('ItemsServed broadcast skipped: '.$e->getMessage());
+            }
 
             return response()->json([
                 'success' => true,
