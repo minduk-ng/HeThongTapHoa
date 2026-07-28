@@ -25,28 +25,9 @@ class POSController extends Controller
 {
     public function index(Request $request)
     {
-        try {
-            $tables = \Illuminate\Support\Facades\Cache::tags(['pos_tables'])->remember('pos_tables_list', 1800, function () {
-                $tables = Table::with(['mergedIntoTable', 'activeOrders.items' => function ($query) {
-                    $query->where('status', '!=', 'cancelled')->with('menuItem');
-                }])->where('status', '!=', 'maintenance')->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
+        $isLocal = app()->environment('local');
 
-                $tables->each(function ($table) use ($tables) {
-                    if ($table->merged_into_table_id || $tables->contains('merged_into_table_id', $table->id)) {
-                        $groupId = $table->merged_into_table_id ?? $table->id;
-                        $allGroupTableIds = $tables->filter(fn ($t) => $t->id == $groupId || $t->merged_into_table_id == $groupId)->pluck('id');
-                        $allGroupOrders = Order::with(['items' => function ($query) {
-                            $query->where('status', '!=', 'cancelled')->with('menuItem');
-                        }])->whereIn('table_id', $allGroupTableIds)->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])->get();
-                        $table->setRelation('activeOrders', $allGroupOrders);
-                        $table->setRelation('activeOrder', $allGroupOrders->first());
-                    }
-                });
-
-                return $tables->values()->toArray();
-            });
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Redis connection failed in POSController tables loading: " . $e->getMessage());
+        $loadTables = function () {
             $tables = Table::with(['mergedIntoTable', 'activeOrders.items' => function ($query) {
                 $query->where('status', '!=', 'cancelled')->with('menuItem');
             }])->where('status', '!=', 'maintenance')->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
@@ -62,41 +43,28 @@ class POSController extends Controller
                     $table->setRelation('activeOrder', $allGroupOrders->first());
                 }
             });
-            $tables = $tables->values()->toArray();
+
+            return $tables->values()->toArray();
+        };
+
+        if ($isLocal) {
+            $tables = $loadTables();
+        } else {
+            try {
+                $tables = \Illuminate\Support\Facades\Cache::tags(['pos_tables'])->remember('pos_tables_list', 1800, $loadTables);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Redis connection failed in POSController tables loading: " . $e->getMessage());
+                $tables = $loadTables();
+            }
         }
 
-        try {
-            $categories = \Illuminate\Support\Facades\Cache::tags(['pos_products_and_categories'])->remember('pos_categories', 86400, function () {
-                return MenuCategory::orderBy('sort_order', 'asc')->get()->toArray();
-            });
+        $loadCategories = function () {
+            return MenuCategory::orderBy('sort_order', 'asc')->get()->toArray();
+        };
 
-            $products = \Illuminate\Support\Facades\Cache::tags(['pos_products_and_categories'])->remember('pos_products', 86400, function () {
-                $prods = MenuItem::with(['category', 'recipes.ingredient'])->where('is_available', true)->get();
-
-                $prods->transform(function ($product) {
-                    if ($product->recipes && $product->recipes->count() > 0) {
-                        $possibleServings = [];
-                        foreach ($product->recipes as $recipe) {
-                            if ($recipe->ingredient && (float) $recipe->amount > 0) {
-                                $stock = (float) $recipe->ingredient->stock_quantity;
-                                $possible = (int) floor($stock / (float) $recipe->amount);
-                                $possibleServings[] = max(0, $possible);
-                            }
-                        }
-                        $product->max_servings = count($possibleServings) > 0 ? min($possibleServings) : 999;
-                    } else {
-                        $product->max_servings = 999;
-                    }
-
-                    return $product;
-                });
-
-                return $prods->toArray();
-            });
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Redis connection failed in POSController products loading: " . $e->getMessage());
-            $categories = MenuCategory::orderBy('sort_order', 'asc')->get()->toArray();
+        $loadProducts = function () {
             $prods = MenuItem::with(['category', 'recipes.ingredient'])->where('is_available', true)->get();
+
             $prods->transform(function ($product) {
                 if ($product->recipes && $product->recipes->count() > 0) {
                     $possibleServings = [];
@@ -111,9 +79,25 @@ class POSController extends Controller
                 } else {
                     $product->max_servings = 999;
                 }
+
                 return $product;
             });
-            $products = $prods->toArray();
+
+            return $prods->toArray();
+        };
+
+        if ($isLocal) {
+            $categories = $loadCategories();
+            $products = $loadProducts();
+        } else {
+            try {
+                $categories = \Illuminate\Support\Facades\Cache::tags(['pos_products_and_categories'])->remember('pos_categories', 86400, $loadCategories);
+                $products = \Illuminate\Support\Facades\Cache::tags(['pos_products_and_categories'])->remember('pos_products', 86400, $loadProducts);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Redis connection failed in POSController products loading: " . $e->getMessage());
+                $categories = $loadCategories();
+                $products = $loadProducts();
+            }
         }
 
         return Inertia::render('staff/pos/POSManager', [

@@ -35,7 +35,7 @@
 ### 2.2 Màn Hình Nhân Viên (Staff Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
-| `/staff/pos` | `Staff\POSController` | `resources/js/pages/staff/pos/POSManager.tsx` | Bán hàng POS (không header Sidebar, sử dụng `POSToolbar` 44px tích hợp nút Fullscreen, Reload, và chấm xanh theo dõi Reverb). Gồm 4 tab: Chọn bàn, Chọn món, Phục vụ (hàng chờ món từ bếp), Nhật ký Event. |
+| `/staff/pos` | `Staff\POSController` | `resources/js/pages/staff/pos/POSManager.tsx` | Bán hàng POS. Có các API phụ trợ: `GET /staff/pos/serving-queue` (lấy hàng chờ phục vụ), `POST /staff/pos/mark-served` (đánh dấu đã phục vụ). Gồm 4 tab: Chọn bàn, Chọn món, Phục vụ, Nhật ký Event. |
 | `/staff/kitchen` | `Staff\KitchenController` | `resources/js/pages/staff/kitchen/KitchenDisplay.tsx` | Màn hình Bếp (chế độ tràn màn hình, thanh công cụ compact 1 dòng trên cùng với filter khu vực + thống kê + actions, grid cards full-width, đã loại bỏ nút hủy món/đơn và KitchenLogPanel) |
 
 ### 2.3 Màn Hình Quản Lý (Manager Routes)

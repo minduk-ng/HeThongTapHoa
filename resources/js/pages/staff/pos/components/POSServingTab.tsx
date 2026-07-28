@@ -63,19 +63,35 @@ export default function POSServingTab({ servingQueue, onMarkServed }: POSServing
 
         fetch('/staff/pos/mark-served', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': xsrfToken },
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-XSRF-TOKEN': xsrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             body: JSON.stringify({ item_ids: itemIds }),
         })
             .then(res => {
-                if (!res.ok) throw new Error();
+                if (!res.ok) {
+                    return res.json().then(errData => {
+                        throw new Error(errData.error || 'Đánh dấu phục vụ thất bại!');
+                    }).catch(() => {
+                        throw new Error('Lỗi máy chủ hoặc kết nối mạng.');
+                    });
+                }
                 return res.json();
             })
             .then(data => {
                 if (data.success) {
                     onMarkServed(itemIds);
+                } else {
+                    alert(data.message || 'Đánh dấu phục vụ thất bại!');
                 }
             })
-            .catch(() => {})
+            .catch((err) => {
+                console.error('POS serving mark-served failed:', err);
+                alert(err.message || 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại!');
+            })
             .finally(() => {
                 setSubmittingIds(prev => { const n = new Set(prev); n.delete(card.id); return n; });
             });
