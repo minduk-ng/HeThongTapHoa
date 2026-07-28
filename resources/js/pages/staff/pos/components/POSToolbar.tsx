@@ -11,6 +11,8 @@ import {
     Sun,
     Settings,
     LogOut,
+    Search,
+    X,
 } from 'lucide-react';
 import type { PageProps } from '../../../../types/auth';
 import type { POSTableData } from '../types/pos.types';
@@ -24,6 +26,8 @@ interface POSToolbarProps {
     cartItemCount: number;
     unreadErrorCount: number;
     onClearUnread: () => void;
+    searchQuery: string;
+    onSearchChange: (value: string) => void;
 }
 
 export default function POSToolbar({
@@ -33,6 +37,8 @@ export default function POSToolbar({
     cartItemCount,
     unreadErrorCount,
     onClearUnread,
+    searchQuery,
+    onSearchChange,
 }: POSToolbarProps) {
     const { auth } = usePage<PageProps>().props;
     const user = auth.user;
@@ -125,7 +131,7 @@ export default function POSToolbar({
     return (
         <div className="shrink-0 h-11 w-full flex items-center justify-between px-3 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
             {/* Left Side — Tab Switchers */}
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-1.5 shrink-0">
                 <button
                     type="button"
                     onClick={() => onTabChange('tables')}
@@ -176,8 +182,33 @@ export default function POSToolbar({
                 </button>
             </div>
 
+            {/* Middle — Flexible Search Input */}
+            <div className="flex-1 flex justify-center items-center px-4 max-w-lg min-w-0">
+                {activeTab !== 'log' && (
+                    <div className="relative w-full">
+                        <Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => onSearchChange(e.target.value)}
+                            placeholder={activeTab === 'tables' ? "Tìm theo số bàn, khu vực..." : "Tìm tên món ăn / đồ uống..."}
+                            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-1.5 pr-8 pl-9 text-xs text-zinc-900 transition-colors duration-150 focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
+                        />
+                        {searchQuery && (
+                            <button
+                                type="button"
+                                onClick={() => onSearchChange('')}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-650 dark:text-zinc-550 dark:hover:text-zinc-350 transition-colors"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+
             {/* Right Side — Utility Controls */}
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center space-x-1 shrink-0">
                 {/* WebSocket Status Indicator */}
                 <div className="relative" ref={wsPopoverRef}>
                     <button

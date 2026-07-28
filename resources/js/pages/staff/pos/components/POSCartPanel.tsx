@@ -387,21 +387,21 @@ export default function POSCartPanel({
                         return (
                             <div
                                 key={itemKey}
-                                className={`group space-y-1.5 rounded-xl border p-3 transition-colors duration-150 ${
+                                className={`group flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors duration-150 ${
                                     item.isConfirmed
                                         ? 'border-zinc-200/80 bg-zinc-50 dark:border-zinc-700/80 dark:bg-zinc-800/60'
                                         : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
                                 }`}
                             >
-                                {/* Row 1: Name + Status | Total */}
-                                <div className="flex items-start justify-between">
-                                    <div className="flex min-w-0 flex-wrap items-center space-x-2 gap-y-1">
-                                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                {/* Left: Name (row1) + Note (row2) */}
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                                             {item.name}
                                         </h4>
                                         {item.isConfirmed && (
                                             <span
-                                                className={`shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-medium ${
+                                                className={`shrink-0 rounded-md border px-1.5 py-px text-[10px] font-medium ${
                                                     item.isKitchenCompleted
                                                         ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/60 dark:text-emerald-300'
                                                         : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/60 dark:text-amber-300'
@@ -413,108 +413,103 @@ export default function POSCartPanel({
                                             </span>
                                         )}
                                         {(item.stagedReduceQty || 0) > 0 && (
-                                            <span className="shrink-0 rounded-md border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                                            <span className="shrink-0 rounded-md border border-amber-300 bg-amber-100 px-1.5 py-px text-[10px] font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
                                                 Giảm {item.stagedReduceQty}
                                             </span>
                                         )}
                                     </div>
-                                    <span className="ml-2 shrink-0 text-sm font-bold text-zinc-900 tabular-nums dark:text-zinc-100">
-                                        {(
-                                            item.quantity * item.unit_price
-                                        ).toLocaleString('vi-VN')}{' '}
-                                        đ
-                                    </span>
+                                    <div
+                                        onClick={() =>
+                                            setNoteModalState({
+                                                isOpen: true,
+                                                item,
+                                            })
+                                        }
+                                        className="mt-0.5 cursor-pointer text-[11px] text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
+                                    >
+                                        {item.note ? (
+                                            <span className="line-clamp-1">
+                                                {item.note}
+                                            </span>
+                                        ) : (
+                                            <span className="italic">
+                                                Thêm ghi chú…
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
 
-                                {/* Row 2: Note preview (click popup) */}
-                                <div
-                                    onClick={() =>
-                                        setNoteModalState({
-                                            isOpen: true,
-                                            item,
-                                        })
-                                    }
-                                    className="cursor-pointer rounded-md border border-dashed border-transparent px-1 py-0.5 text-[11px] text-zinc-400 transition-colors hover:border-zinc-300 hover:text-zinc-600 dark:hover:border-zinc-600 dark:hover:text-zinc-300"
-                                >
-                                    {item.note ? (
-                                        <span className="line-clamp-1">
-                                            {item.note}
-                                        </span>
-                                    ) : (
-                                        <span className="italic">
-                                            Thêm ghi chú…
-                                        </span>
-                                    )}
-                                </div>
-
-                                {/* Row 3: Quantity Controls + Hidden Delete */}
-                                <div className="flex items-center justify-between pt-0.5">
-                                    <div className="flex items-center overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
-                                        <button
-                                            type="button"
-                                            disabled={isMinusDisabled}
-                                            onClick={() => {
-                                                if (!item.isConfirmed) {
-                                                    onUpdateQuantity(
-                                                        item.menu_item_id,
-                                                        -1,
-                                                    );
-                                                } else if (
-                                                    !item.isKitchenCompleted &&
-                                                    item.quantity > 0
-                                                ) {
-                                                    setReduceModalState({
-                                                        isOpen: true,
-                                                        item,
-                                                    });
-                                                }
-                                            }}
-                                            className="px-3 py-1.5 text-sm font-bold text-zinc-600 transition-colors duration-150 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                                            title={
-                                                item.isConfirmed
-                                                    ? 'Giảm số lượng món đang chế biến (kèm lý do)'
-                                                    : 'Giảm số lượng món nháp'
-                                            }
-                                        >
-                                            -
-                                        </button>
-                                        <span className="border-x border-zinc-200 px-3 py-1.5 text-xs font-bold text-zinc-900 tabular-nums dark:border-zinc-700 dark:text-zinc-100">
-                                            {item.quantity}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() =>
+                                {/* Center: +/- controls */}
+                                <div className="flex shrink-0 items-center overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
+                                    <button
+                                        type="button"
+                                        disabled={isMinusDisabled}
+                                        onClick={() => {
+                                            if (!item.isConfirmed) {
                                                 onUpdateQuantity(
                                                     item.menu_item_id,
-                                                    1,
-                                                )
+                                                    -1,
+                                                );
+                                            } else if (
+                                                !item.isKitchenCompleted &&
+                                                item.quantity > 0
+                                            ) {
+                                                setReduceModalState({
+                                                    isOpen: true,
+                                                    item,
+                                                });
                                             }
-                                            className="px-3 py-1.5 text-sm font-bold text-zinc-600 transition-colors duration-150 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                                            title="Gọi thêm món"
-                                        >
-                                            +
-                                        </button>
-                                    </div>
+                                        }}
+                                        className="px-2.5 py-1.5 text-sm font-bold text-zinc-600 transition-colors duration-150 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                                        title={
+                                            item.isConfirmed
+                                                ? 'Giảm số lượng món đang chế biến (kèm lý do)'
+                                                : 'Giảm số lượng món nháp'
+                                        }
+                                    >
+                                        -
+                                    </button>
+                                    <span className="border-x border-zinc-200 px-3 py-1.5 text-sm font-bold text-zinc-900 tabular-nums dark:border-zinc-700 dark:text-zinc-100">
+                                        {item.quantity}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            onUpdateQuantity(
+                                                item.menu_item_id,
+                                                1,
+                                            )
+                                        }
+                                        className="px-2.5 py-1.5 text-sm font-bold text-zinc-600 transition-colors duration-150 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                                        title="Gọi thêm món"
+                                    >
+                                        +
+                                    </button>
+                                </div>
 
-                                    <div className="flex items-center space-x-1">
+                                {/* Right: Price (default) / Delete action (on hover) */}
+                                <div className="relative flex shrink-0 items-center justify-end" style={{ minWidth: '5rem' }}>
+                                    {/* Price — visible by default, hidden on hover */}
+                                    <span className="text-sm font-bold text-zinc-900 tabular-nums transition-opacity duration-150 group-hover:opacity-0 dark:text-zinc-100">
+                                        {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
+                                    </span>
+                                    {/* Delete/Reduce — hidden by default, visible on hover */}
+                                    <div className="absolute inset-0 flex items-center justify-end opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                                         {!isDeleteDisabled ? (
                                             <button
                                                 type="button"
                                                 onClick={() =>
-                                                    onRemoveItem(
-                                                        item.menu_item_id,
-                                                    )
+                                                    onRemoveItem(item.menu_item_id)
                                                 }
-                                                className="rounded-md p-1.5 text-zinc-400 opacity-0 transition-all duration-150 group-hover:opacity-100 hover:text-rose-600"
+                                                className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
                                                 title="Hủy chọn món nháp"
                                             >
-                                                <Trash2 className="h-3.5 w-3.5" />
+                                                <Trash2 className="h-4 w-4" />
                                             </button>
                                         ) : canCancel &&
                                           item.orderItemId &&
                                           !item.isKitchenCompleted &&
-                                          (item.stagedReduceQty || 0) <
-                                              item.quantity ? (
+                                          (item.stagedReduceQty || 0) < item.quantity ? (
                                             <button
                                                 type="button"
                                                 onClick={() =>
@@ -523,29 +518,28 @@ export default function POSCartPanel({
                                                         item,
                                                     })
                                                 }
-                                                className="rounded-md p-1.5 text-rose-500 transition-colors duration-150 hover:text-rose-700 dark:hover:text-rose-300"
+                                                className="rounded-lg p-1.5 text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/50 dark:hover:text-rose-300"
                                                 title="Giảm / Hủy món đang chế biến kèm lý do"
                                             >
-                                                <Trash2 className="h-3.5 w-3.5" />
+                                                <Trash2 className="h-4 w-4" />
                                             </button>
-                                        ) : (item.stagedReduceQty || 0) >=
-                                          item.quantity ? (
+                                        ) : (item.stagedReduceQty || 0) >= item.quantity ? (
                                             <span
                                                 className="cursor-not-allowed p-1.5 text-amber-500 dark:text-amber-400"
-                                                title="Món đã được giảm về 0, ấn 'Gửi bếp chế biến' để xác nhận"
+                                                title="Món đã được giảm về 0, ấn \u2018Gửi bếp chế biến\u2019 để xác nhận"
                                             >
-                                                <Lock className="h-3.5 w-3.5" />
+                                                <Lock className="h-4 w-4" />
                                             </span>
                                         ) : (
                                             <span
-                                                className="cursor-not-allowed p-1.5 text-zinc-300 opacity-0 transition-all duration-150 group-hover:opacity-100 dark:text-zinc-600"
+                                                className="cursor-not-allowed p-1.5 text-zinc-300 dark:text-zinc-600"
                                                 title={
                                                     item.isKitchenCompleted
                                                         ? 'Món đã hoàn thành chế biến, không thể hủy'
                                                         : 'Món đã gửi bếp không được xóa'
                                                 }
                                             >
-                                                <Lock className="h-3.5 w-3.5 text-zinc-400" />
+                                                <Lock className="h-4 w-4 text-zinc-400" />
                                             </span>
                                         )}
                                     </div>

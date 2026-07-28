@@ -19,6 +19,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
     const [activeTab, setActiveTab] = useState<'tables' | 'menu' | 'log'>('tables');
     const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([]);
     const [unreadErrorCount, setUnreadErrorCount] = useState<number>(0);
+    const [searchQuery, setSearchQuery] = useState('');
     const [autoSwitchToMenu, setAutoSwitchToMenu] = useState<boolean>(() => {
         if (typeof window !== 'undefined') {
             return localStorage.getItem('pos_auto_switch_to_menu') === 'true';
@@ -210,6 +211,8 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 cartItemCount={currentCart.reduce((s, i) => s + i.quantity, 0)}
                 unreadErrorCount={unreadErrorCount}
                 onClearUnread={() => setUnreadErrorCount(0)}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
             />
 
             {/* Full Width & Height Split Screen Container */}
@@ -233,6 +236,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                     draftTableCounts={draftTableCounts}
                                     autoSwitchToMenu={autoSwitchToMenu}
                                     onAutoSwitchChange={handleAutoSwitchChange}
+                                    searchQuery={searchQuery}
                                 />
                             ) : activeTab === 'menu' ? (
                                 <POSMenuTab
@@ -240,6 +244,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                     categories={categories}
                                     cartItems={currentCart}
                                     onToggleProduct={handleToggleProduct}
+                                    searchQuery={searchQuery}
                                 />
                             ) : (
                                 <POSLogTab

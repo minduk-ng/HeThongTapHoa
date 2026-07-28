@@ -11,6 +11,7 @@ interface POSTableTabProps {
     draftTableCounts?: Record<number, number>;
     autoSwitchToMenu?: boolean;
     onAutoSwitchChange?: (value: boolean) => void;
+    searchQuery: string;
 }
 
 export default function POSTableTab({
@@ -21,6 +22,7 @@ export default function POSTableTab({
     draftTableCounts = {},
     autoSwitchToMenu = false,
     onAutoSwitchChange,
+    searchQuery,
 }: POSTableTabProps) {
     const safeTables = (
         Array.isArray(tables) ? tables : Object.values(tables || {})
@@ -59,11 +61,19 @@ export default function POSTableTab({
         count: areaTables.length,
     }));
 
-    // Filter displayed entries based on selected area
-    const filteredTables =
+    // Filter displayed entries based on selected area and search query
+    const filteredTables = (
         selectedArea === 'all'
             ? sortedAreaEntries.flatMap(([_, areaTables]) => areaTables)
-            : safeTables.filter((t) => (t.area || 'Khác') === selectedArea);
+            : safeTables.filter((t) => (t.area || 'Khác') === selectedArea)
+    ).filter((t) => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+            t.table_number.toLowerCase().includes(q) ||
+            (t.area || '').toLowerCase().includes(q)
+        );
+    });
 
     return (
         <div className="flex h-full min-h-0 flex-col space-y-3">

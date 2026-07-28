@@ -7,6 +7,7 @@ interface POSMenuTabProps {
     categories: CategoryData[];
     cartItems: CartItem[];
     onToggleProduct: (product: POSProductData) => void;
+    searchQuery: string;
 }
 
 export default function POSMenuTab({
@@ -14,9 +15,9 @@ export default function POSMenuTab({
     categories,
     cartItems,
     onToggleProduct,
+    searchQuery,
 }: POSMenuTabProps) {
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
-    const [searchQuery, setSearchQuery] = useState('');
 
     const safeProducts = Array.isArray(products) ? products : [];
     const safeCategories = Array.isArray(categories) ? categories : [];
@@ -47,17 +48,6 @@ export default function POSMenuTab({
         <div className="flex h-full min-h-0 flex-col space-y-3">
             {/* Top Fixed Header Controls (Search & Category Tabs) */}
             <div className="shrink-0 space-y-2.5">
-                {/* Search Bar */}
-                <div className="relative">
-                    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Tìm tên món ăn / đồ uống..."
-                        className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2 pr-3 pl-9 text-sm text-zinc-900 transition-colors duration-150 focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-                    />
-                </div>
 
                 {/* Horizontal Category Pill Tabs */}
                 <div className="no-scrollbar flex items-center space-x-2 overflow-x-auto pb-1">
