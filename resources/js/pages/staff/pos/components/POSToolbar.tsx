@@ -137,7 +137,7 @@ export default function POSToolbar({
 
     return (
         <div className="shrink-0 h-11 w-full flex items-center justify-between px-3 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
-            {/* Left Side — Tab Switchers & Search */}
+            {/* Left Side — Tab Switchers */}
             <div className="flex items-center space-x-1.5 shrink-0">
                 <button
                     type="button"
@@ -180,10 +180,12 @@ export default function POSToolbar({
                         </span>
                     )}
                 </button>
+            </div>
 
-                {/* Flexible Search Input (placed next to Serving tab button) */}
-                {activeTab !== 'log' && (
-                    <div className="relative w-56 sm:w-64 ml-1 shrink-0">
+            {/* Middle — Flexible Search Input (stretches to fill all available space) */}
+            {activeTab !== 'log' ? (
+                <div className="flex-1 mx-4 min-w-0">
+                    <div className="relative w-full">
                         <Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
                         <input
                             type="text"
@@ -202,8 +204,10 @@ export default function POSToolbar({
                             </button>
                         )}
                     </div>
-                )}
-            </div>
+                </div>
+            ) : (
+                <div className="flex-1" />
+            )}
 
             {/* Right Side — Utility Controls */}
             <div className="flex items-center space-x-1 shrink-0">
