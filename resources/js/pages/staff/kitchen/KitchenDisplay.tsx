@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     Sparkles,
     Volume2,
@@ -16,6 +16,8 @@ import {
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import { useReverbStatus } from '../pos/hooks/useReverbStatus';
+import AvatarDropdown from '../../../components/AvatarDropdown';
+import type { PageProps } from '../../../types/auth';
 import type { KitchenOrderData } from './components/KitchenOrderCard';
 import KitchenOrderCard from './components/KitchenOrderCard';
 import { playKitchenChime } from './utils/kitchenAudio';
@@ -38,6 +40,8 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
     >('all');
 
     const { status: reverbStatus } = useReverbStatus();
+    const { auth } = usePage<PageProps>().props;
+    const user = auth.user;
 
     // Fullscreen toggle
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -407,6 +411,9 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                                 <Maximize2 className="h-4 w-4 stroke-[1.5]" />
                             )}
                         </button>
+
+                        <div className="h-5 w-px bg-zinc-200 dark:bg-zinc-700" />
+                        <AvatarDropdown user={user} />
                     </div>
                 </div>
 
