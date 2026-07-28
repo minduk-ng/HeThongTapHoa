@@ -313,22 +313,22 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
 
             <div className="flex h-full w-full flex-col overflow-hidden">
                 {/* Toolbar */}
-                <div className="flex shrink-0 items-center gap-4 border-b border-zinc-200 bg-white px-4 py-2.5 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="flex shrink-0 items-center gap-4 border-b border-zinc-200 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-900">
                     {/* Left: Title + WS */}
                     <div className="flex shrink-0 items-center space-x-2">
-                        <ConciergeBell className="h-5 w-5 stroke-[1.5] text-sky-600 dark:text-sky-400" />
-                        <h1 className="font-display text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+                        <ConciergeBell className="h-6 w-6 stroke-[1.5] text-sky-600 dark:text-sky-400" />
+                        <h1 className="font-display text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
                             Phục vụ
                         </h1>
                         <div className="relative" ref={wsPopoverRef}>
                             <button
                                 type="button"
                                 onClick={() => setIsWsPopoverOpen(!isWsPopoverOpen)}
-                                className="flex items-center space-x-1 rounded-lg border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 transition-colors hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-zinc-800"
+                                className="flex items-center space-x-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 transition-colors hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-zinc-800"
                                 title="Xem chi tiết kết nối mạng"
                             >
-                                <span className={`h-1.5 w-1.5 rounded-full ${wsConfig.dotClass}`} />
-                                <span className="text-[10px] font-semibold text-zinc-500 tabular-nums dark:text-zinc-400">
+                                <span className={`h-2 w-2 rounded-full ${wsConfig.dotClass}`} />
+                                <span className="text-[11px] font-semibold text-zinc-500 tabular-nums dark:text-zinc-400">
                                     {wsConfig.label}
                                 </span>
                             </button>
@@ -362,32 +362,32 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                     <div className="flex-1 min-w-0 overflow-x-auto">
                         {selectedIds.size > 0 ? (
                             <div className="flex items-center gap-2">
-                                <span className="flex shrink-0 items-center gap-1.5 rounded-lg bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
-                                    <CheckSquare className="h-3.5 w-3.5 stroke-[1.5]" />
+                                <span className="flex shrink-0 items-center gap-1.5 rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
+                                    <CheckSquare className="h-4 w-4 stroke-[1.5]" />
                                     <span className="tabular-nums">Đã chọn {selectedIds.size} đơn</span>
                                 </span>
                                 <button
                                     type="button"
                                     onClick={selectAll}
-                                    className="shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-bold text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                    className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                                 >
                                     Chọn tất cả
                                 </button>
                                 <button
                                     type="button"
                                     onClick={clearSelection}
-                                    className="shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-bold text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                    className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                                 >
                                     Bỏ chọn
                                 </button>
-                                <div className="h-4 w-px shrink-0 bg-zinc-200 dark:bg-zinc-700" />
+                                <div className="h-5 w-px shrink-0 bg-zinc-200 dark:bg-zinc-700" />
                                 <button
                                     type="button"
                                     onClick={handleBatchServed}
                                     disabled={batchSubmitting}
-                                    className="flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    <CheckCheck className="h-3.5 w-3.5 stroke-[1.5]" />
+                                    <CheckCheck className="h-4 w-4 stroke-[1.5]" />
                                     <span>{batchSubmitting ? 'Đang xử lý…' : `Phục vụ đã chọn (${selectedIds.size})`}</span>
                                 </button>
                             </div>
@@ -396,13 +396,13 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                                 <button
                                     type="button"
                                     onClick={() => setActiveFilter('all')}
-                                    className={`flex shrink-0 items-center space-x-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                                    className={`flex shrink-0 items-center space-x-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
                                         activeFilter === 'all'
                                             ? 'bg-sky-600 text-white shadow-xs'
                                             : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
                                     }`}
                                 >
-                                    <Layers className="h-3.5 w-3.5 stroke-[1.5]" />
+                                    <Layers className="h-4 w-4 stroke-[1.5]" />
                                     <span>Tất cả</span>
                                 </button>
                                 {tableFilters.map(f => (
@@ -410,14 +410,14 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                                         key={f.tableNumber}
                                         type="button"
                                         onClick={() => setActiveFilter(f.tableNumber)}
-                                        className={`flex shrink-0 items-center space-x-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                                        className={`flex shrink-0 items-center space-x-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
                                             activeFilter === f.tableNumber
                                                 ? 'bg-sky-600 text-white shadow-xs'
                                                 : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
                                         }`}
                                     >
                                         <span>{f.tableNumber}</span>
-                                        <span className={`ml-0.5 px-1 py-0.5 rounded-full text-[9px] tabular-nums ${
+                                        <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] tabular-nums ${
                                             activeFilter === f.tableNumber
                                                 ? 'bg-white/20'
                                                 : 'bg-zinc-200 dark:bg-zinc-700'
@@ -432,44 +432,44 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
 
                     {/* Right: Stats + Actions + Avatar */}
                     <div className="ml-auto flex items-center space-x-2 shrink-0">
-                        <div className="flex items-center space-x-1.5 rounded-lg border border-sky-200/80 bg-sky-50/80 px-2 py-1 dark:border-sky-900/60 dark:bg-sky-950/40">
-                            <ClipboardList className="h-3.5 w-3.5 stroke-[1.5] text-sky-600 dark:text-sky-400" />
-                            <span className="text-[11px] font-bold text-sky-700 tabular-nums dark:text-sky-300">
+                        <div className="flex items-center space-x-1.5 rounded-lg border border-sky-200/80 bg-sky-50/80 px-2.5 py-1.5 dark:border-sky-900/60 dark:bg-sky-950/40">
+                            <ClipboardList className="h-4 w-4 stroke-[1.5] text-sky-600 dark:text-sky-400" />
+                            <span className="text-xs font-bold text-sky-700 tabular-nums dark:text-sky-300">
                                 {queue.length}
                             </span>
                         </div>
-                        <div className="flex items-center space-x-1.5 rounded-lg border border-emerald-200/80 bg-emerald-50/80 px-2 py-1 dark:border-emerald-900/60 dark:bg-emerald-950/40">
-                            <ConciergeBell className="h-3.5 w-3.5 stroke-[1.5] text-emerald-600 dark:text-emerald-400" />
-                            <span className="text-[11px] font-bold text-emerald-700 tabular-nums dark:text-emerald-300">
+                        <div className="flex items-center space-x-1.5 rounded-lg border border-emerald-200/80 bg-emerald-50/80 px-2.5 py-1.5 dark:border-emerald-900/60 dark:bg-emerald-950/40">
+                            <ConciergeBell className="h-4 w-4 stroke-[1.5] text-emerald-600 dark:text-emerald-400" />
+                            <span className="text-xs font-bold text-emerald-700 tabular-nums dark:text-emerald-300">
                                 {totalItems}
                             </span>
                         </div>
 
-                        <div className="h-5 w-px bg-zinc-200 dark:bg-zinc-700" />
+                        <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-700" />
 
                         <button
                             type="button"
                             onClick={() => router.reload({ only: ['servingQueue'], onError: () => {} })}
-                            className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
+                            className="rounded-lg p-2.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
                             title="Làm mới dữ liệu"
                         >
-                            <RefreshCw className="h-4 w-4 stroke-[1.5]" />
+                            <RefreshCw className="h-5 w-5 stroke-[1.5]" />
                         </button>
 
                         <button
                             type="button"
                             onClick={toggleFullscreen}
-                            className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
+                            className="rounded-lg p-2.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
                             title={isFullscreen ? 'Thoát toàn màn hình' : 'Mở toàn màn hình'}
                         >
                             {isFullscreen ? (
-                                <Minimize2 className="h-4 w-4 stroke-[1.5]" />
+                                <Minimize2 className="h-5 w-5 stroke-[1.5]" />
                             ) : (
-                                <Maximize2 className="h-4 w-4 stroke-[1.5]" />
+                                <Maximize2 className="h-5 w-5 stroke-[1.5]" />
                             )}
                         </button>
 
-                        <div className="h-5 w-px bg-zinc-200 dark:bg-zinc-700" />
+                        <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-700" />
 
                         <AvatarDropdown user={user} />
                     </div>
