@@ -244,11 +244,11 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
 
             <div className="flex h-full w-full flex-col overflow-hidden">
                 {/* Top Toolbar — single row, 3 zones */}
-                <div className="flex shrink-0 items-center gap-4 border-b border-zinc-200 bg-white px-4 py-2.5 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="flex shrink-0 items-center gap-4 border-b border-zinc-200 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-900">
                     {/* Left: Title + WS */}
                     <div className="flex shrink-0 items-center space-x-2">
-                        <ChefHat className="h-5 w-5 stroke-[1.5] text-sky-600 dark:text-sky-400" />
-                        <h1 className="font-display text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+                        <ChefHat className="h-6 w-6 stroke-[1.5] text-sky-600 dark:text-sky-400" />
+                        <h1 className="font-display text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
                             Bếp
                         </h1>
                         <div className="relative" ref={wsPopoverRef}>
@@ -257,13 +257,13 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                                 onClick={() =>
                                     setIsWsPopoverOpen(!isWsPopoverOpen)
                                 }
-                                className="flex items-center space-x-1 rounded-lg border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 transition-colors hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-zinc-800"
+                                className="flex items-center space-x-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 transition-colors hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-zinc-800"
                                 title="Xem chi tiết kết nối mạng"
                             >
                                 <span
-                                    className={`h-1.5 w-1.5 rounded-full ${wsConfig.dotClass}`}
+                                    className={`h-2 w-2 rounded-full ${wsConfig.dotClass}`}
                                 />
-                                <span className="text-[10px] font-semibold text-zinc-500 tabular-nums dark:text-zinc-400">
+                                <span className="text-[11px] font-semibold text-zinc-500 tabular-nums dark:text-zinc-400">
                                     {wsConfig.label}
                                 </span>
                             </button>
@@ -307,66 +307,66 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                     </div>
 
                     {/* Center: Station Filter Pills */}
-                    <div className="flex items-center rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+                    <div className="flex items-center rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
                         <button
                             type="button"
                             onClick={() => setActiveStation('all')}
-                            className={`flex items-center space-x-1 rounded-md px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                            className={`flex items-center space-x-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
                                 activeStation === 'all'
                                     ? 'bg-white text-sky-600 shadow-xs dark:bg-zinc-900 dark:text-sky-400'
                                     : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
                             }`}
                         >
-                            <Layers className="h-3.5 w-3.5 stroke-[1.5]" />
+                            <Layers className="h-4 w-4 stroke-[1.5]" />
                             <span>Tất cả</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => setActiveStation('bar')}
-                            className={`flex items-center space-x-1 rounded-md px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                            className={`flex items-center space-x-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
                                 activeStation === 'bar'
                                     ? 'bg-white text-sky-600 shadow-xs dark:bg-zinc-900 dark:text-sky-400'
                                     : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
                             }`}
                         >
-                            <Coffee className="h-3.5 w-3.5 stroke-[1.5]" />
+                            <Coffee className="h-4 w-4 stroke-[1.5]" />
                             <span>Pha chế</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => setActiveStation('kitchen')}
-                            className={`flex items-center space-x-1 rounded-md px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                            className={`flex items-center space-x-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
                                 activeStation === 'kitchen'
                                     ? 'bg-white text-sky-600 shadow-xs dark:bg-zinc-900 dark:text-sky-400'
                                     : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
                             }`}
                         >
-                            <UtensilsCrossed className="h-3.5 w-3.5 stroke-[1.5]" />
+                            <UtensilsCrossed className="h-4 w-4 stroke-[1.5]" />
                             <span>Bếp nóng</span>
                         </button>
                     </div>
 
                     {/* Right: Stats + Actions */}
                     <div className="ml-auto flex items-center space-x-2">
-                        <div className="flex items-center space-x-1.5 rounded-lg border border-sky-200/80 bg-sky-50/80 px-2 py-1 dark:border-sky-900/60 dark:bg-sky-950/40">
-                            <ClipboardList className="h-3.5 w-3.5 stroke-[1.5] text-sky-600 dark:text-sky-400" />
-                            <span className="text-[11px] font-bold text-sky-700 tabular-nums dark:text-sky-300">
+                        <div className="flex items-center space-x-1.5 rounded-lg border border-sky-200/80 bg-sky-50/80 px-2.5 py-1.5 dark:border-sky-900/60 dark:bg-sky-950/40">
+                            <ClipboardList className="h-4 w-4 stroke-[1.5] text-sky-600 dark:text-sky-400" />
+                            <span className="text-xs font-bold text-sky-700 tabular-nums dark:text-sky-300">
                                 {computedStats.total_orders}
                             </span>
                         </div>
-                        <div className="flex items-center space-x-1.5 rounded-lg border border-rose-200/80 bg-rose-50/80 px-2 py-1 dark:border-rose-900/60 dark:bg-rose-950/40">
-                            <AlertTriangle className="h-3.5 w-3.5 stroke-[1.5] text-rose-600 dark:text-rose-400" />
-                            <span className="text-[11px] font-bold text-rose-700 tabular-nums dark:text-rose-300">
+                        <div className="flex items-center space-x-1.5 rounded-lg border border-rose-200/80 bg-rose-50/80 px-2.5 py-1.5 dark:border-rose-900/60 dark:bg-rose-950/40">
+                            <AlertTriangle className="h-4 w-4 stroke-[1.5] text-rose-600 dark:text-rose-400" />
+                            <span className="text-xs font-bold text-rose-700 tabular-nums dark:text-rose-300">
                                 {computedStats.warning_orders}
                             </span>
                         </div>
 
-                        <div className="h-5 w-px bg-zinc-200 dark:bg-zinc-700" />
+                        <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-700" />
 
                         <button
                             type="button"
                             onClick={() => setSoundEnabled(!soundEnabled)}
-                            className={`rounded-lg border p-1.5 transition-colors ${
+                            className={`rounded-lg border p-2.5 transition-colors ${
                                 soundEnabled
                                     ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
                                     : 'border-zinc-200 bg-zinc-100 text-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-500'
@@ -378,9 +378,9 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                             }
                         >
                             {soundEnabled ? (
-                                <Volume2 className="h-4 w-4 stroke-[1.5]" />
+                                <Volume2 className="h-5 w-5 stroke-[1.5]" />
                             ) : (
-                                <VolumeX className="h-4 w-4 stroke-[1.5]" />
+                                <VolumeX className="h-5 w-5 stroke-[1.5]" />
                             )}
                         </button>
 
@@ -389,16 +389,16 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                             onClick={() =>
                                 router.reload({ only: ['orders', 'stats'] })
                             }
-                            className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
+                            className="rounded-lg p-2.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
                             title="Làm mới dữ liệu bếp"
                         >
-                            <RefreshCw className="h-4 w-4 stroke-[1.5]" />
+                            <RefreshCw className="h-5 w-5 stroke-[1.5]" />
                         </button>
 
                         <button
                             type="button"
                             onClick={toggleFullscreen}
-                            className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
+                            className="rounded-lg p-2.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
                             title={
                                 isFullscreen
                                     ? 'Thoát toàn màn hình'
@@ -406,13 +406,13 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                             }
                         >
                             {isFullscreen ? (
-                                <Minimize2 className="h-4 w-4 stroke-[1.5]" />
+                                <Minimize2 className="h-5 w-5 stroke-[1.5]" />
                             ) : (
-                                <Maximize2 className="h-4 w-4 stroke-[1.5]" />
+                                <Maximize2 className="h-5 w-5 stroke-[1.5]" />
                             )}
                         </button>
 
-                        <div className="h-5 w-px bg-zinc-200 dark:bg-zinc-700" />
+                        <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-700" />
                         <AvatarDropdown user={user} />
                     </div>
                 </div>
