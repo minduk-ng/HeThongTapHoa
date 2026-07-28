@@ -437,7 +437,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                             </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                             {filteredOrders.map((order) => (
                                 <KitchenOrderCard
                                     key={order.id}

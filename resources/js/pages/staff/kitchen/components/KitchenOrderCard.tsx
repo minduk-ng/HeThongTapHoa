@@ -48,6 +48,15 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
     );
     const [submitting, setSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [nowTime, setNowTime] = useState(() => Date.now());
+
+    // Update elapsed timer periodically
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setNowTime(Date.now());
+        }, 10000); // refresh every 10s
+        return () => clearInterval(interval);
+    }, []);
 
     // Sync state when order items change (e.g. from real-time extra items calls)
     useEffect(() => {
@@ -65,7 +74,6 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
 
     // Calculate elapsed time in minutes
     const createdAtTime = new Date(order.created_at).getTime();
-    const nowTime = new Date().getTime();
     const elapsedMinutes = Math.max(
         1,
         Math.floor((nowTime - createdAtTime) / 60000),
@@ -163,24 +171,20 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
             className={`border bg-white dark:bg-zinc-900 ${cardBorderClass} flex h-full min-h-[300px] flex-col justify-between overflow-hidden rounded-2xl shadow-sm transition-all hover:shadow-md duration-200`}
         >
             {/* Order Card Header */}
-            <div className={`p-4 ${headerBgClass} space-y-2 shadow-xs`}>
-                {hasAdditional && (
-                    <div className="inline-flex items-center space-x-1 rounded-md border border-amber-300/40 bg-amber-300/30 px-2 py-0.5 text-[10px] font-semibold text-amber-100">
-                        <AlertTriangle className="h-3 w-3 stroke-[1.5]" />
-                        <span>Bàn gọi thêm đồ</span>
-                    </div>
-                )}
-
+            <div className={`p-3 ${headerBgClass} space-y-1.5 shadow-xs`}>
                 <div className="flex items-start justify-between">
                     <div>
                         <span className="block text-[10px] font-bold tracking-wider text-white/70 uppercase font-mono">
                             {order.order_code}
                         </span>
-                        <h3 className="font-display text-lg font-bold leading-tight text-white mt-0.5">
-                            {order.table?.table_number || 'Mang về'}
-                            <span className="text-xs font-normal opacity-75 block mt-0.5">
-                                {order.table?.area || 'Trong nhà'}
-                            </span>
+                        <h3 className="font-display text-lg font-bold leading-tight text-white mt-1 flex flex-wrap items-center gap-1.5">
+                            <span>{order.table?.table_number || 'Mang về'}</span>
+                            {hasAdditional && (
+                                <span className="inline-flex items-center space-x-0.5 rounded-md border border-amber-300/40 bg-amber-300/35 px-1.5 py-0.5 text-[9px] font-semibold text-amber-100 shrink-0">
+                                    <AlertTriangle className="h-2.5 w-2.5 stroke-[1.5]" />
+                                    <span>Gọi thêm</span>
+                                </span>
+                            )}
                         </h3>
                     </div>
                     <div className="shrink-0 flex items-center gap-1 rounded-full bg-black/20 px-2.5 py-1 text-xs font-semibold text-white">
@@ -189,7 +193,7 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
                     </div>
                 </div>
 
-                <div className="flex items-center justify-between border-t border-white/10 pt-2 text-xs">
+                <div className="flex items-center justify-between border-t border-white/10 pt-1.5 text-xs">
                     <span className="font-medium opacity-80">
                         Tiến độ pha chế
                     </span>
@@ -200,7 +204,7 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
             </div>
 
             {/* Items Checklist (Spacious layout without height truncation) */}
-            <div className="min-h-[140px] flex-1 space-y-2 overflow-y-auto p-3 pr-1">
+            <div className="min-h-[140px] flex-1 space-y-2 overflow-y-auto p-1.5 pr-1.5">
                 {order.items
                     .filter((item) => item.status !== 'completed')
                     .map((item) => {
@@ -227,11 +231,11 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
                                         {isChecked && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <span className={`block truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100 ${isChecked ? 'text-zinc-400 dark:text-zinc-500' : ''}`}>
+                                        <span className={`block whitespace-normal break-words text-base font-extrabold text-zinc-900 dark:text-zinc-100 ${isChecked ? 'text-zinc-400 dark:text-zinc-500' : ''}`}>
                                             {item.menu_item?.name || 'Món ăn'}
                                         </span>
                                         {item.note && (
-                                            <span className="mt-0.5 block text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 px-1.5 py-0.5 rounded border border-amber-100/60 dark:border-amber-900/40 w-fit max-w-full truncate">
+                                            <span className="mt-1 block text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 px-1.5 py-0.5 rounded border border-amber-100/60 dark:border-amber-900/40 w-fit max-w-full whitespace-normal break-words">
                                                 Ghi chú: {item.note}
                                             </span>
                                         )}
@@ -239,7 +243,7 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
                                 </div>
 
                                 <div className="flex shrink-0 items-center">
-                                    <span className="rounded-lg border border-sky-100 bg-sky-50/50 px-2.5 py-1 text-xs font-bold text-sky-700 tabular-nums dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-300">
+                                    <span className="rounded-lg border border-sky-100 bg-sky-50/60 px-3 py-1.5 text-sm font-black text-sky-700 tabular-nums dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-300">
                                         {item.quantity} ly/phần
                                     </span>
                                 </div>
