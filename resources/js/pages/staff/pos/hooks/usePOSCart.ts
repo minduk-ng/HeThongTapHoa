@@ -79,6 +79,7 @@ export function usePOSCart(
                                 isKitchenCompleted:
                                     item.status === 'completed' ||
                                     isOrderCompleted,
+                                isServed: !!item.served_at,
                                 orderItemId: item.id,
                             });
                         });

@@ -4,6 +4,7 @@ export interface POSOrderItemData {
     quantity: number;
     unit_price: number;
     status?: 'pending' | 'processing' | 'completed' | 'cancelled';
+    served_at?: string | null;
     note?: string;
     menu_item?: {
         name: string;
@@ -71,6 +72,7 @@ export interface CartItem {
     note?: string;
     isConfirmed?: boolean;
     isKitchenCompleted?: boolean;
+    isServed?: boolean;
     orderStatus?: string;
     orderItemId?: number;
     stagedReduceQty?: number;

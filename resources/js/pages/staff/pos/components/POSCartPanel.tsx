@@ -382,7 +382,7 @@ export default function POSCartPanel({
                             (item.isKitchenCompleted || item.quantity <= 0)
                         );
                         const isDeleteDisabled = !!item.isConfirmed;
-                        const itemKey = `${item.menu_item_id}_${item.isConfirmed ? (item.isKitchenCompleted ? 'completed' : 'pending') : 'draft'}`;
+                        const itemKey = `${item.menu_item_id}_${item.isConfirmed ? (item.isKitchenCompleted ? (item.isServed ? 'served' : 'completed') : 'pending') : 'draft'}_${item.orderItemId || ''}`;
 
                         return (
                             <div
@@ -402,14 +402,18 @@ export default function POSCartPanel({
                                         {item.isConfirmed && (
                                             <span
                                                 className={`shrink-0 rounded-md border px-1.5 py-px text-[10px] font-medium ${
-                                                    item.isKitchenCompleted
-                                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/60 dark:text-emerald-300'
-                                                        : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/60 dark:text-amber-300'
+                                                    item.isServed
+                                                        ? 'border-emerald-250 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                                        : item.isKitchenCompleted
+                                                          ? 'border-sky-200 bg-sky-50 text-sky-850 dark:border-sky-900/60 dark:bg-sky-950/60 dark:text-sky-300'
+                                                          : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/60 dark:text-amber-300'
                                                 }`}
                                             >
-                                                {item.isKitchenCompleted
-                                                    ? 'Đã chế biến'
-                                                    : 'Đang chế biến'}
+                                                {item.isServed
+                                                    ? 'Đã phục vụ'
+                                                    : item.isKitchenCompleted
+                                                      ? 'Bếp làm xong'
+                                                      : 'Đang chế biến'}
                                             </span>
                                         )}
                                         {(item.stagedReduceQty || 0) > 0 && (

@@ -239,6 +239,10 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         setServingQueue(prev =>
             prev.filter(card => !card.items.every(i => itemIds.includes(i.id)))
         );
+        router.reload({
+            only: ['tables'],
+            onError: () => {},
+        });
     }, []);
 
     return (
