@@ -114,3 +114,10 @@ export interface POSManagerProps {
     categories: CategoryData[];
     products: POSProductData[];
 }
+
+export interface ReservationDraft {
+    name: string;
+    phone: string;
+    time: string; // datetime-local value
+    note: string;
+}
