@@ -194,6 +194,20 @@ export default function POSManager({ tables, categories, products }: POSManagerP
 
     const [paymentMode, setPaymentMode] = useState<'bulk' | 'single'>('bulk');
 
+    // Virtual "Mang đi" table (id = 0) holds orders of independent customers,
+    // so bulk checkout across all of them is never valid there.
+    const isTakeawayTable = selectedTable?.id === 0;
+
+    // All confirmed items across every order of the table/merged group,
+    // used by PaymentDrawer in bulk mode so totals cover all orders.
+    const bulkCartItems = useMemo(() => {
+        if (!selectedTable) return [];
+        const carts = tableCarts[selectedTable.id] || {};
+        return Object.values(carts)
+            .flat()
+            .filter((i) => i.isConfirmed);
+    }, [selectedTable, tableCarts]);
+
     const isCurrentTableCheckoutLocked = useMemo(() => {
         if (!selectedTable) return false;
         const groupId = selectedTable.merged_into_table_id || selectedTable.id;
@@ -296,7 +310,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                     });
                                 }
                             }}
-                            onOpenPayment={() => { setPaymentMode('bulk'); setIsPaymentDrawerOpen(true); }}
+                            onOpenPayment={() => { setPaymentMode(isTakeawayTable ? 'single' : 'bulk'); setIsPaymentDrawerOpen(true); }}
                             onOpenSinglePayment={() => { setPaymentMode('single'); setIsPaymentDrawerOpen(true); }}
                             submitting={submitting}
                             isCheckoutLocked={isCurrentTableCheckoutLocked}
@@ -319,7 +333,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 isOpen={isPaymentDrawerOpen}
                 onClose={() => setIsPaymentDrawerOpen(false)}
                 selectedTable={selectedTable}
-                cartItems={currentCart}
+                cartItems={paymentMode === 'bulk' ? bulkCartItems : currentCart}
                 onConfirmPayment={(paymentMethod, amountReceived, changeAmount, shouldPrint) => {
                     if (selectedTable) {
                         const activeId = activeInvoiceId[selectedTable.id] || 'draft_default';

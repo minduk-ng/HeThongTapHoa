@@ -370,7 +370,8 @@ export function usePOSCart(
     };
 
     const clearTableCart = (tableId?: number, invoiceId?: string) => {
-        if (!tableId) return;
+        // Note: virtual "Mang đi" table has id = 0, so a falsy check would skip it
+        if (tableId === undefined || tableId === null) return;
         const activeId =
             invoiceId || activeInvoiceId[tableId] || 'draft_default';
         setTableCarts((prev) => {
@@ -401,7 +402,8 @@ export function usePOSCart(
     };
 
     const clearUnconfirmedDraft = (tableId?: number, invoiceId?: string) => {
-        if (!tableId) return;
+        // Note: virtual "Mang đi" table has id = 0, so a falsy check would skip it
+        if (tableId === undefined || tableId === null) return;
         const activeId =
             invoiceId || activeInvoiceId[tableId] || 'draft_default';
         setTableCarts((prev) => {

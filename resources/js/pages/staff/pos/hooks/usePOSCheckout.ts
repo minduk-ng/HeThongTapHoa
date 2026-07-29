@@ -158,9 +158,15 @@ export function usePOSCheckout(
                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 setKitchenSubmitting(false);
             },
-            onError: () => {
+            onError: (errors) => {
                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 setKitchenSubmitting(false);
+                const firstError = errors && Object.values(errors)[0];
+                alert(
+                    typeof firstError === 'string'
+                        ? firstError
+                        : 'Gửi đơn xuống bếp thất bại. Vui lòng thử lại!',
+                );
             },
         });
     };

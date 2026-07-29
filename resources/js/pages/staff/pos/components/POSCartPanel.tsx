@@ -164,6 +164,10 @@ export default function POSCartPanel({
         isKitchenBlocked ||
         activeInvoiceId.startsWith('draft_');
 
+    // Virtual "Mang đi" table (id = 0): orders belong to independent customers,
+    // so the main button pays only the active order and bulk drop-up is hidden.
+    const isTakeaway = selectedTable.id === 0;
+
     return (
         <div className="flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200/80 bg-white dark:border-zinc-800/80 dark:bg-zinc-900">
             <VoidItemModal
@@ -681,7 +685,7 @@ export default function POSCartPanel({
                                 isCheckoutLocked
                             }
                             onClick={onOpenPayment}
-                            className={`flex flex-1 items-center justify-center space-x-1.5 rounded-l-xl px-3 py-2.5 text-xs font-semibold transition-colors duration-150 ${
+                            className={`flex flex-1 items-center justify-center space-x-1.5 ${isTakeaway ? 'rounded-xl' : 'rounded-l-xl'} px-3 py-2.5 text-xs font-semibold transition-colors duration-150 ${
                                 isCheckoutLocked
                                     ? 'cursor-not-allowed border border-rose-300 bg-rose-100 font-bold text-rose-700 opacity-90 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
                                     : isPaymentBlocked
@@ -695,7 +699,9 @@ export default function POSCartPanel({
                                       ? 'Vui lòng bấm "Gửi bếp chế biến" để lưu giỏ hàng trước khi thanh toán'
                                       : isKitchenBlocked
                                         ? 'Cần gửi toàn bộ món xuống Bếp và chờ Bếp làm xong mới được thanh toán'
-                                        : 'Thanh toán tất cả đơn'
+                                        : isTakeaway
+                                          ? 'Thanh toán đơn hiện tại'
+                                          : 'Thanh toán tất cả đơn'
                             }
                         >
                             {isCheckoutLocked ? (
@@ -709,21 +715,23 @@ export default function POSCartPanel({
                                     : 'Thanh toán'}
                             </span>
                         </button>
-                        <button
-                            type="button"
-                            disabled={isCheckoutLocked || isPaymentBlocked}
-                            onClick={() => setIsCheckoutDropUpOpen(!isCheckoutDropUpOpen)}
-                            className={`rounded-r-xl border-l border-emerald-500/30 px-1.5 py-2.5 text-white transition-colors disabled:opacity-50 ${
-                                isPaymentBlocked || isCheckoutLocked
-                                    ? 'bg-zinc-200 text-zinc-400 dark:bg-zinc-700'
-                                    : 'bg-emerald-600 hover:bg-emerald-700'
-                            }`}
-                        >
-                            <ChevronUp className="h-3.5 w-3.5" />
-                        </button>
+                        {!isTakeaway && (
+                            <button
+                                type="button"
+                                disabled={isCheckoutLocked || isPaymentBlocked}
+                                onClick={() => setIsCheckoutDropUpOpen(!isCheckoutDropUpOpen)}
+                                className={`rounded-r-xl border-l border-emerald-500/30 px-1.5 py-2.5 text-white transition-colors disabled:opacity-50 ${
+                                    isPaymentBlocked || isCheckoutLocked
+                                        ? 'bg-zinc-200 text-zinc-400 dark:bg-zinc-700'
+                                        : 'bg-emerald-600 hover:bg-emerald-700'
+                                }`}
+                            >
+                                <ChevronUp className="h-3.5 w-3.5" />
+                            </button>
+                        )}
                 
                         {/* Drop-up menu */}
-                        {isCheckoutDropUpOpen && (
+                        {!isTakeaway && isCheckoutDropUpOpen && (
                             <>
                                 <div className="fixed inset-0 z-40" onClick={() => setIsCheckoutDropUpOpen(false)} />
                                 <div className="absolute bottom-full right-0 z-50 mb-1 w-52 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-950">

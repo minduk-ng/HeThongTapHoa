@@ -177,7 +177,7 @@ class POSController extends Controller
 
                         $reduceQty = min($orderItem->quantity, (int) $red['reduce_quantity']);
                         $newQty = $orderItem->quantity - $reduceQty;
-                        $reasonStr = $red['cancellation_reason'].($red['note'] ? ': '.$red['note'] : '');
+                        $reasonStr = $red['cancellation_reason'].(! empty($red['note']) ? ': '.$red['note'] : '');
 
                         if ($newQty <= 0) {
                             $orderItem->update([
@@ -244,14 +244,18 @@ class POSController extends Controller
                             ? str_replace('-', '', strtoupper(Str::slug($table->table_number)))
                             : 'MD';
 
-                        // Count orders on this table created today
-                        $todayCount = $table
-                            ? Order::where('table_id', $table->id)->whereDate('created_at', today())->count()
-                            : Order::whereNull('table_id')->whereDate('created_at', today())->count();
-                        $seq = str_pad($todayCount + 1, 2, '0', STR_PAD_LEFT);
-
+                        // Generate next sequence from existing order codes with same prefix.
+                        // Counting by table_id is unsafe: transfer/merge changes table_id and
+                        // resets the count, producing duplicate order_code (unique violation).
                         $dateStr = date('ymd'); // YYMMDD format
-                        $orderCode = "{$normalized}-{$dateStr}-{$seq}";
+                        $prefix = "{$normalized}-{$dateStr}-";
+                        $maxSeq = Order::where('order_code', 'like', $prefix.'%')
+                            ->lockForUpdate()
+                            ->pluck('order_code')
+                            ->map(fn ($code) => (int) substr($code, strlen($prefix)))
+                            ->max() ?? 0;
+                        $seq = str_pad($maxSeq + 1, 2, '0', STR_PAD_LEFT);
+                        $orderCode = $prefix.$seq;
                         $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
 
                         $createdOrder = Order::create([
@@ -813,7 +817,7 @@ class POSController extends Controller
                     throw new \InvalidArgumentException('Không tìm thấy đơn hàng cần hủy!');
                 }
 
-                $reasonStr = $validated['cancellation_reason'].($validated['note'] ? ': '.$validated['note'] : '');
+                $reasonStr = $validated['cancellation_reason'].(! empty($validated['note']) ? ': '.$validated['note'] : '');
 
                 foreach ($orders as $order) {
                     foreach ($order->items as $item) {
