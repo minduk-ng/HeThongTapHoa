@@ -14,6 +14,7 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Table;
+use App\Services\OrderActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -110,7 +111,7 @@ class POSController extends Controller
     public function sendToKitchen(Request $request)
     {
         $validated = $request->validate([
-            'table_id' => 'required|exists:tables,id',
+            'table_id' => 'nullable|exists:tables,id',
             'order_id' => 'nullable|exists:orders,id',
             'items' => 'nullable|array',
             'items.*.menu_item_id' => 'required_with:items|exists:menu_items,id',
@@ -139,7 +140,7 @@ class POSController extends Controller
 
         try {
             $primaryOrder = DB::transaction(function () use ($validated, $request) {
-                $table = Table::findOrFail($validated['table_id']);
+                $table = !empty($validated['table_id']) ? Table::findOrFail($validated['table_id']) : null;
 
                 // 1. Handle staged reductions
                 if (! empty($validated['reduced_items'])) {
@@ -181,6 +182,15 @@ class POSController extends Controller
                             if ($parentOrder->items()->where('status', '!=', 'cancelled')->count() === 0) {
                                 $parentOrder->update(['status' => 'cancelled']);
                             }
+
+                            // Audit log: item_cancel
+                            OrderActivityLogger::log($parentOrder, 'item_cancel', $request->user()?->id, [
+                                'items' => [[
+                                    'name' => $orderItem->menuItem?->name ?? 'Món',
+                                    'qty_reduced' => $reduceQty,
+                                    'reason' => $reasonStr,
+                                ]],
+                            ]);
                         }
                     }
                 }
@@ -198,17 +208,21 @@ class POSController extends Controller
                             'has_additional_items' => true,
                         ]);
                     } else {
-                        $hasPreviousOrders = Order::where('table_id', $table->id)
-                            ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
-                            ->exists();
+                        $hasPreviousOrders = $table
+                            ? Order::where('table_id', $table->id)
+                                ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                                ->exists()
+                            : false;
 
                         // Normalize table number to uppercase, remove Vietnamese accents and spaces
-                        $normalized = str_replace('-', '', strtoupper(Str::slug($table->table_number)));
+                        $normalized = $table
+                            ? str_replace('-', '', strtoupper(Str::slug($table->table_number)))
+                            : 'MD';
 
                         // Count orders on this table created today
-                        $todayCount = Order::where('table_id', $table->id)
-                            ->whereDate('created_at', today())
-                            ->count();
+                        $todayCount = $table
+                            ? Order::where('table_id', $table->id)->whereDate('created_at', today())->count()
+                            : Order::whereNull('table_id')->whereDate('created_at', today())->count();
                         $seq = str_pad($todayCount + 1, 2, '0', STR_PAD_LEFT);
 
                         $dateStr = date('ymd'); // YYMMDD format
@@ -217,7 +231,7 @@ class POSController extends Controller
 
                         $createdOrder = Order::create([
                             'order_code' => $orderCode,
-                            'table_id' => $table->id,
+                            'table_id' => $table?->id,
                             'employee_id' => $employeeId,
                             'subtotal' => $validated['subtotal'],
                             'vat_amount' => $validated['vat_amount'],
@@ -227,7 +241,9 @@ class POSController extends Controller
                         ]);
                     }
 
-                    $table->update(['status' => 'occupied']);
+                    if ($table) {
+                        $table->update(['status' => 'occupied']);
+                    }
 
                     foreach ($validated['items'] as $item) {
                         OrderItem::create([
@@ -239,9 +255,34 @@ class POSController extends Controller
                             'note' => $item['note'] ?? null,
                         ]);
                     }
+
+                    // Audit log
+                    $userId = $request->user()?->id;
+                    $itemMeta = collect($validated['items'])->map(fn ($i) => [
+                        'name' => MenuItem::find($i['menu_item_id'])?->name ?? 'Món',
+                        'qty' => $i['quantity'],
+                        'price' => $i['unit_price'],
+                    ])->toArray();
+
+                    if (empty($validated['order_id'])) {
+                        OrderActivityLogger::log($createdOrder, 'created', $userId, [
+                            'items' => $itemMeta,
+                            'total' => $validated['total'],
+                            'item_count' => count($validated['items']),
+                        ]);
+                        OrderActivityLogger::log($createdOrder, 'sent_kitchen', $userId, [
+                            'items' => collect($validated['items'])->map(fn ($i) => ['name' => MenuItem::find($i['menu_item_id'])?->name ?? 'Món', 'qty' => $i['quantity']])->toArray(),
+                            'is_additional' => false,
+                        ]);
+                    } else {
+                        OrderActivityLogger::log($createdOrder, 'additional', $userId, [
+                            'items' => $itemMeta,
+                            'total_added' => $validated['total'],
+                        ]);
+                    }
                 }
 
-                return $createdOrder ?? Order::where('table_id', $table->id)->latest()->first() ?? new Order;
+                return $createdOrder ?? ($table ? Order::where('table_id', $table->id)->latest()->first() : null) ?? new Order;
             });
 
             $this->safeDispatch(fn () => OrderSentToKitchen::dispatch($primaryOrder));
@@ -294,17 +335,24 @@ class POSController extends Controller
                 // Mark only this order as paid/completed
                 $order->update(['status' => 'paid']);
 
-                $targetTable = Table::findOrFail($order->table_id);
+                $targetTable = $order->table_id ? Table::findOrFail($order->table_id) : null;
 
                 // Determine primary group table ID and all tables in this merged group
-                $primaryId = $targetTable->merged_into_table_id ?? $targetTable->id;
-                $allGroupTables = Table::where('id', $primaryId)->orWhere('merged_into_table_id', $primaryId)->get();
+                if ($targetTable) {
+                    $primaryId = $targetTable->merged_into_table_id ?? $targetTable->id;
+                    $allGroupTables = Table::where('id', $primaryId)->orWhere('merged_into_table_id', $primaryId)->get();
+                } else {
+                    $primaryId = null;
+                    $allGroupTables = collect();
+                }
                 $allGroupTableIds = $allGroupTables->pluck('id');
 
                 // Compute total amount and table name string for invoice record
                 $primaryTableObj = $allGroupTables->firstWhere('id', $primaryId);
                 $subTableNumbers = $allGroupTables->where('id', '!=', $primaryId)->pluck('table_number')->implode(', ');
-                $tableNameStr = $subTableNumbers ? "{$primaryTableObj->table_number} (Gộp {$subTableNumbers})" : $primaryTableObj->table_number;
+                $tableNameStr = $targetTable
+                    ? ($subTableNumbers ? "{$primaryTableObj->table_number} (Gộp {$subTableNumbers})" : $primaryTableObj->table_number)
+                    : 'Mang đi';
 
                 $totalAmount = $order->items->sum(function ($item) {
                     return (float) $item->quantity * (float) $item->unit_price;
@@ -325,11 +373,20 @@ class POSController extends Controller
                     ]
                 );
 
-                $hasOtherActive = Order::whereIn('table_id', $allGroupTableIds)
-                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
-                    ->exists();
+                // Audit log: checkout
+                OrderActivityLogger::log($order, 'checkout', $request->user()?->id, [
+                    'invoice_code' => $invoiceCode,
+                    'payment_method' => $validated['payment_method'],
+                    'total' => $totalAmount,
+                ]);
 
-                if (!$hasOtherActive) {
+                $hasOtherActive = $allGroupTableIds->isNotEmpty()
+                    ? Order::whereIn('table_id', $allGroupTableIds)
+                        ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                        ->exists()
+                    : false;
+
+                if (!$hasOtherActive && $targetTable) {
                     foreach ($allGroupTables as $grpTable) {
                         $grpTable->update([
                             'status' => 'available',
@@ -345,10 +402,14 @@ class POSController extends Controller
                 return $targetTable;
             });
 
-            $this->safeDispatch(fn () => TableStatusUpdated::dispatch($targetTable, 'checkout', [
-                'order_code' => $order->order_code,
-                'total_amount' => $totalAmount
-            ]));
+            $this->safeDispatch(function () use ($targetTable, $order, $totalAmount) {
+                if ($targetTable) {
+                    TableStatusUpdated::dispatch($targetTable, 'checkout', [
+                        'order_code' => $order->order_code,
+                        'total_amount' => $totalAmount,
+                    ]);
+                }
+            });
             $this->safeDispatch(fn () => IngredientStockUpdated::dispatch(['source' => 'checkout']));
 
             if ($request->wantsJson()) {
@@ -603,6 +664,12 @@ class POSController extends Controller
                         }
                     }
                     $order->update(['status' => 'cancelled']);
+
+                    // Audit log: order_cancelled
+                    OrderActivityLogger::log($order, 'order_cancelled', $request->user()?->id, [
+                        'reason' => $reasonStr,
+                        'item_count' => $order->items->count(),
+                    ]);
                 }
 
                 // Release all group tables to available
