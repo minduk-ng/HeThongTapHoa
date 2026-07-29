@@ -150,6 +150,55 @@ class POSController extends Controller
         return $prefix . $seq;
     }
 
+    public function checkInReservation(Request $request)
+    {
+        $validated = $request->validate([
+            'order_id' => 'required|exists:orders,id',
+        ]);
+
+        try {
+            $result = DB::transaction(function () use ($validated, $request) {
+                $order = Order::with('table')->findOrFail($validated['order_id']);
+
+                if ($order->status !== 'reserved') {
+                    throw new \Exception('Đơn này không phải đơn đặt bàn chờ check-in', 422);
+                }
+
+                $order->update(['status' => 'draft']);
+
+                $table = $order->table;
+                if ($table) {
+                    $table->update([
+                        'status' => 'occupied',
+                        'reservation_name' => null,
+                        'reservation_phone' => null,
+                        'reservation_time' => null,
+                        'reservation_note' => null,
+                    ]);
+                }
+
+                OrderActivityLogger::log($order, 'checked_in', $request->user()?->id);
+
+                return $table;
+            });
+
+            Cache::tags(['pos_tables'])->flush();
+
+            if ($result) {
+                $this->safeDispatch(fn () => TableStatusUpdated::dispatch($result));
+            }
+
+            return response()->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            if ($e->getCode() === 422) {
+                return response()->json(['error' => $e->getMessage()], 422);
+            }
+            Log::error('POS checkInReservation error: '.$e->getMessage());
+            return response()->json(['error' => 'Check-in thất bại: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function reserve(Request $request)
     {
         $validated = $request->validate([
@@ -378,13 +427,24 @@ class POSController extends Controller
                 if (! empty($validated['items'])) {
                     if (! empty($validated['order_id'])) {
                         $createdOrder = Order::lockForUpdate()->findOrFail($validated['order_id']);
-                        $createdOrder->update([
-                            'subtotal' => $createdOrder->subtotal + $validated['subtotal'],
-                            'vat_amount' => $createdOrder->vat_amount + $validated['vat_amount'],
-                            'total' => $createdOrder->total + $validated['total'],
-                            'status' => 'pending',
-                            'has_additional_items' => true,
-                        ]);
+                        
+                        if ($createdOrder->status === 'draft') {
+                            $createdOrder->items()->delete();
+                            $createdOrder->update([
+                                'subtotal' => $validated['subtotal'],
+                                'vat_amount' => $validated['vat_amount'],
+                                'total' => $validated['total'],
+                                'status' => 'pending',
+                            ]);
+                        } else {
+                            $createdOrder->update([
+                                'subtotal' => $createdOrder->subtotal + $validated['subtotal'],
+                                'vat_amount' => $createdOrder->vat_amount + $validated['vat_amount'],
+                                'total' => $createdOrder->total + $validated['total'],
+                                'status' => 'pending',
+                                'has_additional_items' => true,
+                            ]);
+                        }
                     } else {
                         $hasPreviousOrders = $table
                             ? Order::where('table_id', $table->id)

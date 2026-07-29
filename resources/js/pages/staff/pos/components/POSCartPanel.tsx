@@ -387,13 +387,28 @@ export default function POSCartPanel({
                     (() => {
                         const confirmedItems = cartItems.filter((i) => i.isConfirmed);
                         const draftItems = cartItems.filter((i) => !i.isConfirmed);
-                        const groupMap = new Map<string, CartItem[]>();
-                        confirmedItems.forEach((item) => {
-                            const code = item.orderCode || 'unknown';
-                            if (!groupMap.has(code)) groupMap.set(code, []);
-                            groupMap.get(code)!.push(item);
+
+                        // Nhóm món đã gửi bếp theo "lần gọi": các món gửi cách nhau
+                        // ≤ 60 giây thuộc cùng một lần gọi (cùng lượt "Gửi bếp").
+                        const sortedConfirmed = [...confirmedItems].sort((a, b) => {
+                            const ta = a.sentAt ? new Date(a.sentAt).getTime() : 0;
+                            const tb = b.sentAt ? new Date(b.sentAt).getTime() : 0;
+                            return ta - tb || (a.orderItemId || 0) - (b.orderItemId || 0);
                         });
-                        const orderGroups = Array.from(groupMap.entries()).map(([code, items]) => ({ code, items }));
+                        const callRounds: CartItem[][] = [];
+                        let prevSentTime: number | null = null;
+                        sortedConfirmed.forEach((item) => {
+                            const t = item.sentAt ? new Date(item.sentAt).getTime() : null;
+                            if (
+                                callRounds.length === 0 ||
+                                (t !== null && prevSentTime !== null && t - prevSentTime > 60_000)
+                            ) {
+                                callRounds.push([]);
+                            }
+                            callRounds[callRounds.length - 1].push(item);
+                            if (t !== null) prevSentTime = t;
+                        });
+                        const hasMultipleRounds = callRounds.length > 1;
             
                         const renderItemRow = (item: CartItem) => {
                             const isMinusDisabled = !!(
@@ -571,21 +586,23 @@ export default function POSCartPanel({
             
                         return (
                             <>
-                                {/* Grouped confirmed items by order */}
-                                {orderGroups.map((group) => (
-                                    <div key={group.code} className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
-                                        <div className="border-b border-zinc-100 bg-zinc-50/80 px-2.5 py-1 dark:border-zinc-800 dark:bg-zinc-800/60">
-                                            <span className="text-[10px] font-semibold text-zinc-400 tabular-nums dark:text-zinc-500">
-                                                {group.code}
-                                            </span>
-                                            {orderGroups.length > 1 && (
-                                                <span className="ml-1.5 text-[10px] text-zinc-300 dark:text-zinc-600">
-                                                    ({group.items.length} món)
+                                {/* Món đã gửi bếp, nhóm theo lần gọi. Lượt đầu tiên
+                                    không hiển thị nhãn; khi có gọi thêm mới đánh số
+                                    “Lần gọi 1”, “Lần gọi 2”... để dễ quan sát */}
+                                {callRounds.map((roundItems, roundIdx) => (
+                                    <div key={`round_${roundIdx}`} className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
+                                        {hasMultipleRounds && (
+                                            <div className="border-b border-zinc-100 bg-zinc-50/80 px-2.5 py-1 dark:border-zinc-800 dark:bg-zinc-800/60">
+                                                <span className="text-[10px] font-semibold text-zinc-500 tabular-nums dark:text-zinc-400">
+                                                    Lần gọi {roundIdx + 1}
                                                 </span>
-                                            )}
-                                        </div>
+                                                <span className="ml-1.5 text-[10px] text-zinc-400 tabular-nums dark:text-zinc-600">
+                                                    ({roundItems.length} món)
+                                                </span>
+                                            </div>
+                                        )}
                                         <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                                            {group.items.map(renderItemRow)}
+                                            {roundItems.map(renderItemRow)}
                                         </div>
                                     </div>
                                 ))}

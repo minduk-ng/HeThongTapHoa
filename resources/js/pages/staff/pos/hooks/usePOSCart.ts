@@ -82,6 +82,7 @@ export function usePOSCart(
                                 isServed: !!item.served_at,
                                 orderItemId: item.id,
                                 orderCode: order.order_code || `order_${order.id}`,
+                                sentAt: item.created_at,
                             });
                         });
                     }

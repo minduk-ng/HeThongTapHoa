@@ -71,3 +71,56 @@ it('rejects reserve with missing required fields', function () {
         'table_id' => $table->id,
     ])->assertStatus(422);
 });
+
+it('checks in a reserved order keeping its items', function () {
+    $staff = posStaff();
+    $table = posTable(['status' => 'reserved', 'reservation_name' => 'Anh Đức']);
+    $item = posMenuItem();
+    $order = posOrder($table, [['item' => $item, 'qty' => 2]], [
+        'status' => 'reserved',
+        'reservation_name' => 'Anh Đức',
+    ]);
+
+    $this->actingAs($staff)->postJson('/staff/pos/reservation/check-in', [
+        'order_id' => $order->id,
+    ])->assertOk();
+
+    expect($order->fresh()->status)->toBe('draft')
+        ->and($order->fresh()->items()->count())->toBe(1);
+    expect($table->fresh()->status)->toBe('occupied')
+        ->and($table->fresh()->reservation_name)->toBeNull();
+});
+
+it('replaces draft order items on send to kitchen without duplication', function () {
+    $staff = posStaff();
+    $table = posTable(['status' => 'occupied']);
+    $itemA = posMenuItem(['price' => 30000]);
+    $itemB = posMenuItem(['price' => 40000]);
+    $order = posOrder($table, [['item' => $itemA, 'qty' => 2]], ['status' => 'draft']);
+
+    $this->actingAs($staff)->post('/staff/pos/send-to-kitchen', [
+        'table_id' => $table->id,
+        'order_id' => $order->id,
+        'items' => [
+            ['menu_item_id' => $itemA->id, 'quantity' => 1, 'unit_price' => $itemA->price],
+            ['menu_item_id' => $itemB->id, 'quantity' => 3, 'unit_price' => $itemB->price],
+        ],
+        'subtotal' => 150000,
+        'vat_amount' => 0,
+        'total' => 150000,
+    ])->assertRedirect(); // sendToKitchen currently returns a redirect via `back()->with(...)` unless wantsJson()
+
+    $fresh = $order->fresh();
+    expect($fresh->status)->toBe('pending')
+        ->and($fresh->items()->count())->toBe(2)
+        ->and((float) $fresh->subtotal)->toBe(150000.0); // gán =, không cộng dồn
+});
+
+it('rejects check-in for non-reserved order', function () {
+    $staff = posStaff();
+    $order = posOrder(posTable(), [], ['status' => 'pending']);
+
+    $this->actingAs($staff)->postJson('/staff/pos/reservation/check-in', [
+        'order_id' => $order->id,
+    ])->assertStatus(422);
+});
