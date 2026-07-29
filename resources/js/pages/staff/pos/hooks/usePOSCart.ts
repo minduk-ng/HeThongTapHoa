@@ -30,18 +30,18 @@ export function usePOSCart(
                     if (allOrders.length > 0) {
                         const latestOrder = allOrders[allOrders.length - 1];
                         nextActive[table.id] =
-                            latestOrder.order_code || `order_${latestOrder.id}`;
+                            latestOrder.order_code || `draft_${latestOrder.id}`;
                     }
                 } else {
                     const hasCurrentActive = allOrders.some(
                         (o) =>
-                            (o.order_code || `order_${o.id}`) === currentActive,
+                            (o.order_code || `draft_${o.id}`) === currentActive,
                     );
                     if (!currentActive || !hasCurrentActive) {
                         if (allOrders.length > 0) {
                             nextActive[table.id] =
                                 allOrders[0].order_code ||
-                                `order_${allOrders[0].id}`;
+                                `draft_${allOrders[0].id}`;
                         } else {
                             nextActive[table.id] = 'draft_default';
                         }
@@ -61,7 +61,8 @@ export function usePOSCart(
 
                 allOrders.forEach((order) => {
                     const isOrderCompleted = order.status === 'completed';
-                    const key = order.order_code || `order_${order.id}`;
+                    const isDraft = order.status === 'pending' && !order.order_code;
+                    const key = order.order_code || `draft_${order.id}`;
                     if (!tableInvoices[key]) tableInvoices[key] = [];
 
                     if (order.items) {
@@ -75,13 +76,13 @@ export function usePOSCart(
                                 unit_price: Number(item.unit_price),
                                 vat_rate: Number(item.menu_item?.vat_rate || 0),
                                 note: item.note || '',
-                                isConfirmed: true,
+                                isConfirmed: !isDraft,
                                 isKitchenCompleted:
                                     item.status === 'completed' ||
                                     isOrderCompleted,
                                 isServed: !!item.served_at,
                                 orderItemId: item.id,
-                                orderCode: order.order_code || `order_${order.id}`,
+                                orderCode: order.order_code || `draft_${order.id}`,
                                 sentAt: item.created_at,
                             });
                         });
