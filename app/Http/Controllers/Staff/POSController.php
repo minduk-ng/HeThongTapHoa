@@ -14,6 +14,7 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Table;
+use App\Models\Deposit;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -133,6 +134,158 @@ class POSController extends Controller
         ]);
     }
 
+    private function generateOrderCode(?Table $table): string
+    {
+        $normalized = $table ? str_replace('-', '', strtoupper(Str::slug($table->table_number))) : 'MD';
+        $dateStr = date('ymd');
+        $prefix = "{$normalized}-{$dateStr}-";
+        
+        $maxSeq = Order::where('order_code', 'like', $prefix.'%')
+            ->lockForUpdate()
+            ->pluck('order_code')
+            ->map(fn ($code) => (int) substr($code, strlen($prefix)))
+            ->max() ?? 0;
+            
+        $seq = str_pad($maxSeq + 1, 2, '0', STR_PAD_LEFT);
+        return $prefix . $seq;
+    }
+
+    public function reserve(Request $request)
+    {
+        $validated = $request->validate([
+            'table_id' => 'required|integer|min:1|exists:tables,id',
+            'reservation_name' => 'required|string|max:100',
+            'reservation_phone' => 'required|string|max:20',
+            'reservation_time' => 'required|date',
+            'reservation_note' => 'nullable|string',
+            'items' => 'nullable|array',
+            'items.*.menu_item_id' => 'exists:menu_items,id',
+            'items.*.quantity' => 'integer|min:1',
+            'items.*.note' => 'nullable|string',
+            'deposit' => 'nullable|array',
+            'deposit.amount' => 'required_with:deposit|numeric|min:1',
+            'deposit.method' => 'required_with:deposit|in:cash,bank_transfer',
+            'idempotency_key' => 'nullable|string',
+        ]);
+
+        if ($request->filled('idempotency_key')) {
+            $lockKey = "idempotency:reserve:{$request->input('idempotency_key')}";
+            if (! Cache::add($lockKey, true, 30)) {
+                return response()->json(['success' => true]);
+            }
+        }
+
+        try {
+            $result = DB::transaction(function () use ($validated, $request) {
+                $table = Table::findOrFail($validated['table_id']);
+                
+                $subtotal = 0;
+                $vatAmount = 0;
+                $total = 0;
+                $orderItems = [];
+
+                if (!empty($validated['items'])) {
+                    foreach ($validated['items'] as $itemData) {
+                        $menuItem = MenuItem::find($itemData['menu_item_id']);
+                        if (!$menuItem) continue;
+                        
+                        $qty = $itemData['quantity'];
+                        $price = $menuItem->price;
+                        $itemSubtotal = $qty * $price;
+                        
+                        // VAT calculation similar to sendToKitchen logic if applicable
+                        // In POS flow, if sendToKitchen expects VAT, we calculate it here based on vat_rate
+                        // Assuming vat_rate exists or is 0
+                        $vatRate = $menuItem->vat_rate ?? 0;
+                        $itemVat = $itemSubtotal * ($vatRate / 100);
+                        
+                        $subtotal += $itemSubtotal;
+                        $vatAmount += $itemVat;
+                        $total += $itemSubtotal + $itemVat;
+
+                        $orderItems[] = [
+                            'menu_item_id' => $menuItem->id,
+                            'quantity' => $qty,
+                            'unit_price' => $price,
+                            'subtotal' => $itemSubtotal,
+                            'note' => $itemData['note'] ?? null,
+                            'status' => 'pending'
+                        ];
+                    }
+                }
+
+                $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
+                $orderCode = $this->generateOrderCode($table);
+                
+                $order = Order::create([
+                    'order_code' => $orderCode,
+                    'table_id' => $table->id,
+                    'employee_id' => $employeeId,
+                    'subtotal' => $subtotal,
+                    'vat_amount' => $vatAmount,
+                    'total' => $total,
+                    'status' => 'reserved',
+                    'reservation_name' => $validated['reservation_name'],
+                    'reservation_phone' => $validated['reservation_phone'],
+                    'reservation_time' => $validated['reservation_time'],
+                    'reservation_note' => $validated['reservation_note'] ?? null,
+                ]);
+
+                foreach ($orderItems as $item) {
+                    $item['order_id'] = $order->id;
+                    OrderItem::create($item);
+                }
+
+                $depositTotal = 0;
+                if (!empty($validated['deposit'])) {
+                    Deposit::create([
+                        'order_id' => $order->id,
+                        'amount' => $validated['deposit']['amount'],
+                        'method' => $validated['deposit']['method'],
+                        'status' => 'held',
+                        'received_by_user_id' => $request->user()?->id,
+                    ]);
+                    $depositTotal = $validated['deposit']['amount'];
+                    
+                    OrderActivityLogger::log($order, 'deposit_received', $request->user()?->id, [
+                        'amount' => $validated['deposit']['amount'],
+                        'method' => $validated['deposit']['method']
+                    ]);
+                }
+
+                OrderActivityLogger::log($order, 'reserved', $request->user()?->id, [
+                    'name' => $validated['reservation_name'],
+                    'time' => $validated['reservation_time'],
+                ]);
+
+                if ($table->status === 'available') {
+                    $table->update([
+                        'status' => 'reserved',
+                        'reservation_name' => $validated['reservation_name'],
+                        'reservation_phone' => $validated['reservation_phone'],
+                        'reservation_time' => $validated['reservation_time'],
+                        'reservation_note' => $validated['reservation_note'] ?? null,
+                    ]);
+                }
+
+                return ['order' => $order, 'deposit_total' => $depositTotal, 'table' => $table];
+            });
+            
+            Cache::tags(['pos_tables'])->flush();
+
+            $this->safeDispatch(fn () => TableStatusUpdated::dispatch($result['table']));
+
+            return response()->json([
+                'success' => true,
+                'order' => array_merge($result['order']->toArray(), ['deposit_total' => $result['deposit_total']])
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('POS reserve error: '.$e->getMessage());
+            return response()->json(['error' => 'Đặt bàn thất bại: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function sendToKitchen(Request $request)
     {
         $validated = $request->validate([
@@ -239,25 +392,9 @@ class POSController extends Controller
                                 ->exists()
                             : false;
 
-                        // Normalize table number to uppercase, remove Vietnamese accents and spaces
-                        $normalized = $table
-                            ? str_replace('-', '', strtoupper(Str::slug($table->table_number)))
-                            : 'MD';
-
-                        // Generate next sequence from existing order codes with same prefix.
-                        // Counting by table_id is unsafe: transfer/merge changes table_id and
-                        // resets the count, producing duplicate order_code (unique violation).
-                        $dateStr = date('ymd'); // YYMMDD format
-                        $prefix = "{$normalized}-{$dateStr}-";
-                        $maxSeq = Order::where('order_code', 'like', $prefix.'%')
-                            ->lockForUpdate()
-                            ->pluck('order_code')
-                            ->map(fn ($code) => (int) substr($code, strlen($prefix)))
-                            ->max() ?? 0;
-                        $seq = str_pad($maxSeq + 1, 2, '0', STR_PAD_LEFT);
-                        $orderCode = $prefix.$seq;
+                        $orderCode = $this->generateOrderCode($table);
                         $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
-
+                        
                         $createdOrder = Order::create([
                             'order_code' => $orderCode,
                             'table_id' => $table?->id,
