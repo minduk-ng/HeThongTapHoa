@@ -258,6 +258,11 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                         <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
                                             Hóa đơn thanh toán
                                         </h2>
+                                        {(order as any).invoice_sibling_count > 0 && (
+                                            <p className="text-xs text-sky-600 dark:text-sky-400 mb-1.5">
+                                                Hóa đơn gộp · {(order as any).invoice_sibling_count + 1} đơn cùng hóa đơn này
+                                            </p>
+                                        )}
                                         <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-1.5 text-sm">
                                             <div className="flex justify-between">
                                                 <span className="text-zinc-500 dark:text-zinc-400">Mã HĐ</span>
@@ -271,6 +276,10 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                                 </span>
                                             </div>
                                             <div className="flex justify-between">
+                                                <span className="text-zinc-500 dark:text-zinc-400">Thời gian</span>
+                                                <span className="text-zinc-600 dark:text-zinc-300 tabular-nums">{formatDateTime(order.invoice.issued_at)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
                                                 <span className="text-zinc-500 dark:text-zinc-400">Tổng tiền</span>
                                                 <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(order.invoice.total_amount)}</span>
                                             </div>
@@ -281,11 +290,7 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                             <div className="flex justify-between">
                                                 <span className="text-zinc-500 dark:text-zinc-400">Tiền thừa</span>
                                                 <span className="text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(order.invoice.change_amount)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-zinc-500 dark:text-zinc-400">Thời gian</span>
-                                                <span className="text-zinc-600 dark:text-zinc-300 tabular-nums">{formatDateTime(order.invoice.issued_at)}</span>
-                                            </div>
+                                            </div>                                            
                                         </div>
                                     </div>
                                 )}

@@ -88,6 +88,9 @@ class OrderListController extends Controller
                     'change_amount' => (float) $order->invoice->change_amount,
                     'issued_at' => $order->invoice->issued_at?->toIso8601String(),
                 ] : null,
+                'invoice_sibling_count' => $order->invoice_id
+                    ? Order::where('invoice_id', $order->invoice_id)->where('id', '!=', $order->id)->count()
+                    : 0,
                 'activities' => $order->activities->map(fn ($a) => [
                     'id' => $a->id,
                     'action' => $a->action,
