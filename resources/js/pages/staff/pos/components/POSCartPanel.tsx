@@ -12,6 +12,7 @@ import {
     X,
     Menu,
     StickyNote,
+    ChevronUp,
 } from 'lucide-react';
 import { POSTableData, CartItem } from '../types/pos.types';
 import TransferMergeModal from './TransferMergeModal';
@@ -40,6 +41,7 @@ interface POSCartPanelProps {
     onUpdateNote: (menuItemId: number, note: string) => void;
     onSendToKitchen: () => void;
     onOpenPayment: () => void;
+    onOpenSinglePayment?: () => void;
     submitting: boolean;
     isCheckoutLocked?: boolean;
     checkoutLockedBy?: string;
@@ -60,6 +62,7 @@ export default function POSCartPanel({
     onUpdateNote,
     onSendToKitchen,
     onOpenPayment,
+    onOpenSinglePayment,
     submitting,
     isCheckoutLocked = false,
     checkoutLockedBy = '',
@@ -76,6 +79,7 @@ export default function POSCartPanel({
     const [managerBypass, setManagerBypass] = useState(false);
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
+    const [isCheckoutDropUpOpen, setIsCheckoutDropUpOpen] = useState(false);
 
     // Reduce Item Modal State (staged reduction before sending to kitchen)
     const [reduceModalState, setReduceModalState] = useState<{
@@ -665,44 +669,79 @@ export default function POSCartPanel({
                             {submitting ? 'Đang gửi...' : 'Gửi bếp chế biến'}
                         </span>
                     </button>
-
-                    <button
-                        type="button"
-                        disabled={
-                            submitting ||
-                            cartItems.length === 0 ||
-                            isPaymentBlocked ||
-                            isCheckoutLocked
-                        }
-                        onClick={onOpenPayment}
-                        className={`flex items-center justify-center space-x-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors duration-150 ${
-                            isCheckoutLocked
-                                ? 'cursor-not-allowed border border-rose-300 bg-rose-100 font-bold text-rose-700 opacity-90 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
-                                : isPaymentBlocked
-                                  ? 'cursor-not-allowed border border-zinc-200 bg-zinc-100 text-zinc-400 opacity-60 dark:border-zinc-700 dark:bg-zinc-800'
-                                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                        }`}
-                        title={
-                            isCheckoutLocked
-                                ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}`
-                                : hasUnconfirmedChanges
-                                  ? 'Vui lòng bấm “Gửi bếp chế biến” để lưu giỏ hàng trước khi thanh toán'
-                                  : isKitchenBlocked
-                                    ? 'Cần gửi toàn bộ món xuống Bếp và chờ Bếp làm xong mới được thanh toán'
-                                    : 'Thanh toán đơn hàng'
-                        }
-                    >
-                        {isCheckoutLocked ? (
-                            <Lock className="h-3.5 w-3.5" />
-                        ) : (
-                            <CreditCard className="h-3.5 w-3.5" />
+                
+                    {/* Split checkout button */}
+                    <div className="relative flex">
+                        <button
+                            type="button"
+                            disabled={
+                                submitting ||
+                                cartItems.length === 0 ||
+                                isPaymentBlocked ||
+                                isCheckoutLocked
+                            }
+                            onClick={onOpenPayment}
+                            className={`flex flex-1 items-center justify-center space-x-1.5 rounded-l-xl px-3 py-2.5 text-xs font-semibold transition-colors duration-150 ${
+                                isCheckoutLocked
+                                    ? 'cursor-not-allowed border border-rose-300 bg-rose-100 font-bold text-rose-700 opacity-90 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                                    : isPaymentBlocked
+                                      ? 'cursor-not-allowed border border-zinc-200 bg-zinc-100 text-zinc-400 opacity-60 dark:border-zinc-700 dark:bg-zinc-800'
+                                      : 'bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50'
+                            }`}
+                            title={
+                                isCheckoutLocked
+                                    ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}`
+                                    : hasUnconfirmedChanges
+                                      ? 'Vui lòng bấm "Gửi bếp chế biến" để lưu giỏ hàng trước khi thanh toán'
+                                      : isKitchenBlocked
+                                        ? 'Cần gửi toàn bộ món xuống Bếp và chờ Bếp làm xong mới được thanh toán'
+                                        : 'Thanh toán tất cả đơn'
+                            }
+                        >
+                            {isCheckoutLocked ? (
+                                <Lock className="h-3.5 w-3.5" />
+                            ) : (
+                                <CreditCard className="h-3.5 w-3.5" />
+                            )}
+                            <span>
+                                {isCheckoutLocked
+                                    ? `Đang TT: ${checkoutLockedBy}`
+                                    : 'Thanh toán'}
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            disabled={isCheckoutLocked || isPaymentBlocked}
+                            onClick={() => setIsCheckoutDropUpOpen(!isCheckoutDropUpOpen)}
+                            className={`rounded-r-xl border-l border-emerald-500/30 px-1.5 py-2.5 text-white transition-colors disabled:opacity-50 ${
+                                isPaymentBlocked || isCheckoutLocked
+                                    ? 'bg-zinc-200 text-zinc-400 dark:bg-zinc-700'
+                                    : 'bg-emerald-600 hover:bg-emerald-700'
+                            }`}
+                        >
+                            <ChevronUp className="h-3.5 w-3.5" />
+                        </button>
+                
+                        {/* Drop-up menu */}
+                        {isCheckoutDropUpOpen && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setIsCheckoutDropUpOpen(false)} />
+                                <div className="absolute bottom-full right-0 z-50 mb-1 w-52 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsCheckoutDropUpOpen(false);
+                                            if (onOpenSinglePayment) onOpenSinglePayment();
+                                        }}
+                                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                    >
+                                        <CreditCard className="h-3.5 w-3.5 stroke-[1.5]" />
+                                        <span>Thanh toán riêng đơn này</span>
+                                    </button>
+                                </div>
+                            </>
                         )}
-                        <span>
-                            {isCheckoutLocked
-                                ? `Đang thanh toán: ${checkoutLockedBy}`
-                                : 'Thanh toán'}
-                        </span>
-                    </button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -303,6 +303,50 @@ export function usePOSCheckout(
             });
     };
 
+    const handleBulkCheckout = (
+        selectedTable: POSTableData | null,
+        allConfirmedOrders: { id: number; order_code?: string }[],
+        paymentMethod: 'cash' | 'bank_transfer',
+        amountReceived: number,
+        changeAmount: number,
+        onSuccess: () => void,
+    ) => {
+        if (!selectedTable || allConfirmedOrders.length === 0) return;
+
+        const csrfToken = getCsrfTokenFromCookie();
+        const idempotencyKey = `pos_bulk_${selectedTable.id}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+        fetch('/staff/pos/bulk-checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-XSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({
+                order_ids: allConfirmedOrders.map((o) => o.id),
+                table_id: selectedTable.id === 0 ? null : selectedTable.id,
+                payment_method: paymentMethod,
+                amount_received: amountReceived,
+                change_amount: changeAmount,
+                idempotency_key: idempotencyKey,
+            }),
+        })
+            .then(async (response) => {
+                const data = await response.json().catch(() => ({}));
+                if (response.ok && data.success) {
+                    onSuccess();
+                    router.reload({ only: ['tables'] });
+                } else {
+                    alert(data.error || 'Thanh toán gộp thất bại!');
+                }
+            })
+            .catch(() => {
+                alert('Không thể kết nối đến máy chủ.');
+            });
+    };
+
     return {
         submitting,
         isPaymentDrawerOpen,
@@ -312,5 +356,6 @@ export function usePOSCheckout(
         setReceiptModal,
         handleSendToKitchen,
         handleConfirmPayment,
+        handleBulkCheckout,
     };
 }
