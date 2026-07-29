@@ -25,6 +25,10 @@ class Order extends Model
         'invoice_id',
         'has_additional_items',
         'note',
+        'reservation_name',
+        'reservation_phone',
+        'reservation_time',
+        'reservation_note',
     ];
 
     protected $casts = [
@@ -33,6 +37,7 @@ class Order extends Model
         'discount_amount' => 'float',
         'total' => 'float',
         'has_additional_items' => 'boolean',
+        'reservation_time' => 'datetime',
     ];
 
     public function table()
@@ -53,5 +58,15 @@ class Order extends Model
     public function activities()
     {
         return $this->hasMany(OrderActivity::class)->orderBy('created_at');
+    }
+
+    public function deposits()
+    {
+        return $this->hasMany(Deposit::class);
+    }
+
+    public function heldDepositTotal(): float
+    {
+        return (float) $this->deposits()->where('status', 'held')->sum('amount');
     }
 }

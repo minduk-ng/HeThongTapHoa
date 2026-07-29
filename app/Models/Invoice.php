@@ -18,6 +18,7 @@ class Invoice extends Model
         'amount_received',
         'change_amount',
         'total_amount',
+        'deposit_amount',
         'issued_at',
     ];
 
@@ -25,6 +26,7 @@ class Invoice extends Model
         'amount_received' => 'decimal:2',
         'change_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'deposit_amount' => 'decimal:2',
         'issued_at' => 'datetime',
     ];
 
