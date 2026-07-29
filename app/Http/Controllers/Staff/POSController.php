@@ -154,7 +154,15 @@ class POSController extends Controller
     {
         $validated = $request->validate([
             'order_id' => 'required|exists:orders,id',
+            'idempotency_key' => 'nullable|string',
         ]);
+
+        if ($request->filled('idempotency_key')) {
+            $lockKey = "idempotency:check_in_reservation:{$request->input('idempotency_key')}";
+            if (! Cache::add($lockKey, true, 30)) {
+                return response()->json(['success' => true]);
+            }
+        }
 
         try {
             $result = DB::transaction(function () use ($validated, $request) {
@@ -424,11 +432,13 @@ class POSController extends Controller
 
                 // 2. Handle new items ticket creation
                 $createdOrder = null;
+                $wasDraft = false;
                 if (! empty($validated['items'])) {
                     if (! empty($validated['order_id'])) {
                         $createdOrder = Order::lockForUpdate()->findOrFail($validated['order_id']);
+                        $wasDraft = $createdOrder->status === 'draft';
                         
-                        if ($createdOrder->status === 'draft') {
+                        if ($wasDraft) {
                             $createdOrder->items()->delete();
                             $createdOrder->update([
                                 'subtotal' => $validated['subtotal'],
@@ -490,12 +500,14 @@ class POSController extends Controller
                         'price' => $i['unit_price'],
                     ])->toArray();
 
-                    if (empty($validated['order_id'])) {
-                        OrderActivityLogger::log($createdOrder, 'created', $userId, [
-                            'items' => $itemMeta,
-                            'total' => $validated['total'],
-                            'item_count' => count($validated['items']),
-                        ]);
+                    if (empty($validated['order_id']) || $wasDraft) {
+                        if (empty($validated['order_id'])) {
+                            OrderActivityLogger::log($createdOrder, 'created', $userId, [
+                                'items' => $itemMeta,
+                                'total' => $validated['total'],
+                                'item_count' => count($validated['items']),
+                            ]);
+                        }
                         OrderActivityLogger::log($createdOrder, 'sent_kitchen', $userId, [
                             'items' => collect($validated['items'])->map(fn ($i) => ['name' => MenuItem::find($i['menu_item_id'])?->name ?? 'Món', 'qty' => $i['quantity']])->toArray(),
                             'is_additional' => false,
