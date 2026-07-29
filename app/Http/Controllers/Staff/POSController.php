@@ -315,7 +315,10 @@ class POSController extends Controller
         }
 
         try {
-            $targetTable = DB::transaction(function () use ($validated, $request) {
+            $order = null;
+            $totalAmount = 0;
+
+            $targetTable = DB::transaction(function () use ($validated, $request, &$order, &$totalAmount) {
                 $order = Order::with('items')->lockForUpdate()->findOrFail($validated['order_id']);
 
                 if (in_array($order->status, ['paid', 'cancelled'])) {

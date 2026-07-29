@@ -123,7 +123,7 @@ class KitchenController extends Controller
 
             $completedItems = collect();
 
-            DB::transaction(function () use ($validated, $order, $employeeId, &$completedItems) {
+            DB::transaction(function () use ($validated, $order, $employeeId, $request, &$completedItems) {
                 $completedItems = OrderItem::whereIn('id', $validated['item_ids'])
                     ->where('order_id', $order->id)
                     ->whereIn('status', ['pending', 'processing'])

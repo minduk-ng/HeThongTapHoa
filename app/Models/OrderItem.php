@@ -28,6 +28,7 @@ class OrderItem extends Model
         'quantity' => 'integer',
         'unit_price' => 'float',
         'subtotal' => 'float',
+        'served_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
 
