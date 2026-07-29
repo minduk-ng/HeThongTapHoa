@@ -106,7 +106,7 @@ test('multi-invoice checkout releases table only when all orders are paid', func
     ]);
     $response->assertSessionHasNoErrors();
     
-    expect($order1->fresh()->status)->toEqual('completed');
+    expect($order1->fresh()->status)->toEqual('paid');
     expect($table->fresh()->status)->toEqual('occupied');
 
     $response2 = $this->post('/staff/pos/checkout', [
@@ -118,7 +118,7 @@ test('multi-invoice checkout releases table only when all orders are paid', func
     ]);
     $response2->assertSessionHasNoErrors();
 
-    expect($order2->fresh()->status)->toEqual('completed');
+    expect($order2->fresh()->status)->toEqual('paid');
     expect($table->fresh()->status)->toEqual('available');
 });
 
