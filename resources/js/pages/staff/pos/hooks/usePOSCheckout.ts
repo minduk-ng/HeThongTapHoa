@@ -138,7 +138,7 @@ export function usePOSCheckout(
         const idempotencyKey = `pos_send_${selectedTable.id}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
         const payload = {
-            table_id: selectedTable.id,
+            table_id: selectedTable.id === 0 ? null : selectedTable.id,
             order_id: orderId,
             items: newDeltaItems,
             reduced_items: reducedItems,

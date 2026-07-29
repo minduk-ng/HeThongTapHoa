@@ -1,7 +1,18 @@
 import React, { useState } from 'react';
-import { Users, Check, ArrowRightLeft } from 'lucide-react';
+import { Users, Check, ArrowRightLeft, ShoppingBag } from 'lucide-react';
 import { POSTableData } from '../types/pos.types';
 import { CheckoutLockInfo } from '../hooks/usePOSCheckoutLock';
+
+/** Virtual table ID for takeaway orders (table_id = null in backend) */
+export const TAKEAWAY_TABLE_ID = 0;
+
+const TAKEAWAY_TABLE: POSTableData = {
+    id: TAKEAWAY_TABLE_ID,
+    table_number: 'Mang đi',
+    area: 'Mang đi',
+    capacity: 0,
+    status: 'available',
+};
 
 interface POSTableTabProps {
     tables: POSTableData[];
@@ -27,7 +38,11 @@ export default function POSTableTab({
     const safeTables = (
         Array.isArray(tables) ? tables : Object.values(tables || {})
     ) as POSTableData[];
-    const groupedAreas = safeTables.reduce(
+
+    // Inject virtual "Mang đi" table at the beginning
+    const allTables = [TAKEAWAY_TABLE, ...safeTables];
+
+    const groupedAreas = allTables.reduce(
         (acc, table) => {
             const areaName = table.area || 'Khác';
             if (!acc[areaName]) acc[areaName] = [];
@@ -65,7 +80,7 @@ export default function POSTableTab({
     const filteredTables = (
         selectedArea === 'all'
             ? sortedAreaEntries.flatMap(([_, areaTables]) => areaTables)
-            : safeTables.filter((t) => (t.area || 'Khác') === selectedArea)
+            : allTables.filter((t) => (t.area || 'Khác') === selectedArea)
     ).filter((t) => {
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
@@ -88,7 +103,7 @@ export default function POSTableTab({
                             : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300'
                     }`}
                 >
-                    Tất cả ({safeTables.length})
+                    Tất cả ({allTables.length})
                 </button>
                 {areaOptions.map((area) => (
                     <button
@@ -136,7 +151,7 @@ export default function POSTableTab({
                             : '';
 
                         const grpId = table.merged_into_table_id || table.id;
-                        const grpTableIds = safeTables
+                        const grpTableIds = allTables
                             .filter(
                                 (t) =>
                                     t.id === grpId ||
@@ -201,10 +216,17 @@ export default function POSTableTab({
                                 </div>
 
                                 <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
-                                    <span className="flex items-center gap-1">
-                                        <Users className="h-3.5 w-3.5 stroke-[1.5]" />
-                                        {table.capacity} ghế
-                                    </span>
+                                    {table.id === TAKEAWAY_TABLE_ID ? (
+                                        <span className="flex items-center gap-1">
+                                            <ShoppingBag className="h-3.5 w-3.5 stroke-[1.5]" />
+                                            Không tại bàn
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-1">
+                                            <Users className="h-3.5 w-3.5 stroke-[1.5]" />
+                                            {table.capacity} ghế
+                                        </span>
+                                    )}
                                     {totalSessionItemsCount > 0 && (
                                         <span className="font-semibold text-amber-700 dark:text-amber-300">
                                             {totalSessionItemsCount} món
