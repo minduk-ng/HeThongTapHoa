@@ -482,6 +482,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 changeAmount={receiptModal.changeAmount}
                 invoiceCode={receiptModal.invoiceCode}
                 depositAmount={receiptModal.depositAmount}
+                depositRefund={receiptModal.depositRefund}
             />
         </DashboardLayout>
     );

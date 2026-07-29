@@ -13,6 +13,7 @@ interface ReceiptPrintModalProps {
     changeAmount: number;
     invoiceCode?: string;
     depositAmount?: number;
+    depositRefund?: number;
 }
 
 export default function ReceiptPrintModal({
@@ -25,6 +26,7 @@ export default function ReceiptPrintModal({
     changeAmount,
     invoiceCode = 'INV-' + Math.floor(100000 + Math.random() * 900000),
     depositAmount = 0,
+    depositRefund = 0,
 }: ReceiptPrintModalProps) {
     useEffect(() => {
         if (isOpen) {
@@ -214,6 +216,12 @@ export default function ReceiptPrintModal({
                                 <span>TỔNG THANH TOÁN:</span>
                                 <span className="font-mono text-sm tabular-nums">{Math.max(0, totalAmount - depositAmount).toLocaleString('vi-VN')} đ</span>
                             </div>
+                            {depositRefund > 0 && (
+                                <div className="flex justify-between font-bold text-zinc-900">
+                                    <span>Hoàn khách:</span>
+                                    <span className="font-mono tabular-nums">{depositRefund.toLocaleString('vi-VN')} đ</span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Payment Info */}

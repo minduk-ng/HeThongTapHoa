@@ -61,7 +61,7 @@ export function usePOSCart(
 
                 allOrders.forEach((order) => {
                     const isOrderCompleted = order.status === 'completed';
-                    const isDraft = order.status === 'pending' && !order.order_code;
+                    const isDraft = order.status === 'draft';
                     const key = order.order_code || `draft_${order.id}`;
                     if (!tableInvoices[key]) tableInvoices[key] = [];
 

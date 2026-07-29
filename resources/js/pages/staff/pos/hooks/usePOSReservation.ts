@@ -64,9 +64,7 @@ export function usePOSReservation() {
                 body: JSON.stringify({
                     table_id: tableId,
                     ...data,
-                    items: [],
-                    deposit_amount: 0,
-                    payment_method: 'cash'
+                    items: []
                 })
             });
             
@@ -104,6 +102,8 @@ export function usePOSReservation() {
     ) => {
         setIsLoading(true);
         try {
+            // Backend expects nested deposit: {amount, method} (nullable)
+            const { deposit_amount, payment_method, ...rest } = data;
             const response = await fetch(`/staff/pos/reserve`, {
                 method: 'POST',
                 headers: {
@@ -111,7 +111,12 @@ export function usePOSReservation() {
                     'X-CSRF-TOKEN': getCsrfTokenFromCookie(),
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify(data)
+                body: JSON.stringify({
+                    ...rest,
+                    deposit: deposit_amount > 0
+                        ? { amount: deposit_amount, method: payment_method }
+                        : undefined
+                })
             });
             
             const result = await response.json();
@@ -185,7 +190,7 @@ export function usePOSReservation() {
                 },
                 body: JSON.stringify({
                     order_id: orderId,
-                    resolution,
+                    deposit_resolution: resolution === 'none' ? null : resolution,
                     note
                 })
             });
@@ -227,7 +232,7 @@ export function usePOSReservation() {
                 body: JSON.stringify({
                     order_id: orderId,
                     amount,
-                    payment_method: paymentMethod
+                    method: paymentMethod
                 })
             });
             
