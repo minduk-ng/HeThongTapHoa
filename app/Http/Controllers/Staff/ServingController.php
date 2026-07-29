@@ -6,6 +6,7 @@ use App\Events\ItemsServed;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Services\OrderActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -42,6 +43,19 @@ class ServingController extends Controller
                     ->distinct()
                     ->pluck('order_id')
                     ->toArray();
+
+                // Audit log: served
+                $servedItems = OrderItem::whereIn('id', $validated['item_ids'])->with('menuItem')->get();
+                foreach ($orderIds as $orderId) {
+                    $order = Order::find($orderId);
+                    if ($order) {
+                        $items = $servedItems->where('order_id', $orderId)->map(fn ($i) => [
+                            'name' => $i->menuItem?->name ?? 'Món',
+                            'qty' => $i->quantity,
+                        ])->toArray();
+                        OrderActivityLogger::log($order, 'served', $request->user()?->id, ['items' => $items]);
+                    }
+                }
 
                 $tableNumber = Order::whereIn('id', $orderIds)
                     ->with('table')

@@ -13,6 +13,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductRecipe;
 use App\Models\Table;
+use App\Services\OrderActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -87,6 +88,11 @@ class KitchenController extends Controller
 
                     $this->deductIngredients($item, $employeeId, $order->order_code);
                 }
+
+                // Audit log: completed
+                OrderActivityLogger::log($order, 'completed', $request->user()?->id, [
+                    'items' => $completedItems->map(fn ($i) => ['name' => $i->menuItem?->name ?? 'Món', 'qty' => $i->quantity])->toArray(),
+                ]);
             });
 
             $this->safeDispatch(fn () => OrderCompleted::dispatch($order));
@@ -138,6 +144,12 @@ class KitchenController extends Controller
                         'has_additional_items' => false,
                     ]);
                 }
+
+                // Audit log: completed (partial)
+                OrderActivityLogger::log($order, 'completed', $request->user()?->id, [
+                    'items' => $completedItems->map(fn ($i) => ['name' => $i->menuItem?->name ?? 'Món', 'qty' => $i->quantity])->toArray(),
+                    'partial' => $remainingActive > 0,
+                ]);
             });
 
             $this->safeDispatch(fn () => OrderCompleted::dispatch($order));
