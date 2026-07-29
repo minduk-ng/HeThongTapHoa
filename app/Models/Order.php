@@ -48,4 +48,9 @@ class Order extends Model
     {
         return $this->hasOne(Invoice::class, 'order_id');
     }
+
+    public function activities()
+    {
+        return $this->hasMany(OrderActivity::class)->orderBy('created_at');
+    }
 }
