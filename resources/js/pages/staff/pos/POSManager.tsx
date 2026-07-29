@@ -189,7 +189,10 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         setReceiptModal,
         handleSendToKitchen,
         handleConfirmPayment,
+        handleBulkCheckout,
     } = usePOSCheckout(selectedTable, tables);
+
+    const [paymentMode, setPaymentMode] = useState<'bulk' | 'single'>('bulk');
 
     const isCurrentTableCheckoutLocked = useMemo(() => {
         if (!selectedTable) return false;
@@ -293,7 +296,8 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                     });
                                 }
                             }}
-                            onOpenPayment={() => setIsPaymentDrawerOpen(true)}
+                            onOpenPayment={() => { setPaymentMode('bulk'); setIsPaymentDrawerOpen(true); }}
+                            onOpenSinglePayment={() => { setPaymentMode('single'); setIsPaymentDrawerOpen(true); }}
                             submitting={submitting}
                             isCheckoutLocked={isCurrentTableCheckoutLocked}
                             checkoutLockedBy={currentTableLockedBy}
@@ -319,17 +323,30 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 onConfirmPayment={(paymentMethod, amountReceived, changeAmount, shouldPrint) => {
                     if (selectedTable) {
                         const activeId = activeInvoiceId[selectedTable.id] || 'draft_default';
-                        handleConfirmPayment(
-                            selectedTable,
-                            currentCart,
-                            activeId,
-                            paymentMethod,
-                            amountReceived,
-                            changeAmount,
-                            shouldPrint,
-                            () => clearTableCart(selectedTable.id, activeId),
-                            addLogEntry
-                        );
+                        if (paymentMode === 'bulk') {
+                            const allOrders = selectedTable.active_orders || [];
+                            const confirmedOrders = allOrders.filter((o) => o.status !== 'paid' && o.status !== 'cancelled');
+                            handleBulkCheckout(
+                                selectedTable,
+                                confirmedOrders,
+                                paymentMethod,
+                                amountReceived,
+                                changeAmount,
+                                () => clearTableCart(selectedTable.id),
+                            );
+                        } else {
+                            handleConfirmPayment(
+                                selectedTable,
+                                currentCart,
+                                activeId,
+                                paymentMethod,
+                                amountReceived,
+                                changeAmount,
+                                shouldPrint,
+                                () => clearTableCart(selectedTable.id, activeId),
+                                addLogEntry
+                            );
+                        }
                     }
                 }}
                 submitting={submitting}
