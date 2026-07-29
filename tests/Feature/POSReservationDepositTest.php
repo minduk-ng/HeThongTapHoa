@@ -208,3 +208,96 @@ it('rejects deposit for paid or cancelled orders', function () {
         'order_id' => $order->id, 'amount' => 100000, 'method' => 'cash',
     ])->assertStatus(422);
 });
+
+it('deducts held deposit at checkout and marks it applied', function () {
+    $staff = posStaff();
+    $table = posTable(['status' => 'occupied']);
+    $item = posMenuItem(['price' => 100000]);
+    $order = posOrder($table, [['item' => $item, 'qty' => 2, 'status' => 'served']], ['status' => 'completed']);
+    Deposit::create(['order_id' => $order->id, 'amount' => 50000, 'method' => 'cash', 'status' => 'held']);
+
+    $res = $this->actingAs($staff)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 150000, // total 200000 - cọc 50000
+        'change_amount' => 0,
+    ]);
+
+    $res->assertOk();
+    expect(Deposit::first()->status)->toBe('applied');
+    expect((float) $order->fresh()->invoice->deposit_amount)->toBe(50000.0);
+});
+
+it('refunds excess deposit when deposit exceeds total', function () {
+    $staff = posStaff();
+    $table = posTable(['status' => 'occupied']);
+    $item = posMenuItem(['price' => 20000]); // 20000 -> refund is 80000
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'status' => 'served']], ['status' => 'completed']);
+    Deposit::create(['order_id' => $order->id, 'amount' => 100000, 'method' => 'cash', 'status' => 'held']);
+
+    $res = $this->actingAs($staff)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 0,
+        'change_amount' => 0,
+    ]);
+
+    $res->assertOk();
+    expect((float) $res->json('deposit_refund'))->toBe(80000.0);
+});
+
+it('blocks checkout of a reserved order', function () {
+    $staff = posStaff();
+    $order = posOrder(posTable(['status' => 'reserved']), [], ['status' => 'reserved']);
+
+    $this->actingAs($staff)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 0,
+        'change_amount' => 0,
+    ])->assertStatus(422);
+});
+
+it('sums deposits across orders in bulk checkout', function () {
+    $staff = posStaff();
+    $table = posTable(['status' => 'occupied']);
+    $item = posMenuItem(['price' => 50000]);
+    $order1 = posOrder($table, [['item' => $item, 'qty' => 1, 'status' => 'served']], ['status' => 'completed']);
+    $order2 = posOrder($table, [['item' => $item, 'qty' => 2, 'status' => 'served']], ['status' => 'completed']);
+    Deposit::create(['order_id' => $order1->id, 'amount' => 30000, 'method' => 'cash', 'status' => 'held']);
+    Deposit::create(['order_id' => $order2->id, 'amount' => 40000, 'method' => 'cash', 'status' => 'held']);
+
+    $res = $this->actingAs($staff)->postJson('/staff/pos/bulk-checkout', [
+        'table_id' => $table->id,
+        'order_ids' => [$order1->id, $order2->id],
+        'payment_method' => 'cash',
+        'amount_received' => 80000, // total 150000 - cọc 70000
+        'change_amount' => 0,
+    ]);
+
+    $res->assertOk();
+    expect(Deposit::where('status', 'held')->count())->toBe(0)
+        ->and(Deposit::where('status', 'applied')->count())->toBe(2);
+    expect((float) $order1->fresh()->invoice->deposit_amount)->toBe(70000.0);
+});
+
+it('keeps table reserved after checkout when a reserved order remains', function () {
+    $staff = posStaff();
+    $table = posTable(['status' => 'occupied']);
+    $item = posMenuItem(['price' => 50000]);
+    $completedOrder = posOrder($table, [['item' => $item, 'qty' => 1, 'status' => 'served']], ['status' => 'completed']);
+    $reservedOrder = posOrder($table, [], ['status' => 'reserved', 'reservation_name' => 'Chị Hoa', 'reservation_phone' => '0912345678']);
+
+    $res = $this->actingAs($staff)->postJson('/staff/pos/checkout', [
+        'order_id' => $completedOrder->id,
+        'payment_method' => 'cash',
+        'amount_received' => 50000,
+        'change_amount' => 0,
+    ]);
+
+    $res->assertOk();
+    $table->refresh();
+    expect($table->status)->toBe('reserved')
+        ->and($table->reservation_name)->toBe('Chị Hoa')
+        ->and($table->reservation_phone)->toBe('0912345678');
+});

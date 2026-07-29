@@ -691,12 +691,15 @@ class POSController extends Controller
         try {
             $order = null;
             $totalAmount = 0;
-
-            $targetTable = DB::transaction(function () use ($validated, $request, &$order, &$totalAmount) {
+            $result = DB::transaction(function () use ($validated, $request, &$order, &$totalAmount) {
                 $order = Order::with('items')->lockForUpdate()->findOrFail($validated['order_id']);
 
                 if (in_array($order->status, ['paid', 'cancelled'])) {
                     throw new \Exception('Đơn hàng này đã được thanh toán hoặc đã hủy.');
+                }
+
+                if ($order->status === 'reserved') {
+                    throw new \Exception('Đơn đặt bàn chưa check-in, không thể thanh toán', 422);
                 }
 
                 // Check if this order is still pending/processing in kitchen
@@ -735,12 +738,21 @@ class POSController extends Controller
                     return (float) $item->quantity * (float) $item->unit_price;
                 });
 
+                $depositTotal = (float) $order->deposits()->where('status', 'held')->sum('amount');
+                $payable = max(0, $totalAmount - $depositTotal);
+                $depositRefund = max(0, $depositTotal - $totalAmount);
+
+                if ($validated['amount_received'] < $payable) {
+                    throw new \Exception('Số tiền khách đưa không đủ.');
+                }
+
                 // Create Invoice record and link to order
                 $invoiceCode = 'INV-'.date('Ymd').strtoupper(Str::random(4));
                 $invoice = Invoice::create([
                     'invoice_code' => $invoiceCode,
                     'table_name' => $tableNameStr,
                     'total_amount' => $totalAmount,
+                    'deposit_amount' => $depositTotal,
                     'payment_method' => $validated['payment_method'],
                     'amount_received' => $validated['amount_received'],
                     'change_amount' => $validated['change_amount'],
@@ -748,6 +760,14 @@ class POSController extends Controller
                 ]);
 
                 $order->update(['invoice_id' => $invoice->id]);
+
+                if ($depositTotal > 0) {
+                    $order->deposits()->where('status', 'held')->update([
+                        'status' => 'applied',
+                        'resolved_at' => now(),
+                        'resolved_by_user_id' => $request->user()?->id,
+                    ]);
+                }
 
                 // Audit log: checkout
                 OrderActivityLogger::log($order, 'checkout', $request->user()?->id, [
@@ -763,11 +783,27 @@ class POSController extends Controller
                     : false;
 
                 if (!$hasOtherActive && $targetTable) {
+                    $reservedOrder = Order::whereIn('table_id', $allGroupTableIds)
+                        ->where('status', 'reserved')
+                        ->orderBy('reservation_time', 'asc')
+                        ->first();
+
                     foreach ($allGroupTables as $grpTable) {
-                        $grpTable->update([
-                            'status' => 'available',
-                            'merged_into_table_id' => null,
-                        ]);
+                        if ($reservedOrder) {
+                            $grpTable->update([
+                                'status' => 'reserved',
+                                'merged_into_table_id' => null,
+                                'reservation_name' => $reservedOrder->reservation_name,
+                                'reservation_phone' => $reservedOrder->reservation_phone,
+                                'reservation_time' => $reservedOrder->reservation_time,
+                                'reservation_note' => $reservedOrder->reservation_note,
+                            ]);
+                        } else {
+                            $grpTable->update([
+                                'status' => 'available',
+                                'merged_into_table_id' => null,
+                            ]);
+                        }
                         $this->safeDispatch(fn () => TableStatusUpdated::dispatch($grpTable, 'checkout', [
                             'order_code' => $order->order_code,
                             'total_amount' => $totalAmount
@@ -775,8 +811,12 @@ class POSController extends Controller
                     }
                 }
 
-                return $targetTable;
+                return ['table' => $targetTable, 'deposit_total' => $depositTotal, 'deposit_refund' => $depositRefund];
             });
+
+            $targetTable = $result['table'];
+            $depositTotal = $result['deposit_total'];
+            $depositRefund = $result['deposit_refund'];
 
             $this->safeDispatch(function () use ($targetTable, $order, $totalAmount) {
                 if ($targetTable) {
@@ -792,6 +832,8 @@ class POSController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Thanh toán hoàn tất thành công!',
+                    'deposit_total' => $depositTotal,
+                    'deposit_refund' => $depositRefund,
                 ]);
             }
 
@@ -835,7 +877,7 @@ class POSController extends Controller
             $totalAmount = 0;
             $orders = collect();
 
-            $targetTable = DB::transaction(function () use ($validated, $request, &$invoice, &$totalAmount, &$orders) {
+            $result = DB::transaction(function () use ($validated, $request, &$invoice, &$totalAmount, &$orders) {
                 $orders = Order::with('items')->whereIn('id', $validated['order_ids'])->lockForUpdate()->get();
 
                 if ($orders->count() !== count($validated['order_ids'])) {
@@ -845,6 +887,11 @@ class POSController extends Controller
                 $invalidOrder = $orders->first(fn ($o) => in_array($o->status, ['paid', 'cancelled']));
                 if ($invalidOrder) {
                     throw new \Exception("Đơn {$invalidOrder->order_code} đã được thanh toán hoặc đã hủy.");
+                }
+
+                $reservedOrder = $orders->first(fn ($o) => $o->status === 'reserved');
+                if ($reservedOrder) {
+                    throw new \Exception("Đơn {$reservedOrder->order_code} là đơn đặt bàn chưa check-in, không thể thanh toán", 422);
                 }
 
                 // Kitchen lock check
@@ -860,6 +907,18 @@ class POSController extends Controller
 
                 // Compute total across all orders
                 $totalAmount = $orders->sum(fn ($ord) => $ord->items->sum(fn ($item) => (float) $item->quantity * (float) $item->unit_price));
+                
+                $depositTotal = 0;
+                foreach ($orders as $ord) {
+                    $depositTotal += (float) $ord->deposits()->where('status', 'held')->sum('amount');
+                }
+
+                $payable = max(0, $totalAmount - $depositTotal);
+                $depositRefund = max(0, $depositTotal - $totalAmount);
+
+                if ($validated['amount_received'] < $payable) {
+                    throw new \Exception('Số tiền khách đưa không đủ.');
+                }
 
                 // Determine table name
                 $tableId = $validated['table_id'] ?? $orders->first()?->table_id;
@@ -883,6 +942,7 @@ class POSController extends Controller
                     'invoice_code' => $invoiceCode,
                     'table_name' => $tableNameStr,
                     'total_amount' => $totalAmount,
+                    'deposit_amount' => $depositTotal,
                     'payment_method' => $validated['payment_method'],
                     'amount_received' => $validated['amount_received'],
                     'change_amount' => $validated['change_amount'],
@@ -893,6 +953,14 @@ class POSController extends Controller
                 foreach ($orders as $ord) {
                     $orderTotal = $ord->items->sum(fn ($item) => (float) $item->quantity * (float) $item->unit_price);
                     $ord->update(['status' => 'paid', 'invoice_id' => $invoice->id]);
+
+                    if ($depositTotal > 0) {
+                        $ord->deposits()->where('status', 'held')->update([
+                            'status' => 'applied',
+                            'resolved_at' => now(),
+                            'resolved_by_user_id' => $request->user()?->id,
+                        ]);
+                    }
 
                     OrderActivityLogger::log($ord, 'checkout', $request->user()?->id, [
                         'invoice_code' => $invoiceCode,
@@ -910,14 +978,34 @@ class POSController extends Controller
                         ->exists();
 
                     if (! $hasOtherActive) {
+                        $reservedOrder = Order::whereIn('table_id', $allGroupTableIds)
+                            ->where('status', 'reserved')
+                            ->orderBy('reservation_time', 'asc')
+                            ->first();
+
                         foreach ($allGroupTables as $grpTable) {
-                            $grpTable->update(['status' => 'available', 'merged_into_table_id' => null]);
+                            if ($reservedOrder) {
+                                $grpTable->update([
+                                    'status' => 'reserved',
+                                    'merged_into_table_id' => null,
+                                    'reservation_name' => $reservedOrder->reservation_name,
+                                    'reservation_phone' => $reservedOrder->reservation_phone,
+                                    'reservation_time' => $reservedOrder->reservation_time,
+                                    'reservation_note' => $reservedOrder->reservation_note,
+                                ]);
+                            } else {
+                                $grpTable->update(['status' => 'available', 'merged_into_table_id' => null]);
+                            }
                         }
                     }
                 }
 
-                return $targetTable;
+                return ['table' => $targetTable, 'deposit_total' => $depositTotal, 'deposit_refund' => $depositRefund];
             });
+
+            $targetTable = $result['table'];
+            $depositTotal = $result['deposit_total'];
+            $depositRefund = $result['deposit_refund'];
 
             $this->safeDispatch(function () use ($targetTable, $orders, $totalAmount) {
                 if ($targetTable) {
@@ -930,7 +1018,12 @@ class POSController extends Controller
             $this->safeDispatch(fn () => IngredientStockUpdated::dispatch(['source' => 'bulk_checkout']));
 
             if ($request->wantsJson()) {
-                return response()->json(['success' => true, 'message' => 'Thanh toán gộp thành công!']);
+                return response()->json([
+                    'success' => true, 
+                    'message' => 'Thanh toán gộp thành công!',
+                    'deposit_total' => $depositTotal,
+                    'deposit_refund' => $depositRefund,
+                ]);
             }
 
             return back()->with('success', 'Thanh toán gộp thành công!');
