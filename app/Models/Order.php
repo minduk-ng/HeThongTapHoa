@@ -67,6 +67,9 @@ class Order extends Model
 
     public function heldDepositTotal(): float
     {
+        if ($this->relationLoaded('deposits')) {
+            return (float) $this->deposits->where('status', 'held')->sum('amount');
+        }
         return (float) $this->deposits()->where('status', 'held')->sum('amount');
     }
 }
