@@ -36,6 +36,7 @@ export interface POSTableData {
     customer_phone?: string;
     active_order?: POSOrderData | null;
     active_orders?: POSOrderData[];
+    deposit_amount?: number;
 }
 
 export interface CategoryData {
