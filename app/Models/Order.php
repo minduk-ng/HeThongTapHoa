@@ -22,6 +22,7 @@ class Order extends Model
         'discount_amount',
         'total',
         'status',
+        'invoice_id',
         'has_additional_items',
         'note',
     ];
@@ -46,7 +47,7 @@ class Order extends Model
 
     public function invoice()
     {
-        return $this->hasOne(Invoice::class, 'order_id');
+        return $this->belongsTo(Invoice::class, 'invoice_id');
     }
 
     public function activities()

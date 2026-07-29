@@ -12,7 +12,6 @@ class Invoice extends Model
     protected $table = 'invoices';
 
     protected $fillable = [
-        'order_id',
         'invoice_code',
         'table_name',
         'payment_method',
@@ -29,8 +28,8 @@ class Invoice extends Model
         'issued_at' => 'datetime',
     ];
 
-    public function order()
+    public function orders()
     {
-        return $this->belongsTo(Order::class, 'order_id');
+        return $this->hasMany(Order::class, 'invoice_id');
     }
 }
