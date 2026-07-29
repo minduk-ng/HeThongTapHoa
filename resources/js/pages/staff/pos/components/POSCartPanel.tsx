@@ -358,7 +358,7 @@ export default function POSCartPanel({
             </div>
 
             {/* Cart Items List (Independent Scroll Area) */}
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
                 {cartItems.length === 0 ? (
                     <div className="flex h-full flex-col justify-center p-4">
                         <div className="flex items-start space-x-3 text-zinc-400">
@@ -369,188 +369,228 @@ export default function POSCartPanel({
                                 </h4>
                                 <p className="mt-1 text-xs leading-relaxed text-zinc-400">
                                     Chưa có món nào được chọn cho bàn này. Bạn
-                                    có thể chuyển sang tab “Chọn món” để thêm
+                                    có thể chuyển sang tab "Chọn món" để thêm
                                     sản phẩm.
                                 </p>
                             </div>
                         </div>
                     </div>
                 ) : (
-                    cartItems.map((item) => {
-                        const isMinusDisabled = !!(
-                            item.isConfirmed &&
-                            (item.isKitchenCompleted || item.quantity <= 0)
-                        );
-                        const isDeleteDisabled = !!item.isConfirmed;
-                        const itemKey = `${item.menu_item_id}_${item.isConfirmed ? (item.isKitchenCompleted ? (item.isServed ? 'served' : 'completed') : 'pending') : 'draft'}_${item.orderItemId || ''}`;
-
-                        return (
-                            <div
-                                key={itemKey}
-                                className={`group flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors duration-150 ${
-                                    item.isConfirmed
-                                        ? 'border-zinc-200/80 bg-zinc-50 dark:border-zinc-700/80 dark:bg-zinc-800/60'
-                                        : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
-                                }`}
-                            >
-                                {/* Left: Name (row1) + Note (row2) */}
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                                            {item.name}
-                                        </h4>
-                                        {item.isConfirmed && (
-                                            <span
-                                                className={`shrink-0 rounded-md border px-1.5 py-px text-[10px] font-medium ${
-                                                    item.isServed
-                                                        ? 'border-emerald-250 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                    (() => {
+                        const confirmedItems = cartItems.filter((i) => i.isConfirmed);
+                        const draftItems = cartItems.filter((i) => !i.isConfirmed);
+                        const groupMap = new Map<string, CartItem[]>();
+                        confirmedItems.forEach((item) => {
+                            const code = item.orderCode || 'unknown';
+                            if (!groupMap.has(code)) groupMap.set(code, []);
+                            groupMap.get(code)!.push(item);
+                        });
+                        const orderGroups = Array.from(groupMap.entries()).map(([code, items]) => ({ code, items }));
+            
+                        const renderItemRow = (item: CartItem) => {
+                            const isMinusDisabled = !!(
+                                item.isConfirmed &&
+                                (item.isKitchenCompleted || item.quantity <= 0)
+                            );
+                            const isDeleteDisabled = !!item.isConfirmed;
+                            const itemKey = `${item.menu_item_id}_${item.isConfirmed ? (item.isKitchenCompleted ? (item.isServed ? 'served' : 'completed') : 'pending') : 'draft'}_${item.orderItemId || ''}`;
+            
+                            return (
+                                <div
+                                    key={itemKey}
+                                    className={`group flex items-center gap-2 px-2.5 py-2 transition-colors duration-150 ${
+                                        item.isConfirmed
+                                            ? 'bg-zinc-50 dark:bg-zinc-800/60'
+                                            : 'rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
+                                    }`}
+                                >
+                                    {/* Left: Name + Note */}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                                                {item.name}
+                                            </h4>
+                                            {item.isConfirmed && (
+                                                <span
+                                                    className={`shrink-0 rounded-md border px-1.5 py-px text-[10px] font-medium ${
+                                                        item.isServed
+                                                            ? 'border-emerald-250 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                                            : item.isKitchenCompleted
+                                                              ? 'border-sky-200 bg-sky-50 text-sky-850 dark:border-sky-900/60 dark:bg-sky-950/60 dark:text-sky-300'
+                                                              : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/60 dark:text-amber-300'
+                                                    }`}
+                                                >
+                                                    {item.isServed
+                                                        ? 'Đã phục vụ'
                                                         : item.isKitchenCompleted
-                                                          ? 'border-sky-200 bg-sky-50 text-sky-850 dark:border-sky-900/60 dark:bg-sky-950/60 dark:text-sky-300'
-                                                          : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/60 dark:text-amber-300'
-                                                }`}
-                                            >
-                                                {item.isServed
-                                                    ? 'Đã phục vụ'
-                                                    : item.isKitchenCompleted
-                                                      ? 'Bếp làm xong'
-                                                      : 'Đang chế biến'}
-                                            </span>
-                                        )}
-                                        {(item.stagedReduceQty || 0) > 0 && (
-                                            <span className="shrink-0 rounded-md border border-amber-300 bg-amber-100 px-1.5 py-px text-[10px] font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
-                                                Giảm {item.stagedReduceQty}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div
-                                        onClick={() =>
-                                            setNoteModalState({
-                                                isOpen: true,
-                                                item,
-                                            })
-                                        }
-                                        className="mt-0.5 cursor-pointer text-[11px] text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
-                                    >
-                                        {item.note ? (
-                                            <span className="line-clamp-1">
-                                                {item.note}
-                                            </span>
-                                        ) : (
-                                            <span className="italic">
-                                                Thêm ghi chú…
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Center: +/- controls */}
-                                <div className="flex shrink-0 items-center overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
-                                    <button
-                                        type="button"
-                                        disabled={isMinusDisabled}
-                                        onClick={() => {
-                                            if (!item.isConfirmed) {
-                                                onUpdateQuantity(
-                                                    item.menu_item_id,
-                                                    -1,
-                                                );
-                                            } else if (
-                                                !item.isKitchenCompleted &&
-                                                item.quantity > 0
-                                            ) {
-                                                setReduceModalState({
+                                                          ? 'Bếp làm xong'
+                                                          : 'Đang chế biến'}
+                                                </span>
+                                            )}
+                                            {(item.stagedReduceQty || 0) > 0 && (
+                                                <span className="shrink-0 rounded-md border border-amber-300 bg-amber-100 px-1.5 py-px text-[10px] font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                                                    Giảm {item.stagedReduceQty}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div
+                                            onClick={() =>
+                                                setNoteModalState({
                                                     isOpen: true,
                                                     item,
-                                                });
+                                                })
                                             }
-                                        }}
-                                        className="px-2.5 py-1.5 text-sm font-bold text-zinc-600 transition-colors duration-150 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                                        title={
-                                            item.isConfirmed
-                                                ? 'Giảm số lượng món đang chế biến (kèm lý do)'
-                                                : 'Giảm số lượng món nháp'
-                                        }
-                                    >
-                                        -
-                                    </button>
-                                    <span className="border-x border-zinc-200 px-3 py-1.5 text-sm font-bold text-zinc-900 tabular-nums dark:border-zinc-700 dark:text-zinc-100">
-                                        {item.quantity}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            onUpdateQuantity(
-                                                item.menu_item_id,
-                                                1,
-                                            )
-                                        }
-                                        className="px-2.5 py-1.5 text-sm font-bold text-zinc-600 transition-colors duration-150 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                                        title="Gọi thêm món"
-                                    >
-                                        +
-                                    </button>
-                                </div>
-
-                                {/* Right: Price (default) / Delete action (on hover) */}
-                                <div className="relative flex shrink-0 items-center justify-end" style={{ minWidth: '5rem' }}>
-                                    {/* Price — visible by default, hidden on hover */}
-                                    <span className="text-sm font-bold text-zinc-900 tabular-nums transition-opacity duration-150 group-hover:opacity-0 dark:text-zinc-100">
-                                        {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
-                                    </span>
-                                    {/* Delete/Reduce — hidden by default, visible on hover */}
-                                    <div className="absolute inset-0 flex items-center justify-end opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                                        {!isDeleteDisabled ? (
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    onRemoveItem(item.menu_item_id)
-                                                }
-                                                className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                                                title="Hủy chọn món nháp"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        ) : canCancel &&
-                                          item.orderItemId &&
-                                          !item.isKitchenCompleted &&
-                                          (item.stagedReduceQty || 0) < item.quantity ? (
-                                            <button
-                                                type="button"
-                                                onClick={() =>
+                                            className="mt-0.5 cursor-pointer text-[11px] text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
+                                        >
+                                            {item.note ? (
+                                                <span className="line-clamp-1">
+                                                    {item.note}
+                                                </span>
+                                            ) : (
+                                                <span className="italic">
+                                                    Thêm ghi chú…
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+            
+                                    {/* Center: +/- controls */}
+                                    <div className="flex shrink-0 items-center overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
+                                        <button
+                                            type="button"
+                                            disabled={isMinusDisabled}
+                                            onClick={() => {
+                                                if (!item.isConfirmed) {
+                                                    onUpdateQuantity(
+                                                        item.menu_item_id,
+                                                        -1,
+                                                    );
+                                                } else if (
+                                                    !item.isKitchenCompleted &&
+                                                    item.quantity > 0
+                                                ) {
                                                     setReduceModalState({
                                                         isOpen: true,
                                                         item,
-                                                    })
+                                                    });
                                                 }
-                                                className="rounded-lg p-1.5 text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/50 dark:hover:text-rose-300"
-                                                title="Giảm / Hủy món đang chế biến kèm lý do"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        ) : (item.stagedReduceQty || 0) >= item.quantity ? (
-                                            <span
-                                                className="cursor-not-allowed p-1.5 text-amber-500 dark:text-amber-400"
-                                                title="Món đã được giảm về 0, ấn \u2018Gửi bếp chế biến\u2019 để xác nhận"
-                                            >
-                                                <Lock className="h-4 w-4" />
-                                            </span>
-                                        ) : (
-                                            <span
-                                                className="cursor-not-allowed p-1.5 text-zinc-300 dark:text-zinc-600"
-                                                title={
-                                                    item.isKitchenCompleted
-                                                        ? 'Món đã hoàn thành chế biến, không thể hủy'
-                                                        : 'Món đã gửi bếp không được xóa'
-                                                }
-                                            >
-                                                <Lock className="h-4 w-4 text-zinc-400" />
-                                            </span>
-                                        )}
+                                            }}
+                                            className="px-2.5 py-1.5 text-sm font-bold text-zinc-600 transition-colors duration-150 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                                            title={
+                                                item.isConfirmed
+                                                    ? 'Giảm số lượng món đang chế biến (kèm lý do)'
+                                                    : 'Giảm số lượng món nháp'
+                                            }
+                                        >
+                                            -
+                                        </button>
+                                        <span className="border-x border-zinc-200 px-3 py-1.5 text-sm font-bold text-zinc-900 tabular-nums dark:border-zinc-700 dark:text-zinc-100">
+                                            {item.quantity}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                onUpdateQuantity(
+                                                    item.menu_item_id,
+                                                    1,
+                                                )
+                                            }
+                                            className="px-2.5 py-1.5 text-sm font-bold text-zinc-600 transition-colors duration-150 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                                            title="Gọi thêm món"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+            
+                                    {/* Right: Price / Delete */}
+                                    <div className="relative flex shrink-0 items-center justify-end" style={{ minWidth: '5rem' }}>
+                                        <span className="text-sm font-bold text-zinc-900 tabular-nums transition-opacity duration-150 group-hover:opacity-0 dark:text-zinc-100">
+                                            {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
+                                        </span>
+                                        <div className="absolute inset-0 flex items-center justify-end opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                                            {!isDeleteDisabled ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        onRemoveItem(item.menu_item_id)
+                                                    }
+                                                    className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                                                    title="Hủy chọn món nháp"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            ) : canCancel &&
+                                              item.orderItemId &&
+                                              !item.isKitchenCompleted &&
+                                              (item.stagedReduceQty || 0) < item.quantity ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setReduceModalState({
+                                                            isOpen: true,
+                                                            item,
+                                                        })
+                                                    }
+                                                    className="rounded-lg p-1.5 text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/50 dark:hover:text-rose-300"
+                                                    title="Giảm / Hủy món đang chế biến kèm lý do"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            ) : (item.stagedReduceQty || 0) >= item.quantity ? (
+                                                <span
+                                                    className="cursor-not-allowed p-1.5 text-amber-500 dark:text-amber-400"
+                                                    title="Món đã được giảm về 0, ấn ‘Gửi bếp chế biến’ để xác nhận"
+                                                >
+                                                    <Lock className="h-4 w-4" />
+                                                </span>
+                                            ) : (
+                                                <span
+                                                    className="cursor-not-allowed p-1.5 text-zinc-300 dark:text-zinc-600"
+                                                    title={
+                                                        item.isKitchenCompleted
+                                                            ? 'Món đã hoàn thành chế biến, không thể hủy'
+                                                            : 'Món đã gửi bếp không được xóa'
+                                                    }
+                                                >
+                                                    <Lock className="h-4 w-4 text-zinc-400" />
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            );
+                        };
+            
+                        return (
+                            <>
+                                {/* Grouped confirmed items by order */}
+                                {orderGroups.map((group) => (
+                                    <div key={group.code} className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
+                                        <div className="border-b border-zinc-100 bg-zinc-50/80 px-2.5 py-1 dark:border-zinc-800 dark:bg-zinc-800/60">
+                                            <span className="text-[10px] font-semibold text-zinc-400 tabular-nums dark:text-zinc-500">
+                                                {group.code}
+                                            </span>
+                                            {orderGroups.length > 1 && (
+                                                <span className="ml-1.5 text-[10px] text-zinc-300 dark:text-zinc-600">
+                                                    ({group.items.length} món)
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                                            {group.items.map(renderItemRow)}
+                                        </div>
+                                    </div>
+                                ))}
+            
+                                {/* Draft items (not yet sent to kitchen) */}
+                                {draftItems.length > 0 && (
+                                    <div className="space-y-2">
+                                        {draftItems.map(renderItemRow)}
+                                    </div>
+                                )}
+                            </>
                         );
-                    })
+                    })()
                 )}
             </div>
 
