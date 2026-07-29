@@ -45,7 +45,32 @@ class POSController extends Controller
                 }
             });
 
-            return $tables->values()->toArray();
+            $result = $tables->values()->toArray();
+
+            // Inject virtual "Mang đi" table with takeaway orders (table_id IS NULL)
+            $takeawayOrders = Order::with(['items' => function ($query) {
+                $query->where('status', '!=', 'cancelled')->with('menuItem');
+            }])->whereNull('table_id')
+                ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                ->get();
+
+            array_unshift($result, [
+                'id' => 0,
+                'table_number' => 'Mang đi',
+                'area' => 'Mang đi',
+                'capacity' => 0,
+                'status' => $takeawayOrders->isNotEmpty() ? 'occupied' : 'available',
+                'merged_into_table_id' => null,
+                'merged_into_table' => null,
+                'reservation_time' => null,
+                'reservation_name' => null,
+                'reservation_phone' => null,
+                'reservation_note' => null,
+                'active_orders' => $takeawayOrders->toArray(),
+                'active_order' => $takeawayOrders->first()?->toArray(),
+            ]);
+
+            return $result;
         };
 
         if ($isLocal) {

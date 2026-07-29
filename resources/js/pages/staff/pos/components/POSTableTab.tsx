@@ -6,14 +6,6 @@ import { CheckoutLockInfo } from '../hooks/usePOSCheckoutLock';
 /** Virtual table ID for takeaway orders (table_id = null in backend) */
 export const TAKEAWAY_TABLE_ID = 0;
 
-const TAKEAWAY_TABLE: POSTableData = {
-    id: TAKEAWAY_TABLE_ID,
-    table_number: 'Mang đi',
-    area: 'Mang đi',
-    capacity: 0,
-    status: 'available',
-};
-
 interface POSTableTabProps {
     tables: POSTableData[];
     selectedTable: POSTableData | null;
@@ -39,10 +31,7 @@ export default function POSTableTab({
         Array.isArray(tables) ? tables : Object.values(tables || {})
     ) as POSTableData[];
 
-    // Inject virtual "Mang đi" table at the beginning
-    const allTables = [TAKEAWAY_TABLE, ...safeTables];
-
-    const groupedAreas = allTables.reduce(
+    const groupedAreas = safeTables.reduce(
         (acc, table) => {
             const areaName = table.area || 'Khác';
             if (!acc[areaName]) acc[areaName] = [];
@@ -79,8 +68,13 @@ export default function POSTableTab({
     // Filter displayed entries based on selected area and search query
     const filteredTables = (
         selectedArea === 'all'
-            ? sortedAreaEntries.flatMap(([_, areaTables]) => areaTables)
-            : allTables.filter((t) => (t.area || 'Khác') === selectedArea)
+            ? [...safeTables].sort((a, b) => {
+                  // Pin Mang đi (id=0) first, then natural sort by table_number
+                  if (a.id === TAKEAWAY_TABLE_ID) return -1;
+                  if (b.id === TAKEAWAY_TABLE_ID) return 1;
+                  return a.table_number.localeCompare(b.table_number, undefined, { numeric: true });
+              })
+            : safeTables.filter((t) => (t.area || 'Khác') === selectedArea)
     ).filter((t) => {
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
@@ -103,7 +97,7 @@ export default function POSTableTab({
                             : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300'
                     }`}
                 >
-                    Tất cả ({allTables.length})
+                    Tất cả ({safeTables.length})
                 </button>
                 {areaOptions.map((area) => (
                     <button
@@ -151,7 +145,7 @@ export default function POSTableTab({
                             : '';
 
                         const grpId = table.merged_into_table_id || table.id;
-                        const grpTableIds = allTables
+                        const grpTableIds = safeTables
                             .filter(
                                 (t) =>
                                     t.id === grpId ||
