@@ -212,7 +212,7 @@ class KitchenController extends Controller
                     $targetTable = $order->table ?? Table::find($order->table_id);
                 }
 
-                $reasonStr = $validated['cancellation_reason'].($validated['note'] ? ': '.$validated['note'] : '');
+                $reasonStr = $validated['cancellation_reason'].(! empty($validated['note']) ? ': '.$validated['note'] : '');
 
                 $item->update([
                     'status' => 'cancelled',
