@@ -75,6 +75,7 @@ export interface CartItem {
     isServed?: boolean;
     orderStatus?: string;
     orderItemId?: number;
+    orderCode?: string;
     stagedReduceQty?: number;
     stagedReason?: string;
     stagedNote?: string;
