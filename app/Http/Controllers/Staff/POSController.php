@@ -386,20 +386,19 @@ class POSController extends Controller
                     return (float) $item->quantity * (float) $item->unit_price;
                 });
 
-                // Create or update Invoice record safely
+                // Create Invoice record and link to order
                 $invoiceCode = 'INV-'.date('Ymd').strtoupper(Str::random(4));
-                Invoice::updateOrCreate(
-                    ['order_id' => $order->id],
-                    [
-                        'invoice_code' => $invoiceCode,
-                        'table_name' => $tableNameStr,
-                        'total_amount' => $totalAmount,
-                        'payment_method' => $validated['payment_method'],
-                        'amount_received' => $validated['amount_received'],
-                        'change_amount' => $validated['change_amount'],
-                        'issued_at' => now(),
-                    ]
-                );
+                $invoice = Invoice::create([
+                    'invoice_code' => $invoiceCode,
+                    'table_name' => $tableNameStr,
+                    'total_amount' => $totalAmount,
+                    'payment_method' => $validated['payment_method'],
+                    'amount_received' => $validated['amount_received'],
+                    'change_amount' => $validated['change_amount'],
+                    'issued_at' => now(),
+                ]);
+
+                $order->update(['invoice_id' => $invoice->id]);
 
                 // Audit log: checkout
                 OrderActivityLogger::log($order, 'checkout', $request->user()?->id, [
@@ -455,6 +454,142 @@ class POSController extends Controller
                 return response()->json([
                     'error' => 'Thanh toán thất bại: '.$e->getMessage()
                 ], 422);
+            }
+
+            return back()->withErrors(['error' => 'Thanh toán thất bại: '.$e->getMessage()]);
+        }
+    }
+
+    public function bulkCheckout(Request $request)
+    {
+        $validated = $request->validate([
+            'order_ids' => 'required|array|min:1',
+            'order_ids.*' => 'exists:orders,id',
+            'table_id' => 'nullable|exists:tables,id',
+            'payment_method' => 'required|in:cash,bank_transfer,e_wallet',
+            'amount_received' => 'required|numeric|min:0',
+            'change_amount' => 'required|numeric|min:0',
+            'idempotency_key' => 'nullable|string|max:100',
+        ]);
+
+        if ($request->filled('idempotency_key')) {
+            $lockKey = "idempotency:bulk_checkout:{$request->input('idempotency_key')}";
+            if (! Cache::add($lockKey, true, 30)) {
+                return $request->wantsJson()
+                    ? response()->json(['success' => true, 'message' => 'Thanh toán đã được ghi nhận!'])
+                    : back()->with('success', 'Thanh toán đã được ghi nhận!');
+            }
+        }
+
+        try {
+            $invoice = null;
+            $totalAmount = 0;
+            $orders = collect();
+
+            $targetTable = DB::transaction(function () use ($validated, $request, &$invoice, &$totalAmount, &$orders) {
+                $orders = Order::with('items')->whereIn('id', $validated['order_ids'])->lockForUpdate()->get();
+
+                if ($orders->count() !== count($validated['order_ids'])) {
+                    throw new \Exception('Một số đơn hàng không tồn tại.');
+                }
+
+                $invalidOrder = $orders->first(fn ($o) => in_array($o->status, ['paid', 'cancelled']));
+                if ($invalidOrder) {
+                    throw new \Exception("Đơn {$invalidOrder->order_code} đã được thanh toán hoặc đã hủy.");
+                }
+
+                // Kitchen lock check
+                $canBypass = $request->user()->hasPermission('pos.bypass_kitchen_lock');
+                if (! $canBypass) {
+                    foreach ($orders as $ord) {
+                        $hasUncompleted = $ord->items->contains(fn ($item) => in_array($item->status, ['pending', 'processing']));
+                        if ($hasUncompleted) {
+                            throw new \Exception("Đơn {$ord->order_code} còn món chưa được Bếp hoàn tất.");
+                        }
+                    }
+                }
+
+                // Compute total across all orders
+                $totalAmount = $orders->sum(fn ($ord) => $ord->items->sum(fn ($item) => (float) $item->quantity * (float) $item->unit_price));
+
+                // Determine table name
+                $tableId = $validated['table_id'] ?? $orders->first()?->table_id;
+                $targetTable = $tableId ? Table::find($tableId) : null;
+
+                if ($targetTable) {
+                    $primaryId = $targetTable->merged_into_table_id ?? $targetTable->id;
+                    $allGroupTables = Table::where('id', $primaryId)->orWhere('merged_into_table_id', $primaryId)->get();
+                    $primaryTableObj = $allGroupTables->firstWhere('id', $primaryId);
+                    $subTableNumbers = $allGroupTables->where('id', '!=', $primaryId)->pluck('table_number')->implode(', ');
+                    $tableNameStr = $subTableNumbers ? "{$primaryTableObj->table_number} (Gộp {$subTableNumbers})" : $primaryTableObj->table_number;
+                } else {
+                    $primaryId = null;
+                    $allGroupTables = collect();
+                    $tableNameStr = 'Mang đi';
+                }
+
+                // Create single invoice
+                $invoiceCode = 'INV-'.date('Ymd').strtoupper(Str::random(4));
+                $invoice = Invoice::create([
+                    'invoice_code' => $invoiceCode,
+                    'table_name' => $tableNameStr,
+                    'total_amount' => $totalAmount,
+                    'payment_method' => $validated['payment_method'],
+                    'amount_received' => $validated['amount_received'],
+                    'change_amount' => $validated['change_amount'],
+                    'issued_at' => now(),
+                ]);
+
+                // Mark all orders as paid + link invoice
+                foreach ($orders as $ord) {
+                    $orderTotal = $ord->items->sum(fn ($item) => (float) $item->quantity * (float) $item->unit_price);
+                    $ord->update(['status' => 'paid', 'invoice_id' => $invoice->id]);
+
+                    OrderActivityLogger::log($ord, 'checkout', $request->user()?->id, [
+                        'invoice_code' => $invoiceCode,
+                        'payment_method' => $validated['payment_method'],
+                        'total' => $orderTotal,
+                        'bulk' => true,
+                    ]);
+                }
+
+                // Release tables if no active orders remain
+                $allGroupTableIds = $allGroupTables->pluck('id');
+                if ($allGroupTableIds->isNotEmpty()) {
+                    $hasOtherActive = Order::whereIn('table_id', $allGroupTableIds)
+                        ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                        ->exists();
+
+                    if (! $hasOtherActive) {
+                        foreach ($allGroupTables as $grpTable) {
+                            $grpTable->update(['status' => 'available', 'merged_into_table_id' => null]);
+                        }
+                    }
+                }
+
+                return $targetTable;
+            });
+
+            $this->safeDispatch(function () use ($targetTable, $orders, $totalAmount) {
+                if ($targetTable) {
+                    TableStatusUpdated::dispatch($targetTable, 'checkout', [
+                        'order_code' => $orders->pluck('order_code')->implode(', '),
+                        'total_amount' => $totalAmount,
+                    ]);
+                }
+            });
+            $this->safeDispatch(fn () => IngredientStockUpdated::dispatch(['source' => 'bulk_checkout']));
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Thanh toán gộp thành công!']);
+            }
+
+            return back()->with('success', 'Thanh toán gộp thành công!');
+        } catch (\Throwable $e) {
+            Log::error('POS bulk checkout error: '.$e->getMessage());
+
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Thanh toán thất bại: '.$e->getMessage()], 422);
             }
 
             return back()->withErrors(['error' => 'Thanh toán thất bại: '.$e->getMessage()]);
