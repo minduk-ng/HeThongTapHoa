@@ -428,6 +428,57 @@ class POSController extends Controller
         }
     }
 
+    public function deposit(Request $request)
+    {
+        $validated = $request->validate([
+            'order_id' => 'required|exists:orders,id',
+            'amount' => 'required|numeric|min:1',
+            'method' => 'required|in:cash,bank_transfer',
+            'idempotency_key' => 'nullable|string',
+        ]);
+
+        if ($request->filled('idempotency_key')) {
+            $lockKey = "idempotency:deposit:{$request->input('idempotency_key')}";
+            if (! Cache::add($lockKey, true, 30)) {
+                return response()->json(['success' => true]);
+            }
+        }
+
+        try {
+            $result = DB::transaction(function () use ($validated, $request) {
+                $order = Order::with('table')->findOrFail($validated['order_id']);
+
+                if (in_array($order->status, ['paid', 'cancelled'])) {
+                    throw new \Exception('Không thể đặt cọc cho đơn đã thanh toán hoặc đã hủy', 422);
+                }
+
+                $order->deposits()->create([
+                    'amount' => $validated['amount'],
+                    'method' => $validated['method'],
+                    'status' => 'held',
+                    'received_by_user_id' => $request->user()?->id,
+                ]);
+
+                OrderActivityLogger::log($order, 'deposit_received', $request->user()?->id);
+
+                return $order->table;
+            });
+
+            Cache::tags(['pos_tables'])->flush();
+
+            if ($result) {
+                $this->safeDispatch(fn () => TableStatusUpdated::dispatch($result));
+            }
+
+            return response()->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            Log::error('POS deposit error: '.$e->getMessage());
+            $status = $e->getCode() === 422 ? 422 : 500;
+            return response()->json(['message' => $e->getMessage()], $status);
+        }
+    }
+
     public function sendToKitchen(Request $request)
     {
         $validated = $request->validate([

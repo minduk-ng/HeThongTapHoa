@@ -174,3 +174,37 @@ it('requires deposit_resolution when held deposit exists', function () {
         'order_id' => $order->id,
     ])->assertStatus(422);
 });
+
+it('records a deposit for an active order', function () {
+    $staff = posStaff();
+    $order = posOrder(posTable(['status' => 'occupied']), [], ['status' => 'pending']);
+
+    $this->actingAs($staff)->postJson('/staff/pos/deposit', [
+        'order_id' => $order->id,
+        'amount' => 300000,
+        'method' => 'bank_transfer',
+    ])->assertOk();
+
+    expect($order->deposits()->where('status', 'held')->sum('amount'))->toEqual(300000);
+});
+
+it('allows multiple deposits summed on the same order', function () {
+    $staff = posStaff();
+    $order = posOrder(posTable(['status' => 'occupied']), [], ['status' => 'pending']);
+    Deposit::create(['order_id' => $order->id, 'amount' => 100000, 'method' => 'cash', 'status' => 'held']);
+
+    $this->actingAs($staff)->postJson('/staff/pos/deposit', [
+        'order_id' => $order->id, 'amount' => 50000, 'method' => 'cash',
+    ])->assertOk();
+
+    expect($order->heldDepositTotal())->toBe(150000.0);
+});
+
+it('rejects deposit for paid or cancelled orders', function () {
+    $staff = posStaff();
+    $order = posOrder(posTable(), [], ['status' => 'paid']);
+
+    $this->actingAs($staff)->postJson('/staff/pos/deposit', [
+        'order_id' => $order->id, 'amount' => 100000, 'method' => 'cash',
+    ])->assertStatus(422);
+});
