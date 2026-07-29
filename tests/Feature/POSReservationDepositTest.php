@@ -124,3 +124,53 @@ it('rejects check-in for non-reserved order', function () {
         'order_id' => $order->id,
     ])->assertStatus(422);
 });
+
+it('cancels reservation with deposit refund and releases table', function () {
+    $staff = posStaff();
+    $table = posTable(['status' => 'reserved', 'reservation_name' => 'Anh Đức']);
+    $order = posOrder($table, [], ['status' => 'reserved']);
+    $deposit = Deposit::create([
+        'order_id' => $order->id, 'amount' => 200000,
+        'method' => 'cash', 'status' => 'held',
+    ]);
+
+    $this->actingAs($staff)->postJson('/staff/pos/reservation/cancel', [
+        'order_id' => $order->id,
+        'deposit_resolution' => 'refund',
+        'note' => 'Khách báo bận',
+    ])->assertOk();
+
+    expect($order->fresh()->status)->toBe('cancelled');
+    expect($deposit->fresh()->status)->toBe('refunded')
+        ->and($deposit->fresh()->resolved_by_user_id)->toBe($staff->id)
+        ->and($deposit->fresh()->resolved_at)->not->toBeNull();
+    expect($table->fresh()->status)->toBe('available')
+        ->and($table->fresh()->reservation_name)->toBeNull();
+});
+
+it('cancels reservation forfeiting deposit on occupied table without touching table', function () {
+    $staff = posStaff();
+    $table = posTable(['status' => 'occupied']);
+    posOrder($table); // khách hiện tại
+    $reserved = posOrder($table, [], ['status' => 'reserved']);
+    Deposit::create(['order_id' => $reserved->id, 'amount' => 100000, 'method' => 'cash', 'status' => 'held']);
+
+    $this->actingAs($staff)->postJson('/staff/pos/reservation/cancel', [
+        'order_id' => $reserved->id,
+        'deposit_resolution' => 'forfeit',
+    ])->assertOk();
+
+    expect($reserved->fresh()->status)->toBe('cancelled');
+    expect(Deposit::first()->status)->toBe('forfeited');
+    expect($table->fresh()->status)->toBe('occupied');
+});
+
+it('requires deposit_resolution when held deposit exists', function () {
+    $staff = posStaff();
+    $order = posOrder(posTable(['status' => 'reserved']), [], ['status' => 'reserved']);
+    Deposit::create(['order_id' => $order->id, 'amount' => 50000, 'method' => 'cash', 'status' => 'held']);
+
+    $this->actingAs($staff)->postJson('/staff/pos/reservation/cancel', [
+        'order_id' => $order->id,
+    ])->assertStatus(422);
+});

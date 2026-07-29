@@ -150,6 +150,91 @@ class POSController extends Controller
         return $prefix . $seq;
     }
 
+    public function cancelReservation(Request $request)
+    {
+        $validated = $request->validate([
+            'order_id' => 'required|exists:orders,id',
+            'deposit_resolution' => 'nullable|in:refund,forfeit',
+            'note' => 'nullable|string',
+            'idempotency_key' => 'nullable|string',
+        ]);
+
+        if ($request->filled('idempotency_key')) {
+            $lockKey = "idempotency:cancel_reservation:{$request->input('idempotency_key')}";
+            if (! Cache::add($lockKey, true, 30)) {
+                return response()->json(['success' => true]);
+            }
+        }
+
+        try {
+            $result = DB::transaction(function () use ($validated, $request) {
+                $order = Order::with(['table', 'deposits' => fn ($q) => $q->where('status', 'held')])->findOrFail($validated['order_id']);
+
+                if ($order->status !== 'reserved') {
+                    throw new \Exception('Chỉ có thể hủy đơn đặt bàn', 422);
+                }
+
+                $heldDeposits = $order->deposits;
+                $hasHeldDeposits = $heldDeposits->sum('amount') > 0;
+
+                if ($hasHeldDeposits && empty($validated['deposit_resolution'])) {
+                    throw new \Exception('Vui lòng chọn hướng xử lý cọc', 422);
+                }
+
+                $order->update(['status' => 'cancelled']);
+
+                if ($hasHeldDeposits) {
+                    foreach ($heldDeposits as $deposit) {
+                        $deposit->update([
+                            'status' => $validated['deposit_resolution'] === 'refund' ? 'refunded' : 'forfeited',
+                            'resolved_by_user_id' => $request->user()?->id,
+                            'resolved_at' => now(),
+                            'note' => $validated['note'] ?? null,
+                        ]);
+                    }
+                }
+
+                $table = $order->table;
+                if ($table && $table->status === 'reserved') {
+                    $hasOtherActiveOrders = $table->orders()
+                        ->where('id', '!=', $order->id)
+                        ->whereIn('status', ['draft', 'pending', 'confirmed', 'served', 'completed', 'reserved'])
+                        ->exists();
+
+                    if (! $hasOtherActiveOrders) {
+                        $table->update([
+                            'status' => 'available',
+                            'reservation_name' => null,
+                            'reservation_phone' => null,
+                            'reservation_time' => null,
+                            'reservation_note' => null,
+                        ]);
+                    }
+                }
+
+                OrderActivityLogger::log($order, 'reservation_cancelled', $request->user()?->id, array_filter([
+                    'resolution' => $hasHeldDeposits ? $validated['deposit_resolution'] : null,
+                    'note' => $validated['note'] ?? null,
+                ]));
+
+                return $table;
+            });
+
+            Cache::tags(['pos_tables'])->flush();
+
+            if ($result) {
+                $this->safeDispatch(fn () => TableStatusUpdated::dispatch($result));
+            }
+
+            return response()->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            Log::error('POS cancelReservation error: '.$e->getMessage());
+            $status = $e->getCode() === 422 ? 422 : 500;
+            return response()->json(['message' => $e->getMessage()], $status);
+        }
+    }
+
     public function checkInReservation(Request $request)
     {
         $validated = $request->validate([

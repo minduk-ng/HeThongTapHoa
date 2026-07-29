@@ -125,6 +125,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/pos', [POSController::class, 'index'])->middleware('permission:pos.view');
         Route::post('/pos/reserve', [POSController::class, 'reserve'])->middleware('permission:pos.create');
         Route::post('/pos/reservation/check-in', [POSController::class, 'checkInReservation'])->middleware('permission:pos.create');
+        Route::post('/pos/reservation/cancel', [POSController::class, 'cancelReservation'])->middleware('permission:pos.create');
         Route::post('/pos/send-to-kitchen', [POSController::class, 'sendToKitchen'])->middleware('permission:pos.create');
         Route::post('/pos/checkout', [POSController::class, 'checkout'])->middleware('permission:pos.create');
         Route::post('/pos/bulk-checkout', [POSController::class, 'bulkCheckout'])->middleware('permission:pos.create');
