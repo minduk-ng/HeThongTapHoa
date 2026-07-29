@@ -35,6 +35,33 @@ test('chuyển bàn thường: đơn đi theo bàn mới, bàn cũ nhả, bàn m
     expect($target->fresh()->status)->toBe('occupied');
 });
 
+test('chặn chuyển bàn nếu bàn đích hoặc bàn nguồn đang chứa đơn đặt trước', function () {
+    $this->actingAs(posAdmin());
+    $source = posTable(['status' => 'reserved']);
+    $target = posTable(['status' => 'available']);
+    posOrder($source, [], ['status' => 'reserved']);
+
+    $response = $this->post('/staff/pos/transfer-table', [
+        'source_table_id' => $source->id,
+        'target_table_id' => $target->id,
+    ]);
+
+    $response->assertSessionHasErrors(['error' => 'Chuyển bàn thất bại: Không thể chuyển bàn đang có đơn đặt trước.']);
+    
+    // Đảo ngược
+    $source2 = posTable(['status' => 'occupied']);
+    $target2 = posTable(['status' => 'reserved']);
+    posOrder($source2, []);
+    posOrder($target2, [], ['status' => 'reserved']);
+
+    $response2 = $this->post('/staff/pos/transfer-table', [
+        'source_table_id' => $source2->id,
+        'target_table_id' => $target2->id,
+    ]);
+
+    $response2->assertSessionHasErrors(['error' => 'Chuyển bàn thất bại: Không thể chuyển bàn đang có đơn đặt trước.']);
+});
+
 test('không thể chuyển tới bàn đang có khách (không thuộc nhóm gộp)', function () {
     $this->actingAs(posAdmin());
     $source = posTable(['status' => 'occupied']);
@@ -110,6 +137,34 @@ test('gộp bàn: đơn của bàn nguồn dồn về bàn chính, liên kết g
     expect($target->fresh()->status)->toBe('occupied');
 });
 
+test('chặn gộp bàn nếu nhóm nguồn hoặc đích đang chứa đơn đặt trước', function () {
+    $this->actingAs(posAdmin());
+    $source = posTable(['status' => 'reserved']);
+    $target = posTable(['status' => 'occupied']);
+    posOrder($source, [], ['status' => 'reserved']);
+    posOrder($target, []);
+
+    $response = $this->post('/staff/pos/merge-tables', [
+        'source_table_id' => $source->id,
+        'target_table_id' => $target->id,
+    ]);
+
+    $response->assertSessionHasErrors(['error' => 'Gộp bàn thất bại: Không thể gộp bàn đang có đơn đặt trước.']);
+    
+    // Đảo ngược
+    $source2 = posTable(['status' => 'occupied']);
+    $target2 = posTable(['status' => 'reserved']);
+    posOrder($source2, []);
+    posOrder($target2, [], ['status' => 'reserved']);
+
+    $response2 = $this->post('/staff/pos/merge-tables', [
+        'source_table_id' => $source2->id,
+        'target_table_id' => $target2->id,
+    ]);
+
+    $response2->assertSessionHasErrors(['error' => 'Gộp bàn thất bại: Không thể gộp bàn đang có đơn đặt trước.']);
+});
+
 test('gộp vào bàn phụ của một nhóm sẽ bám theo bàn chính của nhóm đó', function () {
     $this->actingAs(posAdmin());
     $primary = posTable(['status' => 'occupied']);
@@ -170,6 +225,26 @@ test('tách bàn khi không còn đơn hoạt động thì bàn giữ lại cũn
     $response->assertSessionHasNoErrors();
     expect($primary->fresh()->status)->toBe('available');
     expect($sub->fresh()->status)->toBe('available');
+});
+
+test('serializes reserved orders with reservation info and deposit_total in index', function () {
+    $staff = posStaff();
+    $table = posTable(['status' => 'reserved']);
+    $order = posOrder($table, [], ['status' => 'reserved', 'reservation_name' => 'Anh Đức']);
+    \App\Models\Deposit::create(['order_id' => $order->id, 'amount' => 100000, 'method' => 'cash', 'status' => 'held']);
+
+    $res = $this->actingAs($staff)->get('/staff/pos');
+    
+    $res->assertOk();
+    $res->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+        ->has('tables', fn (\Inertia\Testing\AssertableInertia $tables) => $tables
+            ->where('1.id', $table->id)
+            ->where('1.active_orders.0.status', 'reserved')
+            ->where('1.active_orders.0.reservation_name', 'Anh Đức')
+            ->where('1.active_orders.0.deposit_total', 100000)
+            ->etc()
+        )
+    );
 });
 
 test('hủy toàn bộ đơn của nhóm bàn: món và đơn cancelled kèm lý do, bàn nhả hết', function () {

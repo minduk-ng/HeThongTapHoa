@@ -30,8 +30,13 @@ class POSController extends Controller
         $isLocal = app()->environment('local');
 
         $loadTables = function () {
-            $tables = Table::with(['mergedIntoTable', 'activeOrders.items' => function ($query) {
-                $query->where('status', '!=', 'cancelled')->with('menuItem');
+            $tables = Table::with(['mergedIntoTable', 'orders' => function ($query) {
+                $query->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed', 'reserved'])
+                    ->with(['items' => function ($q) {
+                        $q->where('status', '!=', 'cancelled')->with('menuItem');
+                    }, 'deposits' => function ($q) {
+                        $q->where('status', 'held');
+                    }]);
             }])->where('status', '!=', 'maintenance')->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
 
             $tables->each(function ($table) use ($tables) {
@@ -40,9 +45,19 @@ class POSController extends Controller
                     $allGroupTableIds = $tables->filter(fn ($t) => $t->id == $groupId || $t->merged_into_table_id == $groupId)->pluck('id');
                     $allGroupOrders = Order::with(['items' => function ($query) {
                         $query->where('status', '!=', 'cancelled')->with('menuItem');
-                    }])->whereIn('table_id', $allGroupTableIds)->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])->get();
+                    }, 'deposits' => function ($q) {
+                        $q->where('status', 'held');
+                    }])->whereIn('table_id', $allGroupTableIds)->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed', 'reserved'])->get();
+                    $allGroupOrders->each(function($order) {
+                        $order->deposit_total = (float) $order->deposits->sum('amount');
+                    });
                     $table->setRelation('activeOrders', $allGroupOrders);
                     $table->setRelation('activeOrder', $allGroupOrders->first());
+                } else {
+                    $table->setRelation('activeOrders', $table->orders);
+                    $table->activeOrders->each(function($order) {
+                        $order->deposit_total = (float) $order->deposits->sum('amount');
+                    });
                 }
             });
 
@@ -51,9 +66,14 @@ class POSController extends Controller
             // Inject virtual "Mang đi" table with takeaway orders (table_id IS NULL)
             $takeawayOrders = Order::with(['items' => function ($query) {
                 $query->where('status', '!=', 'cancelled')->with('menuItem');
+            }, 'deposits' => function ($q) {
+                $q->where('status', 'held');
             }])->whereNull('table_id')
-                ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed', 'reserved'])
                 ->get();
+            $takeawayOrders->each(function($order) {
+                $order->deposit_total = (float) $order->deposits->sum('amount');
+            });
 
             array_unshift($result, [
                 'id' => 0,
@@ -1051,6 +1071,10 @@ class POSController extends Controller
                 $sourceTable = Table::lockForUpdate()->findOrFail($validated['source_table_id']);
                 $targetTable = Table::lockForUpdate()->findOrFail($validated['target_table_id']);
 
+                if (Order::whereIn('table_id', [$sourceTable->id, $targetTable->id])->where('status', 'reserved')->exists()) {
+                    throw new \Exception('Không thể chuyển bàn đang có đơn đặt trước.');
+                }
+
                 if ($targetTable->status !== 'available' && ! $targetTable->merged_into_table_id) {
                     throw new \Exception('Bàn đích phải ở trạng thái bàn trống.');
                 }
@@ -1137,6 +1161,10 @@ class POSController extends Controller
             DB::transaction(function () use ($validated) {
                 $sourceTable = Table::lockForUpdate()->findOrFail($validated['source_table_id']);
                 $targetTable = Table::lockForUpdate()->findOrFail($validated['target_table_id']);
+
+                if (Order::whereIn('table_id', [$sourceTable->id, $targetTable->id])->where('status', 'reserved')->exists()) {
+                    throw new \Exception('Không thể gộp bàn đang có đơn đặt trước.');
+                }
 
                 $primaryTargetId = $targetTable->merged_into_table_id ?? $targetTable->id;
 
