@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\SignupController;
 use App\Http\Controllers\Manager\CategoryController;
 use App\Http\Controllers\Manager\IngredientController;
+use App\Http\Controllers\Manager\OrderListController;
 use App\Http\Controllers\Manager\ProductController;
 use App\Http\Controllers\Manager\RecipeController;
 use App\Http\Controllers\Manager\TableController;
@@ -113,6 +114,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/tables/batch', [TableController::class, 'batchStore'])->middleware('permission:tables.create');
         Route::post('/tables/{table}', [TableController::class, 'update'])->middleware('permission:tables.edit');
         Route::delete('/tables/{table}', [TableController::class, 'destroy'])->middleware('permission:tables.delete');
+
+        // Order List
+        Route::get('/orders', [OrderListController::class, 'index'])->middleware('permission:orders.view');
+        Route::get('/orders/{order}', [OrderListController::class, 'show'])->middleware('permission:orders.view');
     });
 
     // Staff Features (POS & Kitchen Display)
