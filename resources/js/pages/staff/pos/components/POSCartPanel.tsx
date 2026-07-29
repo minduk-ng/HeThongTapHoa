@@ -13,13 +13,17 @@ import {
     Menu,
     StickyNote,
     ChevronUp,
+    CalendarClock,
+    Banknote,
+    LogIn,
 } from 'lucide-react';
-import { POSTableData, CartItem } from '../types/pos.types';
+import { POSTableData, CartItem, ReservationDraft, POSOrderData } from '../types/pos.types';
 import TransferMergeModal from './TransferMergeModal';
 import ReduceItemModal from './ReduceItemModal';
 
 import VoidItemModal from '@/pages/staff/kitchen/components/VoidItemModal';
 import NotePopupModal from './NotePopupModal';
+import CancelReservationModal from './CancelReservationModal';
 
 interface POSCartPanelProps {
     selectedTable: POSTableData | null;
@@ -45,6 +49,12 @@ interface POSCartPanelProps {
     submitting: boolean;
     isCheckoutLocked?: boolean;
     checkoutLockedBy?: string;
+    reservationDraft?: ReservationDraft | null;
+    onOpenReservationForm?: () => void;
+    onConfirmReservation?: () => void;
+    onCheckIn?: (orderId: number) => void;
+    onCancelReservation?: (orderId: number, resolution: 'refund' | 'forfeit', note: string) => void;
+    onOpenDeposit?: () => void;
 }
 
 export default function POSCartPanel({
@@ -66,6 +76,12 @@ export default function POSCartPanel({
     submitting,
     isCheckoutLocked = false,
     checkoutLockedBy = '',
+    reservationDraft,
+    onOpenReservationForm,
+    onConfirmReservation,
+    onCheckIn,
+    onCancelReservation,
+    onOpenDeposit,
 }: POSCartPanelProps) {
     const { auth } = usePage<any>().props;
     const canBypassKitchen = !!(
@@ -113,6 +129,8 @@ export default function POSCartPanel({
         tableId: null,
         menuItemName: '',
     });
+
+    const [isCancelReservationModalOpen, setIsCancelReservationModalOpen] = useState(false);
 
     if (!selectedTable) {
         return (
@@ -170,6 +188,19 @@ export default function POSCartPanel({
 
     return (
         <div className="flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200/80 bg-white dark:border-zinc-800/80 dark:bg-zinc-900">
+            <CancelReservationModal
+                isOpen={isCancelReservationModalOpen}
+                onClose={() => setIsCancelReservationModalOpen(false)}
+                depositTotal={selectedTable?.deposit_amount || 0}
+                onConfirm={(resolution, note) => {
+                    const orderId = selectedTable?.active_order?.id || 0;
+                    if (onCancelReservation) {
+                        onCancelReservation(orderId, resolution, note);
+                    }
+                    setIsCancelReservationModalOpen(false);
+                }}
+            />
+
             <VoidItemModal
                 isOpen={cancelModalState.isOpen}
                 onClose={() =>
@@ -231,11 +262,15 @@ export default function POSCartPanel({
                             className={`shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
                                 selectedTable.status === 'occupied'
                                     ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/60 dark:text-amber-300'
+                                    : selectedTable.status === 'reserved'
+                                    ? 'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-900/60 dark:bg-violet-950/60 dark:text-violet-300'
                                     : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/60 dark:text-emerald-300'
                             }`}
                         >
                             {selectedTable.status === 'occupied'
                                 ? 'Đang phục vụ'
+                                : selectedTable.status === 'reserved'
+                                ? 'Đã đặt trước'
                                 : 'Bàn trống'}
                         </span>
                     </div>
@@ -367,6 +402,56 @@ export default function POSCartPanel({
 
             {/* Cart Items List (Independent Scroll Area) */}
             <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+                {/* Reservation Banner */}
+                {(reservationDraft || selectedTable.status === 'reserved') && (
+                    <div className="flex flex-col gap-2 rounded-xl border border-violet-200 bg-violet-50/80 p-3 dark:border-violet-900/40 dark:bg-violet-950/20">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <h4 className="font-semibold text-violet-900 dark:text-violet-100">
+                                    {reservationDraft?.name || selectedTable.reservation_name}
+                                </h4>
+                                <div className="mt-1 flex items-center gap-2 text-xs text-violet-700 dark:text-violet-300">
+                                    <span>{reservationDraft?.phone || selectedTable.reservation_phone}</span>
+                                    <span className="h-1 w-1 rounded-full bg-violet-400"></span>
+                                    <span>
+                                        {(() => {
+                                            const timeString = reservationDraft?.time || selectedTable.reservation_time;
+                                            if (!timeString) return '';
+                                            const d = new Date(timeString);
+                                            const hh = String(d.getHours()).padStart(2, '0');
+                                            const mm = String(d.getMinutes()).padStart(2, '0');
+                                            const dd = String(d.getDate()).padStart(2, '0');
+                                            const MM = String(d.getMonth() + 1).padStart(2, '0');
+                                            return `${hh}:${mm} ${dd}/${MM}`;
+                                        })()}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                {((selectedTable.deposit_amount || 0) > 0) && (
+                                    <span className="rounded-md border border-violet-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300">
+                                        Đã cọc {selectedTable.deposit_amount?.toLocaleString('vi-VN')} đ
+                                    </span>
+                                )}
+                                {selectedTable.status === 'reserved' && canCancel && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCancelReservationModalOpen(true)}
+                                        className="text-[10px] font-medium text-rose-600 hover:underline dark:text-rose-400"
+                                    >
+                                        Hủy đặt bàn
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                        {(reservationDraft?.note || selectedTable.reservation_note) && (
+                            <div className="mt-1 rounded-lg bg-white/60 px-2 py-1.5 text-xs text-violet-800 dark:bg-black/20 dark:text-violet-200">
+                                {reservationDraft?.note || selectedTable.reservation_note}
+                            </div>
+                        )}
+                    </div>
+                )}
+                
                 {cartItems.length === 0 ? (
                     <div className="flex h-full flex-col justify-center p-4">
                         <div className="flex items-start space-x-3 text-zinc-400">
@@ -414,8 +499,9 @@ export default function POSCartPanel({
                             const isMinusDisabled = !!(
                                 item.isConfirmed &&
                                 (item.isKitchenCompleted || item.quantity <= 0)
-                            );
-                            const isDeleteDisabled = !!item.isConfirmed;
+                            ) || selectedTable.status === 'reserved';
+                            const isDeleteDisabled = !!item.isConfirmed || selectedTable.status === 'reserved';
+                            const isPlusDisabled = selectedTable.status === 'reserved';
                             const itemKey = `${item.menu_item_id}_${item.isConfirmed ? (item.isKitchenCompleted ? (item.isServed ? 'served' : 'completed') : 'pending') : 'draft'}_${item.orderItemId || ''}`;
             
                             return (
@@ -512,13 +598,14 @@ export default function POSCartPanel({
                                         </span>
                                         <button
                                             type="button"
+                                            disabled={isPlusDisabled}
                                             onClick={() =>
                                                 onUpdateQuantity(
                                                     item.menu_item_id,
                                                     1,
                                                 )
                                             }
-                                            className="px-2.5 py-1.5 text-sm font-bold text-zinc-600 transition-colors duration-150 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                                            className="px-2.5 py-1.5 text-sm font-bold text-zinc-600 transition-colors duration-150 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-zinc-700"
                                             title="Gọi thêm món"
                                         >
                                             +
@@ -665,108 +752,178 @@ export default function POSCartPanel({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-1">
-                    <button
-                        type="button"
-                        disabled={
-                            submitting ||
-                            cartItems.length === 0 ||
-                            !hasUnconfirmedChanges ||
-                            isCheckoutLocked
-                        }
-                        onClick={onSendToKitchen}
-                        className={`flex items-center justify-center space-x-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors duration-150 ${
-                            isCheckoutLocked
-                                ? 'cursor-not-allowed border border-zinc-200 bg-zinc-100 text-zinc-400 opacity-50 dark:border-zinc-700 dark:bg-zinc-800'
-                                : 'bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-50'
-                        }`}
-                        title={
-                            isCheckoutLocked
-                                ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}`
-                                : 'Gửi món vừa chọn hoặc thay đổi xuống Bếp'
-                        }
-                    >
-                        <Send className="h-3.5 w-3.5" />
-                        <span>
-                            {submitting ? 'Đang gửi...' : 'Gửi bếp chế biến'}
-                        </span>
-                    </button>
-                
-                    {/* Split checkout button */}
-                    <div className="relative flex">
-                        <button
-                            type="button"
-                            disabled={
-                                submitting ||
-                                cartItems.length === 0 ||
-                                isPaymentBlocked ||
-                                isCheckoutLocked
-                            }
-                            onClick={onOpenPayment}
-                            className={`flex flex-1 items-center justify-center space-x-1.5 ${isTakeaway ? 'rounded-xl' : 'rounded-l-xl'} px-3 py-2.5 text-xs font-semibold transition-colors duration-150 ${
-                                isCheckoutLocked
-                                    ? 'cursor-not-allowed border border-rose-300 bg-rose-100 font-bold text-rose-700 opacity-90 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
-                                    : isPaymentBlocked
-                                      ? 'cursor-not-allowed border border-zinc-200 bg-zinc-100 text-zinc-400 opacity-60 dark:border-zinc-700 dark:bg-zinc-800'
-                                      : 'bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50'
-                            }`}
-                            title={
-                                isCheckoutLocked
-                                    ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}`
-                                    : hasUnconfirmedChanges
-                                      ? 'Vui lòng bấm "Gửi bếp chế biến" để lưu giỏ hàng trước khi thanh toán'
-                                      : isKitchenBlocked
-                                        ? 'Cần gửi toàn bộ món xuống Bếp và chờ Bếp làm xong mới được thanh toán'
-                                        : isTakeaway
-                                          ? 'Thanh toán đơn hiện tại'
-                                          : 'Thanh toán tất cả đơn'
-                            }
-                        >
-                            {isCheckoutLocked ? (
-                                <Lock className="h-3.5 w-3.5" />
+                    {reservationDraft || selectedTable.status === 'reserved' ? (
+                        <>
+                            {selectedTable.status === 'reserved' ? (
+                                <>
+                                    <div className="col-span-2">
+                                        <button
+                                            type="button"
+                                            disabled={submitting}
+                                            onClick={() => onCheckIn && onCheckIn(selectedTable.active_order?.id || 0)}
+                                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                                        >
+                                            <LogIn className="h-4 w-4" />
+                                            <span>Check-in (Khách đã đến)</span>
+                                        </button>
+                                    </div>
+                                </>
                             ) : (
-                                <CreditCard className="h-3.5 w-3.5" />
-                            )}
-                            <span>
-                                {isCheckoutLocked
-                                    ? `Đang TT: ${checkoutLockedBy}`
-                                    : 'Thanh toán'}
-                            </span>
-                        </button>
-                        {!isTakeaway && (
-                            <button
-                                type="button"
-                                disabled={isCheckoutLocked || isPaymentBlocked}
-                                onClick={() => setIsCheckoutDropUpOpen(!isCheckoutDropUpOpen)}
-                                className={`rounded-r-xl border-l border-emerald-500/30 px-1.5 py-2.5 text-white transition-colors disabled:opacity-50 ${
-                                    isPaymentBlocked || isCheckoutLocked
-                                        ? 'bg-zinc-200 text-zinc-400 dark:bg-zinc-700'
-                                        : 'bg-emerald-600 hover:bg-emerald-700'
-                                }`}
-                            >
-                                <ChevronUp className="h-3.5 w-3.5" />
-                            </button>
-                        )}
-                
-                        {/* Drop-up menu */}
-                        {!isTakeaway && isCheckoutDropUpOpen && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setIsCheckoutDropUpOpen(false)} />
-                                <div className="absolute bottom-full right-0 z-50 mb-1 w-52 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
+                                <>
                                     <button
                                         type="button"
-                                        onClick={() => {
-                                            setIsCheckoutDropUpOpen(false);
-                                            if (onOpenSinglePayment) onOpenSinglePayment();
-                                        }}
-                                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                        disabled={submitting}
+                                        onClick={onOpenReservationForm}
+                                        className="flex items-center justify-center gap-2 rounded-xl border-2 border-violet-600 px-3 py-2 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-50 dark:border-violet-500 dark:text-violet-400 dark:hover:bg-violet-950/30"
                                     >
-                                        <CreditCard className="h-3.5 w-3.5 stroke-[1.5]" />
-                                        <span>Thanh toán riêng đơn này</span>
+                                        Sửa thông tin
                                     </button>
-                                </div>
-                            </>
-                        )}
-                    </div>
+                                    <button
+                                        type="button"
+                                        disabled={submitting || cartItems.length === 0}
+                                        onClick={onConfirmReservation}
+                                        className="flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-3 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-violet-700 disabled:opacity-50"
+                                    >
+                                        <CalendarClock className="h-4 w-4" />
+                                        <span>Xác nhận đặt bàn</span>
+                                    </button>
+                                </>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <button
+                                type="button"
+                                disabled={
+                                    submitting ||
+                                    cartItems.length === 0 ||
+                                    !hasUnconfirmedChanges ||
+                                    isCheckoutLocked
+                                }
+                                onClick={onSendToKitchen}
+                                className={`flex items-center justify-center space-x-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors duration-150 ${
+                                    isCheckoutLocked
+                                        ? 'cursor-not-allowed border border-zinc-200 bg-zinc-100 text-zinc-400 opacity-50 dark:border-zinc-700 dark:bg-zinc-800'
+                                        : 'bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-50'
+                                }`}
+                                title={
+                                    isCheckoutLocked
+                                        ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}`
+                                        : 'Gửi món vừa chọn hoặc thay đổi xuống Bếp'
+                                }
+                            >
+                                <Send className="h-3.5 w-3.5" />
+                                <span>
+                                    {submitting ? 'Đang gửi...' : 'Gửi bếp chế biến'}
+                                </span>
+                            </button>
+                        
+                            {/* Split checkout button / Reservation button */}
+                            <div className="relative flex">
+                                {confirmedItems.length === 0 && !isTakeaway && !activeInvoiceId.startsWith('draft_') && !hasUnconfirmedChanges ? (
+                                    <button
+                                        type="button"
+                                        disabled={submitting}
+                                        onClick={onOpenReservationForm}
+                                        className="flex flex-1 items-center justify-center space-x-1.5 rounded-xl bg-violet-600 px-3 py-2.5 text-xs font-semibold text-white transition-colors duration-150 hover:bg-violet-700 disabled:opacity-50"
+                                        title="Đặt bàn cho khách (chưa gọi món)"
+                                    >
+                                        <CalendarClock className="h-3.5 w-3.5" />
+                                        <span>Đặt bàn</span>
+                                    </button>
+                                ) : (
+                                    <>
+                                        <button
+                                            type="button"
+                                            disabled={
+                                                submitting ||
+                                                cartItems.length === 0 ||
+                                                isPaymentBlocked ||
+                                                isCheckoutLocked
+                                            }
+                                            onClick={onOpenPayment}
+                                            className={`flex flex-1 items-center justify-center space-x-1.5 ${isTakeaway ? 'rounded-xl' : 'rounded-l-xl'} px-3 py-2.5 text-xs font-semibold transition-colors duration-150 ${
+                                                isCheckoutLocked
+                                                    ? 'cursor-not-allowed border border-rose-300 bg-rose-100 font-bold text-rose-700 opacity-90 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                                                    : isPaymentBlocked
+                                                    ? 'cursor-not-allowed border border-zinc-200 bg-zinc-100 text-zinc-400 opacity-60 dark:border-zinc-700 dark:bg-zinc-800'
+                                                    : 'bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50'
+                                            }`}
+                                            title={
+                                                isCheckoutLocked
+                                                    ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}`
+                                                    : hasUnconfirmedChanges
+                                                    ? 'Vui lòng bấm "Gửi bếp chế biến" để lưu giỏ hàng trước khi thanh toán'
+                                                    : isKitchenBlocked
+                                                        ? 'Cần gửi toàn bộ món xuống Bếp và chờ Bếp làm xong mới được thanh toán'
+                                                        : isTakeaway
+                                                        ? 'Thanh toán đơn hiện tại'
+                                                        : 'Thanh toán tất cả đơn'
+                                            }
+                                        >
+                                            {isCheckoutLocked ? (
+                                                <Lock className="h-3.5 w-3.5" />
+                                            ) : (
+                                                <CreditCard className="h-3.5 w-3.5" />
+                                            )}
+                                            <span>
+                                                {isCheckoutLocked
+                                                    ? `Đang TT: ${checkoutLockedBy}`
+                                                    : 'Thanh toán'}
+                                            </span>
+                                        </button>
+                                        {!isTakeaway && (
+                                            <button
+                                                type="button"
+                                                disabled={isCheckoutLocked || isPaymentBlocked}
+                                                onClick={() => setIsCheckoutDropUpOpen(!isCheckoutDropUpOpen)}
+                                                className={`rounded-r-xl border-l border-emerald-500/30 px-1.5 py-2.5 text-white transition-colors disabled:opacity-50 ${
+                                                    isPaymentBlocked || isCheckoutLocked
+                                                        ? 'bg-zinc-200 text-zinc-400 dark:bg-zinc-700'
+                                                        : 'bg-emerald-600 hover:bg-emerald-700'
+                                                }`}
+                                            >
+                                                <ChevronUp className="h-3.5 w-3.5" />
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+                
+                                {/* Drop-up menu */}
+                                {!isTakeaway && isCheckoutDropUpOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setIsCheckoutDropUpOpen(false)} />
+                                        <div className="absolute bottom-full right-0 z-50 mb-1 w-52 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsCheckoutDropUpOpen(false);
+                                                    if (onOpenSinglePayment) onOpenSinglePayment();
+                                                }}
+                                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                            >
+                                                <CreditCard className="h-3.5 w-3.5 stroke-[1.5]" />
+                                                <span>Thanh toán riêng đơn này</span>
+                                            </button>
+                                            {confirmedItems.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setIsCheckoutDropUpOpen(false);
+                                                        if (onOpenDeposit) onOpenDeposit();
+                                                    }}
+                                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                                >
+                                                    <Banknote className="h-3.5 w-3.5 stroke-[1.5]" />
+                                                    <span>Đặt cọc</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
