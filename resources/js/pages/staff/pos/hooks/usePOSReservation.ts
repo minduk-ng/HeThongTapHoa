@@ -20,6 +20,23 @@ function getCsrfTokenFromCookie(): string {
 
 export function usePOSReservation() {
     const [isLoading, setIsLoading] = useState(false);
+    const [reservationDrafts, setReservationDrafts] = useState<Record<string, import('../types/pos.types').ReservationDraft>>({});
+
+    const getDraftKey = (tableId: number, invoiceId: string) => `${tableId}_${invoiceId}`;
+
+    const getDraft = (tableId: number, invoiceId: string) => reservationDrafts[getDraftKey(tableId, invoiceId)] || null;
+
+    const setDraft = (tableId: number, invoiceId: string, draft: import('../types/pos.types').ReservationDraft) => {
+        setReservationDrafts(prev => ({ ...prev, [getDraftKey(tableId, invoiceId)]: draft }));
+    };
+
+    const clearDraft = (tableId: number, invoiceId: string) => {
+        setReservationDrafts(prev => {
+            const next = { ...prev };
+            delete next[getDraftKey(tableId, invoiceId)];
+            return next;
+        });
+    };
 
     /**
      * Set a table as reserved (no deposit, no items)
@@ -231,6 +248,10 @@ export function usePOSReservation() {
     }, []);
 
     return {
+        reservationDrafts,
+        getDraft,
+        setDraft,
+        clearDraft,
         reserveTable,
         submitReservation,
         checkInReservation,

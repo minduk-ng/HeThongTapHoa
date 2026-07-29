@@ -12,6 +12,7 @@ interface ReceiptPrintModalProps {
     amountReceived: number;
     changeAmount: number;
     invoiceCode?: string;
+    depositAmount?: number;
 }
 
 export default function ReceiptPrintModal({
@@ -23,6 +24,7 @@ export default function ReceiptPrintModal({
     amountReceived,
     changeAmount,
     invoiceCode = 'INV-' + Math.floor(100000 + Math.random() * 900000),
+    depositAmount = 0,
 }: ReceiptPrintModalProps) {
     useEffect(() => {
         if (isOpen) {
@@ -202,9 +204,15 @@ export default function ReceiptPrintModal({
                                 <span>Vị trí / Bàn thực hiện:</span>
                                 <span>{selectedTable.table_number} ({selectedTable.area || 'Trong nhà'})</span>
                             </div>
+                            {depositAmount > 0 && (
+                                <div className="flex justify-between font-bold text-zinc-900">
+                                    <span>Đã cọc:</span>
+                                    <span className="font-mono tabular-nums">-{depositAmount.toLocaleString('vi-VN')} đ</span>
+                                </div>
+                            )}
                             <div className="flex justify-between text-xs font-black pt-1 border-t border-black">
                                 <span>TỔNG THANH TOÁN:</span>
-                                <span className="font-mono text-sm tabular-nums">{totalAmount.toLocaleString('vi-VN')} đ</span>
+                                <span className="font-mono text-sm tabular-nums">{Math.max(0, totalAmount - depositAmount).toLocaleString('vi-VN')} đ</span>
                             </div>
                         </div>
 

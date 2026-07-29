@@ -262,6 +262,10 @@ export function usePOSCheckout(
                     }
                     onSuccessClearCart();
 
+                    if (data.deposit_refund > 0) {
+                        alert(`Hoàn khách ${data.deposit_refund.toLocaleString('vi-VN')} đ từ tiền cọc thừa.`);
+                    }
+
                     router.reload({
                         only: ['tables'],
                         onError: () => {},
@@ -283,6 +287,8 @@ export function usePOSCheckout(
                             cartItems: snapshotCart,
                             table: snapshotTable,
                             invoiceCode,
+                            depositAmount: matchedOrderObj?.deposit_amount || 0,
+                            depositRefund: data.deposit_refund || 0,
                         });
                     }
                 } else {
@@ -342,6 +348,9 @@ export function usePOSCheckout(
             .then(async (response) => {
                 const data = await response.json().catch(() => ({}));
                 if (response.ok && data.success) {
+                    if (data.deposit_refund > 0) {
+                        alert(`Hoàn khách ${data.deposit_refund.toLocaleString('vi-VN')} đ từ tiền cọc thừa.`);
+                    }
                     onSuccess();
                     router.reload({ only: ['tables'] });
                 } else {

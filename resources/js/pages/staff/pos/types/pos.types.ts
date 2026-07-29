@@ -16,8 +16,9 @@ export interface POSOrderItemData {
 export interface POSOrderData {
     id: number;
     order_code?: string;
-    status: 'pending' | 'confirmed' | 'processing' | 'completed' | 'paid' | 'cancelled';
+    status: 'pending' | 'confirmed' | 'processing' | 'completed' | 'paid' | 'cancelled' | 'reserved';
     items?: POSOrderItemData[];
+    deposit_amount?: number;
 }
 
 export interface POSTableData {
@@ -92,6 +93,8 @@ export interface ReceiptModalState {
     cartItems: CartItem[];
     table: POSTableData | null;
     invoiceCode?: string;
+    depositAmount?: number;
+    depositRefund?: number;
 }
 
 export interface ServingItem {

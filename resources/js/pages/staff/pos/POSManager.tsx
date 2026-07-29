@@ -8,12 +8,14 @@ import POSLogTab, { SystemLogEntry } from './components/POSLogTab';
 import PaymentDrawer from './components/PaymentDrawer';
 import ReceiptPrintModal from './components/ReceiptPrintModal';
 import ReservationConfirmModal from './components/ReservationConfirmModal';
+import ReservationFormDrawer from './components/ReservationFormDrawer';
 import POSToolbar from './components/POSToolbar';
 
 import { POSManagerProps } from './types/pos.types';
 import { usePOSTables } from './hooks/usePOSTables';
 import { usePOSCart } from './hooks/usePOSCart';
 import { usePOSCheckout } from './hooks/usePOSCheckout';
+import { usePOSReservation } from './hooks/usePOSReservation';
 
 export default function POSManager({ tables, categories, products }: POSManagerProps) {
     const [activeTab, setActiveTab] = useState<'tables' | 'menu' | 'log'>('tables');
@@ -181,7 +183,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
     }, [selectedTable, clearUnconfirmedDraft, addLogEntry, isDuplicateEvent]);
 
     const {
-        submitting,
+        submitting: checkoutSubmitting,
         isPaymentDrawerOpen,
         setIsPaymentDrawerOpen,
         lockedCheckoutTables,
@@ -192,7 +194,41 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         handleBulkCheckout,
     } = usePOSCheckout(selectedTable, tables);
 
+    const {
+        reservationDrafts,
+        getDraft,
+        setDraft,
+        clearDraft,
+        submitReservation,
+        checkInReservation,
+        cancelReservation,
+        submitDeposit,
+        isLoading: reservationLoading
+    } = usePOSReservation();
+
+    const submitting = checkoutSubmitting || reservationLoading;
+
     const [paymentMode, setPaymentMode] = useState<'bulk' | 'single'>('bulk');
+    const [drawerMode, setDrawerMode] = useState<'payment' | 'deposit' | 'reservation'>('payment');
+    const [isReservationFormOpen, setIsReservationFormOpen] = useState(false);
+
+    const activeInvoiceIdForTable = selectedTable ? (activeInvoiceId[selectedTable.id] || 'draft_default') : 'draft_default';
+    const currentReservationDraft = selectedTable ? getDraft(selectedTable.id, activeInvoiceIdForTable) : null;
+    
+    // Calculate deposit total and order codes
+    const activeOrderForDrawer = selectedTable?.active_orders?.find(
+        (o) => o.order_code === activeInvoiceIdForTable || `order_${o.id}` === activeInvoiceIdForTable
+    ) || selectedTable?.active_order;
+
+    const singleDepositTotal = activeOrderForDrawer?.deposit_amount || 0;
+    const singleOrderCode = activeOrderForDrawer?.order_code ? [activeOrderForDrawer.order_code] : [];
+
+    const bulkConfirmedOrders = selectedTable?.active_orders?.filter(o => o.status !== 'reserved' && o.status !== 'paid' && o.status !== 'cancelled') || [];
+    const bulkDepositTotal = bulkConfirmedOrders.reduce((sum, o) => sum + (o.deposit_amount || 0), 0);
+    const bulkOrderCodes = bulkConfirmedOrders.map(o => o.order_code || '').filter(Boolean);
+
+    const currentDepositTotal = paymentMode === 'bulk' ? bulkDepositTotal : singleDepositTotal;
+    const currentOrderCodes = paymentMode === 'bulk' ? bulkOrderCodes : singleOrderCode;
 
     // Virtual "Mang đi" table (id = 0) holds orders of independent customers,
     // so bulk checkout across all of them is never valid there.
@@ -304,17 +340,37 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                             onUpdateNote={handleUpdateNote}
                             onSendToKitchen={() => {
                                 if (selectedTable) {
-                                    const activeId = activeInvoiceId[selectedTable.id] || 'draft_default';
-                                    handleSendToKitchen(selectedTable, currentCart, activeId, () => {
-                                        clearUnconfirmedDraft(selectedTable.id, activeId);
+                                    handleSendToKitchen(selectedTable, currentCart, activeInvoiceIdForTable, () => {
+                                        clearUnconfirmedDraft(selectedTable.id, activeInvoiceIdForTable);
                                     });
                                 }
                             }}
-                            onOpenPayment={() => { setPaymentMode(isTakeawayTable ? 'single' : 'bulk'); setIsPaymentDrawerOpen(true); }}
-                            onOpenSinglePayment={() => { setPaymentMode('single'); setIsPaymentDrawerOpen(true); }}
+                            onOpenPayment={() => { setPaymentMode(isTakeawayTable ? 'single' : 'bulk'); setDrawerMode('payment'); setIsPaymentDrawerOpen(true); }}
+                            onOpenSinglePayment={() => { setPaymentMode('single'); setDrawerMode('payment'); setIsPaymentDrawerOpen(true); }}
                             submitting={submitting}
                             isCheckoutLocked={isCurrentTableCheckoutLocked}
                             checkoutLockedBy={currentTableLockedBy}
+                            reservationDraft={currentReservationDraft}
+                            onOpenReservationForm={() => setIsReservationFormOpen(true)}
+                            onConfirmReservation={() => {
+                                setDrawerMode('reservation');
+                                setIsPaymentDrawerOpen(true);
+                            }}
+                            onCheckIn={(orderId) => {
+                                checkInReservation(orderId, () => {
+                                    router.reload({ only: ['tables'] });
+                                });
+                            }}
+                            onCancelReservation={(orderId, resolution, note) => {
+                                cancelReservation(orderId, resolution, note, () => {
+                                    router.reload({ only: ['tables'] });
+                                });
+                            }}
+                            onOpenDeposit={() => {
+                                setPaymentMode('single');
+                                setDrawerMode('deposit');
+                                setIsPaymentDrawerOpen(true);
+                            }}
                         />
                     </div>
                 </div>
@@ -328,21 +384,24 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 onConfirm={handleConfirmReservationPrompt}
             />
 
-            {/* Payment Sliding Drawer Overlay */}
             <PaymentDrawer
                 isOpen={isPaymentDrawerOpen}
-                onClose={() => setIsPaymentDrawerOpen(false)}
+                onClose={() => {
+                    setIsPaymentDrawerOpen(false);
+                    setTimeout(() => setDrawerMode('payment'), 200);
+                }}
                 selectedTable={selectedTable}
-                cartItems={paymentMode === 'bulk' ? bulkCartItems : currentCart}
+                cartItems={paymentMode === 'bulk' && drawerMode === 'payment' ? bulkCartItems : currentCart}
+                mode={drawerMode}
+                orderCodes={currentOrderCodes}
+                depositTotal={currentDepositTotal}
+                reservationDraft={currentReservationDraft}
                 onConfirmPayment={(paymentMethod, amountReceived, changeAmount, shouldPrint) => {
                     if (selectedTable) {
-                        const activeId = activeInvoiceId[selectedTable.id] || 'draft_default';
                         if (paymentMode === 'bulk') {
-                            const allOrders = selectedTable.active_orders || [];
-                            const confirmedOrders = allOrders.filter((o) => o.status !== 'paid' && o.status !== 'cancelled');
                             handleBulkCheckout(
                                 selectedTable,
-                                confirmedOrders,
+                                bulkConfirmedOrders,
                                 paymentMethod,
                                 amountReceived,
                                 changeAmount,
@@ -352,18 +411,64 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                             handleConfirmPayment(
                                 selectedTable,
                                 currentCart,
-                                activeId,
+                                activeInvoiceIdForTable,
                                 paymentMethod,
                                 amountReceived,
                                 changeAmount,
                                 shouldPrint,
-                                () => clearTableCart(selectedTable.id, activeId),
+                                () => clearTableCart(selectedTable.id, activeInvoiceIdForTable),
                                 addLogEntry
                             );
                         }
                     }
                 }}
+                onConfirmDeposit={(amount, method) => {
+                    if (activeOrderForDrawer?.id) {
+                        submitDeposit(activeOrderForDrawer.id, amount, method, () => {
+                            setIsPaymentDrawerOpen(false);
+                            setDrawerMode('payment');
+                            router.reload({ only: ['tables'] });
+                        });
+                    }
+                }}
+                onConfirmReservation={(deposit) => {
+                    if (selectedTable && currentReservationDraft) {
+                        const newItems = currentCart
+                            .filter(i => !i.isConfirmed && i.quantity > 0)
+                            .map(i => ({ menu_item_id: i.menu_item_id, quantity: i.quantity }));
+                        
+                        submitReservation({
+                            table_id: selectedTable.id,
+                            reservation_name: currentReservationDraft.name,
+                            reservation_phone: currentReservationDraft.phone,
+                            reservation_time: currentReservationDraft.time,
+                            reservation_note: currentReservationDraft.note,
+                            deposit_amount: deposit?.amount || 0,
+                            payment_method: deposit?.method || 'cash',
+                            items: newItems
+                        }, () => {
+                            clearDraft(selectedTable.id, activeInvoiceIdForTable);
+                            clearUnconfirmedDraft(selectedTable.id, activeInvoiceIdForTable);
+                            setIsPaymentDrawerOpen(false);
+                            setDrawerMode('payment');
+                            router.reload({ only: ['tables'] });
+                        });
+                    }
+                }}
                 submitting={submitting}
+            />
+
+            <ReservationFormDrawer
+                isOpen={isReservationFormOpen}
+                onClose={() => setIsReservationFormOpen(false)}
+                table={selectedTable}
+                initialDraft={currentReservationDraft}
+                onSubmit={(draft) => {
+                    if (selectedTable) {
+                        setDraft(selectedTable.id, activeInvoiceIdForTable, draft);
+                    }
+                    setIsReservationFormOpen(false);
+                }}
             />
 
             {/* K80 Thermal Receipt Printable Modal */}
@@ -376,6 +481,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 amountReceived={receiptModal.amountReceived}
                 changeAmount={receiptModal.changeAmount}
                 invoiceCode={receiptModal.invoiceCode}
+                depositAmount={receiptModal.depositAmount}
             />
         </DashboardLayout>
     );
