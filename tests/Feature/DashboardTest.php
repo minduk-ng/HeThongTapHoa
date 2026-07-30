@@ -42,4 +42,28 @@ class DashboardTest extends TestCase
         $response = $this->actingAs($adminUser)->get('/manager/dashboard');
         $response->assertOk();
     }
+
+    public function test_dashboard_returns_correct_kpis_structure()
+    {
+        $adminUser = User::where('email', 'admin@admin.com')->first();
+        if (!$adminUser) {
+            $adminUser = User::factory()->create(['email' => 'admin@admin.com']);
+            $adminRole = \App\Models\Role::where('name', 'admin')->first();
+            $adminUser->roles()->attach($adminRole);
+        }
+
+        $response = $this->actingAs($adminUser)->get('/manager/dashboard?date_range=today');
+        
+        $response->assertInertia(fn ($page) => $page
+            ->component('manager/dashboard/DashboardManager')
+            ->has('kpis.revenue')
+            ->has('kpis.orders')
+            ->has('kpis.tables')
+            ->has('kpis.inventory_warnings_count')
+            ->has('live_operations')
+            ->has('analytics.chart_data')
+            ->has('analytics.top_products')
+            ->has('inventory_warnings')
+        );
+    }
 }
