@@ -193,6 +193,9 @@ export default function POSCartPanel({
             (o) => o.status === 'reserved' && o.order_code === activeInvoiceId,
         ) || null;
 
+    const depositTotal = reservedOrder?.deposit_total || 0;
+    const netAmount = Math.max(0, totalAmount - depositTotal);
+
     // Fallback cho đặt bàn kiểu Manager (chỉ lưu trên tables, không có đơn)
     const reservationInfo = reservedOrder
         ? {
@@ -766,10 +769,18 @@ export default function POSCartPanel({
                             {vatTotal.toLocaleString('vi-VN')} đ
                         </span>
                     </div>
+                    {depositTotal > 0 && (
+                        <div className="flex justify-between text-violet-600 dark:text-violet-400 font-medium">
+                            <span>Đã đặt cọc:</span>
+                            <span className="font-semibold tabular-nums">
+                                −{depositTotal.toLocaleString('vi-VN')} đ
+                            </span>
+                        </div>
+                    )}
                     <div className="flex justify-between border-t border-zinc-200/80 pt-1.5 text-sm font-bold text-zinc-900 dark:border-zinc-700/80 dark:text-zinc-100">
                         <span>Tổng thanh toán:</span>
                         <span className="text-base font-bold text-emerald-600 tabular-nums dark:text-emerald-400">
-                            {totalAmount.toLocaleString('vi-VN')} đ
+                            {netAmount.toLocaleString('vi-VN')} đ
                         </span>
                     </div>
                 </div>
