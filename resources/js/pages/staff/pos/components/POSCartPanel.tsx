@@ -188,12 +188,17 @@ export default function POSCartPanel({
 
     // Đơn đặt bàn (reserved) của TAB đang xem — orders là nguồn sự thật,
     // vì bàn occupied vẫn nhận đơn đặt chờ mà status bàn không đổi.
+    const activeOrder =
+        selectedTable.active_orders?.find(
+            (o) => o.order_code === activeInvoiceId,
+        ) || null;
+
     const reservedOrder =
         selectedTable.active_orders?.find(
             (o) => o.status === 'reserved' && o.order_code === activeInvoiceId,
         ) || null;
 
-    const depositTotal = reservedOrder?.deposit_total || 0;
+    const depositTotal = activeOrder?.deposit_total || 0;
     const netAmount = Math.max(0, totalAmount - depositTotal);
 
     // Fallback cho đặt bàn kiểu Manager (chỉ lưu trên tables, không có đơn)
