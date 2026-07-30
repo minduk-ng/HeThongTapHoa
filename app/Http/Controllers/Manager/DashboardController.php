@@ -60,7 +60,10 @@ class DashboardController extends Controller
                     'time_ago' => $item->created_at->diffForHumans(null, true) . ' trước'
                 ]);
 
-            $servingQueueCount = OrderItem::where('status', 'ready')->count();
+            $servingQueueCount = OrderItem::where('status', 'completed')
+                ->whereNull('served_at')
+                ->whereHas('order', fn ($q) => $q->whereDate('created_at', Carbon::today()))
+                ->count();
 
             $tablesMap = Table::select('id', 'table_number as name', 'status', 'reservation_name')->get();
 
