@@ -28,6 +28,7 @@ class RoleController extends Controller
             'pos.view', 'pos.create', 'pos.bypass_kitchen_lock', 'pos.cancel_item',
             'kitchen.view', 'kitchen.update', 'kitchen.cancel_item',
             'serving.view', 'serving.update',
+            'dashboard.view',
         ];
 
         foreach ($systemPermissions as $permName) {

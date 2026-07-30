@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\SignupController;
 use App\Http\Controllers\Manager\CategoryController;
+use App\Http\Controllers\Manager\DashboardController;
 use App\Http\Controllers\Manager\IngredientController;
 use App\Http\Controllers\Manager\OrderListController;
 use App\Http\Controllers\Manager\ProductController;
@@ -118,6 +119,9 @@ Route::middleware('auth')->group(function () {
         // Order List
         Route::get('/orders', [OrderListController::class, 'index'])->middleware('permission:orders.view');
         Route::get('/orders/{order}', [OrderListController::class, 'show'])->middleware('permission:orders.view');
+
+        // Dashboard/Báo cáo
+        Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('permission:dashboard.view');
     });
 
     // Staff Features (POS & Kitchen Display)

@@ -39,6 +39,12 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 12,
             ],
             [
+                'name' => 'Báo cáo',
+                'route_path' => '/manager/dashboard',
+                'group_name' => 'Quản lý',
+                'sort_order' => 18,
+            ],
+            [
                 'name' => 'Danh mục',
                 'route_path' => '/manager/categories',
                 'group_name' => 'Quản lý',
@@ -130,6 +136,7 @@ class AuthorizationSeeder extends Seeder
             'kitchen.view', 'kitchen.update', 'kitchen.cancel_item',
             'serving.view', 'serving.update',
             'orders.view',
+            'dashboard.view',
         ];
 
         foreach ($permissions as $permission) {
