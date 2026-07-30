@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import { 
@@ -60,130 +60,45 @@ interface DashboardProps {
 }
 
 export default function DashboardManager({ filters, kpis, live_operations, analytics, inventory_warnings }: DashboardProps) {
-    // Dynamic states for Echo updates
-    const [liveKpis, setLiveKpis] = useState(kpis);
-    const [liveOps, setLiveOps] = useState(live_operations);
-    const [liveAnalytics, setLiveAnalytics] = useState(analytics);
-
-    // Synchronize states on Inertia props change (especially date filters)
-    useEffect(() => {
-        setLiveKpis(kpis);
-        setLiveOps(live_operations);
-        setLiveAnalytics(analytics);
-    }, [kpis, live_operations, analytics]);
-
-    // WebSocket listeners for Echo
+    // Realtime WebSocket sync via Echo
     useEffect(() => {
         if (filters.date_range !== 'today') return;
 
         const echo = (window as any).Echo;
         if (!echo) return;
 
-        // 1. Listen to pos-updates channel
-        echo.channel('pos-updates')
-            .listen('.InvoicePaid', (event: any) => {
-                setLiveKpis(prev => ({
-                    ...prev,
-                    revenue: {
-                        ...prev.revenue,
-                        value: prev.revenue.value + Number(event.invoice.total_amount)
-                    },
-                    orders: {
-                        ...prev.orders,
-                        value: prev.orders.value + 1
-                    }
-                }));
-            })
-            .listen('.OrderCreated', (event: any) => {
-                setLiveKpis(prev => ({
-                    ...prev,
-                    orders: {
-                        ...prev.orders,
-                        value: prev.orders.value + 1,
-                        pending_count: prev.orders.pending_count + 1
-                    }
-                }));
+        const posChannel = echo.channel('pos-channel');
+        
+        const reloadDashboard = () => {
+            router.reload({
+                only: ['kpis', 'live_operations', 'analytics', 'inventory_warnings'],
+                onError: () => {}
             });
+        };
 
-        // 2. Listen to tables-status channel
-        echo.channel('tables-status')
-            .listen('.TableStatusUpdated', (event: any) => {
-                setLiveOps(prev => {
-                    if (!prev) return null;
-                    const updatedTables = prev.tables_map.map(tbl => {
-                        if (tbl.id === event.table.id) {
-                            return {
-                                ...tbl,
-                                status: event.table.status,
-                                reservation_name: event.table.reservation_name
-                            };
-                        }
-                        return tbl;
-                    });
+        posChannel
+            .listen('.TableStatusUpdated', reloadDashboard)
+            .listen('.OrderSentToKitchen', reloadDashboard)
+            .listen('.OrderCompleted', reloadDashboard)
+            .listen('.ItemsReadyToServe', reloadDashboard)
+            .listen('.ItemsServed', reloadDashboard)
+            .listen('.TableTransferred', reloadDashboard);
 
-                    // Recalculate occupied tables count
-                    const occupiedCount = updatedTables.filter(t => t.status === 'occupied').length;
-                    setLiveKpis(prevKpi => ({
-                        ...prevKpi,
-                        tables: {
-                            ...prevKpi.tables,
-                            occupied: occupiedCount
-                        }
-                    }));
-
-                    return {
-                        ...prev,
-                        tables_map: updatedTables
-                    };
-                });
-            });
-
-        // 3. Listen to kitchen-updates channel
-        echo.channel('kitchen-updates')
-            .listen('.KitchenItemEvent', (event: any) => {
-                setLiveOps(prev => {
-                    if (!prev) return null;
-                    
-                    let newPending = prev.kds.pending_count;
-                    let newCompleted = prev.kds.completed_count;
-                    let newServing = prev.serving.queue_count;
-
-                    if (event.action === 'complete') {
-                        newPending = Math.max(0, newPending - event.items.length);
-                        newCompleted = newCompleted + event.items.length;
-                        newServing = newServing + event.items.length;
-                    } else if (event.action === 'served') {
-                        newServing = Math.max(0, newServing - event.items.length);
-                    }
-
-                    return {
-                        ...prev,
-                        kds: {
-                            ...prev.kds,
-                            pending_count: newPending,
-                            completed_count: newCompleted,
-                            recent_items: prev.kds.recent_items
-                        },
-                        serving: {
-                            queue_count: newServing
-                        }
-                    };
-                });
-            });
+        const inventoryChannel = echo.private('inventory-channel');
+        inventoryChannel.listen('.IngredientStockUpdated', reloadDashboard);
 
         return () => {
-            echo.leaveChannel('pos-updates');
-            echo.leaveChannel('tables-status');
-            echo.leaveChannel('kitchen-updates');
+            echo.leaveChannel('pos-channel');
+            echo.leaveChannel('private-inventory-channel');
         };
     }, [filters.date_range]);
 
     // Defensiveness checks
     const safeWarnings = Array.isArray(inventory_warnings) ? inventory_warnings : [];
-    const safeChartData = Array.isArray(liveAnalytics?.chart_data) ? liveAnalytics.chart_data : [];
-    const safeTopProducts = Array.isArray(liveAnalytics?.top_products) ? liveAnalytics.top_products : [];
-    const safeTablesMap = Array.isArray(liveOps?.tables_map) ? liveOps.tables_map : [];
-    const safeRecentKds = Array.isArray(liveOps?.kds?.recent_items) ? liveOps.kds.recent_items : [];
+    const safeChartData = Array.isArray(analytics?.chart_data) ? analytics.chart_data : [];
+    const safeTopProducts = Array.isArray(analytics?.top_products) ? analytics.top_products : [];
+    const safeTablesMap = Array.isArray(live_operations?.tables_map) ? live_operations.tables_map : [];
+    const safeRecentKds = Array.isArray(live_operations?.kds?.recent_items) ? live_operations.kds.recent_items : [];
 
     const formatCurrency = (val: number) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
@@ -202,7 +117,7 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
         }
     };
 
-    const tableOccupancyPercent = liveKpis.tables.total > 0 ? (liveKpis.tables.occupied / liveKpis.tables.total) * 100 : 0;
+    const tableOccupancyPercent = kpis.tables.total > 0 ? (kpis.tables.occupied / kpis.tables.total) * 100 : 0;
 
     return (
         <DashboardLayout>
@@ -236,7 +151,7 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
                         <div>
                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Doanh thu</p>
                             <h3 className="font-display text-xl font-bold mt-1 text-slate-900 dark:text-white tabular-nums">
-                                {formatCurrency(liveKpis.revenue.value)}
+                                {formatCurrency(kpis.revenue.value)}
                             </h3>
                         </div>
                         <div className="p-2.5 bg-sky-50 dark:bg-sky-950/40 rounded-xl text-sky-600 dark:text-sky-400">
@@ -244,13 +159,13 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
                         </div>
                     </div>
                     <div className="mt-4 flex items-center gap-1">
-                        {liveKpis.revenue.trend === 'up' ? (
+                        {kpis.revenue.trend === 'up' ? (
                             <TrendingUp className="w-4 h-4 text-emerald-500" />
                         ) : (
                             <TrendingDown className="w-4 h-4 text-rose-500" />
                         )}
-                        <span className={`font-bold text-xs ${liveKpis.revenue.comparison_percentage >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {liveKpis.revenue.comparison_percentage >= 0 ? '+' : ''}{liveKpis.revenue.comparison_percentage}%
+                        <span className={`font-bold text-xs ${kpis.revenue.comparison_percentage >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {kpis.revenue.comparison_percentage >= 0 ? '+' : ''}{kpis.revenue.comparison_percentage}%
                         </span>
                         <span className="text-slate-400 text-xs ml-1">vs kỳ trước</span>
                     </div>
@@ -262,7 +177,7 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
                         <div>
                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tổng Đơn Hàng</p>
                             <h3 className="font-display text-xl font-bold mt-1 text-slate-900 dark:text-white tabular-nums">
-                                {liveKpis.orders.value} đơn
+                                {kpis.orders.value} đơn
                             </h3>
                         </div>
                         <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-amber-600 dark:text-amber-400">
@@ -271,7 +186,7 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
                     </div>
                     <div className="mt-4 flex items-center gap-1">
                         <span className="px-2 py-0.5 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 rounded-full text-[10px] font-bold">
-                            {liveKpis.orders.pending_count} đơn đang xử lý
+                            {kpis.orders.pending_count} đơn đang xử lý
                         </span>
                     </div>
                 </div>
@@ -282,7 +197,7 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
                         <div>
                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Trạng thái Bàn</p>
                             <h3 className="font-display text-xl font-bold mt-1 text-slate-900 dark:text-white tabular-nums">
-                                {liveKpis.tables.occupied}/{liveKpis.tables.total} bàn bận
+                                {kpis.tables.occupied}/{kpis.tables.total} bàn bận
                             </h3>
                         </div>
                         <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-600 dark:text-emerald-400">
@@ -303,7 +218,7 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
                         <div>
                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Kho Nguyên Liệu</p>
                             <h3 className="font-display text-xl font-bold mt-1 text-rose-600 dark:text-rose-450 tabular-nums">
-                                {liveKpis.inventory_warnings_count} mặt hàng hết
+                                {kpis.inventory_warnings_count} mặt hàng hết
                             </h3>
                         </div>
                         <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 rounded-xl text-rose-600 dark:text-rose-450">
@@ -317,7 +232,7 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
             </div>
 
             {/* Row 2: Live Operations Monitor (Only if range is 'today') */}
-            {filters.date_range === 'today' && liveOps && (
+            {filters.date_range === 'today' && live_operations && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 animate-fade-in">
                     {/* Kitchen Display Monitor */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
@@ -337,14 +252,14 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
                             <div className="flex items-center justify-around py-4 bg-slate-50 dark:bg-slate-800/20 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
                                 <div className="text-center">
                                     <p className="font-display text-3xl font-black text-amber-500 tabular-nums">
-                                        {String(liveOps.kds.pending_count).padStart(2, '0')}
+                                        {String(live_operations.kds.pending_count).padStart(2, '0')}
                                     </p>
                                     <span className="px-2 py-0.5 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 rounded-full text-[9px] font-bold uppercase tracking-wider">Đang chờ</span>
                                 </div>
                                 <div className="w-px h-12 bg-slate-200 dark:bg-slate-800"></div>
                                 <div className="text-center">
                                     <p className="font-display text-3xl font-black text-emerald-500 tabular-nums">
-                                        {String(liveOps.kds.completed_count).padStart(2, '0')}
+                                        {String(live_operations.kds.completed_count).padStart(2, '0')}
                                     </p>
                                     <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-full text-[9px] font-bold uppercase tracking-wider">Hoàn thành</span>
                                 </div>
@@ -374,10 +289,10 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
                             <div className="relative">
                                 <div className="w-24 h-24 rounded-full border-4 border-sky-100 dark:border-sky-950/60 flex items-center justify-center">
                                     <span className="font-display text-3xl font-black text-slate-800 dark:text-white tabular-nums">
-                                        {String(liveOps.serving.queue_count).padStart(2, '0')}
+                                        {String(live_operations.serving.queue_count).padStart(2, '0')}
                                     </span>
                                 </div>
-                                {liveOps.serving.queue_count > 0 && (
+                                {live_operations.serving.queue_count > 0 && (
                                     <div className="absolute -top-1 -right-1 w-5.5 h-5.5 bg-rose-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white dark:border-slate-900 animate-bounce">
                                         !
                                     </div>
