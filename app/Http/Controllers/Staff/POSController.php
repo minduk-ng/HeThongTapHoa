@@ -757,9 +757,9 @@ class POSController extends Controller
                     ? ($subTableNumbers ? "{$primaryTableObj->table_number} (Gộp {$subTableNumbers})" : $primaryTableObj->table_number)
                     : 'Mang đi';
 
-                $totalAmount = $order->items->sum(function ($item) {
+                $totalAmount = $order->items->where('status', '!=', 'cancelled')->sum(function ($item) {
                     return (float) $item->quantity * (float) $item->unit_price;
-                });
+                }) + (float) $order->vat_amount;
 
                 $depositTotal = (float) $order->deposits()->where('status', 'held')->sum('amount');
                 $payable = max(0, $totalAmount - $depositTotal);
@@ -929,7 +929,11 @@ class POSController extends Controller
                 }
 
                 // Compute total across all orders
-                $totalAmount = $orders->sum(fn ($ord) => $ord->items->sum(fn ($item) => (float) $item->quantity * (float) $item->unit_price));
+                $totalAmount = $orders->sum(function ($ord) {
+                    return $ord->items->where('status', '!=', 'cancelled')->sum(function ($item) {
+                        return (float) $item->quantity * (float) $item->unit_price;
+                    }) + (float) $ord->vat_amount;
+                });
                 
                 $depositTotal = 0;
                 foreach ($orders as $ord) {

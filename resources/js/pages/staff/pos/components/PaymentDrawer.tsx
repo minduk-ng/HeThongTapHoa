@@ -75,12 +75,12 @@ export default function PaymentDrawer({
     };
 
     const cashPresets = mode === 'payment' ? calculatePresets(payable) : [100000, 200000, 500000, totalAmount];
-    const changeAmount = mode === 'payment' ? Math.max(0, amountReceived - payable) : 0;
+    const changeAmount = mode === 'payment' ? Math.max(0, amountReceived - payable) + depositRefund : 0;
 
     const handleConfirm = (shouldPrint: boolean) => {
         if (mode === 'payment') {
             const finalReceived = paymentMethod === 'bank_transfer' ? payable : amountReceived;
-            const finalChange = paymentMethod === 'bank_transfer' ? 0 : changeAmount;
+            const finalChange = paymentMethod === 'bank_transfer' ? depositRefund : changeAmount;
             onConfirmPayment(paymentMethod, finalReceived, finalChange, shouldPrint);
         } else if (mode === 'deposit') {
             if (onConfirmDeposit) onConfirmDeposit(amountReceived, paymentMethod);
