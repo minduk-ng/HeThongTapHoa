@@ -46,7 +46,13 @@ class KitchenController extends Controller
 
         // Warning count: orders waiting > 10 minutes OR has additional items calls
         $warningOrdersCount = $activeOrders->filter(function ($order) {
-            $isOver10Mins = $order->created_at ? $order->created_at->diffInMinutes(now()) >= 10 : false;
+            $oldestPendingItem = $order->items
+                ->where('status', 'pending')
+                ->sortBy('created_at')
+                ->first();
+
+            $referenceTime = $oldestPendingItem ? $oldestPendingItem->created_at : $order->created_at;
+            $isOver10Mins = $referenceTime ? $referenceTime->diffInMinutes(now()) >= 10 : false;
 
             return $isOver10Mins || $order->has_additional_items;
         })->count();

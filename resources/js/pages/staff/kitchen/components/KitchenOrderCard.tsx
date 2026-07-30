@@ -18,6 +18,7 @@ export interface KitchenOrderData {
         unit_price: number;
         status: 'pending' | 'completed' | 'cancelled';
         note?: string | null;
+        created_at?: string;
         menu_item?: {
             id: number;
             name: string;
@@ -72,10 +73,18 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
         });
     }, [order.items]);
 
-    // Calculate elapsed time in minutes
-    const createdAtTime = new Date(order.created_at).getTime();
+    // Calculate elapsed time in minutes based on the oldest pending item, fallback to order.created_at
+    const pendingItems = order.items.filter((item) => item.status === 'pending');
+    const referenceTime = pendingItems.length > 0
+        ? pendingItems.reduce((oldest, item) => {
+              if (!item.created_at) return oldest;
+              return new Date(item.created_at).getTime() < new Date(oldest).getTime() ? item.created_at : oldest;
+          }, pendingItems[0].created_at || order.created_at)
+        : order.created_at;
+
+    const createdAtTime = new Date(referenceTime).getTime();
     const elapsedMinutes = Math.max(
-        1,
+        0,
         Math.floor((nowTime - createdAtTime) / 60000),
     );
 
