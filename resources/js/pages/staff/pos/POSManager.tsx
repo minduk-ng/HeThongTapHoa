@@ -241,10 +241,15 @@ export default function POSManager({ tables, categories, products }: POSManagerP
     const bulkCartItems = useMemo(() => {
         if (!selectedTable) return [];
         const carts = tableCarts[selectedTable.id] || {};
-        return Object.values(carts)
-            .flat()
-            .filter((i) => i.isConfirmed);
-    }, [selectedTable, tableCarts]);
+        const activeOrderCodes = safeTables.find(t => t.id === selectedTable.id)?.active_orders
+            ?.filter(o => o.status !== 'reserved' && o.status !== 'paid' && o.status !== 'cancelled')
+            ?.map(o => o.order_code)
+            ?.filter(Boolean) || [];
+
+        return Object.entries(carts)
+            .filter(([invId]) => activeOrderCodes.includes(invId))
+            .flatMap(([_, items]) => items);
+    }, [selectedTable, tableCarts, safeTables]);
 
     const isCurrentTableCheckoutLocked = useMemo(() => {
         if (!selectedTable) return false;
