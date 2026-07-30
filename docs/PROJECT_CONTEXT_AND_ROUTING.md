@@ -1,17 +1,17 @@
 # PROJECT CONTEXT & ROUTING DOCUMENTATION
 
 > **Dự án**: Hệ Thống Quản Lý Tạp Hóa & Cà Phê (POS, Kitchen & System Management)
-> **Phiên bản kiến trúc**: Laravel 11 + Inertia.js (React 19, TypeScript) + Laravel Reverb (WebSockets)
+> **Phiên bản kiến trúc**: Laravel 13 (PHP 8.3+) + Inertia.js 2.x (React 19, TypeScript) + Laravel Reverb (WebSockets)
 
 ---
 
 ## 1. 📌 Tổng Quan Hệ Thống (System Overview)
 
-Ứng dụng quản lý bán hàng (POS), hiển thị màn hình Bếp (Kitchen Display System), quản lý thực đơn, nguyên liệu, định lượng món, sơ đồ bàn, phân quyền tài khoản đa vai trò, xác thực OTP qua Email & Google OAuth, và hệ thống tự động dọn dẹp dữ liệu/cache.
+Ứng dụng quản lý bán hàng (POS), đặt bàn & đặt cọc, hiển thị màn hình Bếp (Kitchen Display System), màn hình Phục vụ (Serving Display), quản lý thực đơn, nguyên liệu, định lượng món, sơ đồ bàn, danh sách đơn hàng, phân quyền tài khoản đa vai trò, xác thực OTP qua Email & Google OAuth, và hệ thống tự động dọn dẹp dữ liệu/cache.
 
 ### Công Nghệ Sử Dụng (Tech Stack)
-- **Backend**: Laravel 11.x (PHP 8.2+), MySQL/MariaDB.
-- **Frontend**: React 19, Inertia.js 2.x, TypeScript, Tailwind CSS.
+- **Backend**: Laravel 13.x (PHP 8.3+), MySQL/MariaDB, Redis (cache/session/queue), Pest (test).
+- **Frontend**: React 19, Inertia.js 2.x, TypeScript, Tailwind CSS, Vite.
 - **Realtime / WebSockets**: Laravel Reverb, Laravel Echo, Pusher JS connector.
 - **Icons & Styling**: Lucide React icons, Google Fonts (`Plus Jakarta Sans` & `Inter`).
 - **Sơ đồ Luồng Hoạt Động Hệ Thống**: Xem chi tiết tại [system_flowcharts.md](file:///d:/Projects/TapHoa/docs/flowcharts/system_flowcharts.md).
@@ -24,35 +24,52 @@
 ### 2.1 Màn Hình Xác Thực & Tài Khoản (Auth & Profile Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
-| `/login` | `Auth\AuthController` | `resources/js/pages/auth/login.tsx` | Đăng nhập tài khoản & kiểm tra số lần thử |
-| `/signup` | `Auth\SignupController` | `resources/js/pages/auth/signup.tsx` | Đăng ký tài khoản mới & gửi OTP xác thực |
-| `/verify-otp` | `Auth\OtpController` | `resources/js/pages/auth/verify-otp.tsx` | Xác thực mã OTP 6 số gửi qua Email |
-| `/forgot-password` | `Auth\ForgotPasswordController` | `resources/js/pages/auth/forgot-password.tsx` | Quên mật khẩu & gửi mã OTP khôi phục |
-| `/reset-password` | `Auth\ForgotPasswordController` | `resources/js/pages/auth/reset-password.tsx` | Đặt lại mật khẩu mới |
+| `/login` | `Auth\AuthController` | `resources/js/pages/auth/Auth.tsx` (+ `components/LoginForm.tsx`) | Đăng nhập tài khoản & kiểm tra số lần thử |
+| `/signup` | `Auth\SignupController` | `resources/js/pages/auth/Auth.tsx` (+ `components/SignupForm.tsx`) | Đăng ký tài khoản mới & gửi OTP xác thực |
+| `/verify-otp` | `Auth\OtpController` | `resources/js/pages/auth/components/OtpVerify.tsx` | Xác thực mã OTP 6 số gửi qua Email |
+| `/forgot-password` | `Auth\ForgotPasswordController` | `resources/js/pages/auth/components/ForgotPassword.tsx` | Quên mật khẩu & gửi mã OTP khôi phục |
+| `/reset-password` | `Auth\ForgotPasswordController` | `resources/js/pages/auth/components/ResetPassword.tsx` | Đặt lại mật khẩu mới |
 | `/auth/google` | `Auth\GoogleAuthController` | — | Chuyển hướng đăng nhập qua Google OAuth |
-| `/settings` | `Auth\ProfileController` | `resources/js/pages/settings.tsx` | Cập nhật hồ sơ, đổi Email/Mật khẩu xác thực OTP |
+| `/settings` | `Auth\ProfileController` | `resources/js/pages/profile/Settings.tsx` | Cập nhật hồ sơ, đổi Email/Mật khẩu xác thực OTP |
 
 ### 2.2 Màn Hình Nhân Viên (Staff Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
-| `/staff/pos` | `Staff\POSController` | `resources/js/pages/staff/pos/POSManager.tsx` | Bán hàng POS. Có các API phụ trợ: `GET /staff/pos/serving-queue` (lấy hàng chờ phục vụ), `POST /staff/pos/mark-served` (đánh dấu đã phục vụ). Gồm 4 tab: Chọn bàn, Chọn món, Phục vụ, Nhật ký Event. |
-| `/staff/kitchen` | `Staff\KitchenController` | `resources/js/pages/staff/kitchen/KitchenDisplay.tsx` | Màn hình Bếp (chế độ tràn màn hình, thanh công cụ compact 1 dòng trên cùng với filter khu vực + thống kê + actions, grid cards full-width, đã loại bỏ nút hủy món/đơn và KitchenLogPanel) |
+| `/staff/pos` | `Staff\POSController` | `resources/js/pages/staff/pos/POSManager.tsx` | Bán hàng POS. Gồm 4 tab: Chọn bàn, Chọn món, Phục vụ, Nhật ký Event. |
+| `/staff/kitchen` | `Staff\KitchenController` | `resources/js/pages/staff/kitchen/KitchenDisplay.tsx` | Màn hình Bếp (chế độ tràn màn hình, thanh công cụ compact 1 dòng: filter khu vực + thống kê + actions, grid cards full-width) |
+| `/staff/serving` | `Staff\ServingController` | `resources/js/pages/staff/serving/ServingDisplay.tsx` | Màn hình Phục vụ độc lập: danh sách món Bếp đã xong chờ bưng ra bàn (`POST /staff/serving/mark-served`) |
+
+**Các API phụ trợ của POS** (prefix `/staff/pos`, khai báo tại `routes/web.php`):
+| Endpoint | Method | Chức năng |
+| :--- | :--- | :--- |
+| `/reserve` | POST | Tạo đơn đặt bàn (status `reserved`), kèm cọc tuỳ chọn (nested `deposit: {amount, method}`) |
+| `/reservation/check-in` | POST | Check-in khách đến: đơn `reserved` → `draft`, bàn → `occupied`, xóa mirror `tables.reservation_*` (422 nếu đơn không ở trạng thái `reserved`) |
+| `/reservation/cancel` | POST | Hủy đặt bàn; nếu có cọc đang giữ bắt buộc chọn `deposit_resolution: refund\|forfeit` (422 nếu thiếu) |
+| `/deposit` | POST | Thu cọc cho đơn đã gửi bếp (payload `method: cash\|transfer`) |
+| `/send-to-kitchen` | POST | Gửi món mới + giảm món (`reduced_items`) xuống Bếp trong 1 transaction |
+| `/checkout` | POST | Thanh toán 1 đơn (tự động cấn trừ cọc; trả `deposit_refund` nếu cọc > tổng hoá đơn) |
+| `/bulk-checkout` | POST | Thanh toán gộp toàn bộ đơn trên bàn/nhóm bàn gộp |
+| `/transfer-table`, `/merge-tables`, `/unmerge-table` | POST | Chuyển / gộp / tách bàn |
+| `/serving-queue` | GET | Lấy hàng chờ phục vụ (`status = completed` + `served_at IS NULL`, chỉ đơn hôm nay) |
+| `/mark-served` | POST | Đánh dấu đã phục vụ (`item_ids: number[]` → `served_at = now()`) |
+| `/cancel-order` | POST | Hủy toàn bộ đơn kèm lý do (quyền `pos.cancel_item\|kitchen.cancel_item`) |
 
 ### 2.3 Màn Hình Quản Lý (Manager Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
-| `/manager/categories` | `Manager\CategoryController` | `resources/js/pages/manager/CategoryManager.tsx` | Quản lý danh mục món ăn / thức uống |
-| `/manager/products` | `Manager\ProductController` | `resources/js/pages/manager/ProductManager.tsx` | Quản lý danh sách sản phẩm, giá bán, thuế VAT, Import/Export Excel |
-| `/manager/tables` | `Manager\TableController` | `resources/js/pages/manager/TableManager.tsx` | Quản lý khu vực & sơ đồ bàn, tạo hàng loạt bàn (batch) |
-| `/manager/inventory/ingredients` | `Manager\IngredientController` | `resources/js/pages/manager/inventory/IngredientManager.tsx` | Quản lý kho nguyên liệu, tồn kho, đơn vị tính, nhập kho Excel |
-| `/manager/inventory/recipes` | `Manager\RecipeController` | `resources/js/pages/manager/inventory/RecipeManager.tsx` | Quản lý định lượng công thức món (chế biến) |
+| `/manager/categories` | `Manager\CategoryController` | `resources/js/pages/manager/categories/CategoriesManager.tsx` | Quản lý danh mục món ăn / thức uống |
+| `/manager/products` | `Manager\ProductController` | `resources/js/pages/manager/products/ProductsManager.tsx` | Quản lý danh sách sản phẩm, giá bán, thuế VAT, Import/Export Excel |
+| `/manager/tables` | `Manager\TableController` | `resources/js/pages/manager/tables/TableManager.tsx` | Quản lý khu vực & sơ đồ bàn, tạo hàng loạt bàn (batch), đặt bàn kiểu Manager (`TableFormDrawer` — chỉ ghi `tables.reservation_*`, không tạo đơn) |
+| `/manager/inventory/ingredients` | `Manager\IngredientController` | `resources/js/pages/manager/inventory/ingredients/IngredientsManager.tsx` | Quản lý kho nguyên liệu, tồn kho, đơn vị tính, nhập kho Excel |
+| `/manager/inventory/recipes` | `Manager\RecipeController` | `resources/js/pages/manager/inventory/recipes/RecipesManager.tsx` | Quản lý định lượng công thức món (chế biến) |
+| `/manager/orders` | `Manager\OrderListController` | `resources/js/pages/manager/orders/OrderList.tsx` / `OrderDetail.tsx` | Danh sách & chi tiết đơn hàng đã phát sinh |
 
 ### 2.4 Màn Hình Quản Trị Hệ Thống (Admin Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
 | `/admin/pages` | `Admin\PageController` | `resources/js/pages/admin/PagesManager.tsx` | Quản lý cấu hình trang hệ thống & gom nhóm navigation |
 | `/admin/roles` | `Admin\RoleController` | `resources/js/pages/admin/RolesManager.tsx` | Quản lý nhóm quyền (Role) & phân quyền chi tiết cho trang/chức năng |
-| `/admin/permissions` | `Admin\UserPermissionController` | `resources/js/pages/admin/UserPermissionsManager.tsx` | Gán nhóm quyền (Role) cho tài khoản người dùng |
+| `/admin/permissions` | `Admin\UserPermissionController` | `resources/js/pages/admin/UsersPermission.tsx` | Gán nhóm quyền (Role) cho tài khoản người dùng |
 
 ---
 
@@ -190,7 +207,7 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
   - `RoleController` ➔ Dọn dẹp thẻ nhóm `user_inertia` ngay sau khi thay đổi quyền hoặc gán trang mới cho vai trò.
 - **Bảo vệ Inertia SSR (`resources/js/echo.ts`)**: Bọc kiểm tra `if (typeof window !== 'undefined')` trước khi khởi tạo Echo/Pusher để đảm bảo Server-Side Rendering (SSR) không ném lỗi `ReferenceError: window is not defined`.
 
-### 8.10 Hàng Chờ Phục Vụ (Serving Queue) — `POSServingTab.tsx`
+### 8.9 Hàng Chờ Phục Vụ (Serving Queue) — `POSServingTab.tsx`
 - **Luồng**: Bếp hoàn thành món (`KitchenController`) → dispatch `ItemsReadyToServe` event → POS nhận qua Reverb → thêm vào `servingQueue` state + badge đếm trên tab "Phục vụ".
 - **API endpoints**:
   - `GET /staff/pos/serving-queue` — Lấy danh sách items `status = completed` + `served_at IS NULL` (chỉ order hôm nay).
@@ -199,10 +216,38 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
 - **Card serving**: Hiển thị tên bàn (font-display), đồng hồ đếm thời gian chờ (ElapsedTimer), danh sách món (tên + số lượng + ghi chú), nút "Đã phục vụ" (emerald).
 - **DB**: `order_items.served_at` (timestamp, nullable) — `status = completed` + `served_at IS NULL` = đang chờ phục vụ.
 
-### 8.9 Phòng Vệ Tuần Tự Hóa & Ép Kiểu Dữ Liệu Props (Array Values & Serialization Resiliency)
+### 8.10 Phòng Vệ Tuần Tự Hóa & Ép Kiểu Dữ Liệu Props (Array Values & Serialization Resiliency)
 - **Tại Backend**: Khi lưu danh sách Bàn gộp vào Redis cache trong `POSController.php`, bắt buộc gọi `$tables->values()->toArray()` để đảm bảo mảng luôn có các chỉ số số nguyên tuần tự (`0, 1, 2...`), giúp serializer của Laravel/Inertia xuất ra JSON Array `[...]` thay vì JSON Object `{...}`.
 - **Tại Frontend**: Bọc phòng vệ ở các hooks và components xử lý sơ đồ bàn (`usePOSTables`, `usePOSCart`, `POSTableTab`, `TransferMergeModal`) bằng cách chuyển hóa object/dictionary thành mảng phẳng nếu nhận được dạng object từ backend:
   ```typescript
   const safeTables = (Array.isArray(tables) ? tables : Object.values(tables || {})) as POSTableData[];
   ```
   Cách bọc này ngăn chặn hoàn toàn lỗi runtime `TypeError: tables.reduce/forEach/filter is not a function` gây sập trắng màn hình (White Screen crash) khi cập nhật dữ liệu qua WebSocket/Inertia reload.
+
+---
+
+## 9. 📅 Đặt Bàn & Đặt Cọc (Reservation & Deposit Flow)
+
+> Spec chi tiết: `docs/superpowers/specs/2026-07-28-pos-reservation-deposit-design.md`
+
+### 9.1 Mô Hình Dữ Liệu (Source of Truth)
+- **Đơn hàng là nguồn sự thật** cho đặt bàn: đơn có `status = 'reserved'` + các cột `orders.reservation_name/phone/time/note`.
+- `tables.reservation_*` chỉ là **bản mirror** — chỉ được ghi khi bàn chuyển `available → reserved` (bàn đang `occupied` vẫn nhận đơn đặt chờ mà không đổi status bàn).
+- **Bảng `deposits`**: mỗi lần thu cọc tạo 1 record `status = 'held'`; khi thanh toán → `applied`, hủy đặt bàn → `refunded` (hoàn) hoặc `forfeited` (thu phạt).
+- **Serialization** (`POSController@index`): mỗi order trong `active_orders` được append `deposit_total` (float, SUM cọc `held`). **Bảng tables KHÔNG có field cọc nào** — frontend phải đọc `order.deposit_total`, không có `deposit_amount`.
+- Vòng đời đơn: `reserved` → (check-in) → `draft` → `pending/confirmed/processing/completed` → `paid`.
+
+### 9.2 Luồng Trên POS (`POSCartPanel.tsx` + `usePOSReservation.ts`)
+- **Đặt bàn**: tab nháp mới (key `draft_*`) chưa gửi bếp → nút "Đặt bàn" mở `ReservationFormDrawer` → xác nhận qua `ReservationConfirmModal` → `POST /staff/pos/reserve` (có thể kèm món chọn trước + cọc nested `deposit: {amount, method}`).
+- **Nhận diện đơn đặt theo TAB** (không theo status bàn): `reservedOrder = active_orders.find(o => o.status === 'reserved' && o.order_code === activeInvoiceId)`. Banner tím + nút Check-in/Hủy chỉ hiện ở đúng tab của đơn đặt; đặt bàn kiểu Manager (không có đơn) fallback đọc `tables.reservation_*` để hiển banner nhưng ẩn 2 nút này.
+- **Check-in**: gửi `reservedOrder.id` → đơn thành `draft`, bàn `occupied`, xóa mirror. **Hủy đặt bàn**: `CancelReservationModal` — nếu `deposit_total > 0` bắt buộc chọn Hoàn cọc / Thu cọc.
+- **Đặt cọc sau khi gửi bếp**: chevron drop-up cạnh nút Thanh toán → mục "Đặt cọc" mở `PaymentDrawer` ở `drawerMode = 'deposit'`. Chevron chỉ khóa bởi `isCheckoutLocked` (không bị khóa khi Bếp đang chế biến) — cơ chế khóa thanh toán (`isPaymentBlocked`) chỉ áp lên mục "Thanh toán riêng đơn này" bên trong menu.
+
+### 9.3 Cấn Trừ Cọc Khi Thanh Toán (`PaymentDrawer.tsx` + `usePOSCheckout.ts`)
+- `PaymentDrawer` hiển thị dòng **"Đặt cọc: −X đ"** và preset tiền mặt tính theo số còn lại sau cấn cọc (`deposit_total` của đơn đang xem, hoặc tổng cọc của các đơn khi thanh toán gộp).
+- Backend `checkout`/`bulk-checkout` tự cấn cọc; nếu cọc > tổng hóa đơn trả về `deposit_refund` → POS alert hoàn khách + bill K80 (`ReceiptPrintModal`) in dòng "Đã cọc" và "Hoàn khách".
+
+### 9.4 Quy Ước Tab/Key Frontend (`usePOSCart.ts`)
+- Key tab hóa đơn: đơn thật dùng `order_code`; nháp chưa gửi bếp dùng `draft_${id}` / `draft_default`. Đơn nháp xác định bằng `order.status === 'draft'`.
+- Bàn ảo **"Mang đi"** có `id = 0`: mỗi đơn là khách độc lập, không có thanh toán gộp, không đặt bàn.
+- Types tập trung tại `resources/js/pages/staff/pos/types/pos.types.ts` (`POSOrderData` mang `deposit_total` + `reservation_*`).
