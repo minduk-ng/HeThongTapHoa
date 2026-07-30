@@ -201,7 +201,7 @@ export default function POSCartPanel({
               time: reservedOrder.reservation_time,
               note: reservedOrder.reservation_note,
           }
-        : selectedTable.status === 'reserved' && selectedTable.reservation_name
+        : selectedTable.status === 'reserved' && selectedTable.reservation_name && activeInvoiceId === 'draft_default'
           ? {
                 name: selectedTable.reservation_name,
                 phone: selectedTable.reservation_phone,
