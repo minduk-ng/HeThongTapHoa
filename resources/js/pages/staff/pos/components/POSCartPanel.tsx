@@ -186,16 +186,39 @@ export default function POSCartPanel({
     // so the main button pays only the active order and bulk drop-up is hidden.
     const isTakeaway = selectedTable.id === 0;
 
+    // Đơn đặt bàn (reserved) của TAB đang xem — orders là nguồn sự thật,
+    // vì bàn occupied vẫn nhận đơn đặt chờ mà status bàn không đổi.
+    const reservedOrder =
+        selectedTable.active_orders?.find(
+            (o) => o.status === 'reserved' && o.order_code === activeInvoiceId,
+        ) || null;
+
+    // Fallback cho đặt bàn kiểu Manager (chỉ lưu trên tables, không có đơn)
+    const reservationInfo = reservedOrder
+        ? {
+              name: reservedOrder.reservation_name,
+              phone: reservedOrder.reservation_phone,
+              time: reservedOrder.reservation_time,
+              note: reservedOrder.reservation_note,
+          }
+        : selectedTable.status === 'reserved' && selectedTable.reservation_name
+          ? {
+                name: selectedTable.reservation_name,
+                phone: selectedTable.reservation_phone,
+                time: selectedTable.reservation_time,
+                note: selectedTable.reservation_note,
+            }
+          : null;
+
     return (
         <div className="flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200/80 bg-white dark:border-zinc-800/80 dark:bg-zinc-900">
             <CancelReservationModal
                 isOpen={isCancelReservationModalOpen}
                 onClose={() => setIsCancelReservationModalOpen(false)}
-                depositTotal={selectedTable?.deposit_amount || 0}
+                depositTotal={reservedOrder?.deposit_total || 0}
                 onConfirm={(resolution, note) => {
-                    const orderId = selectedTable?.active_order?.id || 0;
-                    if (onCancelReservation) {
-                        onCancelReservation(orderId, resolution, note);
+                    if (reservedOrder && onCancelReservation) {
+                        onCancelReservation(reservedOrder.id, resolution, note);
                     }
                     setIsCancelReservationModalOpen(false);
                 }}
@@ -403,19 +426,19 @@ export default function POSCartPanel({
             {/* Cart Items List (Independent Scroll Area) */}
             <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
                 {/* Reservation Banner */}
-                {(reservationDraft || selectedTable.status === 'reserved') && (
+                {(reservationDraft || reservationInfo) && (
                     <div className="flex flex-col gap-2 rounded-xl border border-violet-200 bg-violet-50/80 p-3 dark:border-violet-900/40 dark:bg-violet-950/20">
                         <div className="flex items-start justify-between gap-3">
                             <div>
                                 <h4 className="font-semibold text-violet-900 dark:text-violet-100">
-                                    {reservationDraft?.name || selectedTable.reservation_name}
+                                    {reservationDraft?.name || reservationInfo?.name}
                                 </h4>
                                 <div className="mt-1 flex items-center gap-2 text-xs text-violet-700 dark:text-violet-300">
-                                    <span>{reservationDraft?.phone || selectedTable.reservation_phone}</span>
+                                    <span>{reservationDraft?.phone || reservationInfo?.phone}</span>
                                     <span className="h-1 w-1 rounded-full bg-violet-400"></span>
                                     <span>
                                         {(() => {
-                                            const timeString = reservationDraft?.time || selectedTable.reservation_time;
+                                            const timeString = reservationDraft?.time || reservationInfo?.time;
                                             if (!timeString) return '';
                                             const d = new Date(timeString);
                                             const hh = String(d.getHours()).padStart(2, '0');
@@ -428,12 +451,12 @@ export default function POSCartPanel({
                                 </div>
                             </div>
                             <div className="flex flex-col items-end gap-1.5 shrink-0">
-                                {((selectedTable.deposit_amount || 0) > 0) && (
+                                {((reservedOrder?.deposit_total || 0) > 0) && (
                                     <span className="rounded-md border border-violet-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300">
-                                        Đã cọc {selectedTable.deposit_amount?.toLocaleString('vi-VN')} đ
+                                        Đã cọc {reservedOrder?.deposit_total?.toLocaleString('vi-VN')} đ
                                     </span>
                                 )}
-                                {selectedTable.status === 'reserved' && canCancel && (
+                                {reservedOrder && canCancel && (
                                     <button
                                         type="button"
                                         onClick={() => setIsCancelReservationModalOpen(true)}
@@ -444,9 +467,9 @@ export default function POSCartPanel({
                                 )}
                             </div>
                         </div>
-                        {(reservationDraft?.note || selectedTable.reservation_note) && (
+                        {(reservationDraft?.note || reservationInfo?.note) && (
                             <div className="mt-1 rounded-lg bg-white/60 px-2 py-1.5 text-xs text-violet-800 dark:bg-black/20 dark:text-violet-200">
-                                {reservationDraft?.note || selectedTable.reservation_note}
+                                {reservationDraft?.note || reservationInfo?.note}
                             </div>
                         )}
                     </div>
@@ -752,15 +775,15 @@ export default function POSCartPanel({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-1">
-                    {reservationDraft || selectedTable.status === 'reserved' ? (
+                    {reservedOrder || reservationDraft ? (
                         <>
-                            {selectedTable.status === 'reserved' ? (
+                            {reservedOrder ? (
                                 <>
                                     <div className="col-span-2">
                                         <button
                                             type="button"
                                             disabled={submitting}
-                                            onClick={() => onCheckIn && onCheckIn(selectedTable.active_order?.id || 0)}
+                                            onClick={() => onCheckIn && onCheckIn(reservedOrder.id)}
                                             className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
                                         >
                                             <LogIn className="h-4 w-4" />

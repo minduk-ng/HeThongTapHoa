@@ -287,7 +287,7 @@ export function usePOSCheckout(
                             cartItems: snapshotCart,
                             table: snapshotTable,
                             invoiceCode,
-                            depositAmount: matchedOrderObj?.deposit_amount || 0,
+                            depositAmount: matchedOrderObj?.deposit_total || 0,
                             depositRefund: data.deposit_refund || 0,
                         });
                     }

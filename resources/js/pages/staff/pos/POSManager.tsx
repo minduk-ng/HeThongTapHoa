@@ -227,11 +227,11 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         (o) => o.order_code === activeInvoiceIdForTable || `order_${o.id}` === activeInvoiceIdForTable
     ) || selectedTable?.active_order;
 
-    const singleDepositTotal = activeOrderForDrawer?.deposit_amount || 0;
+    const singleDepositTotal = activeOrderForDrawer?.deposit_total || 0;
     const singleOrderCode = activeOrderForDrawer?.order_code ? [activeOrderForDrawer.order_code] : [];
 
     const bulkConfirmedOrders = selectedTable?.active_orders?.filter(o => o.status !== 'reserved' && o.status !== 'paid' && o.status !== 'cancelled') || [];
-    const bulkDepositTotal = bulkConfirmedOrders.reduce((sum, o) => sum + (o.deposit_amount || 0), 0);
+    const bulkDepositTotal = bulkConfirmedOrders.reduce((sum, o) => sum + (o.deposit_total || 0), 0);
     const bulkOrderCodes = bulkConfirmedOrders.map(o => o.order_code || '').filter(Boolean);
 
     const currentDepositTotal = paymentMode === 'bulk' ? bulkDepositTotal : singleDepositTotal;

@@ -18,7 +18,11 @@ export interface POSOrderData {
     order_code?: string;
     status: 'draft' | 'pending' | 'confirmed' | 'processing' | 'completed' | 'paid' | 'cancelled' | 'reserved';
     items?: POSOrderItemData[];
-    deposit_amount?: number;
+    deposit_total?: number;
+    reservation_name?: string | null;
+    reservation_phone?: string | null;
+    reservation_time?: string | null;
+    reservation_note?: string | null;
 }
 
 export interface POSTableData {
@@ -37,7 +41,6 @@ export interface POSTableData {
     customer_phone?: string;
     active_order?: POSOrderData | null;
     active_orders?: POSOrderData[];
-    deposit_amount?: number;
 }
 
 export interface CategoryData {
