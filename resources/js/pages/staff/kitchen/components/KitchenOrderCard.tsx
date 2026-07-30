@@ -213,7 +213,7 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
             </div>
 
             {/* Items Checklist (Spacious layout without height truncation) */}
-            <div className="min-h-[140px] flex-1 space-y-2 overflow-y-auto p-1.5 pr-1.5">
+            <div className="min-h-[140px] flex-1 divide-y divide-zinc-100 dark:divide-zinc-800/60 overflow-y-auto px-4 py-2">
                 {order.items
                     .filter((item) => item.status !== 'completed')
                     .map((item) => {
@@ -223,10 +223,10 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
                             <div
                                 key={item.id}
                                 onClick={() => toggleCheckItem(item.id)}
-                                className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl border p-3 transition-all select-none duration-150 ${
+                                className={`flex cursor-pointer items-center justify-between gap-3 py-3 transition-all select-none duration-150 ${
                                     isChecked
-                                        ? 'border-zinc-200/60 bg-zinc-50/60 line-through opacity-50 dark:border-zinc-800 dark:bg-zinc-800/30'
-                                        : 'border-zinc-200/80 bg-white hover:border-sky-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-700'
+                                        ? 'line-through opacity-50'
+                                        : 'hover:text-sky-600 dark:hover:text-sky-400'
                                 }`}
                             >
                                 <div className="flex min-w-0 flex-1 items-center space-x-3">
@@ -252,7 +252,7 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
                                 </div>
 
                                 <div className="flex shrink-0 items-center">
-                                    <span className="rounded-lg border border-sky-100 bg-sky-50/60 px-3 py-1.5 text-sm font-black text-sky-700 tabular-nums dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-300">
+                                    <span className="rounded-lg bg-sky-50/60 px-2.5 py-1 text-sm font-black text-sky-700 tabular-nums dark:bg-sky-950/30 dark:text-sky-300">
                                         {item.quantity} ly/phần
                                     </span>
                                 </div>

@@ -530,10 +530,10 @@ export default function POSCartPanel({
                             return (
                                 <div
                                     key={itemKey}
-                                    className={`group flex items-center gap-2 px-2.5 py-2 transition-colors duration-150 ${
+                                    className={`group flex items-center gap-2 px-2.5 py-2.5 transition-colors duration-150 border-b border-zinc-100 dark:border-zinc-800 last:border-0 ${
                                         item.isConfirmed
                                             ? 'bg-zinc-50 dark:bg-zinc-800/60'
-                                            : 'rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
+                                            : 'bg-sky-50/20 dark:bg-sky-950/10'
                                     }`}
                                 >
                                     {/* Left: Name + Note */}

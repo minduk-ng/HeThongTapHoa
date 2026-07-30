@@ -147,25 +147,27 @@ export default function PaymentDrawer({
                                 </div>
                             ) : (
                                 Object.entries(itemsByOrder).map(([code, items]) => (
-                                    <div key={code} className="space-y-2">
+                                    <div key={code} className="space-y-1.5">
                                         {orderCodes.length > 1 && (
-                                            <div className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase">
+                                            <div className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase pt-2">
                                                 {code}
                                             </div>
                                         )}
-                                        {items.map((item, idx) => (
-                                            <div key={idx} className="flex justify-between items-start text-sm bg-white dark:bg-zinc-800 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-700/50 shadow-sm">
-                                                <div className="flex-1 pr-2">
-                                                    <div className="font-semibold text-zinc-800 dark:text-zinc-200">{item.name}</div>
-                                                    <div className="text-xs text-zinc-500">
-                                                        {item.quantity} × {item.unit_price.toLocaleString('vi-VN')} đ
+                                        <div className="divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
+                                            {items.map((item, idx) => (
+                                                <div key={idx} className="flex justify-between items-start text-sm py-2.5">
+                                                    <div className="flex-1 pr-2">
+                                                        <div className="font-semibold text-zinc-800 dark:text-zinc-200">{item.name}</div>
+                                                        <div className="text-xs text-zinc-500 tabular-nums">
+                                                            {item.quantity} × {item.unit_price.toLocaleString('vi-VN')} đ
+                                                        </div>
+                                                    </div>
+                                                    <div className="font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                                                        {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
                                                     </div>
                                                 </div>
-                                                <div className="font-bold text-zinc-900 dark:text-zinc-100">
-                                                    {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
-                                                </div>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
                                     </div>
                                 ))
                             )}
@@ -200,22 +202,22 @@ export default function PaymentDrawer({
                                 <div className="bg-sky-50/60 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-900/60 rounded-2xl p-4 space-y-2">
                                     <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
                                         <span>Tổng tiền món ({cartItems.reduce((s, i) => s + i.quantity, 0)} món):</span>
-                                        <span className="font-semibold">{subtotal.toLocaleString('vi-VN')} đ</span>
+                                        <span className="font-semibold tabular-nums">{subtotal.toLocaleString('vi-VN')} đ</span>
                                     </div>
                                     <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
                                         <span>Thuế VAT:</span>
-                                        <span className="font-semibold">{vatTotal.toLocaleString('vi-VN')} đ</span>
+                                        <span className="font-semibold tabular-nums">{vatTotal.toLocaleString('vi-VN')} đ</span>
                                     </div>
                                     {mode === 'payment' && depositTotal > 0 && (
                                         <div className="flex justify-between text-xs text-violet-600 dark:text-violet-400 font-semibold border-t border-sky-200/60 dark:border-sky-800/60 pt-2">
                                             <span>Đã đặt cọc:</span>
-                                            <span>−{depositTotal.toLocaleString('vi-VN')} đ</span>
+                                            <span className="tabular-nums">−{depositTotal.toLocaleString('vi-VN')} đ</span>
                                         </div>
                                     )}
                                     {mode === 'payment' && (
                                         <div className="flex justify-between text-sm font-bold text-zinc-900 dark:text-zinc-100 pt-2 border-t border-sky-200/60 dark:border-sky-800/60">
                                             <span>KHÁCH CẦN TRẢ:</span>
-                                            <span className="text-xl font-bold text-sky-600 dark:text-sky-400">
+                                            <span className="text-xl font-bold text-sky-600 dark:text-sky-400 tabular-nums">
                                                 {payable.toLocaleString('vi-VN')} đ
                                             </span>
                                         </div>
@@ -223,7 +225,7 @@ export default function PaymentDrawer({
                                     {mode === 'payment' && depositRefund > 0 && (
                                         <div className="flex justify-between text-sm font-bold text-emerald-600 dark:text-emerald-400 pt-2">
                                             <span>Hoàn khách (cọc thừa):</span>
-                                            <span className="text-lg">
+                                            <span className="text-lg tabular-nums">
                                                 {depositRefund.toLocaleString('vi-VN')} đ
                                             </span>
                                         </div>
