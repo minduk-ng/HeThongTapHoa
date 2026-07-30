@@ -62,7 +62,7 @@ class DashboardController extends Controller
 
             $servingQueueCount = OrderItem::where('status', 'ready')->count();
 
-            $tablesMap = Table::select('id', 'name', 'status', 'reservation_name')->get();
+            $tablesMap = Table::select('id', 'table_number as name', 'status', 'reservation_name')->get();
 
             $liveOperations = [
                 'kds' => [
