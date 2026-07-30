@@ -160,7 +160,7 @@ export default function POSTableTab({
                             <div
                                 key={table.id}
                                 onClick={() => onSelectTable(table)}
-                                className={`relative flex h-28 cursor-pointer flex-col justify-between rounded-xl border p-3.5 transition-colors duration-150 select-none ${
+                                className={`relative flex h-28 cursor-pointer flex-col justify-between rounded-xl border p-3.5 transition-all duration-200 ease-out select-none hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] hover:shadow-sm ${
                                     isSelected
                                         ? 'border-sky-600 bg-sky-50/70 dark:bg-sky-950/50'
                                         : isOccupied

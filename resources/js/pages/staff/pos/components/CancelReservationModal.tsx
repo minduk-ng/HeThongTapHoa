@@ -22,11 +22,11 @@ export default function CancelReservationModal({
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div
-                className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm transition-opacity"
+                className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-150"
                 onClick={onClose}
             />
 
-            <div className="relative w-full max-w-md scale-100 transform overflow-hidden rounded-2xl bg-white p-6 opacity-100 shadow-2xl transition-all dark:bg-zinc-900">
+            <div className="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-150 dark:bg-zinc-900">
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"

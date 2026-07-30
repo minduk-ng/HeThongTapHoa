@@ -103,12 +103,12 @@ export default function PaymentDrawer({
         <div className="fixed inset-0 z-[100] overflow-hidden flex justify-end">
             {/* Backdrop Overlay */}
             <div
-                className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity duration-150"
+                className="fixed inset-0 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200"
                 onClick={onClose}
             />
 
             {/* Sliding Drawer */}
-            <div className="relative w-full max-w-2xl bg-white dark:bg-zinc-900 h-full border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl flex flex-col justify-between z-10">
+            <div className="relative w-full max-w-2xl bg-white dark:bg-zinc-900 h-full border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl flex flex-col justify-between z-10 animate-in slide-in-from-right duration-300">
                 {/* Header */}
                 <div className="p-5 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between">
                     <div>

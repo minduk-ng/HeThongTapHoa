@@ -107,7 +107,7 @@ export default function POSMenuTab({
                                 onClick={() =>
                                     !isOutOfStock && onToggleProduct(product)
                                 }
-                                className={`relative flex cursor-pointer flex-col justify-between rounded-xl border p-2 transition-colors duration-150 select-none ${
+                                className={`relative flex cursor-pointer flex-col justify-between rounded-xl border p-2 transition-all duration-200 ease-out select-none hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] hover:shadow-xs ${
                                     isOutOfStock
                                         ? 'cursor-not-allowed border-rose-200 bg-zinc-50 opacity-50 dark:border-rose-900 dark:bg-zinc-800/40'
                                         : inCart
