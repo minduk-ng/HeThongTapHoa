@@ -370,15 +370,7 @@ export default function PaymentDrawer({
                 {/* Footer Action Buttons */}
                 <div className="p-5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60">
                     {mode === 'payment' && (
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                type="button"
-                                disabled={submitting || (paymentMethod === 'cash' && amountReceived < payable)}
-                                onClick={() => handleConfirm(false)}
-                                className="py-2.5 px-4 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 rounded-xl shadow-sm disabled:opacity-50 transition-colors"
-                            >
-                                Xác nhận (Không in)
-                            </button>
+                        <div className="grid grid-cols-2 gap-3">                            
                             <button
                                 type="button"
                                 disabled={submitting || (paymentMethod === 'cash' && amountReceived < payable)}
@@ -387,6 +379,14 @@ export default function PaymentDrawer({
                             >
                                 <Printer className="w-4 h-4 stroke-[1.5]" />
                                 <span>{submitting ? 'Đang lưu...' : 'In K80'}</span>
+                            </button>
+                            <button
+                                type="button"
+                                disabled={submitting || (paymentMethod === 'cash' && amountReceived < payable)}
+                                onClick={() => handleConfirm(false)}
+                                className="py-2.5 px-4 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 rounded-xl shadow-sm disabled:opacity-50 transition-colors"
+                            >
+                                Xác nhận (Không in)
                             </button>
                         </div>
                     )}
