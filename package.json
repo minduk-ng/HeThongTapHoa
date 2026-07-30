@@ -46,6 +46,7 @@
         "lucide-react": "^1.25.0",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
+        "recharts": "^3.10.1",
         "tailwindcss": "^4.0.0",
         "typescript": "^5.7.2",
         "vite": "^8.0.0"
