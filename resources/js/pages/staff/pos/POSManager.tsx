@@ -7,7 +7,6 @@ import POSCartPanel from './components/POSCartPanel';
 import POSLogTab, { SystemLogEntry } from './components/POSLogTab';
 import PaymentDrawer from './components/PaymentDrawer';
 import ReceiptPrintModal from './components/ReceiptPrintModal';
-import ReservationConfirmModal from './components/ReservationConfirmModal';
 import ReservationFormDrawer from './components/ReservationFormDrawer';
 import POSToolbar from './components/POSToolbar';
 
@@ -77,12 +76,8 @@ export default function POSManager({ tables, categories, products }: POSManagerP
     const {
         selectedTable,
         setSelectedTable,
-        pendingReservationTable,
-        setPendingReservationTable,
-        acknowledgedReservations,
         draftTableCounts,
         handleSelectTable,
-        handleConfirmReservationPrompt,
     } = usePOSTables(safeTables);
 
     const {
@@ -383,13 +378,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 </div>
             </div>
 
-            {/* Reservation Confirmation Modal Popup */}
-            <ReservationConfirmModal
-                isOpen={!!pendingReservationTable}
-                onClose={() => setPendingReservationTable(null)}
-                table={pendingReservationTable}
-                onConfirm={handleConfirmReservationPrompt}
-            />
+
 
             <PaymentDrawer
                 isOpen={isPaymentDrawerOpen}
