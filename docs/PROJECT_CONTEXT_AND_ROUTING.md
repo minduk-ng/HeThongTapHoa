@@ -233,6 +233,7 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
 ### 9.1 Mô Hình Dữ Liệu (Source of Truth)
 - **Đơn hàng là nguồn sự thật** cho đặt bàn: đơn có `status = 'reserved'` + các cột `orders.reservation_name/phone/time/note`.
 - `tables.reservation_*` chỉ là **bản mirror** — chỉ được ghi khi bàn chuyển `available → reserved` (bàn đang `occupied` vẫn nhận đơn đặt chờ mà không đổi status bàn).
+- **Đồng bộ phía Quản lý (`TableController.php`)**: Khi Manager tạo hoặc cập nhật trạng thái bàn thành `reserved` trong trang Quản lý Bàn (`TableManager`), hệ thống sẽ tự động tạo/cập nhật hoặc hủy (`status = 'cancelled'`) một đơn hàng `status = 'reserved'` tương ứng dưới Database. Việc này giúp giữ vững tính nhất quán: tất cả các lịch đặt bàn đều có Order thực sự gắn liền, đảm bảo khi có đơn hàng phục vụ khác tại bàn đó thì thông tin đặt lịch không bị mất, và POS hiển thị chính xác tab đặt lịch tương ứng.
 - **Bảng `deposits`**: mỗi lần thu cọc tạo 1 record `status = 'held'`; khi thanh toán → `applied`, hủy đặt bàn → `refunded` (hoàn) hoặc `forfeited` (thu phạt).
 - **Serialization** (`POSController@index`): mỗi order trong `active_orders` được append `deposit_total` (float, SUM cọc `held`). **Bảng tables KHÔNG có field cọc nào** — frontend phải đọc `order.deposit_total`, không có `deposit_amount`.
 - Vòng đời đơn: `reserved` → (check-in) → `draft` → `pending/confirmed/processing/completed` → `paid`.
