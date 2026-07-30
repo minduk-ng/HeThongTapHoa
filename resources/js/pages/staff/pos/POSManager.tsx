@@ -16,8 +16,13 @@ import { usePOSTables } from './hooks/usePOSTables';
 import { usePOSCart } from './hooks/usePOSCart';
 import { usePOSCheckout } from './hooks/usePOSCheckout';
 import { usePOSReservation } from './hooks/usePOSReservation';
+import { POSTableData, POSProductData, CategoryData } from './types/pos.types';
 
 export default function POSManager({ tables, categories, products }: POSManagerProps) {
+    const safeTables = (Array.isArray(tables) ? tables : Object.values(tables || {})) as POSTableData[];
+    const safeCategories = (Array.isArray(categories) ? categories : Object.values(categories || {})) as CategoryData[];
+    const safeProducts = (Array.isArray(products) ? products : Object.values(products || {})) as POSProductData[];
+
     const [activeTab, setActiveTab] = useState<'tables' | 'menu' | 'log'>('tables');
     const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([]);
     const [unreadErrorCount, setUnreadErrorCount] = useState<number>(0);
@@ -71,12 +76,14 @@ export default function POSManager({ tables, categories, products }: POSManagerP
 
     const {
         selectedTable,
+        setSelectedTable,
         pendingReservationTable,
+        setPendingReservationTable,
+        acknowledgedReservations,
+        draftTableCounts,
         handleSelectTable,
         handleConfirmReservationPrompt,
-        setPendingReservationTable,
-        draftTableCounts,
-    } = usePOSTables(tables);
+    } = usePOSTables(safeTables);
 
     const {
         tableCarts,
@@ -92,7 +99,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         handleUpdateNote,
         clearTableCart,
         clearUnconfirmedDraft,
-    } = usePOSCart(selectedTable, tables, products);
+    } = usePOSCart(selectedTable, safeTables, safeProducts);
 
     const lastEventRef = useRef<{ key: string; time: number }>({ key: '', time: 0 });
 
@@ -192,7 +199,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         handleSendToKitchen,
         handleConfirmPayment,
         handleBulkCheckout,
-    } = usePOSCheckout(selectedTable, tables);
+    } = usePOSCheckout(selectedTable, safeTables);
 
     const {
         reservationDrafts,
@@ -247,23 +254,23 @@ export default function POSManager({ tables, categories, products }: POSManagerP
     const isCurrentTableCheckoutLocked = useMemo(() => {
         if (!selectedTable) return false;
         const groupId = selectedTable.merged_into_table_id || selectedTable.id;
-        const groupTableIds = tables
+        const groupTableIds = safeTables
             .filter((t) => t.id === groupId || t.merged_into_table_id === groupId)
             .map((t) => t.id);
 
         return groupTableIds.some((id) => !!lockedCheckoutTables[id]);
-    }, [selectedTable, tables, lockedCheckoutTables]);
+    }, [selectedTable, safeTables, lockedCheckoutTables]);
 
     const currentTableLockedBy = useMemo(() => {
         if (!selectedTable) return '';
         const groupId = selectedTable.merged_into_table_id || selectedTable.id;
-        const groupTableIds = tables
+        const groupTableIds = safeTables
             .filter((t) => t.id === groupId || t.merged_into_table_id === groupId)
             .map((t) => t.id);
 
         const lockedId = groupTableIds.find((id) => !!lockedCheckoutTables[id]);
         return lockedId ? lockedCheckoutTables[lockedId].employeeName : '';
-    }, [selectedTable, tables, lockedCheckoutTables]);
+    }, [selectedTable, safeTables, lockedCheckoutTables]);
 
 
     return (
@@ -292,7 +299,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                         <div className="flex-1 overflow-hidden min-h-0">
                             {activeTab === 'tables' ? (
                                 <POSTableTab
-                                    tables={tables}
+                                    tables={safeTables}
                                     selectedTable={selectedTable}
                                     onSelectTable={(table) => {
                                         handleSelectTable(table);
@@ -308,8 +315,8 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                 />
                             ) : activeTab === 'menu' ? (
                                 <POSMenuTab
-                                    products={products}
-                                    categories={categories}
+                                    products={safeProducts}
+                                    categories={safeCategories}
                                     cartItems={currentCart}
                                     onToggleProduct={handleToggleProduct}
                                     searchQuery={searchQuery}
@@ -327,7 +334,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                     <div className="lg:col-span-5 h-full min-h-0">
                         <POSCartPanel
                             selectedTable={selectedTable}
-                            tables={tables}
+                            tables={safeTables}
                             cartItems={currentCart}
                             activeInvoiceId={selectedTable ? (activeInvoiceId[selectedTable.id] || 'draft_default') : 'draft_default'}
                             tableCarts={selectedTable ? (tableCarts[selectedTable.id] || {}) : {}}

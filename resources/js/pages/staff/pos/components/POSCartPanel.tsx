@@ -820,7 +820,7 @@ export default function POSCartPanel({
                         
                             {/* Split checkout button / Reservation button */}
                             <div className="relative flex">
-                                {confirmedItems.length === 0 && !isTakeaway && !activeInvoiceId.startsWith('draft_') && !hasUnconfirmedChanges ? (
+                                {confirmedItems.length === 0 && !isTakeaway && activeInvoiceId.startsWith('draft_') ? (
                                     <button
                                         type="button"
                                         disabled={submitting}
@@ -875,10 +875,11 @@ export default function POSCartPanel({
                                         {!isTakeaway && (
                                             <button
                                                 type="button"
-                                                disabled={isCheckoutLocked || isPaymentBlocked}
+                                                disabled={isCheckoutLocked}
                                                 onClick={() => setIsCheckoutDropUpOpen(!isCheckoutDropUpOpen)}
+                                                title="Thanh toán riêng / Đặt cọc"
                                                 className={`rounded-r-xl border-l border-emerald-500/30 px-1.5 py-2.5 text-white transition-colors disabled:opacity-50 ${
-                                                    isPaymentBlocked || isCheckoutLocked
+                                                    isCheckoutLocked
                                                         ? 'bg-zinc-200 text-zinc-400 dark:bg-zinc-700'
                                                         : 'bg-emerald-600 hover:bg-emerald-700'
                                                 }`}
@@ -896,11 +897,17 @@ export default function POSCartPanel({
                                         <div className="absolute bottom-full right-0 z-50 mb-1 w-52 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
                                             <button
                                                 type="button"
+                                                disabled={isPaymentBlocked || isCheckoutLocked}
                                                 onClick={() => {
                                                     setIsCheckoutDropUpOpen(false);
                                                     if (onOpenSinglePayment) onOpenSinglePayment();
                                                 }}
-                                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                                title={
+                                                    isPaymentBlocked
+                                                        ? 'Cần gửi hết món xuống Bếp và chờ Bếp hoàn tất mới thanh toán được'
+                                                        : 'Thanh toán riêng đơn này'
+                                                }
+                                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-300 dark:hover:bg-zinc-800"
                                             >
                                                 <CreditCard className="h-3.5 w-3.5 stroke-[1.5]" />
                                                 <span>Thanh toán riêng đơn này</span>
