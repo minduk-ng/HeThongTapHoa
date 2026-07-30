@@ -34,6 +34,7 @@ interface InvoiceData {
     invoice_code: string;
     payment_method: string;
     total_amount: number;
+    deposit_amount: number;
     amount_received: number;
     change_amount: number;
     issued_at: string;
@@ -304,22 +305,32 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                                     <span className="font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">{formatCurrency(order.vat_amount)}</span>
                                                 </div>
                                             )}
-                                            {depositTotal > 0 && (
+                                            <div className="flex justify-between text-zinc-700 dark:text-zinc-300 font-medium">
+                                                <span>Tổng tiền đơn hàng:</span>
+                                                <span className="font-bold text-zinc-800 dark:text-zinc-200 tabular-nums">{formatCurrency(order.total)}</span>
+                                            </div>
+                                            {((order.invoice ? order.invoice.deposit_amount : depositTotal) > 0) && (
                                                 <div className="flex justify-between text-violet-600 dark:text-violet-400 font-medium">
-                                                    <span>Đã đặt cọc:</span>
-                                                    <span className="font-semibold tabular-nums">−{formatCurrency(depositTotal)}</span>
+                                                    <span>Khấu trừ đặt cọc:</span>
+                                                    <span className="font-semibold tabular-nums">
+                                                        −{formatCurrency(order.invoice ? order.invoice.deposit_amount : depositTotal)}
+                                                    </span>
                                                 </div>
                                             )}
                                             <div className="flex justify-between border-t border-zinc-250/60 dark:border-zinc-800 pt-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                                                <span>Tổng thanh toán:</span>
+                                                <span>{order.invoice ? 'Số tiền thực tế thanh toán:' : 'Số tiền còn lại cần thanh toán:'}</span>
                                                 <span className="text-base font-bold text-sky-600 dark:text-sky-400 tabular-nums">
-                                                    {formatCurrency(order.invoice ? order.invoice.total_amount : netTotal)}
+                                                    {formatCurrency(
+                                                        order.invoice 
+                                                            ? Math.max(0, order.invoice.total_amount - order.invoice.deposit_amount) 
+                                                            : netTotal
+                                                    )}
                                                 </span>
                                             </div>
                                             {order.invoice && (
                                                 <>
-                                                    <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
-                                                        <span>Thanh toán ({PAYMENT_LABELS[order.invoice.payment_method] || order.invoice.payment_method}):</span>
+                                                    <div className="flex justify-between text-zinc-600 dark:text-zinc-400 border-t border-zinc-100 dark:border-zinc-800/60 pt-2">
+                                                        <span>Khách đưa ({PAYMENT_LABELS[order.invoice.payment_method] || order.invoice.payment_method}):</span>
                                                         <span className="font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(order.invoice.amount_received)}</span>
                                                     </div>
                                                     {order.invoice.change_amount > 0 && (

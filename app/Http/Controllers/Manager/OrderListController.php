@@ -95,6 +95,7 @@ class OrderListController extends Controller
                     'invoice_code' => $order->invoice->invoice_code,
                     'payment_method' => $order->invoice->payment_method,
                     'total_amount' => (float) $order->invoice->total_amount,
+                    'deposit_amount' => (float) $order->invoice->deposit_amount,
                     'amount_received' => (float) $order->invoice->amount_received,
                     'change_amount' => (float) $order->invoice->change_amount,
                     'issued_at' => $order->invoice->issued_at?->toIso8601String(),
