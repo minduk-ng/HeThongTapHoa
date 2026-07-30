@@ -57,6 +57,7 @@
 ### 2.3 Màn Hình Quản Lý (Manager Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
+| `/manager/dashboard` | `Manager\DashboardController` | `resources/js/pages/manager/dashboard/DashboardManager.tsx` | Trang báo cáo phân tích doanh thu & giám sát KDS/Sơ đồ bàn realtime |
 | `/manager/categories` | `Manager\CategoryController` | `resources/js/pages/manager/categories/CategoriesManager.tsx` | Quản lý danh mục món ăn / thức uống |
 | `/manager/products` | `Manager\ProductController` | `resources/js/pages/manager/products/ProductsManager.tsx` | Quản lý danh sách sản phẩm, giá bán, thuế VAT, Import/Export Excel |
 | `/manager/tables` | `Manager\TableController` | `resources/js/pages/manager/tables/TableManager.tsx` | Quản lý khu vực & sơ đồ bàn, tạo hàng loạt bàn (batch), đặt bàn kiểu Manager (`TableFormDrawer` — chỉ ghi `tables.reservation_*`, không tạo đơn) |
