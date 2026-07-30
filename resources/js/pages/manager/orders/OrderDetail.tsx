@@ -131,6 +131,14 @@ export default function OrderDetail({ order }: OrderDetailProps) {
     const depositTotal = order.deposit_total || 0;
     const netTotal = Math.max(0, order.total - depositTotal);
 
+    const cocDu = Math.max(0, (order.invoice ? order.invoice.deposit_amount : depositTotal) - order.total);
+    const displayChangeAmount = order.invoice 
+        ? Math.max(
+              order.invoice.change_amount,
+              cocDu + Math.max(0, order.invoice.amount_received - Math.max(0, order.total - order.invoice.deposit_amount))
+          )
+        : 0;
+
     return (
         <DashboardLayout fullWidth={true}>
             <Head title={`Chi tiết Order ${order.order_code}`} />
@@ -318,12 +326,10 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                                 </div>
                                             )}
                                             <div className="flex justify-between border-t border-zinc-250/60 dark:border-zinc-800 pt-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                                                <span>{order.invoice ? 'Số tiền thực tế thanh toán:' : 'Số tiền còn lại cần thanh toán:'}</span>
+                                                <span>{order.invoice ? 'Khách đã trả (thực thu):' : 'Khách cần trả:'}</span>
                                                 <span className="text-base font-bold text-sky-600 dark:text-sky-400 tabular-nums">
                                                     {formatCurrency(
-                                                        order.invoice 
-                                                            ? Math.max(0, order.invoice.total_amount - order.invoice.deposit_amount) 
-                                                            : netTotal
+                                                        Math.max(0, order.total - (order.invoice ? order.invoice.deposit_amount : depositTotal))
                                                     )}
                                                 </span>
                                             </div>
@@ -333,10 +339,10 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                                         <span>Khách đưa ({PAYMENT_LABELS[order.invoice.payment_method] || order.invoice.payment_method}):</span>
                                                         <span className="font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(order.invoice.amount_received)}</span>
                                                     </div>
-                                                    {order.invoice.change_amount > 0 && (
+                                                    {displayChangeAmount > 0 && (
                                                         <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
                                                             <span>Trả lại (Tiền thừa):</span>
-                                                            <span className="font-bold tabular-nums">{formatCurrency(order.invoice.change_amount)}</span>
+                                                            <span className="font-bold tabular-nums">{formatCurrency(displayChangeAmount)}</span>
                                                         </div>
                                                     )}
                                                 </>
