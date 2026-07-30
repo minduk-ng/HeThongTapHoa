@@ -47,6 +47,16 @@ interface ActivityData {
     created_at: string;
 }
 
+interface DepositData {
+    id: number;
+    amount: number;
+    method: string;
+    status: string;
+    note: string | null;
+    received_by_name: string;
+    created_at: string;
+}
+
 interface OrderDetailData {
     id: number;
     order_code: string;
@@ -55,6 +65,8 @@ interface OrderDetailData {
     subtotal: number;
     vat_amount: number;
     total: number;
+    deposit_total: number;
+    deposits: DepositData[];
     created_at: string;
     items: OrderItemData[];
     invoice: InvoiceData | null;
@@ -84,6 +96,7 @@ const ACTION_CONFIG: Record<string, { label: string; icon: React.ElementType; co
     item_cancel: { label: 'Hủy món', icon: XCircle, color: 'text-rose-500' },
     order_cancelled: { label: 'Hủy đơn hàng', icon: XCircle, color: 'text-rose-500' },
     checkout: { label: 'Thanh toán', icon: CircleDollarSign, color: 'text-emerald-600' },
+    deposit_received: { label: 'Nhận đặt cọc', icon: CircleDollarSign, color: 'text-violet-600 dark:text-violet-400' },
 };
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -114,6 +127,9 @@ export default function OrderDetail({ order }: OrderDetailProps) {
 
     const statusInfo = STATUS_MAP[order.status] ?? STATUS_MAP.draft;
 
+    const depositTotal = order.deposit_total || 0;
+    const netTotal = Math.max(0, order.total - depositTotal);
+
     return (
         <DashboardLayout fullWidth={true}>
             <Head title={`Chi tiết Order ${order.order_code}`} />
@@ -139,16 +155,6 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                         </h1>
                                         <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full ${statusInfo.className}`}>
                                             {statusInfo.label}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center space-x-4 mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
-                                        <span className="flex items-center space-x-1.5">
-                                            <UtensilsCrossed className="w-4 h-4" />
-                                            <span>{order.table_number ?? 'Mang đi'}</span>
-                                        </span>
-                                        <span className="flex items-center space-x-1.5">
-                                            <Clock className="w-4 h-4" />
-                                            <span className="tabular-nums">{formatDateTime(order.created_at)}</span>
                                         </span>
                                     </div>
                                 </div>
@@ -199,6 +205,30 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                     <div className="flex-1 flex flex-col min-h-0">
                         {activeTab === 'detail' ? (
                             <>
+                                {/* Info Banner */}
+                                <div className="mx-6 mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-50 dark:bg-zinc-800/40 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 text-sm">
+                                    <div>
+                                        <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Bàn / Đơn</span>
+                                        <span className="font-semibold text-zinc-850 dark:text-zinc-100">{order.table_number ?? 'Mang đi'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Thời gian đặt</span>
+                                        <span className="font-semibold text-zinc-850 dark:text-zinc-100 tabular-nums">{formatDateTime(order.created_at)}</span>
+                                    </div>
+                                    {order.invoice && (
+                                        <>
+                                            <div>
+                                                <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Mã Hóa đơn</span>
+                                                <span className="font-semibold text-zinc-850 dark:text-zinc-100 tabular-nums">{order.invoice.invoice_code}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Thời gian thanh toán</span>
+                                                <span className="font-semibold text-zinc-850 dark:text-zinc-100 tabular-nums">{formatDateTime(order.invoice.issued_at)}</span>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
                                 {/* Items Table - scrollable */}
                                 <div className="flex-1 overflow-auto min-h-0 px-6 pt-4">
                                     <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
@@ -252,48 +282,57 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                     </div>
                                 </div>
 
-                                {/* Invoice Info - fixed at bottom */}
-                                {order.invoice && (
-                                    <div className="shrink-0 px-6 py-4 border-t border-zinc-100 dark:border-zinc-800">
-                                        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
-                                            Hóa đơn thanh toán
-                                        </h2>
-                                        {(order as any).invoice_sibling_count > 0 && (
-                                            <p className="text-xs text-sky-600 dark:text-sky-400 mb-1.5">
-                                                Hóa đơn gộp · {(order as any).invoice_sibling_count + 1} đơn cùng hóa đơn này
-                                            </p>
-                                        )}
-                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-1.5 text-sm">
-                                            <div className="flex justify-between">
-                                                <span className="text-zinc-500 dark:text-zinc-400">Mã HĐ</span>
-                                                <span className="font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{order.invoice.invoice_code}</span>
+                                {/* Totals & Payment Info - fixed at bottom */}
+                                <div className="shrink-0 px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-900/40">
+                                    {order.invoice && (order as any).invoice_sibling_count > 0 && (
+                                        <p className="text-xs text-sky-600 dark:text-sky-400 mb-2 font-medium">
+                                            Hóa đơn gộp · {(order as any).invoice_sibling_count + 1} đơn cùng hóa đơn này
+                                        </p>
+                                    )}
+                                    <div className="flex flex-col md:flex-row md:justify-between gap-4">
+                                        <div className="flex-1">
+                                            {/* Left side spacing */}
+                                        </div>
+                                        <div className="w-full md:w-80 space-y-2 text-sm">
+                                            <div className="flex justify-between text-zinc-500 dark:text-zinc-400">
+                                                <span>Tạm tính ({safeItems.filter(i => i.status !== 'cancelled').reduce((s, i) => s + i.quantity, 0)} món):</span>
+                                                <span className="font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">{formatCurrency(order.subtotal)}</span>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-zinc-500 dark:text-zinc-400">Phương thức</span>
-                                                <span className="flex items-center space-x-1 text-zinc-900 dark:text-zinc-100">
-                                                    <CreditCard className="w-3.5 h-3.5" />
-                                                    <span>{PAYMENT_LABELS[order.invoice.payment_method] ?? order.invoice.payment_method}</span>
+                                            {order.vat_amount > 0 && (
+                                                <div className="flex justify-between text-zinc-500 dark:text-zinc-400">
+                                                    <span>Thuế VAT:</span>
+                                                    <span className="font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">{formatCurrency(order.vat_amount)}</span>
+                                                </div>
+                                            )}
+                                            {depositTotal > 0 && (
+                                                <div className="flex justify-between text-violet-600 dark:text-violet-400 font-medium">
+                                                    <span>Đã đặt cọc:</span>
+                                                    <span className="font-semibold tabular-nums">−{formatCurrency(depositTotal)}</span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between border-t border-zinc-250/60 dark:border-zinc-800 pt-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                                                <span>Tổng thanh toán:</span>
+                                                <span className="text-base font-bold text-sky-600 dark:text-sky-400 tabular-nums">
+                                                    {formatCurrency(order.invoice ? order.invoice.total_amount : netTotal)}
                                                 </span>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-zinc-500 dark:text-zinc-400">Thời gian</span>
-                                                <span className="text-zinc-600 dark:text-zinc-300 tabular-nums">{formatDateTime(order.invoice.issued_at)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-zinc-500 dark:text-zinc-400">Tổng tiền</span>
-                                                <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(order.invoice.total_amount)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-zinc-500 dark:text-zinc-400">Khách đưa</span>
-                                                <span className="text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(order.invoice.amount_received)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-zinc-500 dark:text-zinc-400">Tiền thừa</span>
-                                                <span className="text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(order.invoice.change_amount)}</span>
-                                            </div>                                            
+                                            {order.invoice && (
+                                                <>
+                                                    <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                                                        <span>Thanh toán ({PAYMENT_LABELS[order.invoice.payment_method] || order.invoice.payment_method}):</span>
+                                                        <span className="font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(order.invoice.amount_received)}</span>
+                                                    </div>
+                                                    {order.invoice.change_amount > 0 && (
+                                                        <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                                                            <span>Trả lại (Tiền thừa):</span>
+                                                            <span className="font-bold tabular-nums">{formatCurrency(order.invoice.change_amount)}</span>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
                                         </div>
                                     </div>
-                                )}
+                                </div>
                             </>
                         ) : (
                             /* History Timeline */
@@ -310,67 +349,92 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                         <div className="absolute left-[17px] top-2 bottom-2 w-px bg-zinc-200 dark:bg-zinc-700" />
 
                                         <div className="space-y-5">
-                                            {safeActivities.map((activity) => {
-                                                const config = ACTION_CONFIG[activity.action] ?? {
-                                                    label: activity.action,
-                                                    icon: Clock,
-                                                    color: 'text-zinc-400',
-                                                };
-                                                const Icon = config.icon;
+                                            {(() => {
+                                                const depositActivities = safeActivities.filter(a => a.action === 'deposit_received');
+                                                return safeActivities.map((activity) => {
+                                                    const config = ACTION_CONFIG[activity.action] ?? {
+                                                        label: activity.action,
+                                                        icon: Clock,
+                                                        color: 'text-zinc-400',
+                                                    };
+                                                    const Icon = config.icon;
+                                                    const depositIdx = activity.action === 'deposit_received'
+                                                        ? depositActivities.findIndex(a => a.id === activity.id)
+                                                        : -1;
+                                                    const displayLabel = activity.action === 'deposit_received' && depositIdx !== -1
+                                                        ? `Đặt cọc lần ${depositIdx + 1}`
+                                                        : config.label;
 
-                                                return (
-                                                    <div key={activity.id} className="relative flex items-start space-x-3.5 pl-1">
-                                                        {/* Icon */}
-                                                        <div className={`relative z-10 flex items-center justify-center w-9 h-9 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 ${config.color}`}>
-                                                            <Icon className="w-4.5 h-4.5" />
-                                                        </div>
-
-                                                        {/* Content */}
-                                                        <div className="flex-1 min-w-0 pt-1">
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                                                    {config.label}
-                                                                </span>
-                                                                <span className="text-xs text-zinc-400 tabular-nums">
-                                                                    {formatDateTime(activity.created_at)}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center space-x-1.5 mt-1">
-                                                                <User className="w-3.5 h-3.5 text-zinc-400" />
-                                                                <span className="text-sm text-zinc-500 dark:text-zinc-400">{activity.user_name}</span>
+                                                    return (
+                                                        <div key={activity.id} className="relative flex items-start space-x-3.5 pl-1">
+                                                            {/* Icon */}
+                                                            <div className={`relative z-10 flex items-center justify-center w-9 h-9 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 ${config.color}`}>
+                                                                <Icon className="w-4.5 h-4.5" />
                                                             </div>
 
-                                                            {/* Meta details */}
-                                                            {activity.meta && (
-                                                                <div className="mt-2 space-y-1">
-                                                                    {Array.isArray(activity.meta.items) && activity.meta.items.map((item: any, idx: number) => (
-                                                                        <p key={idx} className="text-sm text-zinc-500 dark:text-zinc-400">
-                                                                            • {item.name} × {item.qty ?? item.qty_reduced ?? '—'}
-                                                                            {item.reason && <span className="text-rose-400"> ({item.reason})</span>}
-                                                                        </p>
-                                                                    ))}
-                                                                    {activity.meta.invoice_code && (
-                                                                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                                                                            HĐ: {activity.meta.invoice_code} • {PAYMENT_LABELS[activity.meta.payment_method] ?? activity.meta.payment_method}
-                                                                        </p>
-                                                                    )}
-                                                                    {activity.meta.reason && !activity.meta.items && (
-                                                                        <p className="text-sm text-rose-400">Lý do: {activity.meta.reason}</p>
-                                                                    )}
-                                                                    {activity.meta.total != null && !activity.meta.invoice_code && (
-                                                                        <p className="text-sm text-zinc-500 dark:text-zinc-400 tabular-nums">
-                                                                            Tổng: {formatCurrency(activity.meta.total)}
-                                                                        </p>
-                                                                    )}
-                                                                    {activity.meta.partial && (
-                                                                        <p className="text-sm text-amber-500">(Hoàn thành một phần)</p>
-                                                                    )}
+                                                            {/* Content */}
+                                                            <div className="flex-1 min-w-0 pt-1">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                                                        {displayLabel}
+                                                                    </span>
+                                                                    <span className="text-xs text-zinc-400 tabular-nums">
+                                                                        {formatDateTime(activity.created_at)}
+                                                                    </span>
                                                                 </div>
-                                                            )}
+                                                                <div className="flex items-center space-x-1.5 mt-1">
+                                                                    <User className="w-3.5 h-3.5 text-zinc-400" />
+                                                                    <span className="text-sm text-zinc-500 dark:text-zinc-400">{activity.user_name}</span>
+                                                                </div>
+
+                                                                {/* Meta details */}
+                                                                {activity.meta && (
+                                                                    <div className="mt-2 space-y-1">
+                                                                        {Array.isArray(activity.meta.items) && activity.meta.items.map((item: any, idx: number) => (
+                                                                            <p key={idx} className="text-sm text-zinc-500 dark:text-zinc-400">
+                                                                                • {item.name} × {item.qty ?? item.qty_reduced ?? '—'}
+                                                                                {item.reason && <span className="text-rose-400"> ({item.reason})</span>}
+                                                                            </p>
+                                                                        ))}
+                                                                        {activity.meta.invoice_code && (
+                                                                            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                                                                HĐ: {activity.meta.invoice_code} • {PAYMENT_LABELS[activity.meta.payment_method] ?? activity.meta.payment_method}
+                                                                            </p>
+                                                                        )}
+                                                                        {activity.meta.reason && !activity.meta.items && (
+                                                                            <p className="text-sm text-rose-400">Lý do: {activity.meta.reason}</p>
+                                                                        )}
+                                                                        {activity.meta.total != null && !activity.meta.invoice_code && (
+                                                                            <p className="text-sm text-zinc-500 dark:text-zinc-400 tabular-nums">
+                                                                                Tổng: {formatCurrency(activity.meta.total)}
+                                                                            </p>
+                                                                        )}
+                                                                        {activity.meta.partial && (
+                                                                            <p className="text-sm text-amber-500">(Hoàn thành một phần)</p>
+                                                                        )}
+                                                                        {activity.meta.amount != null && (
+                                                                            <p className="text-sm text-zinc-650 dark:text-zinc-400 tabular-nums font-semibold mt-1">
+                                                                                Số tiền cọc: <span className="text-violet-600 dark:text-violet-400 font-bold">{formatCurrency(activity.meta.amount)}</span>
+                                                                                {activity.meta.method && ` • Hình thức: ${PAYMENT_LABELS[activity.meta.method] || activity.meta.method}`}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                                {activity.action === 'deposit_received' && activity.meta?.amount == null && (
+                                                                    <p className="text-sm text-zinc-650 dark:text-zinc-400 tabular-nums font-semibold mt-1">
+                                                                        Số tiền cọc: <span className="text-violet-600 dark:text-violet-400 font-bold">
+                                                                            {formatCurrency(order.deposits?.[depositIdx]?.amount ?? depositTotal)}
+                                                                        </span>
+                                                                        {(order.deposits?.[depositIdx]?.method) && (
+                                                                            ` • Hình thức: ${PAYMENT_LABELS[order.deposits[depositIdx].method] || order.deposits[depositIdx].method}`
+                                                                        )}
+                                                                    </p>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                );
-                                            })}
+                                                    );
+                                                });
+                                            })()}
                                         </div>
                                     </div>
                                 )}

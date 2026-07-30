@@ -57,6 +57,7 @@ class OrderListController extends Controller
             'items.menuItem',
             'invoice',
             'activities.user',
+            'deposits.receivedBy',
         ]);
 
         return Inertia::render('manager/orders/OrderDetail', [
@@ -68,6 +69,16 @@ class OrderListController extends Controller
                 'subtotal' => (float) $order->subtotal,
                 'vat_amount' => (float) $order->vat_amount,
                 'total' => (float) $order->total,
+                'deposit_total' => (float) $order->deposits()->sum('amount'),
+                'deposits' => $order->deposits->map(fn ($d) => [
+                    'id' => $d->id,
+                    'amount' => (float) $d->amount,
+                    'method' => $d->method,
+                    'status' => $d->status,
+                    'note' => $d->note,
+                    'received_by_name' => $d->receivedBy?->name ?? 'Hệ thống',
+                    'created_at' => $d->created_at?->toIso8601String(),
+                ]),
                 'created_at' => $order->created_at?->toIso8601String(),
                 'items' => $order->items->map(fn ($item) => [
                     'id' => $item->id,

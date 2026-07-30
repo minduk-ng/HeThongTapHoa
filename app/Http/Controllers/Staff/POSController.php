@@ -479,7 +479,10 @@ class POSController extends Controller
                     'received_by_user_id' => $request->user()?->id,
                 ]);
 
-                OrderActivityLogger::log($order, 'deposit_received', $request->user()?->id);
+                OrderActivityLogger::log($order, 'deposit_received', $request->user()?->id, [
+                    'amount' => $validated['amount'],
+                    'method' => $validated['method']
+                ]);
 
                 return $order->table;
             });
