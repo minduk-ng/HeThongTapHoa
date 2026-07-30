@@ -49,6 +49,22 @@ class TableController extends Controller
         ]);
     }
 
+    private function generateOrderCode(Table $table): string
+    {
+        $normalized = str_replace('-', '', strtoupper(\Illuminate\Support\Str::slug($table->table_number))) ?: 'MD';
+        $dateStr = date('ymd');
+        $prefix = "{$normalized}-{$dateStr}-";
+        
+        $maxSeq = \App\Models\Order::where('order_code', 'like', $prefix.'%')
+            ->lockForUpdate()
+            ->pluck('order_code')
+            ->map(fn ($code) => (int) substr($code, strlen($prefix)))
+            ->max() ?? 0;
+            
+        $seq = str_pad($maxSeq + 1, 2, '0', STR_PAD_LEFT);
+        return $prefix . $seq;
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -62,9 +78,27 @@ class TableController extends Controller
             'reservation_note' => 'nullable|string|max:500',
         ]);
 
-        $table = Table::create($validated);
+        $table = \Illuminate\Support\Facades\DB::transaction(function () use ($validated) {
+            $table = Table::create($validated);
+
+            if ($table->status === 'reserved') {
+                $orderCode = $this->generateOrderCode($table);
+                \App\Models\Order::create([
+                    'order_code' => $orderCode,
+                    'table_id' => $table->id,
+                    'status' => 'reserved',
+                    'reservation_name' => $table->reservation_name,
+                    'reservation_phone' => $table->reservation_phone,
+                    'reservation_time' => $table->reservation_time,
+                    'reservation_note' => $table->reservation_note,
+                ]);
+            }
+
+            return $table;
+        });
 
         TableStatusUpdated::dispatch($table);
+        \Illuminate\Support\Facades\Cache::tags(['pos_tables'])->flush();
 
         return back()->with('success', 'Thêm bàn mới thành công!');
     }
@@ -123,17 +157,49 @@ class TableController extends Controller
             ]);
         }
 
-        // If status changed away from reserved, clear reservation fields
-        if ($validated['status'] !== 'reserved') {
-            $validated['reservation_name'] = null;
-            $validated['reservation_phone'] = null;
-            $validated['reservation_time'] = null;
-            $validated['reservation_note'] = null;
-        }
+        $table = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $table) {
+            $reservedOrder = \App\Models\Order::where('table_id', $table->id)
+                ->where('status', 'reserved')
+                ->first();
 
-        $table->update($validated);
+            if ($validated['status'] === 'reserved') {
+                if ($reservedOrder) {
+                    $reservedOrder->update([
+                        'reservation_name' => $validated['reservation_name'],
+                        'reservation_phone' => $validated['reservation_phone'],
+                        'reservation_time' => $validated['reservation_time'],
+                        'reservation_note' => $validated['reservation_note'],
+                    ]);
+                } else {
+                    $orderCode = $this->generateOrderCode($table);
+                    \App\Models\Order::create([
+                        'order_code' => $orderCode,
+                        'table_id' => $table->id,
+                        'status' => 'reserved',
+                        'reservation_name' => $validated['reservation_name'],
+                        'reservation_phone' => $validated['reservation_phone'],
+                        'reservation_time' => $validated['reservation_time'],
+                        'reservation_note' => $validated['reservation_note'],
+                    ]);
+                }
+            } else {
+                if ($reservedOrder) {
+                    $reservedOrder->update(['status' => 'cancelled']);
+                }
+
+                // If status changed away from reserved, clear reservation fields
+                $validated['reservation_name'] = null;
+                $validated['reservation_phone'] = null;
+                $validated['reservation_time'] = null;
+                $validated['reservation_note'] = null;
+            }
+
+            $table->update($validated);
+            return $table;
+        });
 
         TableStatusUpdated::dispatch($table);
+        \Illuminate\Support\Facades\Cache::tags(['pos_tables'])->flush();
 
         return back()->with('success', 'Cập nhật thông tin bàn thành công!');
     }
