@@ -111,6 +111,12 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 32,
             ],
             [
+                'name' => 'Báo cáo đặt bàn',
+                'route_path' => '/reports/reservations',
+                'group_name' => 'Quản lý',
+                'sort_order' => 33,
+            ],
+            [
                 'name' => 'Báo cáo thanh toán',
                 'route_path' => '/reports/payments',
                 'group_name' => 'Quản lý',

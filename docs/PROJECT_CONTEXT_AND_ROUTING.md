@@ -76,13 +76,22 @@
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
 | `/reports/sales-invoices` | `Manager\Reports\SalesInvoiceReportController` | `resources/js/pages/reports/SalesInvoiceReport.tsx` | Báo cáo hoá đơn bán hàng (doanh thu, số hoá đơn, avg/HĐ, HĐ chuyển khoản, lọc theo khoảng ngày & PTTT, CSV/XLSX export, in báo cáo) |
+| `/reports/invoice-items` | `Reports\InvoiceItemsReportController` | `resources/js/pages/reports/InvoiceItemsReport.tsx` | Báo cáo chi tiết hoá đơn (các dòng món bán ra trong kỳ, số lượng, đơn giá, thành tiền, PTTT) |
+| `/reports/product-details` | `Reports\ProductDetailsReportController` | `resources/js/pages/reports/ProductDetailsReport.tsx` | Báo cáo chi tiết sản phẩm hàng hoá (doanh số, số lượng, giá trung bình gom theo từng món trong khoảng thời gian, lọc theo danh mục) |
+| `/reports/cancelled` | `Reports\CancelledReportController` | `resources/js/pages/reports/CancelledReport.tsx` | Báo cáo hoá đơn huỷ (danh sách đơn huỷ nguyên trạng và món bị huỷ riêng lẻ kèm lý do, người huỷ và thời điểm huỷ) |
+| `/reports/profit` | `Reports\ProfitReportController` | `resources/js/pages/reports/ProfitReport.tsx` | Báo cáo lợi nhuận (doanh thu, giá vốn nguyên liệu theo định lượng, lợi nhuận gộp, tỷ suất margin và biểu đồ cột doanh thu & lợi nhuận theo ngày) |
+| `/reports/reservations` | `Reports\ReservationsReportController` | `resources/js/pages/reports/ReservationsReport.tsx` | Báo cáo đặt bàn (lượt khách đặt bàn trước, trạng thái kết quả đã đến/đã huỷ/chưa chốt và tổng tiền đặt cọc giữ chỗ) |
+| `/reports/payments` | `Reports\PaymentsReportController` | `resources/js/pages/reports/PaymentsReport.tsx` | Báo cáo thanh toán (doanh thu và phương thức thanh toán, so sánh tăng trưởng doanh thu với kỳ trước, biểu đồ tròn tỷ trọng tiền mặt/chuyển khoản) |
 
 **Bộ Component Báo Cáo Dùng Chung** (nằm tại `resources/js/components/reports/*`):
 - `ReportPage.tsx`: Khung trang báo cáo chuẩn (chứa tiêu đề, Metric Cards, bộ lọc, menu ẩn/hiện cột, export, print, layout in độc lập).
-- `ReportFilterBar.tsx`: Thanh lọc khoảng ngày (DatePicker) + tìm kiếm nhanh + extra filters slot + các preset nhanh (Hôm nay, Hôm qua, 7 ngày gần nhất, Tháng này, Tháng trước).
+- `ReportFilterBar.tsx`: Thanh lọc khoảng ngày (DatePicker) + tìm kiếm nhanh + extra filters slot + nút đặt lại gọn gàng 1 dòng.
 - `ReportTable.tsx`: Bảng báo cáo đa năng hỗ trợ tự động sort, resize độ rộng cột bằng kéo thả chuột, ẩn/hiện cột qua Context, phân trang local + compact mode.
 - `useReportFilters.ts`: React Hook quản lý trạng thái khoảng ngày, đồng bộ URL parameters và xử lý reload trang.
 - `reportExport.ts`: Tiện ích xuất dữ liệu báo cáo dạng CSV (có UTF-8 BOM hiển thị tiếng Việt chính xác) và Excel XLSX (lazy import thư viện `xlsx` dung lượng ~0.9MB để tối ưu hóa hiệu năng tải trang).
+- `reportFormat.ts`: Helper định dạng tiền tệ VND, thời gian và nhãn phương thức thanh toán dùng chung cho các báo cáo.
+- `ReportDonut.tsx`: Biểu đồ tròn Recharts hiển thị tỷ trọng các phương thức thanh toán.
+- `ReportDailyBars.tsx`: Biểu đồ cột Recharts hiển thị so sánh doanh thu & lợi nhuận theo ngày.
 
 ### 2.6 Shared Components Dùng Chung (`resources/js/components`)
 - **`resources/js/components/DatePicker.tsx`**: DatePicker dùng chung (mode `single`/`range`, controlled, wire `Y-m-d`, hiển thị `dd/mm/yyyy`, segmented input dd/mm/yyyy, nhảy nhanh tháng/năm, hỗ trợ min/max + dark mode). Helpers: `resources/js/utils/date.ts`. Spec: `docs/superpowers/specs/2026-07-31-date-picker-design.md`.
