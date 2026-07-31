@@ -38,7 +38,7 @@ export default function PaymentDrawer({
         const itemSubtotal = item.quantity * item.unit_price;
         return sum + itemSubtotal * ((item.vat_rate || 0) / 100);
     }, 0);
-    const totalAmount = subtotal + vatTotal;
+    const totalAmount = subtotal;
 
     const payable = Math.max(0, totalAmount - depositTotal);
     const depositRefund = Math.max(0, depositTotal - totalAmount);

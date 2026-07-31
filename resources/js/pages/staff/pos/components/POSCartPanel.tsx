@@ -162,7 +162,7 @@ export default function POSCartPanel({
         const itemSubtotal = item.quantity * item.unit_price;
         return sum + itemSubtotal * ((item.vat_rate || 0) / 100);
     }, 0);
-    const totalAmount = subtotal + vatTotal;
+    const totalAmount = subtotal;
 
     const unconfirmedItems = cartItems.filter((i) => !i.isConfirmed);
     const hasStagedReductions = cartItems.some(

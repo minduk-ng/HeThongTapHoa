@@ -133,7 +133,7 @@ export function usePOSCheckout(
             const itemSubtotal = item.quantity * item.unit_price;
             return sum + itemSubtotal * ((item.vat_rate || 0) / 100);
         }, 0);
-        const totalAmount = subtotal + vatTotal;
+        const totalAmount = subtotal;
 
         const idempotencyKey = `pos_send_${selectedTable.id}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 

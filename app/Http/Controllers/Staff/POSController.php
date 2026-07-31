@@ -363,7 +363,7 @@ class POSController extends Controller
                         
                         $subtotal += $itemSubtotal;
                         $vatAmount += $itemVat;
-                        $total += $itemSubtotal + $itemVat;
+                        $total += $itemSubtotal;
 
                         $orderItems[] = [
                             'menu_item_id' => $menuItem->id,
@@ -568,9 +568,17 @@ class POSController extends Controller
                         $parentOrder = $orderItem->order;
                         if ($parentOrder) {
                             $activeSubtotal = (float) $parentOrder->items()->where('status', '!=', 'cancelled')->sum('subtotal');
+                            
+                            // Tính lại VAT thực tế cho các món còn lại trong đơn
+                            $activeVatAmount = $parentOrder->items()->where('status', '!=', 'cancelled')->get()->sum(function ($item) {
+                                $vatRate = $item->menuItem->vat_rate ?? 0;
+                                return $item->subtotal * ($vatRate / 100);
+                            });
+                            
                             $parentOrder->update([
                                 'subtotal' => $activeSubtotal,
-                                'total' => $activeSubtotal + (float) $parentOrder->vat_amount,
+                                'vat_amount' => $activeVatAmount,
+                                'total' => $activeSubtotal,
                             ]);
 
                             if ($parentOrder->items()->where('status', '!=', 'cancelled')->count() === 0) {
@@ -602,14 +610,14 @@ class POSController extends Controller
                             $createdOrder->update([
                                 'subtotal' => $validated['subtotal'],
                                 'vat_amount' => $validated['vat_amount'],
-                                'total' => $validated['total'],
+                                'total' => $validated['subtotal'],
                                 'status' => 'pending',
                             ]);
                         } else {
                             $createdOrder->update([
                                 'subtotal' => $createdOrder->subtotal + $validated['subtotal'],
                                 'vat_amount' => $createdOrder->vat_amount + $validated['vat_amount'],
-                                'total' => $createdOrder->total + $validated['total'],
+                                'total' => $createdOrder->subtotal + $validated['subtotal'],
                                 'status' => 'pending',
                                 'has_additional_items' => true,
                             ]);
@@ -630,7 +638,7 @@ class POSController extends Controller
                             'employee_id' => $employeeId,
                             'subtotal' => $validated['subtotal'],
                             'vat_amount' => $validated['vat_amount'],
-                            'total' => $validated['total'],
+                            'total' => $validated['subtotal'],
                             'status' => 'pending',
                             'has_additional_items' => $hasPreviousOrders,
                         ]);
@@ -759,7 +767,7 @@ class POSController extends Controller
 
                 $totalAmount = $order->items->where('status', '!=', 'cancelled')->sum(function ($item) {
                     return (float) $item->quantity * (float) $item->unit_price;
-                }) + (float) $order->vat_amount;
+                });
 
                 $depositTotal = (float) $order->deposits()->where('status', 'held')->sum('amount');
                 $payable = max(0, $totalAmount - $depositTotal);
@@ -932,7 +940,7 @@ class POSController extends Controller
                 $totalAmount = $orders->sum(function ($ord) {
                     return $ord->items->where('status', '!=', 'cancelled')->sum(function ($item) {
                         return (float) $item->quantity * (float) $item->unit_price;
-                    }) + (float) $ord->vat_amount;
+                    });
                 });
                 
                 $depositTotal = 0;

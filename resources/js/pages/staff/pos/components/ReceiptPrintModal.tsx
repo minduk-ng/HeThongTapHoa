@@ -44,7 +44,7 @@ export default function ReceiptPrintModal({
         const itemSubtotal = item.quantity * item.unit_price;
         return sum + itemSubtotal * ((item.vat_rate || 0) / 100);
     }, 0);
-    const totalAmount = subtotal + vatTotal;
+    const totalAmount = subtotal;
 
     const todayStr = new Date().toLocaleDateString('vi-VN');
     const timeNowStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
