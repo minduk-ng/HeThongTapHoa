@@ -1,6 +1,7 @@
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 
 import {
     addMonths,
@@ -200,7 +201,9 @@ export default function DatePicker(props: DatePickerProps) {
     const [endM, setEndM] = useState('');
     const [endY, setEndY] = useState('');
     const popoverRef = useRef<HTMLDivElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
     const reopenGuardRef = useRef(false);
+    const [panelPos, setPanelPos] = useState({ top: 0, left: 0 });
 
     const minD = parseYMD(minDate);
     const maxD = parseYMD(maxDate);
@@ -321,18 +324,51 @@ export default function DatePicker(props: DatePickerProps) {
         );
     };
 
+    /**
+     * Định vị panel portal theo rect của trigger.
+     * ponytail: đo panel sau paint đầu (useLayoutEffect dưới) nên lần mở
+     * đầu dùng fallback 380px; lật lên trên chỉ khi dưới thiếu chỗ và trên
+     * đủ chỗ — nâng cấp sau nếu cần: dùng floating-ui cho auto-placement.
+     */
+    const updatePanelPos = () => {
+        const r = popoverRef.current?.getBoundingClientRect();
+
+        if (!r) {
+            return;
+        }
+
+        const panelH = panelRef.current?.offsetHeight ?? 380;
+        const spaceBelow = window.innerHeight - r.bottom - 8;
+        const placeUp = spaceBelow < panelH && r.top - 8 - panelH > 0;
+
+        setPanelPos({
+            top: placeUp ? r.top - 8 - panelH : r.bottom + 8,
+            left: Math.max(8, Math.min(r.left, window.innerWidth - 300 - 8)),
+        });
+    };
+
+    useLayoutEffect(() => {
+        if (isOpen) {
+            updatePanelPos();
+        }
+    }, [isOpen]);
+
     useEffect(() => {
         if (!isOpen) {
             return;
         }
 
         function handleClickOutside(e: MouseEvent) {
+            const t = e.target as Node;
+
             if (
-                popoverRef.current &&
-                !popoverRef.current.contains(e.target as Node)
+                (popoverRef.current && popoverRef.current.contains(t)) ||
+                (panelRef.current && panelRef.current.contains(t))
             ) {
-                setIsOpen(false);
+                return;
             }
+
+            setIsOpen(false);
         }
 
         function handleEscape(e: KeyboardEvent) {
@@ -343,10 +379,15 @@ export default function DatePicker(props: DatePickerProps) {
 
         document.addEventListener('mousedown', handleClickOutside);
         document.addEventListener('keydown', handleEscape);
+        // scroll capture=true: bắt được cả cuộn của ancestor (aside overflow-y-auto).
+        window.addEventListener('resize', updatePanelPos);
+        window.addEventListener('scroll', updatePanelPos, true);
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
             document.removeEventListener('keydown', handleEscape);
+            window.removeEventListener('resize', updatePanelPos);
+            window.removeEventListener('scroll', updatePanelPos, true);
         };
     }, [isOpen]);
 
@@ -485,7 +526,8 @@ export default function DatePicker(props: DatePickerProps) {
 
                     reopenGuardRef.current =
                         el instanceof HTMLInputElement &&
-                        (popoverRef.current?.contains(el) ?? false);
+                        ((popoverRef.current?.contains(el) ?? false) ||
+                            (panelRef.current?.contains(el) ?? false));
                 }}
                 onClick={() => {
                     if (isOpen) {
@@ -504,298 +546,317 @@ export default function DatePicker(props: DatePickerProps) {
                 <span className="tabular-nums">{triggerLabel}</span>
             </button>
 
-            {isOpen && (
-                <div className="absolute left-0 z-30 mt-2 w-[300px] rounded-2xl border border-zinc-200/80 bg-white p-3 shadow-xl dark:border-zinc-800/80 dark:bg-zinc-900">
-                    <div className="flex items-center justify-between px-1 pb-2">
-                        <button
-                            type="button"
-                            aria-label={
-                                viewMode === 'days'
-                                    ? 'Tháng trước'
-                                    : viewMode === 'months'
-                                      ? 'Năm trước'
-                                      : '12 năm trước'
-                            }
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => handleNav(-1)}
-                            className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                        >
-                            <ChevronLeft className="h-4 w-4 stroke-[1.5]" />
-                        </button>
-                        <button
-                            type="button"
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => {
-                                if (viewMode === 'days') {
-                                    setViewMode('months');
+            {isOpen &&
+                createPortal(
+                    <div
+                        ref={panelRef}
+                        style={{ top: panelPos.top, left: panelPos.left }}
+                        className="fixed z-50 w-[300px] rounded-2xl border border-zinc-200/80 bg-white p-3 shadow-xl dark:border-zinc-800/80 dark:bg-zinc-900"
+                    >
+                        <div className="flex items-center justify-between px-1 pb-2">
+                            <button
+                                type="button"
+                                aria-label={
+                                    viewMode === 'days'
+                                        ? 'Tháng trước'
+                                        : viewMode === 'months'
+                                          ? 'Năm trước'
+                                          : '12 năm trước'
                                 }
-
-                                if (viewMode === 'months') {
-                                    setViewMode('years');
-                                }
-                            }}
-                            className={headerLabelClass}
-                        >
-                            {viewMode === 'days'
-                                ? formatMonthLabel(viewMonth)
-                                : viewMode === 'months'
-                                  ? String(viewMonth.getFullYear())
-                                  : `${yearBlockStart} – ${yearBlockStart + 11}`}
-                        </button>
-                        <button
-                            type="button"
-                            aria-label={
-                                viewMode === 'days'
-                                    ? 'Tháng sau'
-                                    : viewMode === 'months'
-                                      ? 'Năm sau'
-                                      : '12 năm sau'
-                            }
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => handleNav(1)}
-                            className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                        >
-                            <ChevronRight className="h-4 w-4 stroke-[1.5]" />
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-2 px-1 pb-2">
-                        <DateSegmentInput
-                            d={startD}
-                            m={startM}
-                            y={startY}
-                            onPart={setStartPart}
-                            onCommit={commitStartInput}
-                            ariaLabel="bắt đầu"
-                        />
-                        {mode === 'range' && (
-                            <>
-                                <span className="text-zinc-400 dark:text-zinc-500">
-                                    –
-                                </span>
-                                <DateSegmentInput
-                                    d={endD}
-                                    m={endM}
-                                    y={endY}
-                                    onPart={setEndPart}
-                                    onCommit={commitEndInput}
-                                    ariaLabel="kết thúc"
-                                />
-                            </>
-                        )}
-                    </div>
-
-                    {viewMode === 'days' && (
-                        <>
-                            <div className="grid grid-cols-7">
-                                {WEEKDAY_LABELS.map((d) => (
-                                    <span
-                                        key={d}
-                                        className="flex h-7 items-center justify-center text-xs font-medium text-zinc-400 dark:text-zinc-500"
-                                    >
-                                        {d}
-                                    </span>
-                                ))}
-                            </div>
-
-                            <div
-                                className="grid grid-cols-7 gap-y-0.5"
-                                onMouseLeave={() => setHoverDate(null)}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => handleNav(-1)}
+                                className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                             >
-                                {cells.map((day, idx) => {
-                                    const inMonth =
-                                        day.getMonth() === viewMonth.getMonth();
-                                    const dayDisabled = isDayDisabled(day);
-                                    const isToday = isSameDay(day, new Date());
-                                    const isStart =
-                                        draftStart !== null &&
-                                        isSameDay(day, draftStart);
-                                    const isEnd =
-                                        effectiveEnd !== null &&
-                                        isSameDay(day, effectiveEnd);
-                                    const inBand =
-                                        mode === 'range' &&
-                                        draftStart !== null &&
-                                        effectiveEnd !== null &&
-                                        !isSameDay(draftStart, effectiveEnd) &&
-                                        isWithinRange(
-                                            day,
-                                            draftStart,
-                                            effectiveEnd,
-                                        );
-                                    const isSelectedCircle =
-                                        mode === 'single'
-                                            ? propStart !== null &&
-                                              isSameDay(day, propStart)
-                                            : isStart || isEnd;
-
-                                    let wrapperClass =
-                                        'flex h-9 items-center justify-center';
-
-                                    if (inBand) {
-                                        wrapperClass +=
-                                            ' bg-sky-100/60 dark:bg-sky-950/50';
-
-                                        if (isStart || idx % 7 === 0) {
-                                            wrapperClass += ' rounded-l-full';
-                                        }
-
-                                        if (isEnd || idx % 7 === 6) {
-                                            wrapperClass += ' rounded-r-full';
-                                        }
+                                <ChevronLeft className="h-4 w-4 stroke-[1.5]" />
+                            </button>
+                            <button
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                    if (viewMode === 'days') {
+                                        setViewMode('months');
                                     }
 
-                                    const circleClass = `relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-sm tabular-nums transition-colors ${
-                                        isSelectedCircle
+                                    if (viewMode === 'months') {
+                                        setViewMode('years');
+                                    }
+                                }}
+                                className={headerLabelClass}
+                            >
+                                {viewMode === 'days'
+                                    ? formatMonthLabel(viewMonth)
+                                    : viewMode === 'months'
+                                      ? String(viewMonth.getFullYear())
+                                      : `${yearBlockStart} – ${yearBlockStart + 11}`}
+                            </button>
+                            <button
+                                type="button"
+                                aria-label={
+                                    viewMode === 'days'
+                                        ? 'Tháng sau'
+                                        : viewMode === 'months'
+                                          ? 'Năm sau'
+                                          : '12 năm sau'
+                                }
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => handleNav(1)}
+                                className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                            >
+                                <ChevronRight className="h-4 w-4 stroke-[1.5]" />
+                            </button>
+                        </div>
+
+                        <div className="flex items-center gap-2 px-1 pb-2">
+                            <DateSegmentInput
+                                d={startD}
+                                m={startM}
+                                y={startY}
+                                onPart={setStartPart}
+                                onCommit={commitStartInput}
+                                ariaLabel="bắt đầu"
+                            />
+                            {mode === 'range' && (
+                                <>
+                                    <span className="text-zinc-400 dark:text-zinc-500">
+                                        –
+                                    </span>
+                                    <DateSegmentInput
+                                        d={endD}
+                                        m={endM}
+                                        y={endY}
+                                        onPart={setEndPart}
+                                        onCommit={commitEndInput}
+                                        ariaLabel="kết thúc"
+                                    />
+                                </>
+                            )}
+                        </div>
+
+                        {viewMode === 'days' && (
+                            <>
+                                <div className="grid grid-cols-7">
+                                    {WEEKDAY_LABELS.map((d) => (
+                                        <span
+                                            key={d}
+                                            className="flex h-7 items-center justify-center text-xs font-medium text-zinc-400 dark:text-zinc-500"
+                                        >
+                                            {d}
+                                        </span>
+                                    ))}
+                                </div>
+
+                                <div
+                                    className="grid grid-cols-7 gap-y-0.5"
+                                    onMouseLeave={() => setHoverDate(null)}
+                                >
+                                    {cells.map((day, idx) => {
+                                        const inMonth =
+                                            day.getMonth() ===
+                                            viewMonth.getMonth();
+                                        const dayDisabled = isDayDisabled(day);
+                                        const isToday = isSameDay(
+                                            day,
+                                            new Date(),
+                                        );
+                                        const isStart =
+                                            draftStart !== null &&
+                                            isSameDay(day, draftStart);
+                                        const isEnd =
+                                            effectiveEnd !== null &&
+                                            isSameDay(day, effectiveEnd);
+                                        const inBand =
+                                            mode === 'range' &&
+                                            draftStart !== null &&
+                                            effectiveEnd !== null &&
+                                            !isSameDay(
+                                                draftStart,
+                                                effectiveEnd,
+                                            ) &&
+                                            isWithinRange(
+                                                day,
+                                                draftStart,
+                                                effectiveEnd,
+                                            );
+                                        const isSelectedCircle =
+                                            mode === 'single'
+                                                ? propStart !== null &&
+                                                  isSameDay(day, propStart)
+                                                : isStart || isEnd;
+
+                                        let wrapperClass =
+                                            'flex h-9 items-center justify-center';
+
+                                        if (inBand) {
+                                            wrapperClass +=
+                                                ' bg-sky-100/60 dark:bg-sky-950/50';
+
+                                            if (isStart || idx % 7 === 0) {
+                                                wrapperClass +=
+                                                    ' rounded-l-full';
+                                            }
+
+                                            if (isEnd || idx % 7 === 6) {
+                                                wrapperClass +=
+                                                    ' rounded-r-full';
+                                            }
+                                        }
+
+                                        const circleClass = `relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-sm tabular-nums transition-colors ${
+                                            isSelectedCircle
+                                                ? 'bg-sky-600 font-semibold text-white dark:bg-sky-500'
+                                                : inMonth
+                                                  ? 'text-zinc-700 dark:text-zinc-300'
+                                                  : 'text-zinc-400 dark:text-zinc-600'
+                                        } ${
+                                            isToday && !isSelectedCircle
+                                                ? 'font-semibold ring-1 ring-inset ring-sky-400 dark:ring-sky-500'
+                                                : ''
+                                        } ${
+                                            dayDisabled
+                                                ? 'cursor-not-allowed opacity-40'
+                                                : isSelectedCircle
+                                                  ? ''
+                                                  : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                        }`;
+
+                                        return (
+                                            <div
+                                                key={toYMD(day)}
+                                                className={wrapperClass}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    disabled={dayDisabled}
+                                                    onMouseDown={(e) =>
+                                                        e.preventDefault()
+                                                    }
+                                                    onClick={() =>
+                                                        handleDayClick(day)
+                                                    }
+                                                    onMouseEnter={() => {
+                                                        if (
+                                                            mode === 'range' &&
+                                                            draftStart &&
+                                                            !draftEnd &&
+                                                            !dayDisabled
+                                                        ) {
+                                                            setHoverDate(day);
+                                                        }
+                                                    }}
+                                                    aria-label={day.toLocaleDateString(
+                                                        'vi-VN',
+                                                        {
+                                                            weekday: 'long',
+                                                            day: 'numeric',
+                                                            month: 'long',
+                                                            year: 'numeric',
+                                                        },
+                                                    )}
+                                                    className={circleClass}
+                                                >
+                                                    {day.getDate()}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
+
+                        {viewMode === 'months' && (
+                            <div className="grid grid-cols-4 gap-1">
+                                {Array.from({ length: 12 }, (_, idx) => {
+                                    const isViewingMonth =
+                                        idx === viewMonth.getMonth();
+                                    const isCurrentMonth =
+                                        idx === new Date().getMonth() &&
+                                        viewMonth.getFullYear() ===
+                                            new Date().getFullYear();
+
+                                    const monthClass = `flex h-9 items-center justify-center rounded-lg text-sm tabular-nums transition-colors ${
+                                        isViewingMonth
                                             ? 'bg-sky-600 font-semibold text-white dark:bg-sky-500'
-                                            : inMonth
-                                              ? 'text-zinc-700 dark:text-zinc-300'
-                                              : 'text-zinc-400 dark:text-zinc-600'
+                                            : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
                                     } ${
-                                        isToday && !isSelectedCircle
+                                        isCurrentMonth && !isViewingMonth
                                             ? 'font-semibold ring-1 ring-inset ring-sky-400 dark:ring-sky-500'
                                             : ''
-                                    } ${
-                                        dayDisabled
-                                            ? 'cursor-not-allowed opacity-40'
-                                            : isSelectedCircle
-                                              ? ''
-                                              : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                     }`;
 
                                     return (
-                                        <div
-                                            key={toYMD(day)}
-                                            className={wrapperClass}
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onMouseDown={(e) =>
+                                                e.preventDefault()
+                                            }
+                                            onClick={() => {
+                                                setViewMonth(
+                                                    new Date(
+                                                        viewMonth.getFullYear(),
+                                                        idx,
+                                                        1,
+                                                    ),
+                                                );
+                                                setViewMode('days');
+                                            }}
+                                            aria-label={`Tháng ${idx + 1}, ${viewMonth.getFullYear()}`}
+                                            className={monthClass}
                                         >
-                                            <button
-                                                type="button"
-                                                disabled={dayDisabled}
-                                                onMouseDown={(e) =>
-                                                    e.preventDefault()
-                                                }
-                                                onClick={() =>
-                                                    handleDayClick(day)
-                                                }
-                                                onMouseEnter={() => {
-                                                    if (
-                                                        mode === 'range' &&
-                                                        draftStart &&
-                                                        !draftEnd &&
-                                                        !dayDisabled
-                                                    ) {
-                                                        setHoverDate(day);
-                                                    }
-                                                }}
-                                                aria-label={day.toLocaleDateString(
-                                                    'vi-VN',
-                                                    {
-                                                        weekday: 'long',
-                                                        day: 'numeric',
-                                                        month: 'long',
-                                                        year: 'numeric',
-                                                    },
-                                                )}
-                                                className={circleClass}
-                                            >
-                                                {day.getDate()}
-                                            </button>
-                                        </div>
+                                            {`Thg ${idx + 1}`}
+                                        </button>
                                     );
                                 })}
                             </div>
-                        </>
-                    )}
+                        )}
 
-                    {viewMode === 'months' && (
-                        <div className="grid grid-cols-4 gap-1">
-                            {Array.from({ length: 12 }, (_, idx) => {
-                                const isViewingMonth =
-                                    idx === viewMonth.getMonth();
-                                const isCurrentMonth =
-                                    idx === new Date().getMonth() &&
-                                    viewMonth.getFullYear() ===
-                                        new Date().getFullYear();
+                        {viewMode === 'years' && (
+                            <div className="grid grid-cols-4 gap-1">
+                                {Array.from({ length: 12 }, (_, idx) => {
+                                    const y = yearBlockStart + idx;
+                                    const isViewingYear =
+                                        y === viewMonth.getFullYear();
+                                    const isCurrentYear =
+                                        y === new Date().getFullYear();
 
-                                const monthClass = `flex h-9 items-center justify-center rounded-lg text-sm tabular-nums transition-colors ${
-                                    isViewingMonth
-                                        ? 'bg-sky-600 font-semibold text-white dark:bg-sky-500'
-                                        : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
-                                } ${
-                                    isCurrentMonth && !isViewingMonth
-                                        ? 'font-semibold ring-1 ring-inset ring-sky-400 dark:ring-sky-500'
-                                        : ''
-                                }`;
+                                    const yearClass = `flex h-9 items-center justify-center rounded-lg text-sm tabular-nums transition-colors ${
+                                        isViewingYear
+                                            ? 'bg-sky-600 font-semibold text-white dark:bg-sky-500'
+                                            : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
+                                    } ${
+                                        isCurrentYear && !isViewingYear
+                                            ? 'font-semibold ring-1 ring-inset ring-sky-400 dark:ring-sky-500'
+                                            : ''
+                                    }`;
 
-                                return (
-                                    <button
-                                        key={idx}
-                                        type="button"
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => {
-                                            setViewMonth(
-                                                new Date(
-                                                    viewMonth.getFullYear(),
-                                                    idx,
-                                                    1,
-                                                ),
-                                            );
-                                            setViewMode('days');
-                                        }}
-                                        aria-label={`Tháng ${idx + 1}, ${viewMonth.getFullYear()}`}
-                                        className={monthClass}
-                                    >
-                                        {`Thg ${idx + 1}`}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    {viewMode === 'years' && (
-                        <div className="grid grid-cols-4 gap-1">
-                            {Array.from({ length: 12 }, (_, idx) => {
-                                const y = yearBlockStart + idx;
-                                const isViewingYear =
-                                    y === viewMonth.getFullYear();
-                                const isCurrentYear =
-                                    y === new Date().getFullYear();
-
-                                const yearClass = `flex h-9 items-center justify-center rounded-lg text-sm tabular-nums transition-colors ${
-                                    isViewingYear
-                                        ? 'bg-sky-600 font-semibold text-white dark:bg-sky-500'
-                                        : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
-                                } ${
-                                    isCurrentYear && !isViewingYear
-                                        ? 'font-semibold ring-1 ring-inset ring-sky-400 dark:ring-sky-500'
-                                        : ''
-                                }`;
-
-                                return (
-                                    <button
-                                        key={y}
-                                        type="button"
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => {
-                                            setViewMonth(
-                                                new Date(
-                                                    y,
-                                                    viewMonth.getMonth(),
-                                                    1,
-                                                ),
-                                            );
-                                            setViewMode('months');
-                                        }}
-                                        className={yearClass}
-                                    >
-                                        {y}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-            )}
+                                    return (
+                                        <button
+                                            key={y}
+                                            type="button"
+                                            onMouseDown={(e) =>
+                                                e.preventDefault()
+                                            }
+                                            onClick={() => {
+                                                setViewMonth(
+                                                    new Date(
+                                                        y,
+                                                        viewMonth.getMonth(),
+                                                        1,
+                                                    ),
+                                                );
+                                                setViewMode('months');
+                                            }}
+                                            className={yearClass}
+                                        >
+                                            {y}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>,
+                    document.body,
+                )}
         </div>
     );
 }
