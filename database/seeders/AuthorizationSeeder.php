@@ -41,7 +41,7 @@ class AuthorizationSeeder extends Seeder
             [
                 'name' => 'Báo cáo',
                 'route_path' => '/manager/dashboard',
-                'group_name' => 'Quản lý',
+                'group_name' => 'Báo cáo',
                 'sort_order' => 18,
             ],
             [
@@ -83,43 +83,43 @@ class AuthorizationSeeder extends Seeder
             [
                 'name' => 'Báo cáo hoá đơn bán hàng',
                 'route_path' => '/reports/sales-invoices',
-                'group_name' => 'Quản lý',
+                'group_name' => 'Báo cáo',
                 'sort_order' => 28,
             ],
             [
                 'name' => 'Báo cáo chi tiết hoá đơn',
                 'route_path' => '/reports/invoice-items',
-                'group_name' => 'Quản lý',
+                'group_name' => 'Báo cáo',
                 'sort_order' => 29,
             ],
             [
                 'name' => 'Báo cáo chi tiết sản phẩm hàng hoá',
                 'route_path' => '/reports/product-details',
-                'group_name' => 'Quản lý',
+                'group_name' => 'Báo cáo',
                 'sort_order' => 30,
             ],
             [
                 'name' => 'Báo cáo hoá đơn huỷ',
                 'route_path' => '/reports/cancelled',
-                'group_name' => 'Quản lý',
+                'group_name' => 'Báo cáo',
                 'sort_order' => 31,
             ],
             [
                 'name' => 'Báo cáo lợi nhuận',
                 'route_path' => '/reports/profit',
-                'group_name' => 'Quản lý',
+                'group_name' => 'Báo cáo',
                 'sort_order' => 32,
             ],
             [
                 'name' => 'Báo cáo đặt bàn',
                 'route_path' => '/reports/reservations',
-                'group_name' => 'Quản lý',
+                'group_name' => 'Báo cáo',
                 'sort_order' => 33,
             ],
             [
                 'name' => 'Báo cáo thanh toán',
                 'route_path' => '/reports/payments',
-                'group_name' => 'Quản lý',
+                'group_name' => 'Báo cáo',
                 'sort_order' => 34,
             ],
             [
