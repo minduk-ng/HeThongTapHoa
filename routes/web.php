@@ -17,6 +17,7 @@ use App\Http\Controllers\Manager\ProductController;
 use App\Http\Controllers\Manager\RecipeController;
 use App\Http\Controllers\Manager\Reports\SalesInvoiceReportController;
 use App\Http\Controllers\Reports\InvoiceItemsReportController;
+use App\Http\Controllers\Reports\ProductDetailsReportController;
 use App\Http\Controllers\Manager\TableController;
 use App\Http\Controllers\Staff\KitchenController;
 use App\Http\Controllers\Staff\POSController;
@@ -130,6 +131,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('reports')->middleware(CheckPageAccess::class)->group(function () {
         Route::get('/sales-invoices', [SalesInvoiceReportController::class, 'index'])->middleware('permission:reports.view');
         Route::get('/invoice-items', [InvoiceItemsReportController::class, 'index'])->middleware('permission:reports.view');
+        Route::get('/product-details', [ProductDetailsReportController::class, 'index'])->middleware('permission:reports.view');
     });
 
     // Staff Features (POS & Kitchen Display)
