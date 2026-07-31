@@ -33,7 +33,7 @@ class DashboardController extends Controller
 
         $ordersCount = Order::whereBetween('created_at', [$startDate, $endDate])->count();
         $pendingOrdersCount = Order::whereBetween('created_at', [$startDate, $endDate])
-            ->whereIn('status', ['pending', 'cooking', 'ready'])->count();
+            ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])->count();
 
         $totalTables = Table::count();
         $occupiedTables = Table::where('status', 'occupied')->count();

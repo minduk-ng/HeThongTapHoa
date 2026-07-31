@@ -144,7 +144,7 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
             </div>
 
             {/* Row 1: KPI Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 {/* KPI 1: Doanh thu */}
                 <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-5 rounded-2xl shadow-xs hover:border-sky-500/50 transition-colors duration-150">
                     <div className="flex justify-between items-start">
@@ -233,7 +233,7 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
 
             {/* Row 2: Live Operations Monitor (Only if range is 'today') */}
             {filters.date_range === 'today' && live_operations && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 animate-fade-in">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4 animate-fade-in">
                     {/* Kitchen Display Monitor */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
                         <div className="p-4 border-b border-slate-100 dark:border-slate-850 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
@@ -340,7 +340,7 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
             )}
 
             {/* Row 3: Charts & Analytics Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 {/* Revenue hourly chart block */}
                 <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
                     <div className="p-5 border-b border-slate-100 dark:border-slate-850 flex justify-between items-center">
