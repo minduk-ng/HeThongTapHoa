@@ -478,9 +478,14 @@ export default function DatePicker(props: DatePickerProps) {
             <button
                 type="button"
                 disabled={disabled}
+                aria-haspopup="dialog"
+                aria-expanded={isOpen}
                 onMouseDown={() => {
+                    const el = document.activeElement;
+
                     reopenGuardRef.current =
-                        document.activeElement instanceof HTMLInputElement;
+                        el instanceof HTMLInputElement &&
+                        (popoverRef.current?.contains(el) ?? false);
                 }}
                 onClick={() => {
                     if (isOpen) {
