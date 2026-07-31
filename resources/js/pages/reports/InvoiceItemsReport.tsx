@@ -1,9 +1,4 @@
-import {
-    Banknote,
-    CircleDollarSign,
-    ReceiptText,
-    TrendingUp,
-} from 'lucide-react';
+import { ClipboardList, Hash, ReceiptText, ShoppingBag } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import {
@@ -17,27 +12,28 @@ import ReportTable from '../../components/reports/ReportTable';
 import type { ReportTableColumn } from '../../components/reports/ReportTable';
 import { useReportFilters } from '../../components/reports/useReportFilters';
 
-interface InvoiceRow {
+interface ItemRow {
     id: number;
+    invoice_id: number;
     invoice_code: string;
-    table_name: string | null;
-    payment_method: string;
-    orders_count: number;
-    total_amount: number;
-    amount_received: number;
-    change_amount: number;
     issued_at: string;
+    table_name: string | null;
+    item_name: string;
+    quantity: number;
+    unit_price: number;
+    subtotal: number;
+    payment_method: string;
 }
 
 interface Metrics {
-    revenue: number;
+    total_amount: number;
+    line_count: number;
+    quantity_total: number;
     invoice_count: number;
-    avg_invoice: number;
-    bank_transfer_count: number;
 }
 
 interface Props {
-    invoices: InvoiceRow[];
+    rows: ItemRow[];
     metrics: Metrics;
     startDate: string;
     endDate: string;
@@ -47,79 +43,69 @@ const COLUMNS: ReportTableColumn[] = [
     { key: 'invoice_code', label: 'Mã HĐ' },
     { key: 'issued_at', label: 'Thời gian' },
     { key: 'table_name', label: 'Bàn' },
-    { key: 'orders_count', label: 'Số order', numeric: true },
+    { key: 'item_name', label: 'Tên món' },
+    { key: 'quantity', label: 'SL', numeric: true },
+    { key: 'unit_price', label: 'Đơn giá', numeric: true },
+    { key: 'subtotal', label: 'Thành tiền', numeric: true },
     { key: 'payment_method', label: 'PTTT' },
-    { key: 'total_amount', label: 'Tổng tiền', numeric: true },
-    {
-        key: 'amount_received',
-        label: 'Khách đưa',
-        numeric: true,
-        visible: false,
-    },
-    { key: 'change_amount', label: 'Tiền thừa', numeric: true, visible: false },
 ];
 
-export default function SalesInvoiceReport({
-    invoices,
+export default function InvoiceItemsReport({
+    rows,
     metrics,
     startDate,
     endDate,
 }: Props) {
-    const safeInvoices = useMemo(
-        () => (Array.isArray(invoices) ? invoices : []),
-        [invoices],
-    );
-
+    const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
     const { rangeStart, rangeEnd, applyRange, reset } = useReportFilters(
-        '/reports/sales-invoices',
+        '/reports/invoice-items',
         startDate,
         endDate,
     );
-
     const [search, setSearch] = useState('');
     const [paymentFilter, setPaymentFilter] = useState('all');
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
 
-        return safeInvoices.filter(
-            (inv) =>
+        return safeRows.filter(
+            (r) =>
                 (!q ||
-                    inv.invoice_code.toLowerCase().includes(q) ||
-                    (inv.table_name ?? '').toLowerCase().includes(q)) &&
-                (paymentFilter === 'all' ||
-                    inv.payment_method === paymentFilter),
+                    r.invoice_code.toLowerCase().includes(q) ||
+                    r.item_name.toLowerCase().includes(q) ||
+                    (r.table_name ?? '').toLowerCase().includes(q)) &&
+                (paymentFilter === 'all' || r.payment_method === paymentFilter),
         );
-    }, [safeInvoices, search, paymentFilter]);
+    }, [safeRows, search, paymentFilter]);
 
     const metricCards: MetricCard[] = [
         {
-            label: 'Doanh thu',
-            value: formatVND(metrics.revenue),
-            icon: CircleDollarSign,
+            label: 'Tổng thành tiền',
+            value: formatVND(metrics.total_amount),
+            icon: ReceiptText,
             color: 'text-emerald-600 dark:text-emerald-400',
         },
         {
-            label: 'Số hoá đơn',
-            value: metrics.invoice_count,
-            icon: ReceiptText,
+            label: 'Số dòng món',
+            value: metrics.line_count,
+            icon: ClipboardList,
             color: 'text-zinc-600 dark:text-zinc-300',
         },
         {
-            label: 'Trung bình/HĐ',
-            value: formatVND(metrics.avg_invoice),
-            icon: TrendingUp,
+            label: 'Tổng SL',
+            value: metrics.quantity_total,
+            icon: ShoppingBag,
             color: 'text-sky-600 dark:text-sky-400',
         },
         {
-            label: 'HĐ chuyển khoản',
-            value: metrics.bank_transfer_count,
-            icon: Banknote,
+            label: 'Số HĐ',
+            value: metrics.invoice_count,
+            icon: Hash,
             color: 'text-amber-600 dark:text-amber-400',
         },
     ];
 
-    const renderCell = (row: InvoiceRow, key: string) => {
+    const renderCell = (row: ItemRow, key: string) => {
         switch (key) {
             case 'invoice_code':
                 return (
@@ -131,41 +117,38 @@ export default function SalesInvoiceReport({
                 return formatDateTime(row.issued_at);
             case 'table_name':
                 return row.table_name ?? '—';
-            case 'orders_count':
-                return row.orders_count;
-            case 'payment_method':
-                return paymentLabel(row.payment_method);
-            case 'total_amount':
+            case 'item_name':
+                return row.item_name;
+            case 'quantity':
+                return row.quantity;
+            case 'unit_price':
+                return formatVND(row.unit_price);
+            case 'subtotal':
                 return (
                     <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                        {formatVND(row.total_amount)}
+                        {formatVND(row.subtotal)}
                     </span>
                 );
-            case 'amount_received':
-                return formatVND(row.amount_received);
-            case 'change_amount':
-                return formatVND(row.change_amount);
+            case 'payment_method':
+                return paymentLabel(row.payment_method);
             default:
                 return '—';
         }
     };
 
-    // Xuất số thô cho cột tiền để Excel tính được; ngày giữ dạng hiển thị.
     const getExportRows = (visibleKeys: string[]): (string | number)[][] =>
-        filtered.map((inv) =>
+        filtered.map((r) =>
             visibleKeys.map((key) => {
                 switch (key) {
                     case 'issued_at':
-                        return formatDateTime(inv.issued_at);
+                        return formatDateTime(r.issued_at);
                     case 'table_name':
-                        return inv.table_name ?? '';
+                        return r.table_name ?? '';
                     case 'payment_method':
-                        return inv.payment_method
-                            ? paymentLabel(inv.payment_method)
-                            : '';
+                        return paymentLabel(r.payment_method);
                     default:
                         return (
-                            (inv as unknown as Record<string, string | number>)[
+                            (r as unknown as Record<string, string | number>)[
                                 key
                             ] ?? ''
                         );
@@ -175,18 +158,18 @@ export default function SalesInvoiceReport({
 
     return (
         <ReportPage
-            title="Báo cáo hoá đơn bán hàng"
-            subtitle="Doanh thu theo hoá đơn đã phát hành trong khoảng thời gian"
+            title="Báo cáo chi tiết hoá đơn"
+            subtitle="Các dòng món thuộc hoá đơn đã phát hành trong khoảng thời gian"
             metrics={metricCards}
             columns={COLUMNS}
-            exportName="bao_cao_hoa_don_ban_hang"
+            exportName="bao_cao_chi_tiet_hoa_don"
             startDate={rangeStart}
             endDate={rangeEnd}
             onRangeApply={applyRange}
             onReset={reset}
             searchValue={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Tìm theo mã HĐ hoặc bàn..."
+            searchPlaceholder="Tìm mã HĐ, món, bàn..."
             extraFilters={
                 <select
                     value={paymentFilter}
@@ -207,7 +190,7 @@ export default function SalesInvoiceReport({
                 renderCell={renderCell}
                 defaultSortKey="issued_at"
                 defaultSortDir="desc"
-                emptyTitle="Không có hoá đơn nào trong khoảng thời gian này"
+                emptyTitle="Không có dòng món nào trong khoảng thời gian này"
                 emptyHint="Thử mở rộng khoảng ngày hoặc đổi bộ lọc"
             />
         </ReportPage>

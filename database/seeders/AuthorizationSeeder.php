@@ -87,6 +87,12 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 28,
             ],
             [
+                'name' => 'Báo cáo chi tiết hoá đơn',
+                'route_path' => '/reports/invoice-items',
+                'group_name' => 'Quản lý',
+                'sort_order' => 29,
+            ],
+            [
                 'name' => 'Đặt hàng POS',
                 'route_path' => '/staff/pos',
                 'group_name' => 'Nhân viên',
