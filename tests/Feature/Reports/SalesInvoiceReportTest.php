@@ -58,7 +58,7 @@ class SalesInvoiceReportTest extends TestCase
         $this->actingAs($this->adminUser())
             ->get('/reports/sales-invoices?start_date=2026-07-01&end_date=2026-07-31')
             ->assertInertia(fn ($page) => $page
-                ->component('manager/reports/SalesInvoiceReport')
+                ->component('reports/SalesInvoiceReport')
                 ->has('invoices', 1)
                 ->where('invoices.0.invoice_code', $in->invoice_code)
             );

@@ -34,7 +34,7 @@ class SalesInvoiceReportController extends Controller
         $count = $invoices->count();
         $revenue = (float) $invoices->sum('total_amount');
 
-        return Inertia::render('manager/reports/SalesInvoiceReport', [
+        return Inertia::render('reports/SalesInvoiceReport', [
             'invoices' => $invoices,
             'metrics' => [
                 'revenue' => $revenue,

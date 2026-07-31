@@ -72,7 +72,19 @@
 | `/admin/roles` | `Admin\RoleController` | `resources/js/pages/admin/RolesManager.tsx` | Quản lý nhóm quyền (Role) & phân quyền chi tiết cho trang/chức năng |
 | `/admin/permissions` | `Admin\UserPermissionController` | `resources/js/pages/admin/UsersPermission.tsx` | Gán nhóm quyền (Role) cho tài khoản người dùng |
 
-### 2.5 Shared Components Dùng Chung (`resources/js/components`)
+### 2.5 Màn Hình Báo Cáo (Reports Routes)
+| Route Path | Controller | React Page Component | Chức Năng Chính |
+| :--- | :--- | :--- | :--- |
+| `/reports/sales-invoices` | `Manager\Reports\SalesInvoiceReportController` | `resources/js/pages/reports/SalesInvoiceReport.tsx` | Báo cáo hoá đơn bán hàng (doanh thu, số hoá đơn, avg/HĐ, HĐ chuyển khoản, lọc theo khoảng ngày & PTTT, CSV/XLSX export, in báo cáo) |
+
+**Bộ Component Báo Cáo Dùng Chung** (nằm tại `resources/js/components/reports/*`):
+- `ReportPage.tsx`: Khung trang báo cáo chuẩn (chứa tiêu đề, Metric Cards, bộ lọc, menu ẩn/hiện cột, export, print, layout in độc lập).
+- `ReportFilterBar.tsx`: Thanh lọc khoảng ngày (DatePicker) + tìm kiếm nhanh + extra filters slot + các preset nhanh (Hôm nay, Hôm qua, 7 ngày gần nhất, Tháng này, Tháng trước).
+- `ReportTable.tsx`: Bảng báo cáo đa năng hỗ trợ tự động sort, resize độ rộng cột bằng kéo thả chuột, ẩn/hiện cột qua Context, phân trang local + compact mode.
+- `useReportFilters.ts`: React Hook quản lý trạng thái khoảng ngày, đồng bộ URL parameters và xử lý reload trang.
+- `reportExport.ts`: Tiện ích xuất dữ liệu báo cáo dạng CSV (có UTF-8 BOM hiển thị tiếng Việt chính xác) và Excel XLSX (lazy import thư viện `xlsx` dung lượng ~0.9MB để tối ưu hóa hiệu năng tải trang).
+
+### 2.6 Shared Components Dùng Chung (`resources/js/components`)
 - **`resources/js/components/DatePicker.tsx`**: DatePicker dùng chung (mode `single`/`range`, controlled, wire `Y-m-d`, hiển thị `dd/mm/yyyy`, segmented input dd/mm/yyyy, nhảy nhanh tháng/năm, hỗ trợ min/max + dark mode). Helpers: `resources/js/utils/date.ts`. Spec: `docs/superpowers/specs/2026-07-31-date-picker-design.md`.
 
 ---
