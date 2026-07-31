@@ -29,6 +29,7 @@ class RoleController extends Controller
             'kitchen.view', 'kitchen.update', 'kitchen.cancel_item',
             'serving.view', 'serving.update',
             'dashboard.view',
+            'reports.view',
         ];
 
         foreach ($systemPermissions as $permName) {

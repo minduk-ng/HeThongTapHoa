@@ -15,6 +15,7 @@ use App\Http\Controllers\Manager\IngredientController;
 use App\Http\Controllers\Manager\OrderListController;
 use App\Http\Controllers\Manager\ProductController;
 use App\Http\Controllers\Manager\RecipeController;
+use App\Http\Controllers\Manager\Reports\SalesInvoiceReportController;
 use App\Http\Controllers\Manager\TableController;
 use App\Http\Controllers\Staff\KitchenController;
 use App\Http\Controllers\Staff\POSController;
@@ -122,6 +123,11 @@ Route::middleware('auth')->group(function () {
 
         // Dashboard/Báo cáo
         Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('permission:dashboard.view');
+    });
+
+    // Reports Management
+    Route::prefix('reports')->middleware(CheckPageAccess::class)->group(function () {
+        Route::get('/sales-invoices', [SalesInvoiceReportController::class, 'index'])->middleware('permission:reports.view');
     });
 
     // Staff Features (POS & Kitchen Display)

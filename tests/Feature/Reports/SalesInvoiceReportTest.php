@@ -1,0 +1,91 @@
+<?php
+
+namespace Tests\Feature\Reports;
+
+use App\Models\Invoice;
+use App\Models\User;
+use Database\Seeders\AuthorizationSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class SalesInvoiceReportTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(AuthorizationSeeder::class);
+    }
+
+    private function adminUser(): User
+    {
+        $adminUser = User::factory()->create();
+        $adminRole = \App\Models\Role::where('name', 'admin')->first();
+        $adminUser->roles()->attach($adminRole);
+
+        return $adminUser;
+    }
+
+    private function makeInvoice(string $issuedAt, string $method = 'cash', float $total = 100000, ?string $code = null): Invoice
+    {
+        $invoice = Invoice::create([
+            'invoice_code' => $code ?? 'HD-'.strtoupper(uniqid()),
+            'table_name' => 'B01',
+            'payment_method' => $method,
+            'amount_received' => $total,
+            'change_amount' => 0,
+            'total_amount' => $total,
+            'deposit_amount' => 0,
+        ]);
+        $invoice->forceFill(['issued_at' => $issuedAt])->save();
+
+        return $invoice;
+    }
+
+    public function test_unauthorized_user_cannot_access_report()
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('/reports/sales-invoices')->assertStatus(403);
+    }
+
+    public function test_filters_invoices_by_date_range()
+    {
+        $in = $this->makeInvoice('2026-07-15 12:00:00');
+        $this->makeInvoice('2026-06-01 12:00:00');
+
+        $this->actingAs($this->adminUser())
+            ->get('/reports/sales-invoices?start_date=2026-07-01&end_date=2026-07-31')
+            ->assertInertia(fn ($page) => $page
+                ->component('manager/reports/SalesInvoiceReport')
+                ->has('invoices', 1)
+                ->where('invoices.0.invoice_code', $in->invoice_code)
+            );
+    }
+
+    public function test_metrics_are_correct()
+    {
+        $this->makeInvoice('2026-07-10 09:00:00', 'cash', 100000);
+        $this->makeInvoice('2026-07-11 09:00:00', 'bank_transfer', 200000);
+
+        $this->actingAs($this->adminUser())
+            ->get('/reports/sales-invoices?start_date=2026-07-01&end_date=2026-07-31')
+            ->assertInertia(fn ($page) => $page
+                ->where('metrics.revenue', 300000)
+                ->where('metrics.invoice_count', 2)
+                ->where('metrics.avg_invoice', 150000)
+                ->where('metrics.bank_transfer_count', 1)
+            );
+    }
+
+    public function test_avg_invoice_is_zero_when_no_invoices()
+    {
+        $this->actingAs($this->adminUser())
+            ->get('/reports/sales-invoices')
+            ->assertInertia(fn ($page) => $page
+                ->where('metrics.invoice_count', 0)
+                ->where('metrics.avg_invoice', 0)
+            );
+    }
+}
