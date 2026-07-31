@@ -19,6 +19,7 @@ use App\Http\Controllers\Manager\Reports\SalesInvoiceReportController;
 use App\Http\Controllers\Reports\InvoiceItemsReportController;
 use App\Http\Controllers\Reports\CancelledReportController;
 use App\Http\Controllers\Reports\PaymentsReportController;
+use App\Http\Controllers\Reports\ProfitReportController;
 use App\Http\Controllers\Reports\ProductDetailsReportController;
 use App\Http\Controllers\Manager\TableController;
 use App\Http\Controllers\Staff\KitchenController;
@@ -136,6 +137,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/product-details', [ProductDetailsReportController::class, 'index'])->middleware('permission:reports.view');
         Route::get('/cancelled', [CancelledReportController::class, 'index'])->middleware('permission:reports.view');
         Route::get('/payments', [PaymentsReportController::class, 'index'])->middleware('permission:reports.view');
+        Route::get('/profit', [ProfitReportController::class, 'index'])->middleware('permission:reports.view');
     });
 
     // Staff Features (POS & Kitchen Display)
