@@ -181,7 +181,7 @@ export default function ReportTable<T>({
                         ))}
                     </colgroup>
                     <thead className="sticky top-0 z-10 bg-zinc-50 backdrop-blur-sm dark:bg-zinc-800/90">
-                        <tr className="text-[11px] font-medium tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
+                        <tr className="text-xs font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
                             {visibleColumns.map((c, idx) => (
                                 <th
                                     key={c.key}
@@ -235,7 +235,7 @@ export default function ReportTable<T>({
                                     {visibleColumns.map((c) => (
                                         <td
                                             key={c.key}
-                                            className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-xs tabular-nums ${c.numeric ? 'text-right' : ''} text-zinc-700 dark:text-zinc-300`}
+                                            className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-sm tabular-nums ${c.numeric ? 'text-right' : ''} text-zinc-700 dark:text-zinc-300`}
                                         >
                                             {renderCell(row, c.key)}
                                         </td>
@@ -249,7 +249,7 @@ export default function ReportTable<T>({
 
             <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-3 dark:border-zinc-800">
                 <div className="flex items-center space-x-3">
-                    <span className="text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">
+                    <span className="text-xs text-zinc-500 tabular-nums dark:text-zinc-400">
                         {sortedRows.length} bản ghi
                     </span>
                     <button
@@ -268,7 +268,7 @@ export default function ReportTable<T>({
                             setPageSize(Number(e.target.value));
                             setCurrentPage(1);
                         }}
-                        className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-[11px] text-zinc-600 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
+                        className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-600 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
                     >
                         <option value={20}>20 / trang</option>
                         <option value={50}>50 / trang</option>
@@ -279,18 +279,18 @@ export default function ReportTable<T>({
                             type="button"
                             disabled={safePage <= 1}
                             onClick={() => setCurrentPage(safePage - 1)}
-                            className="rounded-md border border-zinc-200 px-2 py-1 text-[11px] text-zinc-600 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                            className="rounded-md border border-zinc-200 px-2 py-1 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
                         >
                             Trước
                         </button>
-                        <span className="px-2 text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">
+                        <span className="px-2 text-xs text-zinc-500 tabular-nums dark:text-zinc-400">
                             {safePage} / {totalPages}
                         </span>
                         <button
                             type="button"
                             disabled={safePage >= totalPages}
                             onClick={() => setCurrentPage(safePage + 1)}
-                            className="rounded-md border border-zinc-200 px-2 py-1 text-[11px] text-zinc-600 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                            className="rounded-md border border-zinc-200 px-2 py-1 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
                         >
                             Sau
                         </button>
