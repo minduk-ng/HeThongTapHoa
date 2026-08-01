@@ -1,5 +1,6 @@
 import {
     Banknote,
+    ChartPie,
     CreditCard,
     ReceiptText,
     TrendingDown,
@@ -8,11 +9,7 @@ import {
 import { useMemo, useState } from 'react';
 
 import ReportDonut from '../../components/reports/ReportDonut';
-import {
-    formatDateTime,
-    formatVND,
-    paymentLabel,
-} from '../../components/reports/reportFormat';
+import { formatVND, paymentLabel } from '../../components/reports/reportFormat';
 import ReportPage from '../../components/reports/ReportPage';
 import type { MetricCard } from '../../components/reports/ReportPage';
 import ReportTable from '../../components/reports/ReportTable';
@@ -28,6 +25,13 @@ interface PaymentRow {
     total_amount: number;
     amount_received: number;
     change_amount: number;
+}
+
+interface MethodRow {
+    method: string;
+    count: number;
+    total: number;
+    pct: number;
 }
 
 interface Metrics {
@@ -51,13 +55,10 @@ interface Props {
 }
 
 const COLUMNS: ReportTableColumn[] = [
-    { key: 'invoice_code', label: 'Mã HĐ' },
-    { key: 'issued_at', label: 'Thời gian' },
-    { key: 'payment_method', label: 'PTTT' },
-    { key: 'table_name', label: 'Bàn' },
-    { key: 'total_amount', label: 'Tổng tiền', numeric: true },
-    { key: 'amount_received', label: 'Khách đưa', numeric: true },
-    { key: 'change_amount', label: 'Tiền thừa', numeric: true },
+    { key: 'method', label: 'PTTT' },
+    { key: 'count', label: 'Số HĐ', numeric: true },
+    { key: 'total', label: 'Tổng tiền', numeric: true },
+    { key: 'pct', label: 'Tỷ trọng %', numeric: true },
 ];
 
 export default function PaymentsReport({
@@ -75,18 +76,41 @@ export default function PaymentsReport({
     );
     const [search, setSearch] = useState('');
     const [paymentFilter, setPaymentFilter] = useState('all');
+    const [showDonut, setShowDonut] = useState(true);
 
-    const filtered = useMemo(() => {
+    const methodRows = useMemo(() => {
+        const map = new Map<string, { count: number; total: number }>();
+
+        for (const r of safeRows) {
+            const cur = map.get(r.payment_method) ?? { count: 0, total: 0 };
+
+            cur.count += 1;
+            cur.total += r.total_amount;
+            map.set(r.payment_method, cur);
+        }
+
+        return [...map.entries()]
+            .map(([method, { count, total }]) => ({
+                method,
+                count,
+                total,
+                pct:
+                    metrics.revenue > 0
+                        ? Math.round((total / metrics.revenue) * 1000) / 10
+                        : 0,
+            }))
+            .sort((a, b) => b.total - a.total);
+    }, [safeRows, metrics.revenue]);
+
+    const methodFiltered = useMemo(() => {
         const q = search.trim().toLowerCase();
 
-        return safeRows.filter(
+        return methodRows.filter(
             (r) =>
-                (!q ||
-                    r.invoice_code.toLowerCase().includes(q) ||
-                    (r.table_name ?? '').toLowerCase().includes(q)) &&
-                (paymentFilter === 'all' || r.payment_method === paymentFilter),
+                (!q || paymentLabel(r.method).toLowerCase().includes(q)) &&
+                (paymentFilter === 'all' || r.method === paymentFilter),
         );
-    }, [safeRows, search, paymentFilter]);
+    }, [methodRows, search, paymentFilter]);
 
     const pct = comparison.change_pct;
     const metricCards: MetricCard[] = [
@@ -129,45 +153,37 @@ export default function PaymentsReport({
         { name: 'Chuyển khoản', value: metrics.bank_total },
     ];
 
-    const renderCell = (row: PaymentRow, key: string) => {
+    const renderCell = (row: MethodRow, key: string) => {
         switch (key) {
-            case 'invoice_code':
+            case 'method':
                 return (
                     <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                        {row.invoice_code}
+                        {paymentLabel(row.method)}
                     </span>
                 );
-            case 'issued_at':
-                return formatDateTime(row.issued_at);
-            case 'payment_method':
-                return paymentLabel(row.payment_method);
-            case 'table_name':
-                return row.table_name ?? '—';
-            case 'total_amount':
+            case 'count':
+                return row.count;
+            case 'total':
                 return (
                     <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                        {formatVND(row.total_amount)}
+                        {formatVND(row.total)}
                     </span>
                 );
-            case 'amount_received':
-                return formatVND(row.amount_received);
-            case 'change_amount':
-                return formatVND(row.change_amount);
+            case 'pct':
+                return `${row.pct}%`;
             default:
                 return '—';
         }
     };
 
     const getExportRows = (visibleKeys: string[]): (string | number)[][] =>
-        filtered.map((r) =>
+        methodFiltered.map((r) =>
             visibleKeys.map((key) => {
                 switch (key) {
-                    case 'issued_at':
-                        return formatDateTime(r.issued_at);
-                    case 'payment_method':
-                        return paymentLabel(r.payment_method);
-                    case 'table_name':
-                        return r.table_name ?? '';
+                    case 'method':
+                        return paymentLabel(r.method);
+                    case 'total':
+                        return r.total;
                     default:
                         return (
                             (r as unknown as Record<string, string | number>)[
@@ -204,22 +220,42 @@ export default function PaymentsReport({
                 </select>
             }
             getExportRows={getExportRows}
+            extraActions={
+                <button
+                    type="button"
+                    onClick={() => setShowDonut((v) => !v)}
+                    className={`flex items-center space-x-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors ${
+                        showDonut
+                            ? 'border-sky-200 bg-sky-50 text-sky-600 dark:border-sky-800/60 dark:bg-sky-900/20 dark:text-sky-400'
+                            : 'border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800'
+                    }`}
+                >
+                    <ChartPie className="h-3.5 w-3.5 stroke-[1.5]" />
+                    <span>Biểu đồ</span>
+                </button>
+            }
         >
-            <ReportDonut
-                title="Tỷ trọng doanh thu theo phương thức"
-                data={donutData}
-                formatValue={formatVND}
-            />
-            <ReportTable
-                columns={COLUMNS}
-                rows={filtered}
-                rowKey={(r) => r.id}
-                renderCell={renderCell}
-                defaultSortKey="issued_at"
-                defaultSortDir="desc"
-                emptyTitle="Không có hoá đơn nào trong khoảng thời gian này"
-                emptyHint="Thử mở rộng khoảng ngày hoặc đổi bộ lọc"
-            />
+            <div className="flex min-h-0 flex-1">
+                {showDonut && (
+                    <div className="w-[320px] shrink-0 border-r border-zinc-100 dark:border-zinc-800">
+                        <ReportDonut
+                            title="Tỷ trọng doanh thu theo phương thức"
+                            data={donutData}
+                            formatValue={formatVND}
+                        />
+                    </div>
+                )}
+                <div className="min-w-0 flex-1">
+                    <ReportTable
+                        columns={COLUMNS}
+                        rows={methodFiltered}
+                        rowKey={(r) => r.method}
+                        renderCell={renderCell}
+                        emptyTitle="Không có hoá đơn nào trong khoảng thời gian này"
+                        emptyHint="Thử mở rộng khoảng ngày hoặc đổi bộ lọc"
+                    />
+                </div>
+            </div>
         </ReportPage>
     );
 }
