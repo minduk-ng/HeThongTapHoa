@@ -191,6 +191,16 @@ export default function InvoiceItemsReport({
                             <button
                                 type="button"
                                 onClick={() => toggleCollapse(row.invoice_id)}
+                                title={
+                                    collapsed.has(row.invoice_id)
+                                        ? 'Mở rộng'
+                                        : 'Thu gọn'
+                                }
+                                aria-label={
+                                    collapsed.has(row.invoice_id)
+                                        ? 'Mở rộng'
+                                        : 'Thu gọn'
+                                }
                                 className="rounded p-0.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
                             >
                                 {collapsed.has(row.invoice_id) ? (
@@ -281,6 +291,11 @@ export default function InvoiceItemsReport({
 
     const getExportRows = (visibleKeys: string[]): (string | number)[][] => {
         const nodes = buildNodes(filtered, new Set());
+
+        if (nodes.length === 0) {
+            return [];
+        }
+
         const grandTotal = nodes
             .filter((n) => n.kind === 'root')
             .reduce((s, n) => s + (n.total ?? 0), 0);

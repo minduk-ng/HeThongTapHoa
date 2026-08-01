@@ -152,6 +152,7 @@ export default function PaymentsReport({
         { name: 'Tiền mặt', value: metrics.cash_total },
         { name: 'Chuyển khoản', value: metrics.bank_total },
     ];
+    const hasDonutData = donutData.some((d) => d.value > 0);
 
     const renderCell = (row: MethodRow, key: string) => {
         switch (key) {
@@ -184,6 +185,8 @@ export default function PaymentsReport({
                         return paymentLabel(r.method);
                     case 'total':
                         return r.total;
+                    case 'pct':
+                        return `${r.pct}%`;
                     default:
                         return (
                             (r as unknown as Record<string, string | number>)[
@@ -207,7 +210,7 @@ export default function PaymentsReport({
             onReset={reset}
             searchValue={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Tìm mã HĐ, bàn..."
+            searchPlaceholder="Tìm theo PTTT..."
             extraFilters={
                 <select
                     value={paymentFilter}
@@ -236,7 +239,7 @@ export default function PaymentsReport({
             }
         >
             <div className="flex min-h-0 flex-1">
-                {showDonut && (
+                {showDonut && hasDonutData && (
                     <div className="w-[320px] shrink-0 border-r border-zinc-100 dark:border-zinc-800">
                         <ReportDonut
                             title="Tỷ trọng doanh thu theo phương thức"
