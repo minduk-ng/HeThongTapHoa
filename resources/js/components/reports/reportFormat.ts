@@ -14,7 +14,11 @@ export function formatVND(v: number): string {
     }).format(v);
 }
 
-export function formatDateTime(iso: string): string {
+export function formatDateTime(iso: string | null): string {
+    if (!iso) {
+        return '—';
+    }
+
     return new Date(iso).toLocaleString('vi-VN', {
         hour: '2-digit',
         minute: '2-digit',
