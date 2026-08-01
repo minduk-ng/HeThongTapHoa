@@ -136,7 +136,7 @@ export default function ReportPage({
             );
         } catch {
             setExportError(
-                'Không tải được thư viện xuất Excel — kiểm tra kết nối mạng rồi thử lại.',
+                'Không tải được thư viện xuất Excel (exceljs) — kiểm tra kết nối mạng rồi thử lại.',
             );
         }
     };
