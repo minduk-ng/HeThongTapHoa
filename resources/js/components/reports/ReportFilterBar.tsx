@@ -12,6 +12,7 @@ export interface ReportFilterBarProps {
     onSearchChange: (v: string) => void;
     searchPlaceholder?: string;
     extraFilters?: ReactNode;
+    extraActions?: ReactNode;
     actions?: ReactNode;
 }
 
@@ -24,6 +25,7 @@ export default function ReportFilterBar({
     onSearchChange,
     searchPlaceholder,
     extraFilters,
+    extraActions,
     actions,
 }: ReportFilterBarProps) {
     const handleRange = (start: string | null, end: string | null) => {
@@ -63,8 +65,11 @@ export default function ReportFilterBar({
                     <span>Đặt lại</span>
                 </button>
             </div>
-            {actions && (
-                <div className="flex items-center space-x-2">{actions}</div>
+            {(extraActions || actions) && (
+                <div className="flex items-center space-x-2">
+                    {extraActions}
+                    {actions}
+                </div>
             )}
         </div>
     );

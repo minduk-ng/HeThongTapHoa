@@ -31,6 +31,7 @@ export interface ReportPageProps {
     onSearchChange: (v: string) => void;
     searchPlaceholder?: string;
     extraFilters?: ReactNode;
+    extraActions?: ReactNode;
     getExportRows: (visibleKeys: string[]) => (string | number)[][];
     children: ReactNode;
 }
@@ -49,6 +50,7 @@ export default function ReportPage({
     onSearchChange,
     searchPlaceholder,
     extraFilters,
+    extraActions,
     getExportRows,
     children,
 }: ReportPageProps) {
@@ -284,6 +286,7 @@ export default function ReportPage({
                                 onSearchChange={onSearchChange}
                                 searchPlaceholder={searchPlaceholder}
                                 extraFilters={extraFilters}
+                                extraActions={extraActions}
                                 actions={filterActions}
                             />
                         </div>
