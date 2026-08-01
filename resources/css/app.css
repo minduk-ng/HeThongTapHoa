@@ -257,5 +257,11 @@
         padding: 4px 8px;
         font-size: 11px;
         text-align: left;
+        white-space: nowrap;
+    }
+
+    .print-area thead th {
+        background: #f4f4f5;
+        font-weight: 600;
     }
 }
