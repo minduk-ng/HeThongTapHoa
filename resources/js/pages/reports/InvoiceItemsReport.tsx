@@ -1,4 +1,11 @@
-import { ClipboardList, Hash, ReceiptText, ShoppingBag } from 'lucide-react';
+import {
+    ChevronDown,
+    ChevronRight,
+    ClipboardList,
+    Hash,
+    ReceiptText,
+    ShoppingBag,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import {
@@ -25,6 +32,55 @@ interface ItemRow {
     payment_method: string;
 }
 
+interface TreeNode {
+    kind: 'root' | 'child';
+    invoice_id: number;
+    invoice_code?: string;
+    issued_at?: string;
+    table_name?: string | null;
+    payment_method?: string;
+    total?: number;
+    item?: ItemRow;
+}
+
+function buildNodes(filtered: ItemRow[], collapsed: Set<number>): TreeNode[] {
+    const groups = new Map<number, ItemRow[]>();
+
+    for (const r of filtered) {
+        const g = groups.get(r.invoice_id) ?? [];
+
+        g.push(r);
+        groups.set(r.invoice_id, g);
+    }
+
+    const invoices = [...groups.entries()].sort((a, b) =>
+        b[1][0].issued_at.localeCompare(a[1][0].issued_at),
+    );
+    const nodes: TreeNode[] = [];
+
+    for (const [invoice_id, items] of invoices) {
+        const first = items[0];
+
+        nodes.push({
+            kind: 'root',
+            invoice_id,
+            invoice_code: first.invoice_code,
+            issued_at: first.issued_at,
+            table_name: first.table_name,
+            payment_method: first.payment_method,
+            total: items.reduce((s, it) => s + it.subtotal, 0),
+        });
+
+        if (!collapsed.has(invoice_id)) {
+            for (const it of items) {
+                nodes.push({ kind: 'child', invoice_id, item: it });
+            }
+        }
+    }
+
+    return nodes;
+}
+
 interface Metrics {
     total_amount: number;
     line_count: number;
@@ -40,14 +96,14 @@ interface Props {
 }
 
 const COLUMNS: ReportTableColumn[] = [
-    { key: 'invoice_code', label: 'Mã HĐ' },
-    { key: 'issued_at', label: 'Thời gian' },
-    { key: 'table_name', label: 'Bàn' },
-    { key: 'item_name', label: 'Tên món' },
-    { key: 'quantity', label: 'SL', numeric: true },
-    { key: 'unit_price', label: 'Đơn giá', numeric: true },
-    { key: 'subtotal', label: 'Thành tiền', numeric: true },
-    { key: 'payment_method', label: 'PTTT' },
+    { key: 'invoice_code', label: 'Mã HĐ', sortable: false },
+    { key: 'issued_at', label: 'Thời gian', sortable: false },
+    { key: 'table_name', label: 'Bàn', sortable: false },
+    { key: 'item_name', label: 'Tên món', sortable: false },
+    { key: 'quantity', label: 'SL', numeric: true, sortable: false },
+    { key: 'unit_price', label: 'Đơn giá', numeric: true, sortable: false },
+    { key: 'subtotal', label: 'Thành tiền', numeric: true, sortable: false },
+    { key: 'payment_method', label: 'PTTT', sortable: false },
 ];
 
 export default function InvoiceItemsReport({
@@ -65,6 +121,22 @@ export default function InvoiceItemsReport({
     const [search, setSearch] = useState('');
     const [paymentFilter, setPaymentFilter] = useState('all');
 
+    const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set());
+
+    const toggleCollapse = (invoice_id: number) => {
+        setCollapsed((prev) => {
+            const next = new Set(prev);
+
+            if (next.has(invoice_id)) {
+                next.delete(invoice_id);
+            } else {
+                next.add(invoice_id);
+            }
+
+            return next;
+        });
+    };
+
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
 
@@ -77,6 +149,11 @@ export default function InvoiceItemsReport({
                 (paymentFilter === 'all' || r.payment_method === paymentFilter),
         );
     }, [safeRows, search, paymentFilter]);
+
+    const treeRows = useMemo(
+        () => buildNodes(filtered, collapsed),
+        [filtered, collapsed],
+    );
 
     const metricCards: MetricCard[] = [
         {
@@ -105,56 +182,120 @@ export default function InvoiceItemsReport({
         },
     ];
 
-    const renderCell = (row: ItemRow, key: string) => {
+    const renderCell = (row: TreeNode, key: string) => {
+        if (row.kind === 'root') {
+            switch (key) {
+                case 'invoice_code':
+                    return (
+                        <span className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => toggleCollapse(row.invoice_id)}
+                                className="rounded p-0.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                            >
+                                {collapsed.has(row.invoice_id) ? (
+                                    <ChevronRight className="h-4 w-4" />
+                                ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                )}
+                            </button>
+                            <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                                {row.invoice_code}
+                            </span>
+                        </span>
+                    );
+                case 'issued_at':
+                    return formatDateTime(row.issued_at ?? null);
+                case 'table_name':
+                    return row.table_name ?? '—';
+                case 'payment_method':
+                    return paymentLabel(row.payment_method ?? null);
+                case 'subtotal':
+                    return (
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                            {formatVND(row.total ?? 0)}
+                        </span>
+                    );
+                default:
+                    return '—';
+            }
+        }
+
+        const it = row.item;
+
+        if (!it) {
+            return '—';
+        }
+
         switch (key) {
-            case 'invoice_code':
-                return (
-                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                        {row.invoice_code}
-                    </span>
-                );
-            case 'issued_at':
-                return formatDateTime(row.issued_at);
-            case 'table_name':
-                return row.table_name ?? '—';
             case 'item_name':
-                return row.item_name;
+                return <span className="pl-6">{it.item_name}</span>;
             case 'quantity':
-                return row.quantity;
+                return it.quantity;
             case 'unit_price':
-                return formatVND(row.unit_price);
+                return formatVND(it.unit_price);
             case 'subtotal':
-                return (
-                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                        {formatVND(row.subtotal)}
-                    </span>
-                );
-            case 'payment_method':
-                return paymentLabel(row.payment_method);
+                return formatVND(it.subtotal);
             default:
                 return '—';
         }
     };
 
-    const getExportRows = (visibleKeys: string[]): (string | number)[][] =>
-        filtered.map((r) =>
-            visibleKeys.map((key) => {
-                switch (key) {
-                    case 'issued_at':
-                        return formatDateTime(r.issued_at);
-                    case 'table_name':
-                        return r.table_name ?? '';
-                    case 'payment_method':
-                        return paymentLabel(r.payment_method);
-                    default:
-                        return (
-                            (r as unknown as Record<string, string | number>)[
-                                key
-                            ] ?? ''
-                        );
-                }
-            }),
-        );
+    const cellExport = (row: TreeNode, key: string): string | number => {
+        if (row.kind === 'root') {
+            switch (key) {
+                case 'invoice_code':
+                    return row.invoice_code ?? '';
+                case 'issued_at':
+                    return formatDateTime(row.issued_at ?? null);
+                case 'table_name':
+                    return row.table_name ?? '';
+                case 'payment_method':
+                    return paymentLabel(row.payment_method ?? null);
+                case 'subtotal':
+                    return row.total ?? 0;
+                default:
+                    return '';
+            }
+        }
+
+        const it = row.item;
+
+        if (!it) {
+            return '';
+        }
+
+        switch (key) {
+            case 'item_name':
+                return it.item_name;
+            case 'quantity':
+                return it.quantity;
+            case 'unit_price':
+                return it.unit_price;
+            case 'subtotal':
+                return it.subtotal;
+            default:
+                return '';
+        }
+    };
+
+    const getExportRows = (visibleKeys: string[]): (string | number)[][] => {
+        const nodes = buildNodes(filtered, new Set());
+        const grandTotal = nodes
+            .filter((n) => n.kind === 'root')
+            .reduce((s, n) => s + (n.total ?? 0), 0);
+
+        return [
+            ...nodes.map((n) => visibleKeys.map((k) => cellExport(n, k))),
+            visibleKeys.map((k) =>
+                k === 'invoice_code'
+                    ? 'Tổng cộng'
+                    : k === 'subtotal'
+                      ? grandTotal
+                      : '',
+            ),
+        ];
+    };
 
     return (
         <ReportPage
@@ -185,11 +326,14 @@ export default function InvoiceItemsReport({
         >
             <ReportTable
                 columns={COLUMNS}
-                rows={filtered}
-                rowKey={(r) => r.id}
+                rows={treeRows}
+                rowKey={(row) =>
+                    row.kind === 'root'
+                        ? `inv-${row.invoice_id}`
+                        : `it-${row.item!.id}`
+                }
                 renderCell={renderCell}
-                defaultSortKey="issued_at"
-                defaultSortDir="desc"
+                pagination={false}
                 emptyTitle="Không có dòng món nào trong khoảng thời gian này"
                 emptyHint="Thử mở rộng khoảng ngày hoặc đổi bộ lọc"
             />
