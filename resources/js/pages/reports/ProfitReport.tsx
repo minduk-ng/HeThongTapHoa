@@ -1,5 +1,6 @@
 import {
     AlertTriangle,
+    ChartColumn,
     Coins,
     Percent,
     ReceiptText,
@@ -75,6 +76,7 @@ export default function ProfitReport({
         endDate,
     );
     const [search, setSearch] = useState('');
+    const [showBars, setShowBars] = useState(false);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -167,6 +169,20 @@ export default function ProfitReport({
             onSearchChange={setSearch}
             searchPlaceholder="Tìm tên món..."
             getExportRows={getExportRows}
+            extraActions={
+                <button
+                    type="button"
+                    onClick={() => setShowBars((v) => !v)}
+                    className={`flex items-center space-x-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors ${
+                        showBars
+                            ? 'border-sky-200 bg-sky-50 text-sky-600 dark:border-sky-800/60 dark:bg-sky-900/20 dark:text-sky-400'
+                            : 'border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800'
+                    }`}
+                >
+                    <ChartColumn className="h-3.5 w-3.5 stroke-[1.5]" />
+                    <span>Biểu đồ theo ngày</span>
+                </button>
+            }
         >
             {missing_recipe_count > 0 && (
                 <div className="flex items-center space-x-2 border-b border-amber-200/70 bg-amber-50 px-4 py-2 text-xs text-amber-700 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-400">
@@ -177,10 +193,12 @@ export default function ProfitReport({
                     </span>
                 </div>
             )}
-            <ReportDailyBars
-                title="Doanh thu & lợi nhuận theo ngày"
-                data={safeDaily}
-            />
+            {showBars && (
+                <ReportDailyBars
+                    title="Doanh thu & lợi nhuận theo ngày"
+                    data={safeDaily}
+                />
+            )}
             <ReportTable
                 columns={COLUMNS}
                 rows={filtered}
