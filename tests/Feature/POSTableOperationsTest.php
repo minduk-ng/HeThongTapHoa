@@ -281,6 +281,38 @@ test('hủy toàn bộ đơn của nhóm bàn: món và đơn cancelled kèm lý
     expect(OrderActivity::where('action', 'order_cancelled')->count())->toBe(2);
 });
 
+test('hủy toàn bộ đơn chỉ hoàn kho cho món completed, không hoàn món pending', function () {
+    $this->actingAs(posAdmin());
+
+    $table = posTable(['status' => 'occupied']);
+    $item = posMenuItem();
+    $ingredient = App\Models\Ingredient::create([
+        'name' => 'Nguyên liệu hủy POS '.uniqid(),
+        'unit' => 'g',
+        'stock_quantity' => 940,
+    ]);
+    App\Models\ProductRecipe::create([
+        'menu_item_id' => $item->id,
+        'ingredient_id' => $ingredient->id,
+        'amount' => 20,
+        'unit' => 'g',
+    ]);
+    $order = posOrder($table, [
+        ['item' => $item, 'qty' => 3, 'status' => 'completed'],
+        ['item' => $item, 'qty' => 2, 'status' => 'pending'],
+    ]);
+
+    $this->post('/staff/pos/cancel-order', [
+        'table_id' => $table->id,
+        'cancellation_reason' => 'Khách bỏ về',
+    ])->assertSessionHasNoErrors();
+
+    expect((float) $ingredient->fresh()->stock_quantity)->toBe(1000.0);
+    expect((float) App\Models\InventoryTransaction::where('ingredient_id', $ingredient->id)->where('type', 'import')->value('quantity'))->toBe(60.0);
+    expect($order->fresh()->status)->toBe('cancelled');
+    expect($order->fresh()->items->pluck('status')->unique()->all())->toBe(['cancelled']);
+});
+
 test('hủy đơn ở bàn không có đơn hoạt động trả về lỗi rõ ràng', function () {
     $this->actingAs(posAdmin());
     $table = posTable(['status' => 'available']);

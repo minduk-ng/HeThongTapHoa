@@ -63,6 +63,12 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 21,
             ],
             [
+                'name' => 'Khuyến mãi',
+                'route_path' => '/manager/promotions',
+                'group_name' => 'Quản lý',
+                'sort_order' => 22,
+            ],
+            [
                 'name' => 'Nguyên liệu',
                 'route_path' => '/manager/inventory/ingredients',
                 'group_name' => 'Quản lý',
@@ -140,6 +146,12 @@ class AuthorizationSeeder extends Seeder
                 'group_name' => 'Nhân viên',
                 'sort_order' => 32,
             ],
+            [
+                'name' => 'Ca làm việc',
+                'route_path' => '/staff/shifts',
+                'group_name' => 'Nhân viên',
+                'sort_order' => 33,
+            ],
         ];
 
         foreach ($pages as $page) {
@@ -171,12 +183,14 @@ class AuthorizationSeeder extends Seeder
             'users.view', 'users.edit',
             'products.view', 'products.create', 'products.edit', 'products.delete', 'products.import', 'products.export',
             'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
+            'promotions.view', 'promotions.create', 'promotions.edit', 'promotions.delete',
             'ingredients.view', 'ingredients.create', 'ingredients.edit', 'ingredients.delete', 'ingredients.import',
             'recipes.view', 'recipes.edit',
             'tables.view', 'tables.create', 'tables.edit', 'tables.delete',
             'pos.view', 'pos.create', 'pos.bypass_kitchen_lock', 'pos.cancel_item',
             'kitchen.view', 'kitchen.update', 'kitchen.cancel_item',
             'serving.view', 'serving.update',
+            'shifts.open', 'shifts.view', 'shifts.close',
             'orders.view',
             'dashboard.view',
             'reports.view',

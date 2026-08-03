@@ -28,6 +28,8 @@ export function usePOSCheckout(
     const [processingOrders, setProcessingOrders] = useState<Record<number, boolean>>({});
     const [kitchenSubmitting, setKitchenSubmitting] = useState(false);
     const [isPaymentDrawerOpen, setIsPaymentDrawerOpen] = useState(false);
+    const [promotionCode, setPromotionCode] = useState<string | null>(null);
+    const [promotionDiscount, setPromotionDiscount] = useState(0);
 
     const submitting = kitchenSubmitting || (selectedTable
         ? (() => {
@@ -47,8 +49,14 @@ export function usePOSCheckout(
 
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    const clearPromotion = () => {
+        setPromotionCode(null);
+        setPromotionDiscount(0);
+    };
+
     const togglePaymentDrawer = (open: boolean) => {
         setIsPaymentDrawerOpen(open);
+        if (!open) clearPromotion();
         if (selectedTable) {
             const groupId = selectedTable.merged_into_table_id || selectedTable.id;
             const linkedTableIds = tables
@@ -171,6 +179,44 @@ export function usePOSCheckout(
         });
     };
 
+    const applyPromotion = async (
+        code: string,
+        subtotal: number
+    ): Promise<{ ok: boolean; discount_amount?: number; total?: number; error?: string }> => {
+        const csrfToken = getCsrfTokenFromCookie();
+
+        try {
+            const response = await fetch('/staff/pos/validate-promotion', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-XSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({ code, subtotal }),
+            });
+            const data = await response.json().catch(() => ({}));
+
+            if (response.ok && data.ok) {
+                setPromotionCode(code);
+                setPromotionDiscount(data.discount_amount || 0);
+                return {
+                    ok: true,
+                    discount_amount: data.discount_amount,
+                    total: data.total,
+                };
+            }
+
+            return {
+                ok: false,
+                error: data.error || 'Mã khuyến mãi không hợp lệ.',
+            };
+        } catch {
+            return { ok: false, error: 'Không thể kết nối máy chủ.' };
+        }
+    };
+
     const handleConfirmPayment = (
         selectedTable: POSTableData | null,
         currentCart: CartItem[],
@@ -228,6 +274,7 @@ export function usePOSCheckout(
             payment_method: paymentMethod,
             amount_received: amountReceived,
             change_amount: changeAmount,
+            ...(promotionCode ? { promotion_code: promotionCode } : {}),
             idempotency_key: idempotencyKey,
         };
 
@@ -289,6 +336,7 @@ export function usePOSCheckout(
                             invoiceCode,
                             depositAmount: matchedOrderObj?.deposit_total || 0,
                             depositRefund: data.deposit_refund || 0,
+                            promotionDiscount: promotionDiscount || 0,
                         });
                     }
                 } else {
@@ -342,6 +390,7 @@ export function usePOSCheckout(
                 payment_method: paymentMethod,
                 amount_received: amountReceived,
                 change_amount: changeAmount,
+                ...(promotionCode ? { promotion_code: promotionCode } : {}),
                 idempotency_key: idempotencyKey,
             }),
         })
@@ -366,6 +415,10 @@ export function usePOSCheckout(
         submitting,
         isPaymentDrawerOpen,
         setIsPaymentDrawerOpen: togglePaymentDrawer,
+        promotionCode,
+        promotionDiscount,
+        applyPromotion,
+        clearPromotion,
         lockedCheckoutTables,
         receiptModal,
         setReceiptModal,

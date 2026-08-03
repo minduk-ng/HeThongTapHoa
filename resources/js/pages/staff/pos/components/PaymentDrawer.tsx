@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Banknote, QrCode, X, Printer, CalendarClock } from 'lucide-react';
+import { Banknote, QrCode, X, Printer, CalendarClock, Tag, Ticket } from 'lucide-react';
 import { POSTableData, CartItem, ReservationDraft } from '../types/pos.types';
 
 interface PaymentDrawerProps {
@@ -11,6 +11,9 @@ interface PaymentDrawerProps {
     orderCodes?: string[];
     depositTotal?: number;
     reservationDraft?: ReservationDraft | null;
+    promotionDiscount?: number;
+    onApplyPromotion?: (code: string, subtotal: number) => Promise<{ ok: boolean; discount_amount?: number; total?: number; error?: string }>;
+    onClearPromotion?: () => void;
     onConfirmPayment: (paymentMethod: 'cash' | 'bank_transfer', amountReceived: number, changeAmount: number, shouldPrint: boolean) => void;
     onConfirmDeposit?: (amount: number, method: 'cash' | 'bank_transfer') => void;
     onConfirmReservation?: (deposit: { amount: number; method: 'cash' | 'bank_transfer' } | null) => void;
@@ -26,6 +29,9 @@ export default function PaymentDrawer({
     orderCodes = [],
     depositTotal = 0,
     reservationDraft,
+    promotionDiscount = 0,
+    onApplyPromotion,
+    onClearPromotion,
     onConfirmPayment,
     onConfirmDeposit,
     onConfirmReservation,
@@ -40,15 +46,21 @@ export default function PaymentDrawer({
     }, 0);
     const totalAmount = subtotal;
 
-    const payable = Math.max(0, totalAmount - depositTotal);
-    const depositRefund = Math.max(0, depositTotal - totalAmount);
+    const discountedTotal = Math.max(0, totalAmount - promotionDiscount);
+    const payable = Math.max(0, discountedTotal - depositTotal);
+    const depositRefund = Math.max(0, depositTotal - discountedTotal);
 
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer'>('cash');
     const [amountReceived, setAmountReceived] = useState<number>(mode === 'payment' ? payable : (mode === 'deposit' ? totalAmount : 0));
+    const [promotionInput, setPromotionInput] = useState('');
+    const [promotionError, setPromotionError] = useState<string | null>(null);
+    const [promotionLoading, setPromotionLoading] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setPaymentMethod('cash');
+            setPromotionInput('');
+            setPromotionError(null);
             if (mode === 'payment') {
                 setAmountReceived(payable);
             } else if (mode === 'deposit') {
@@ -76,6 +88,19 @@ export default function PaymentDrawer({
 
     const cashPresets = mode === 'payment' ? calculatePresets(payable) : [100000, 200000, 500000, totalAmount];
     const changeAmount = mode === 'payment' ? Math.max(0, amountReceived - payable) + depositRefund : 0;
+
+    const handlePromotion = async () => {
+        const code = promotionInput.trim();
+        if (!code || !onApplyPromotion || promotionLoading) return;
+
+        setPromotionLoading(true);
+        setPromotionError(null);
+        const result = await onApplyPromotion(code, totalAmount);
+        if (!result.ok) {
+            setPromotionError(result.error || 'Mã khuyến mãi không hợp lệ.');
+        }
+        setPromotionLoading(false);
+    };
 
     const handleConfirm = (shouldPrint: boolean) => {
         if (mode === 'payment') {
@@ -198,6 +223,34 @@ export default function PaymentDrawer({
                                 </div>
                             )}
 
+                            {mode === 'payment' && onApplyPromotion && (
+                                <div className="space-y-2 rounded-2xl border border-zinc-200 p-3 dark:border-zinc-800">
+                                    <div className="flex items-center gap-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                        <Ticket className="h-4 w-4 text-sky-600 stroke-[1.5]" />
+                                        Mã khuyến mãi
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input
+                                            value={promotionInput}
+                                            onChange={(event) => setPromotionInput(event.target.value.toUpperCase())}
+                                            disabled={promotionDiscount > 0}
+                                            placeholder="Nhập mã…"
+                                            className="min-w-0 flex-1 rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-semibold uppercase outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800"
+                                        />
+                                        {promotionDiscount > 0 ? (
+                                            <button type="button" onClick={() => { onClearPromotion?.(); setPromotionInput(''); setPromotionError(null); }} className="rounded-xl border border-zinc-300 px-3 py-2 text-xs font-semibold dark:border-zinc-700">
+                                                Hủy mã
+                                            </button>
+                                        ) : (
+                                            <button type="button" onClick={handlePromotion} disabled={promotionLoading || promotionInput.trim() === ''} className="rounded-xl bg-sky-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
+                                                {promotionLoading ? 'Đang áp…' : 'Áp dụng'}
+                                            </button>
+                                        )}
+                                    </div>
+                                    {promotionError && <p className="text-xs text-rose-500">{promotionError}</p>}
+                                </div>
+                            )}
+
                             {mode !== 'reservation' && (
                                 <div className="bg-sky-50/60 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-900/60 rounded-2xl p-4 space-y-2">
                                     <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
@@ -208,6 +261,12 @@ export default function PaymentDrawer({
                                         <span>Thuế VAT:</span>
                                         <span className="font-semibold tabular-nums">{vatTotal.toLocaleString('vi-VN')} đ</span>
                                     </div>
+                                    {mode === 'payment' && promotionDiscount > 0 && (
+                                        <div className="flex justify-between border-t border-sky-200/60 pt-2 text-xs font-semibold text-rose-600 dark:border-sky-800/60 dark:text-rose-400">
+                                            <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5 stroke-[1.5]" />Giảm giá:</span>
+                                            <span className="tabular-nums">−{promotionDiscount.toLocaleString('vi-VN')} đ</span>
+                                        </div>
+                                    )}
                                     {mode === 'payment' && depositTotal > 0 && (
                                         <div className="flex justify-between text-xs text-violet-600 dark:text-violet-400 font-semibold border-t border-sky-200/60 dark:border-sky-800/60 pt-2">
                                             <span>Đã đặt cọc:</span>

@@ -348,7 +348,7 @@ export default function InvoiceItemsReport({
                         : `it-${row.item!.id}`
                 }
                 renderCell={renderCell}
-                pagination={false}
+                groupStart={(row) => row.kind === 'root'}
                 emptyTitle="Không có dòng món nào trong khoảng thời gian này"
                 emptyHint="Thử mở rộng khoảng ngày hoặc đổi bộ lọc"
             />

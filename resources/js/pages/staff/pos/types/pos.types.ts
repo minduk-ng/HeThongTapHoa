@@ -98,6 +98,7 @@ export interface ReceiptModalState {
     invoiceCode?: string;
     depositAmount?: number;
     depositRefund?: number;
+    promotionDiscount?: number;
 }
 
 export interface ServingItem {

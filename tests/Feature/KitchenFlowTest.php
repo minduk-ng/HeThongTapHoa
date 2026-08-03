@@ -187,6 +187,142 @@ test('hủy món đã cancelled lần nữa không gây lỗi và không đổi 
     expect($orderItem->fresh()->cancellation_reason)->toBe('Lý do gốc');
 });
 
+test('bếp hủy món đã completed thì hoàn kho đúng công thức và ghi transaction import', function () {
+    $this->actingAs(posAdmin());
+
+    $table = posTable(['status' => 'occupied']);
+    $item = posMenuItem();
+    $coffee = App\Models\Ingredient::create([
+        'name' => 'Cà phê hoàn kho '.uniqid(),
+        'unit' => 'g',
+        'stock_quantity' => 940,
+    ]);
+    App\Models\ProductRecipe::create([
+        'menu_item_id' => $item->id,
+        'ingredient_id' => $coffee->id,
+        'amount' => 20,
+        'unit' => 'g',
+    ]);
+    $order = posOrder($table, [[
+        'item' => $item,
+        'qty' => 3,
+        'status' => 'completed',
+    ]]);
+
+    $this->post('/staff/kitchen/cancel-item', [
+        'order_item_id' => $order->items->first()->id,
+        'cancellation_reason' => 'Khách hủy',
+    ])->assertSessionHasNoErrors();
+
+    expect($order->items->first()->fresh()->status)->toBe('cancelled');
+    expect((float) $coffee->fresh()->stock_quantity)->toBe(1000.0);
+
+    $tx = App\Models\InventoryTransaction::query()
+        ->where('ingredient_id', $coffee->id)
+        ->where('type', 'import')
+        ->first();
+
+    expect($tx)->not->toBeNull();
+    expect((float) $tx->quantity)->toBe(60.0);
+    expect($tx->reason)->toBe("Hoàn kho do hủy món {$order->order_code}");
+});
+
+test('bếp hủy món pending thì không đổi kho và không ghi transaction import', function () {
+    $this->actingAs(posAdmin());
+
+    $table = posTable(['status' => 'occupied']);
+    $item = posMenuItem();
+    $milk = App\Models\Ingredient::create([
+        'name' => 'Sữa pending '.uniqid(),
+        'unit' => 'ml',
+        'stock_quantity' => 500,
+    ]);
+    App\Models\ProductRecipe::create([
+        'menu_item_id' => $item->id,
+        'ingredient_id' => $milk->id,
+        'amount' => 100,
+        'unit' => 'ml',
+    ]);
+    $order = posOrder($table, [[
+        'item' => $item,
+        'qty' => 2,
+        'status' => 'pending',
+    ]]);
+
+    $this->post('/staff/kitchen/cancel-item', [
+        'order_item_id' => $order->items->first()->id,
+        'cancellation_reason' => 'Hết nguyên liệu',
+    ])->assertSessionHasNoErrors();
+
+    expect((float) $milk->fresh()->stock_quantity)->toBe(500.0);
+    expect(App\Models\InventoryTransaction::where('ingredient_id', $milk->id)->where('type', 'import')->count())->toBe(0);
+});
+
+test('bếp hủy món completed lần hai không hoàn kho thêm', function () {
+    $this->actingAs(posAdmin());
+
+    $table = posTable(['status' => 'occupied']);
+    $item = posMenuItem();
+    $sugar = App\Models\Ingredient::create([
+        'name' => 'Đường idempotent '.uniqid(),
+        'unit' => 'g',
+        'stock_quantity' => 90,
+    ]);
+    App\Models\ProductRecipe::create([
+        'menu_item_id' => $item->id,
+        'ingredient_id' => $sugar->id,
+        'amount' => 10,
+        'unit' => 'g',
+    ]);
+    $order = posOrder($table, [[
+        'item' => $item,
+        'qty' => 1,
+        'status' => 'completed',
+    ]]);
+    $payload = [
+        'order_item_id' => $order->items->first()->id,
+        'cancellation_reason' => 'Khách hủy',
+    ];
+
+    $this->post('/staff/kitchen/cancel-item', $payload)->assertSessionHasNoErrors();
+    $this->post('/staff/kitchen/cancel-item', $payload)->assertSessionHasNoErrors();
+
+    expect((float) $sugar->fresh()->stock_quantity)->toBe(100.0);
+    expect(App\Models\InventoryTransaction::where('ingredient_id', $sugar->id)->where('type', 'import')->count())->toBe(1);
+});
+
+test('hủy món completed vẫn an toàn khi ingredient và recipe đã bị xóa', function () {
+    $this->actingAs(posAdmin());
+
+    $table = posTable(['status' => 'occupied']);
+    $item = posMenuItem();
+    $ingredient = App\Models\Ingredient::create([
+        'name' => 'N.Lieu bi xoa '.uniqid(),
+        'unit' => 'g',
+        'stock_quantity' => 100,
+    ]);
+    App\Models\ProductRecipe::create([
+        'menu_item_id' => $item->id,
+        'ingredient_id' => $ingredient->id,
+        'amount' => 20,
+        'unit' => 'g',
+    ]);
+    $ingredient->delete();
+    $order = posOrder($table, [[
+        'item' => $item,
+        'qty' => 1,
+        'status' => 'completed',
+    ]]);
+
+    $this->post('/staff/kitchen/cancel-item', [
+        'order_item_id' => $order->items->first()->id,
+        'cancellation_reason' => 'Khách hủy',
+    ])->assertSessionHasNoErrors();
+
+    expect($order->items->first()->fresh()->status)->toBe('cancelled');
+    expect(App\Models\InventoryTransaction::where('type', 'import')->count())->toBe(0);
+});
+
 test('nhân viên không có quyền kitchen.update bị chặn hoàn tất món (403)', function () {
     $staff = posStaff(['kitchen.view'], ['/staff/kitchen']);
     $this->actingAs($staff);

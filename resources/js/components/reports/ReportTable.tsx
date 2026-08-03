@@ -23,6 +23,7 @@ export interface ReportTableProps<T> {
     defaultSortKey?: string;
     defaultSortDir?: 'asc' | 'desc';
     pagination?: boolean;
+    groupStart?: (row: T) => boolean;
     emptyTitle?: string;
     emptyHint?: string;
 }
@@ -41,6 +42,7 @@ export default function ReportTable<T>({
     defaultSortKey,
     defaultSortDir = 'desc',
     pagination = true,
+    groupStart,
     emptyTitle = 'Không có dữ liệu',
     emptyHint = 'Thử đổi khoảng ngày hoặc bộ lọc',
 }: ReportTableProps<T>) {
@@ -134,10 +136,38 @@ export default function ReportTable<T>({
         return sorted;
     }, [rows, sortKey, sortDir, columns]);
 
-    const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+    const groups = useMemo(() => {
+        if (!groupStart) {
+            return null;
+        }
+
+        const out: T[][] = [];
+        let cur: T[] | null = null;
+
+        for (const r of sortedRows) {
+            if (groupStart(r) || cur === null) {
+                cur = [r];
+                out.push(cur);
+            } else {
+                cur.push(r);
+            }
+        }
+
+        return out;
+    }, [sortedRows, groupStart]);
+
+    // Phân trang theo nhóm cha (groupStart): page size đếm số nhóm, cắt nguyên nhóm.
+    const groupCount = groups?.length ?? 0;
+    const totalPages = groupStart
+        ? Math.max(1, Math.ceil(groupCount / pageSize))
+        : Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const safePage = Math.min(Math.max(1, currentPage), totalPages);
     const pageRows = pagination
-        ? sortedRows.slice((safePage - 1) * pageSize, safePage * pageSize)
+        ? groupStart
+            ? (groups
+                  ?.slice((safePage - 1) * pageSize, safePage * pageSize)
+                  .flat() ?? [])
+            : sortedRows.slice((safePage - 1) * pageSize, safePage * pageSize)
         : sortedRows;
 
     const handleSort = (key: string) => {
@@ -251,7 +281,9 @@ export default function ReportTable<T>({
             <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-3 dark:border-zinc-800">
                 <div className="flex items-center space-x-3">
                     <span className="text-xs text-zinc-500 tabular-nums dark:text-zinc-400">
-                        {sortedRows.length} bản ghi
+                        {groupStart
+                            ? `${groupCount} hoá đơn / ${sortedRows.length} dòng`
+                            : `${sortedRows.length} bản ghi`}
                     </span>
                     <button
                         type="button"

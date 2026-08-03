@@ -13,6 +13,11 @@ export default defineConfig({
             host: 'localhost',
         },
     },
+    optimizeDeps: {
+        // ponytail: exceljs (5MB UMD) pre-bundle từ lúc khởi động, tránh 504
+        // khi `import('exceljs')` lần đầu kích hoạt optimize on-the-fly ở dev.
+        include: ['exceljs'],
+    },
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],

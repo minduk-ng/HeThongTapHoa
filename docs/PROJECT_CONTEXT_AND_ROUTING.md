@@ -94,7 +94,7 @@
 - `ReportDailyBars.tsx`: Biểu đồ cột Recharts hiển thị so sánh doanh thu & lợi nhuận theo ngày.
 
 ### 2.6 Shared Components Dùng Chung (`resources/js/components`)
-- **`resources/js/components/DatePicker.tsx`**: DatePicker dùng chung (mode `single`/`range`, controlled, wire `Y-m-d`, hiển thị `dd/mm/yyyy`, segmented input dd/mm/yyyy, nhảy nhanh tháng/năm, hỗ trợ min/max + dark mode). Helpers: `resources/js/utils/date.ts`. Spec: `docs/superpowers/specs/2026-07-31-date-picker-design.md`.
+- **`resources/js/components/DatePicker.tsx`**: DatePicker dùng chung (mode `single`/`range`, controlled, wire `Y-m-d`, hiển thị `dd/mm/yyyy`, segmented input dd/mm/yyyy, nhảy nhanh tháng/năm, hỗ trợ min/max + dark mode). Helpers: `resources/js/utils/date.ts`. Spec: `docs/superpowers/specs/2026-07-31-date-picker-design.md`. Ứng dụng trong PromotionFormDrawer (mode `single`; ngày bắt đầu 00:00, ngày kết thúc 23:59:59).
 
 ---
 
