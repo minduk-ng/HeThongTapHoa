@@ -16,6 +16,7 @@ class PaymentsReportController extends Controller
         $endDate = $request->input('end_date', today()->toDateString());
 
         $rows = Invoice::query()
+            ->with(['orders' => fn ($q) => $q->select('invoice_id', 'subtotal', 'discount_amount')])
             ->whereBetween('issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
             ->orderByDesc('issued_at')
             ->get()
@@ -29,9 +30,15 @@ class PaymentsReportController extends Controller
                 'total_amount' => (float) $i->total_amount,
                 'amount_received' => (float) $i->amount_received,
                 'change_amount' => (float) $i->change_amount,
+                'gross_amount' => (float) $i->orders->sum('subtotal'),
+                'discount_amount' => (float) $i->orders->sum('discount_amount'),
             ]);
 
         $revenue = (float) $rows->sum('total_amount');
+
+        $grossRevenue = (float) $rows->sum('gross_amount');
+        $totalDiscount = (float) $rows->sum('discount_amount');
+        $discountedCount = (int) $rows->where('discount_amount', '>', 0)->count();
 
         // Kỳ liền trước cùng độ dài.
         $start = Carbon::parse($startDate);
@@ -52,6 +59,9 @@ class PaymentsReportController extends Controller
                 'cash_total' => (float) $rows->where('payment_method', 'cash')->sum('total_amount'),
                 'bank_total' => (float) $rows->where('payment_method', 'bank_transfer')->sum('total_amount'),
                 'invoice_count' => $rows->count(),
+                'gross_revenue' => $grossRevenue,
+                'total_discount' => $totalDiscount,
+                'discounted_invoice_count' => $discountedCount,
             ],
             'comparison' => [
                 'prev_revenue' => $prevRevenue,

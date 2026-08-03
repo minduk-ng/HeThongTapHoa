@@ -3,6 +3,7 @@
 namespace Tests\Feature\Reports;
 
 use App\Models\Invoice;
+use App\Models\Order;
 use App\Models\User;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,6 +41,18 @@ class PaymentsReportTest extends TestCase
         $invoice->forceFill(['issued_at' => $issuedAt])->save();
     }
 
+    private function makeOrder(Invoice $invoice, float $subtotal, float $discount): void
+    {
+        Order::create([
+            'order_code' => 'V-'.strtoupper(uniqid()),
+            'invoice_id' => $invoice->id,
+            'status' => 'paid',
+            'subtotal' => $subtotal,
+            'discount_amount' => $discount,
+            'total' => $subtotal - $discount,
+        ]);
+    }
+
     public function test_unauthorized_user_cannot_access()
     {
         $this->actingAs(User::factory()->create())
@@ -75,6 +88,43 @@ class PaymentsReportTest extends TestCase
             ->get('/reports/payments?start_date=2026-07-01&end_date=2026-07-31')
             ->assertInertia(fn ($page) => $page
                 ->where('comparison.change_pct', null)
+            );
+    }
+
+    public function test_discount_metrics()
+    {
+        $inv1 = Invoice::create([
+            'invoice_code' => 'NG1',
+            'table_name' => 'B1',
+            'payment_method' => 'cash',
+            'amount_received' => 90000,
+            'change_amount' => 0,
+            'total_amount' => 90000,
+            'deposit_amount' => 0,
+        ]);
+        $inv1->forceFill(['issued_at' => '2026-07-10 10:00:00'])->save();
+        $this->makeOrder($inv1, 100000, 10000);
+
+        $inv2 = Invoice::create([
+            'invoice_code' => 'HD2',
+            'table_name' => 'B1',
+            'payment_method' => 'bank_transfer',
+            'amount_received' => 50000,
+            'change_amount' => 0,
+            'total_amount' => 50000,
+            'deposit_amount' => 0,
+        ]);
+        $inv2->forceFill(['issued_at' => '2026-07-11 10:00:00'])->save();
+        $this->makeOrder($inv2, 50000, 0);
+
+        $this->actingAs($this->adminUser())
+            ->get('/reports/payments?start_date=2026-07-01&end_date=2026-07-31')
+            ->assertInertia(fn ($page) => $page
+                ->component('reports/PaymentsReport')
+                ->where('metrics.revenue', 140000)
+                ->where('metrics.gross_revenue', 150000)
+                ->where('metrics.total_discount', 10000)
+                ->where('metrics.discounted_invoice_count', 1)
             );
     }
 }
