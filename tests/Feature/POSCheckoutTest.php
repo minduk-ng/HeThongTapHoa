@@ -294,3 +294,65 @@ test('tổng tiền hóa đơn không tính món đã hủy', function () {
 
     expect((float) Invoice::firstOrFail()->total_amount)->toBe(60000.0);
 });
+
+test('checkout item scope ghi discount vao dung dong va cac dong khac bang 0', function () {
+    $this->actingAs(posAdmin());
+    $cat = \App\Models\MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
+    $itemA = posMenuItem(['category_id' => $cat->id, 'price' => 100000]);
+    $itemB = posMenuItem(['category_id' => $cat->id, 'price' => 300000]);
+    $promo = \App\Models\Promotion::create([
+        'code' => 'ITEM10', 'name' => 'Mon 10%', 'discount_type' => 'percentage',
+        'discount_value' => 10, 'target_type' => 'item', 'target_value' => $itemA->id,
+    ]);
+    $table = posTable(['status' => 'occupied']);
+    $order = posOrder($table, [
+        ['item' => $itemA, 'qty' => 1, 'price' => 100000, 'status' => 'completed'],
+        ['item' => $itemB, 'qty' => 1, 'price' => 300000, 'status' => 'completed'],
+    ], ['status' => 'completed']);
+
+    $this->post('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 390000,
+        'change_amount' => 0,
+        'promotion_code' => $promo->code,
+    ])->assertSessionHasNoErrors();
+
+    $order->refresh();
+    expect((float) $order->discount_amount)->toBe(10000.0);
+
+    $items = $order->items->keyBy('menu_item_id');
+    expect((float) $items[$itemA->id]->discount_amount)->toBe(10000.0);
+    expect((float) $items[$itemB->id]->discount_amount)->toBe(0.0);
+});
+
+test('checkout order scope phan bo discount xuong cac dong theo ty trong, dong cuoi nhan phan du', function () {
+    $this->actingAs(posAdmin());
+    $cat = \App\Models\MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
+    $itemA = posMenuItem(['category_id' => $cat->id, 'price' => 100000]);
+    $itemB = posMenuItem(['category_id' => $cat->id, 'price' => 300000]);
+    $promo = \App\Models\Promotion::create([
+        'code' => 'ORD10', 'name' => 'Toan don 10%', 'discount_type' => 'percentage',
+        'discount_value' => 10, 'target_type' => 'order',
+    ]);
+    $table = posTable(['status' => 'occupied']);
+    $order = posOrder($table, [
+        ['item' => $itemA, 'qty' => 1, 'price' => 100000, 'status' => 'completed'],
+        ['item' => $itemB, 'qty' => 1, 'price' => 300000, 'status' => 'completed'],
+    ], ['status' => 'completed']);
+
+    $this->post('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 360000,
+        'change_amount' => 0,
+        'promotion_code' => $promo->code,
+    ])->assertSessionHasNoErrors();
+
+    $order->refresh();
+    expect((float) $order->discount_amount)->toBe(40000.0);
+
+    $items = $order->items->keyBy('menu_item_id');
+    expect((float) $items[$itemA->id]->discount_amount)->toBe(10000.0);
+    expect((float) $items[$itemB->id]->discount_amount)->toBe(30000.0);
+});

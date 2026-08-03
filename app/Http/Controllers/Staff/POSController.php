@@ -713,9 +713,34 @@ class POSController extends Controller
         $validated = $request->validate([
             'code' => 'required|string|max:50',
             'subtotal' => 'required|numeric|min:0',
+            'items' => 'nullable|array',
+            'items.*.menu_item_id' => 'required_with:items|integer|exists:menu_items,id',
+            'items.*.quantity' => 'required_with:items|integer|min:1',
+            'items.*.unit_price' => 'required_with:items|numeric|min:0',
         ]);
 
-        $resolved = $this->resolvePromotion($validated['code'], (float) $validated['subtotal']);
+        $lines = collect($validated['items'] ?? [])->map(function ($it) {
+            $mi = MenuItem::find($it['menu_item_id']);
+
+            return [
+                'order_item_id' => null,
+                'menu_item_id' => (int) $it['menu_item_id'],
+                'subtotal' => (float) $it['quantity'] * (float) $it['unit_price'],
+                'category_id' => $mi?->category_id,
+            ];
+        });
+
+        if ($lines->isEmpty()) {
+            // Fallback: không có items — coi toàn bộ subtotal là 1 dòng order scope.
+            $lines = collect([[
+                'order_item_id' => null,
+                'menu_item_id' => null,
+                'subtotal' => (float) $validated['subtotal'],
+                'category_id' => null,
+            ]]);
+        }
+
+        $resolved = $this->resolvePromotion($validated['code'], $lines, (float) $validated['subtotal']);
 
         if (! $resolved) {
             return response()->json([
@@ -760,7 +785,7 @@ class POSController extends Controller
             $order = null;
             $totalAmount = 0;
             $result = DB::transaction(function () use ($validated, $request, &$order, &$totalAmount) {
-                $order = Order::with('items')->lockForUpdate()->findOrFail($validated['order_id']);
+                $order = Order::with(['items.menuItem'])->lockForUpdate()->findOrFail($validated['order_id']);
 
                 if (in_array($order->status, ['paid', 'cancelled'])) {
                     throw new \Exception('Đơn hàng này đã được thanh toán hoặc đã hủy.');
@@ -803,10 +828,11 @@ class POSController extends Controller
                     return (float) $item->quantity * (float) $item->unit_price;
                 });
 
+                $activeItems = $order->items->where('status', '!=', 'cancelled');
                 $discountAmount = 0.0;
                 $promotion = null;
                 if (! empty($validated['promotion_code'])) {
-                    $resolved = $this->resolvePromotion($validated['promotion_code'], $subtotal, true);
+                    $resolved = $this->resolvePromotion($validated['promotion_code'], $this->orderLines($activeItems), $subtotal, true);
                     if (! $resolved) {
                         throw new \Exception('Mã khuyến mãi không hợp lệ hoặc đã hết hạn.');
                     }
@@ -821,6 +847,13 @@ class POSController extends Controller
                     'discount_amount' => $discountAmount,
                     'total' => $totalAmount,
                 ]);
+
+                if ($promotion && $discountAmount > 0) {
+                    $alloc = Promotion::allocateLineDiscounts($promotion, $this->orderLines($activeItems), $discountAmount);
+                    foreach ($alloc as $orderItemId => $discount) {
+                        OrderItem::where('id', $orderItemId)->update(['discount_amount' => $discount]);
+                    }
+                }
 
                 $depositTotal = (float) $order->deposits()->where('status', 'held')->sum('amount');
                 $payable = max(0, $totalAmount - $depositTotal);
@@ -967,7 +1000,7 @@ class POSController extends Controller
             $orders = collect();
 
             $result = DB::transaction(function () use ($validated, $request, &$invoice, &$totalAmount, &$orders) {
-                $orders = Order::with('items')->whereIn('id', $validated['order_ids'])->lockForUpdate()->get();
+                $orders = Order::with(['items.menuItem'])->whereIn('id', $validated['order_ids'])->lockForUpdate()->get();
 
                 if ($orders->count() !== count($validated['order_ids'])) {
                     throw new \Exception('Một số đơn hàng không tồn tại.');
@@ -1001,10 +1034,14 @@ class POSController extends Controller
                     });
                 });
 
+                $grandLines = $orders->flatMap(function ($ord) {
+                    return $this->orderLines($ord->items->where('status', '!=', 'cancelled'));
+                });
+
                 $discountAmount = 0.0;
                 $promotion = null;
                 if (! empty($validated['promotion_code'])) {
-                    $resolved = $this->resolvePromotion($validated['promotion_code'], $grandSubtotal, true);
+                    $resolved = $this->resolvePromotion($validated['promotion_code'], $grandLines, $grandSubtotal, true);
                     if (! $resolved) {
                         throw new \Exception('Mã khuyến mãi không hợp lệ hoặc đã hết hạn.');
                     }
@@ -1078,6 +1115,14 @@ class POSController extends Controller
                         'discount_amount' => $orderDiscount,
                         'total' => $orderTotal,
                     ]);
+
+                    if ($promotion && $orderDiscount > 0) {
+                        $orderActiveItems = $ord->items->where('status', '!=', 'cancelled');
+                        $alloc = Promotion::allocateLineDiscounts($promotion, $this->orderLines($orderActiveItems), $orderDiscount);
+                        foreach ($alloc as $orderItemId => $discount) {
+                            OrderItem::where('id', $orderItemId)->update(['discount_amount' => $discount]);
+                        }
+                    }
 
                     if ($depositTotal > 0) {
                         $ord->deposits()->where('status', 'held')->update([
@@ -1509,7 +1554,17 @@ class POSController extends Controller
         }
     }
 
-    private function resolvePromotion(?string $code, float $subtotal, bool $lockForUpdate = false): ?array
+    private function orderLines($items): \Illuminate\Support\Collection
+    {
+        return collect($items)->map(fn ($item) => [
+            'order_item_id' => (int) $item->id,
+            'menu_item_id' => (int) $item->menu_item_id,
+            'subtotal' => (float) $item->subtotal,
+            'category_id' => $item->menuItem?->category_id,
+        ])->values();
+    }
+
+    private function resolvePromotion(?string $code, $lines, float $orderSubtotal, bool $lockForUpdate = false): ?array
     {
         if (! $code) {
             return null;
@@ -1535,13 +1590,18 @@ class POSController extends Controller
             return null;
         }
 
-        if ($promotion->min_order_amount !== null && $subtotal < (float) $promotion->min_order_amount) {
+        if ($promotion->min_order_amount !== null && $orderSubtotal < (float) $promotion->min_order_amount) {
+            return null;
+        }
+
+        $targetSubtotal = Promotion::targetSubtotal($promotion, $lines);
+        if ($targetSubtotal <= 0) {
             return null;
         }
 
         return [
             'promotion' => $promotion,
-            'discount_amount' => $this->discountFor($promotion, $subtotal),
+            'discount_amount' => $this->discountFor($promotion, $targetSubtotal),
         ];
     }
 

@@ -243,3 +243,36 @@ test('thanh toán gộp yêu cầu order_ids không rỗng', function () {
 
     $response->assertSessionHasErrors(['order_ids']);
 });
+
+test('bulk checkout ghi discount xuong tung dong trong moi order', function () {
+    $this->actingAs(posAdmin());
+    $promo = App\Models\Promotion::create([
+        'code' => 'BULK10', 'name' => 'Bulk 10%', 'discount_type' => 'percentage',
+        'discount_value' => 10, 'target_type' => 'order',
+    ]);
+    $table = posTable(['status' => 'occupied']);
+    $item = posMenuItem(['price' => 50000]);
+    $o1 = posOrder($table, [['item' => $item, 'qty' => 2, 'price' => 50000, 'status' => 'completed']], ['status' => 'completed']);
+    $o2 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 50000, 'status' => 'completed']], ['status' => 'completed']);
+
+    $this->post('/staff/pos/bulk-checkout', [
+        'order_ids' => [$o1->id, $o2->id],
+        'payment_method' => 'cash',
+        'amount_received' => 135000,
+        'change_amount' => 0,
+        'promotion_code' => $promo->code,
+    ])->assertSessionHasNoErrors();
+
+    foreach ([$o1, $o2] as $o) {
+        $o->refresh();
+        $items = $o->items;
+        foreach ($items as $it) {
+            expect((float) $it->discount_amount)->toBeGreaterThanOrEqual(0);
+        }
+    }
+    // Tổng discount order = tổng discount item trên mỗi đơn
+    $o1->refresh(); $o2->refresh();
+    expect((float) $o1->items->sum('discount_amount'))->toBe((float) $o1->discount_amount);
+    expect((float) $o2->items->sum('discount_amount'))->toBe((float) $o2->discount_amount);
+    expect((float) $o1->discount_amount + (float) $o2->discount_amount)->toBe(15000.0);
+});
