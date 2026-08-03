@@ -7,6 +7,8 @@ export interface PromotionData {
     description: string | null;
     discount_type: 'percentage' | 'fixed_amount';
     discount_value: number;
+    target_type: 'order' | 'item' | 'category';
+    target_value: number | null;
     min_order_amount: number | null;
     max_discount_amount: number | null;
     max_uses: number | null;
@@ -86,6 +88,13 @@ export default function PromotionTable({
                                         ? `${promotion.discount_value}%`
                                         : money(promotion.discount_value)}
                                     <div className="mt-1 font-normal text-zinc-500">
+                                        {promotion.target_type === 'item'
+                                            ? 'Theo 1 món'
+                                            : promotion.target_type === 'category'
+                                              ? 'Theo 1 danh mục'
+                                              : 'Toàn đơn'}
+                                    </div>
+                                    <div className="font-normal text-zinc-500">
                                         Tối đa:{' '}
                                         {money(promotion.max_discount_amount)}
                                     </div>

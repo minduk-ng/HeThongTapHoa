@@ -2,12 +2,16 @@ import { useEffect, useState } from 'react';
 import { router } from '@inertiajs/react';
 import { X } from 'lucide-react';
 import DatePicker from '../../../../components/DatePicker';
+import SearchableSelect from '../../../../components/SearchableSelect';
+import type { SelectOption } from '../../../../components/SearchableSelect';
 import { PromotionData } from './PromotionTable';
 
 interface Props {
     isOpen: boolean;
     onClose: () => void;
     promotionToEdit: PromotionData | null;
+    menuItems?: SelectOption[];
+    menuCategories?: SelectOption[];
 }
 type FormState = {
     code: string;
@@ -15,6 +19,8 @@ type FormState = {
     description: string;
     discount_type: 'percentage' | 'fixed_amount';
     discount_value: string;
+    target_type: 'order' | 'item' | 'category';
+    target_value: string;
     min_order_amount: string;
     max_discount_amount: string;
     max_uses: string;
@@ -28,6 +34,8 @@ const empty: FormState = {
     description: '',
     discount_type: 'percentage',
     discount_value: '',
+    target_type: 'order',
+    target_value: '',
     min_order_amount: '0',
     max_discount_amount: '',
     max_uses: '',
@@ -42,6 +50,8 @@ export default function PromotionFormDrawer({
     isOpen,
     onClose,
     promotionToEdit,
+    menuItems,
+    menuCategories,
 }: Props) {
     const [form, setForm] = useState<FormState>(empty);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -57,6 +67,12 @@ export default function PromotionFormDrawer({
                       description: promotionToEdit.description || '',
                       discount_type: promotionToEdit.discount_type,
                       discount_value: String(promotionToEdit.discount_value),
+                      target_type: promotionToEdit.target_type ?? 'order',
+                      target_value:
+                          promotionToEdit.target_value === null ||
+                          promotionToEdit.target_value === undefined
+                              ? ''
+                              : String(promotionToEdit.target_value),
                       min_order_amount: String(
                           promotionToEdit.min_order_amount ?? 0,
                       ),
@@ -86,6 +102,10 @@ export default function PromotionFormDrawer({
         const payload = {
             ...form,
             discount_value: Number(form.discount_value),
+            target_value:
+                form.target_type === 'order' || form.target_value === ''
+                    ? null
+                    : Number(form.target_value),
             min_order_amount:
                 form.min_order_amount === ''
                     ? null
@@ -235,6 +255,66 @@ export default function PromotionFormDrawer({
                                 </span>
                             )}
                         </label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                            Phạm vi áp dụng
+                            <span className="mt-1.5 flex overflow-hidden rounded-xl border border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800">
+                                {(
+                                    [
+                                        ['order', 'Toàn đơn'],
+                                        ['item', 'Theo món'],
+                                        ['category', 'Theo danh mục'],
+                                    ] as const
+                                ).map(([type, label]) => (
+                                    <button
+                                        key={type}
+                                        type="button"
+                                        onClick={() =>
+                                            set('target_type', type)
+                                        }
+                                        className={`flex-1 px-2 py-2.5 text-xs font-semibold transition-colors ${
+                                            form.target_type === type
+                                                ? 'bg-sky-600 text-white'
+                                                : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                        }`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </span>
+                            {form.target_type !== 'order' && (
+                                <SearchableSelect
+                                    options={
+                                        form.target_type === 'item'
+                                            ? menuItems ?? []
+                                            : menuCategories ?? []
+                                    }
+                                    value={
+                                        form.target_value === ''
+                                            ? null
+                                            : Number(form.target_value)
+                                    }
+                                    onChange={(id) =>
+                                        set(
+                                            'target_value',
+                                            id === null ? '' : String(id),
+                                        )
+                                    }
+                                    placeholder={
+                                        form.target_type === 'item'
+                                            ? 'Chọn món...'
+                                            : 'Chọn danh mục...'
+                                    }
+                                />
+                            )}
+                            {errors.target_value && (
+                                <span className="mt-1 block text-xs text-rose-500">
+                                    {errors.target_value}
+                                </span>
+                            )}
+                        </label>
+                        <div className="hidden md:block" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <label className="flex flex-col gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">

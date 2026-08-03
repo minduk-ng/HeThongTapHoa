@@ -10,8 +10,15 @@ import PromotionTable, { PromotionData } from './components/PromotionTable';
 interface Props {
     promotions: PromotionData[];
     filters: { search?: string };
+    menuItems?: { id: number; name: string }[];
+    menuCategories?: { id: number; name: string }[];
 }
-export default function PromotionsManager({ promotions, filters }: Props) {
+export default function PromotionsManager({
+    promotions,
+    filters,
+    menuItems,
+    menuCategories,
+}: Props) {
     const [search, setSearch] = useState(filters.search || '');
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editing, setEditing] = useState<PromotionData | null>(null);
@@ -112,6 +119,8 @@ export default function PromotionsManager({ promotions, filters }: Props) {
                 isOpen={drawerOpen}
                 onClose={() => setDrawerOpen(false)}
                 promotionToEdit={editing}
+                menuItems={menuItems}
+                menuCategories={menuCategories}
             />
             <DeleteConfirmModal
                 isOpen={!!deleting}
