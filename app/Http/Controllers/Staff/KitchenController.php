@@ -213,10 +213,10 @@ class KitchenController extends Controller
             $targetOrder = null;
 
             DB::transaction(function () use ($validated, $request, &$targetTable, &$targetOrder) {
-                $item = OrderItem::lockForUpdate()->findOrFail($validated['order_item_id']);
+                $item = OrderItem::where('id', $validated['order_item_id'])->first();
 
-                if ($item->status === 'cancelled') {
-                    return;
+                if (! $item) {
+                    throw new \InvalidArgumentException('Món không tồn tại.');
                 }
 
                 $order = $item->order;
@@ -227,20 +227,30 @@ class KitchenController extends Controller
 
                 $reasonStr = $validated['cancellation_reason'].(! empty($validated['note']) ? ': '.$validated['note'] : '');
 
-                if ($item->status === 'completed') {
+                $wasCompleted = $item->status === 'completed';
+
+                // Atomic transition: chi thang neu chua cancelled
+                $updated = OrderItem::where('id', $item->id)
+                    ->where('status', '<>', 'cancelled')
+                    ->update([
+                        'status' => 'cancelled',
+                        'cancellation_reason' => $reasonStr,
+                        'cancelled_by_user_id' => $request->user()?->id,
+                        'cancelled_at' => now(),
+                    ]);
+
+                if ($updated === 0) {
+                    return; // da huy boi nguon khac — khong restore
+                }
+
+                // Chi restore neu item thuc su dang completed truoc khi huy
+                if ($wasCompleted) {
                     $this->inventoryIngredientService->restoreIngredients(
                         $item,
                         $request->user()?->id,
                         $order?->order_code ?? ''
                     );
                 }
-
-                $item->update([
-                    'status' => 'cancelled',
-                    'cancellation_reason' => $reasonStr,
-                    'cancelled_by_user_id' => $request->user()?->id,
-                    'cancelled_at' => now(),
-                ]);
 
                 if ($order) {
                     $remainingActiveCount = $order->items()->where('status', '!=', 'cancelled')->count();
