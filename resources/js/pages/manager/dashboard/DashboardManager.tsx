@@ -121,12 +121,12 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
 
     return (
         <DashboardLayout>
-            <Head title="Báo cáo Quản lý" />
+            <Head title="Tổng quan Quản lý" />
             
             {/* Header section with Toolbar filter */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
                 <div>
-                    <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white">Báo cáo của Quản lý</h1>
+                    <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white">Tổng quan</h1>
                     <p className="text-sm text-slate-500 dark:text-slate-400">Giám sát hoạt động và doanh thu cửa hàng</p>
                 </div>
                 <div className="flex gap-2">

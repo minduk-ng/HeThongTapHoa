@@ -39,7 +39,7 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 12,
             ],
             [
-                'name' => 'Báo cáo',
+                'name' => 'Tổng quan',
                 'route_path' => '/manager/dashboard',
                 'group_name' => 'Quản lý',
                 'sort_order' => 18,
