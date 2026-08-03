@@ -51,7 +51,7 @@ interface Props {
 const COLUMNS: ReportTableColumn[] = [
     { key: 'item_name', label: 'Tên món' },
     { key: 'quantity', label: 'SL bán', numeric: true },
-    { key: 'revenue', label: 'Doanh thu', numeric: true },
+    { key: 'revenue', label: 'Doanh thu thuần', numeric: true },
     { key: 'cost', label: 'Giá vốn', numeric: true },
     { key: 'profit', label: 'LN gộp', numeric: true },
     { key: 'margin', label: 'Margin %', numeric: true },
@@ -88,7 +88,7 @@ export default function ProfitReport({
 
     const metricCards: MetricCard[] = [
         {
-            label: 'Doanh thu',
+            label: 'Doanh thu thuần',
             value: formatVND(metrics.revenue),
             icon: ReceiptText,
             color: 'text-sky-600 dark:text-sky-400',

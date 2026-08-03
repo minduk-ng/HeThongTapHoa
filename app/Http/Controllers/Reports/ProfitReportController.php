@@ -29,7 +29,7 @@ class ProfitReportController extends Controller
             ->join('menu_items', 'menu_items.id', '=', 'order_items.menu_item_id')
             ->whereBetween('invoices.issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
             ->where('order_items.status', '!=', 'cancelled')
-            ->selectRaw('DATE(invoices.issued_at) as day, menu_items.id as menu_item_id, menu_items.name as item_name, SUM(order_items.quantity) as quantity, SUM(order_items.subtotal) as revenue')
+            ->selectRaw('DATE(invoices.issued_at) as day, menu_items.id as menu_item_id, menu_items.name as item_name, SUM(order_items.quantity) as quantity, SUM(order_items.subtotal - order_items.discount_amount) as revenue')
             ->groupBy('day', 'menu_items.id', 'menu_items.name')
             ->get()
             ->values();

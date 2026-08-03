@@ -73,4 +73,32 @@ class ProfitReportTest extends TestCase
                 ->has('daily')
             );
     }
+
+    public function test_profit_uses_net_revenue_after_discount()
+    {
+        $itemA = posMenuItem(['name' => 'Món Net', 'price' => 50000]);
+        $invoice = Invoice::create([
+            'invoice_code' => 'HD-'.strtoupper(uniqid()),
+            'table_name' => 'B01',
+            'payment_method' => 'cash',
+            'amount_received' => 0,
+            'change_amount' => 0,
+            'total_amount' => 0,
+            'deposit_amount' => 0,
+        ]);
+        $invoice->forceFill(['issued_at' => '2026-07-15 12:00:00'])->save();
+        $order = posOrder(posTable(), [
+            ['item' => $itemA, 'qty' => 2, 'price' => 50000],
+        ], ['invoice_id' => $invoice->id, 'status' => 'paid', 'discount_amount' => 10000, 'total' => 90000]);
+        // Phân bổ 10000 cho 1 dòng (2×50000=100000).
+        $order->items->first()->update(['discount_amount' => 10000]);
+
+        $this->actingAs($this->adminUser())
+            ->get('/reports/profit?start_date=2026-07-01&end_date=2026-07-31')
+            ->assertInertia(fn ($page) => $page
+                ->where('metrics.revenue', 90000)
+                ->where('metrics.cost', 0)
+                ->where('metrics.profit', 90000)
+            );
+    }
 }
