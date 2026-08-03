@@ -742,10 +742,21 @@ class POSController extends Controller
 
         $resolved = $this->resolvePromotion($validated['code'], $lines, (float) $validated['subtotal']);
 
-        if (! $resolved) {
+        if (! $resolved || $resolved['status'] === 'rejected') {
+            $reason = $resolved ? ($resolved['reason'] ?? 'not_found') : 'not_found';
+            $map = [
+                'not_found' => 'Mã khuyến mãi không tồn tại.',
+                'inactive' => 'Mã khuyến mãi đang tạm ngưng.',
+                'not_started' => 'Mã khuyến mãi chưa tới hạn áp dụng.',
+                'expired' => 'Mã khuyến mãi đã hết hạn.',
+                'out_of_uses' => 'Mã khuyến mãi đã hết lượt sử dụng.',
+                'below_min' => 'Đơn hàng chưa đạt giá trị tối thiểu.',
+                'no_eligible_line' => 'Không có món trong đơn thuộc đối tượng áp dụng.',
+            ];
+
             return response()->json([
                 'ok' => false,
-                'error' => 'Mã khuyến mãi không hợp lệ hoặc đã hết hạn.',
+                'error' => $map[$reason] ?? 'Mã khuyến mãi không hợp lệ.',
             ], 422);
         }
 
@@ -833,7 +844,7 @@ class POSController extends Controller
                 $promotion = null;
                 if (! empty($validated['promotion_code'])) {
                     $resolved = $this->resolvePromotion($validated['promotion_code'], $this->orderLines($activeItems), $subtotal, true);
-                    if (! $resolved) {
+                    if (! $resolved || $resolved['status'] === 'rejected') {
                         throw new \Exception('Mã khuyến mãi không hợp lệ hoặc đã hết hạn.');
                     }
                     $promotion = $resolved['promotion'];
@@ -1042,7 +1053,7 @@ class POSController extends Controller
                 $promotion = null;
                 if (! empty($validated['promotion_code'])) {
                     $resolved = $this->resolvePromotion($validated['promotion_code'], $grandLines, $grandSubtotal, true);
-                    if (! $resolved) {
+                    if (! $resolved || $resolved['status'] === 'rejected') {
                         throw new \Exception('Mã khuyến mãi không hợp lệ hoặc đã hết hạn.');
                     }
                     $promotion = $resolved['promotion'];
