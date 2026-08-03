@@ -358,7 +358,7 @@ test('validate-promotion tra the thong bao rieng do ly do khac nhau', function (
 ]);
 
 test('validate-promotion khong co dong khop target tra loi ro rang', function () {
-    $cat = App\Models\MenuCategory::create(['name' => 'Cat N'.$uniqid ?? 'Cat1', 'sort_order' => 1]);
+    $cat = App\Models\MenuCategory::create(['name' => 'Cat N'.substr(uniqid(), -5), 'sort_order' => 1]);
     $promo = Promotion::create([
         'code' => 'CAT'.substr(uniqid(), -5), 'name' => 'Cat scope', 'discount_type' => 'percentage',
         'discount_value' => 10, 'target_type' => 'category', 'target_value' => $cat->id,
@@ -387,7 +387,7 @@ test('validate-promotion ma hop le giam 0 dong van ok true (phuc vu frontend)', 
 
 - [ ] **Step 2: Chạy fail**
 
-Run: `php artisan test tests/Feature/POSPromotionRejectReasonTest.php`
+Run: `php artisan test tests\Feature\POSPromotionRejectMessagesTest.php`
 Expected: FAIL — validate còn message generic.
 
 - [ ] **Step 3: Implement mapping trong validatePromotion**
@@ -446,7 +446,7 @@ Tương tự trong `bulkCheckout` (line ~1043-1050).
 
 - [ ] **Step 5: Chạy test pass**
 
-Run: `php artisan test tests/Feature/POSPromotionRejectReasonTest.php`
+Run: `php artisan test tests\Feature\POSPromotionRejectMessagesTest.php`
 Expected: PASS.
 
 - [ ] **Step 6: Chạy lại toàn suite promotion/checkout cũ để xác nhận không regress**
@@ -457,7 +457,7 @@ Expected: PASS (nếu fail — fix shape ở caller cho đến pass).
 - [ ] **Step 7: Commit**
 
 ```bash
-git add app/Http/Controllers/Staff/POSController.php tests/Feature/POSPromotionRejectReasonTest.php
+git add app/Http/Controllers/Staff/POSController.php tests/Feature/POSPromotionRejectMessagesTest.php
 git commit -m "feat: phan biet ly do loi ma khuyen mai o validate, checkout giu generic"
 ```
 
