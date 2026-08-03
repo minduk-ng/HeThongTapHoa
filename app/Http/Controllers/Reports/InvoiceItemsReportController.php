@@ -32,6 +32,7 @@ class InvoiceItemsReportController extends Controller
                 'order_items.quantity',
                 'order_items.unit_price',
                 'order_items.subtotal',
+                'order_items.discount_amount as discount_amount',
                 'orders.subtotal as order_subtotal',
                 'orders.discount_amount as order_discount',
             ])
@@ -46,7 +47,10 @@ class InvoiceItemsReportController extends Controller
                 'quantity' => (int) $r->quantity,
                 'unit_price' => (float) $r->unit_price,
                 'subtotal' => (float) $r->subtotal,
-                'order_gross' => (float) ($r->order_subtotal + $r->order_discount),
+                'discount_amount' => (float) $r->discount_amount,
+                'net' => (float) $r->subtotal - (float) $r->discount_amount,
+                // order_gross = orders.subtotal (đã là gross); bỏ + order_discount (bug double-count)
+                'order_gross' => (float) $r->order_subtotal,
                 'order_discount' => (float) $r->order_discount,
                 'payment_method' => $r->payment_method,
             ]);
@@ -54,7 +58,8 @@ class InvoiceItemsReportController extends Controller
         return Inertia::render('reports/InvoiceItemsReport', [
             'rows' => $rows,
             'metrics' => [
-                'total_amount' => (float) $rows->sum('subtotal'),
+                'total_amount' => (float) $rows->sum('net'),
+                'total_discount' => (float) $rows->sum('discount_amount'),
                 'line_count' => $rows->count(),
                 'quantity_total' => (int) $rows->sum('quantity'),
                 'invoice_count' => $rows->unique('invoice_id')->count(),

@@ -88,15 +88,40 @@ class InvoiceItemsReportTest extends TestCase
 
     public function test_rows_expose_order_gross_and_discount()
     {
-        [$invoice] = $this->makeInvoiceWithItems('2026-07-15 12:00:00');
+        [$invoice, $items] = $this->makeInvoiceWithItems('2026-07-15 12:00:00');
         $invoice->orders()->update(['discount_amount' => 10000]);
+        $items->each(fn ($i) => $i->update(['discount_amount' => 5000]));
 
         $this->actingAs($this->adminUser())
             ->get('/reports/invoice-items?start_date=2026-07-01&end_date=2026-07-31')
             ->assertInertia(fn ($page) => $page
                 ->has('rows', 2)
+                // orders.subtotal = 2*20000 + 1*50000 = 90000 (gross, KHÔNG + discount)
+                ->where('rows.0.order_gross', 90000)
                 ->where('rows.0.order_discount', 10000)
-                ->where('rows.0.order_gross', 100000)
+                ->where('rows.0.discount_amount', 5000)
+                // net của item đầu: subtotal 40000 - 5000 = 35000
+                ->where('rows.0.net', 35000)
+                // metrics: total_amount = tổng net = (40000-5000)+(50000-5000) = 80000
+                ->where('metrics.total_amount', 80000)
+                ->where('metrics.total_discount', 10000)
+            );
+    }
+
+    public function test_metrics_total_amount_la_doanh_thu_net_khi_co_discount()
+    {
+        [$invoice] = $this->makeInvoiceWithItems('2026-07-15 12:00:00');
+        $invoice->orders()->update(['discount_amount' => 10000]);
+        $items = $invoice->orders()->first()->items;
+        // 1 order, 2 dòng: 40000 + 50000. Phân bổ 10000 → dòng1 4000, dòng2 6000 (dòng cuối nhận phần dư).
+        $items[0]->update(['discount_amount' => 4000]);
+        $items[1]->update(['discount_amount' => 6000]);
+
+        $this->actingAs($this->adminUser())
+            ->get('/reports/invoice-items?start_date=2026-07-01&end_date=2026-07-31')
+            ->assertInertia(fn ($page) => $page
+                ->where('metrics.total_amount', 80000)
+                ->where('metrics.total_discount', 10000)
             );
     }
 }

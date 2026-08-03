@@ -29,6 +29,8 @@ interface ItemRow {
     quantity: number;
     unit_price: number;
     subtotal: number;
+    discount_amount: number;
+    net: number;
     order_gross: number;
     order_discount: number;
     payment_method: string;
@@ -90,6 +92,7 @@ function buildNodes(filtered: ItemRow[], collapsed: Set<number>): TreeNode[] {
 
 interface Metrics {
     total_amount: number;
+    total_discount: number;
     line_count: number;
     quantity_total: number;
     invoice_count: number;
@@ -110,6 +113,8 @@ const COLUMNS: ReportTableColumn[] = [
     { key: 'quantity', label: 'SL', numeric: true, sortable: false },
     { key: 'unit_price', label: 'Đơn giá', numeric: true, sortable: false },
     { key: 'subtotal', label: 'Thành tiền', numeric: true, sortable: false },
+    { key: 'discount_amount', label: 'Giảm giá', numeric: true, sortable: false },
+    { key: 'net', label: 'Thu thực', numeric: true, sortable: false },
     { key: 'order_gross', label: 'Thu trước giảm', numeric: true, sortable: false },
     { key: 'order_discount', label: 'Giảm giá', numeric: true, sortable: false },
     { key: 'payment_method', label: 'PTTT', sortable: false },
@@ -166,10 +171,16 @@ export default function InvoiceItemsReport({
 
     const metricCards: MetricCard[] = [
         {
-            label: 'Tổng thành tiền',
+            label: 'Tổng thu thực',
             value: formatVND(metrics.total_amount),
             icon: ReceiptText,
             color: 'text-emerald-600 dark:text-emerald-400',
+        },
+        {
+            label: 'Tổng giảm giá',
+            value: formatVND(metrics.total_discount),
+            icon: ReceiptText,
+            color: 'text-rose-600 dark:text-rose-400',
         },
         {
             label: 'Số dòng món',
@@ -267,6 +278,16 @@ export default function InvoiceItemsReport({
                 return formatVND(it.unit_price);
             case 'subtotal':
                 return formatVND(it.subtotal);
+            case 'discount_amount':
+                return it.discount_amount > 0 ? (
+                    <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">
+                        {formatVND(it.discount_amount)}
+                    </span>
+                ) : (
+                    '—'
+                );
+            case 'net':
+                return formatVND(it.net);
             case 'order_gross':
             case 'order_discount':
                 return '';
@@ -312,6 +333,10 @@ export default function InvoiceItemsReport({
                 return it.unit_price;
             case 'subtotal':
                 return it.subtotal;
+            case 'discount_amount':
+                return it.discount_amount;
+            case 'net':
+                return it.net;
             default:
                 return '';
         }
