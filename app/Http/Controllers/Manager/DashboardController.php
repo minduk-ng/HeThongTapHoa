@@ -173,7 +173,7 @@ class DashboardController extends Controller
             })->toArray();
 
             $chart = [];
-            for ($h = 6; $h <= 22; $h++) {
+            for ($h = 0; $h <= 23; $h++) {
                 $label = sprintf('%02d:00', $h);
                 $chart[] = [
                     'label' => $label,

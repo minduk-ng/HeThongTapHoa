@@ -359,7 +359,13 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" className="dark:stroke-slate-800/50" />
-                                <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} />
+                                <XAxis 
+                                    dataKey="label" 
+                                    stroke="#94a3b8" 
+                                    fontSize={10} 
+                                    tickLine={false} 
+                                    interval={filters.date_range === 'today' || filters.date_range === 'yesterday' ? 2 : 'preserveStartEnd'}
+                                />
                                 <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} tickFormatter={(tick) => `${tick / 1000}k`} />
                                 <Tooltip 
                                     formatter={(value) => [formatCurrency(Number(value)), 'Doanh thu']}
