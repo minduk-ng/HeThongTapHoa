@@ -17,6 +17,7 @@ class OrderItem extends Model
         'quantity',
         'unit_price',
         'subtotal',
+        'discount_amount',
         'status',
         'note',
         'cancellation_reason',
@@ -28,6 +29,7 @@ class OrderItem extends Model
         'quantity' => 'integer',
         'unit_price' => 'float',
         'subtotal' => 'float',
+        'discount_amount' => 'float',
         'served_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
