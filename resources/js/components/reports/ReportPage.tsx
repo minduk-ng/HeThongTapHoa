@@ -31,6 +31,7 @@ export interface ReportPageProps {
     onSearchChange: (v: string) => void;
     searchPlaceholder?: string;
     extraFilters?: ReactNode;
+    extraActions?: ReactNode;
     getExportRows: (visibleKeys: string[]) => (string | number)[][];
     children: ReactNode;
 }
@@ -49,6 +50,7 @@ export default function ReportPage({
     onSearchChange,
     searchPlaceholder,
     extraFilters,
+    extraActions,
     getExportRows,
     children,
 }: ReportPageProps) {
@@ -60,6 +62,12 @@ export default function ReportPage({
     const [exportError, setExportError] = useState('');
     const colMenuRef = useRef<HTMLDivElement>(null);
     const exportMenuRef = useRef<HTMLDivElement>(null);
+
+    const formatRange = (start: string, end: string) =>
+        `Từ ngày ${start.split('-').reverse().join('/')} đến ${end
+            .split('-')
+            .reverse()
+            .join('/')}`;
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
@@ -107,6 +115,8 @@ export default function ReportPage({
 
     const handleExportCSV = () => {
         exportCSV(
+            title,
+            formatRange(startDate, endDate),
             visibleColumns.map((c) => c.label),
             getExportRows(visibleColumns.map((c) => c.key)),
             exportName,
@@ -118,13 +128,15 @@ export default function ReportPage({
 
         try {
             await exportXLSX(
+                title,
+                formatRange(startDate, endDate),
                 visibleColumns.map((c) => c.label),
                 getExportRows(visibleColumns.map((c) => c.key)),
                 exportName,
             );
         } catch {
             setExportError(
-                'Không tải được thư viện xuất Excel — kiểm tra kết nối mạng rồi thử lại.',
+                'Không tải được thư viện xuất Excel (exceljs) — kiểm tra kết nối mạng rồi thử lại.',
             );
         }
     };
@@ -240,7 +252,7 @@ export default function ReportPage({
                         </div>
 
                         {/* Metrics hiển thị dạng inline text ngăn cách nhau bởi dấu chấm tròn */}
-                        <div className="mt-3 flex flex-wrap border-t border-zinc-100 pt-2 items-center gap-x-4 gap-y-2 text-sm text-zinc-500 dark:text-zinc-400">
+                        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-zinc-100 pt-2 text-sm text-zinc-500 dark:text-zinc-400">
                             {metrics.map((m, idx) => (
                                 <div
                                     key={m.label}
@@ -274,6 +286,7 @@ export default function ReportPage({
                                 onSearchChange={onSearchChange}
                                 searchPlaceholder={searchPlaceholder}
                                 extraFilters={extraFilters}
+                                extraActions={extraActions}
                                 actions={filterActions}
                             />
                         </div>

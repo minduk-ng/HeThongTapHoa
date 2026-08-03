@@ -218,6 +218,61 @@ test('idempotency key chặn thanh toán lặp không tạo hóa đơn trùng', 
     expect(Invoice::count())->toBe(1);
 });
 
+test('checkout áp mã khuyến mãi trừ discount và tăng used_count', function () {
+    $this->actingAs(posAdmin());
+    $promo = App\Models\Promotion::create([
+        'code' => 'CK10',
+        'name' => 'Checkout 10%',
+        'discount_type' => 'percentage',
+        'discount_value' => 10,
+        'max_uses' => 100,
+        'used_count' => 0,
+    ]);
+    $table = posTable(['status' => 'occupied']);
+    $item = posMenuItem();
+    $order = posOrder($table, [['item' => $item, 'qty' => 2, 'price' => 30000, 'status' => 'completed']], ['status' => 'completed']);
+
+    $this->post('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 54000,
+        'change_amount' => 0,
+        'promotion_code' => $promo->code,
+    ])->assertSessionHasNoErrors();
+
+    $order->refresh();
+    expect($order->promotion_id)->toBe($promo->id);
+    expect((float) $order->discount_amount)->toBe(6000.0);
+    expect((float) $order->total)->toBe(54000.0);
+    expect((float) App\Models\Invoice::firstOrFail()->total_amount)->toBe(54000.0);
+    expect($promo->fresh()->used_count)->toBe(1);
+});
+
+test('checkout từ chối mã không còn hợp lệ và rollback', function () {
+    $this->actingAs(posAdmin());
+    $promo = App\Models\Promotion::create([
+        'code' => 'EXPIRE',
+        'name' => 'Hết hạn',
+        'discount_type' => 'fixed_amount',
+        'discount_value' => 10000,
+        'expires_at' => now()->subDay(),
+    ]);
+    $table = posTable(['status' => 'occupied']);
+    $item = posMenuItem();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 20000, 'status' => 'completed']], ['status' => 'completed']);
+
+    $this->post('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 20000,
+        'change_amount' => 0,
+        'promotion_code' => $promo->code,
+    ])->assertSessionHasErrors(['error']);
+
+    expect($order->fresh()->status)->toBe('completed');
+    expect(App\Models\Invoice::count())->toBe(0);
+});
+
 test('tổng tiền hóa đơn không tính món đã hủy', function () {
     $this->actingAs(posAdmin());
     $table = posTable(['status' => 'occupied']);

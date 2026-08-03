@@ -11,8 +11,10 @@ use App\Models\Ingredient;
 use App\Models\InventoryTransaction;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Employee;
 use App\Models\ProductRecipe;
 use App\Models\Table;
+use App\Services\InventoryIngredientService;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +23,11 @@ use Inertia\Inertia;
 
 class KitchenController extends Controller
 {
+    public function __construct(
+        private InventoryIngredientService $inventoryIngredientService
+    ) {
+    }
+
     public function index(Request $request)
     {
         // Load active orders excluding cancelled items
@@ -79,7 +86,7 @@ class KitchenController extends Controller
                     'has_additional_items' => false,
                 ]);
 
-                $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
+                $employeeId = Employee::idForUser($request->user()?->id);
 
                 foreach ($order->items as $item) {
                     if ($item->status === 'cancelled' || $item->status === 'completed') {
@@ -125,7 +132,7 @@ class KitchenController extends Controller
 
         try {
             $order = Order::findOrFail($validated['order_id']);
-            $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
+            $employeeId = Employee::idForUser($request->user()?->id);
 
             $completedItems = collect();
 
@@ -219,6 +226,14 @@ class KitchenController extends Controller
                 }
 
                 $reasonStr = $validated['cancellation_reason'].(! empty($validated['note']) ? ': '.$validated['note'] : '');
+
+                if ($item->status === 'completed') {
+                    $this->inventoryIngredientService->restoreIngredients(
+                        $item,
+                        $request->user()?->id,
+                        $order?->order_code ?? ''
+                    );
+                }
 
                 $item->update([
                     'status' => 'cancelled',

@@ -188,6 +188,9 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         submitting: checkoutSubmitting,
         isPaymentDrawerOpen,
         setIsPaymentDrawerOpen,
+        promotionDiscount,
+        applyPromotion,
+        clearPromotion,
         lockedCheckoutTables,
         receiptModal,
         setReceiptModal,
@@ -397,6 +400,9 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 orderCodes={currentOrderCodes}
                 depositTotal={currentDepositTotal}
                 reservationDraft={currentReservationDraft}
+                promotionDiscount={promotionDiscount}
+                onApplyPromotion={applyPromotion}
+                onClearPromotion={clearPromotion}
                 onConfirmPayment={(paymentMethod, amountReceived, changeAmount, shouldPrint) => {
                     if (selectedTable) {
                         if (paymentMode === 'bulk') {
@@ -484,6 +490,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 invoiceCode={receiptModal.invoiceCode}
                 depositAmount={receiptModal.depositAmount}
                 depositRefund={receiptModal.depositRefund}
+                promotionDiscount={receiptModal.promotionDiscount}
             />
         </DashboardLayout>
     );

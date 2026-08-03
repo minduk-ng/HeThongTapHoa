@@ -63,6 +63,12 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 21,
             ],
             [
+                'name' => 'Khuyến mãi',
+                'route_path' => '/manager/promotions',
+                'group_name' => 'Quản lý',
+                'sort_order' => 22,
+            ],
+            [
                 'name' => 'Nguyên liệu',
                 'route_path' => '/manager/inventory/ingredients',
                 'group_name' => 'Quản lý',
@@ -83,8 +89,50 @@ class AuthorizationSeeder extends Seeder
             [
                 'name' => 'Báo cáo hoá đơn bán hàng',
                 'route_path' => '/reports/sales-invoices',
-                'group_name' => 'Quản lý',
+                'group_name' => 'Báo cáo',
                 'sort_order' => 28,
+            ],
+            [
+                'name' => 'Báo cáo chi tiết hoá đơn',
+                'route_path' => '/reports/invoice-items',
+                'group_name' => 'Báo cáo',
+                'sort_order' => 29,
+            ],
+            [
+                'name' => 'Báo cáo chi tiết sản phẩm hàng hoá',
+                'route_path' => '/reports/product-details',
+                'group_name' => 'Báo cáo',
+                'sort_order' => 30,
+            ],
+            [
+                'name' => 'Báo cáo hoá đơn huỷ',
+                'route_path' => '/reports/cancelled',
+                'group_name' => 'Báo cáo',
+                'sort_order' => 31,
+            ],
+            [
+                'name' => 'Báo cáo lợi nhuận',
+                'route_path' => '/reports/profit',
+                'group_name' => 'Báo cáo',
+                'sort_order' => 32,
+            ],
+            [
+                'name' => 'Báo cáo đặt bàn',
+                'route_path' => '/reports/reservations',
+                'group_name' => 'Báo cáo',
+                'sort_order' => 33,
+            ],
+            [
+                'name' => 'Báo cáo thanh toán',
+                'route_path' => '/reports/payments',
+                'group_name' => 'Báo cáo',
+                'sort_order' => 34,
+            ],
+            [
+                'name' => 'Báo cáo ca làm việc',
+                'route_path' => '/reports/shifts',
+                'group_name' => 'Báo cáo',
+                'sort_order' => 35,
             ],
             [
                 'name' => 'Đặt hàng POS',
@@ -103,6 +151,12 @@ class AuthorizationSeeder extends Seeder
                 'route_path' => '/staff/serving',
                 'group_name' => 'Nhân viên',
                 'sort_order' => 32,
+            ],
+            [
+                'name' => 'Ca làm việc',
+                'route_path' => '/staff/shifts',
+                'group_name' => 'Nhân viên',
+                'sort_order' => 33,
             ],
         ];
 
@@ -135,12 +189,14 @@ class AuthorizationSeeder extends Seeder
             'users.view', 'users.edit',
             'products.view', 'products.create', 'products.edit', 'products.delete', 'products.import', 'products.export',
             'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
+            'promotions.view', 'promotions.create', 'promotions.edit', 'promotions.delete',
             'ingredients.view', 'ingredients.create', 'ingredients.edit', 'ingredients.delete', 'ingredients.import',
             'recipes.view', 'recipes.edit',
             'tables.view', 'tables.create', 'tables.edit', 'tables.delete',
             'pos.view', 'pos.create', 'pos.bypass_kitchen_lock', 'pos.cancel_item',
             'kitchen.view', 'kitchen.update', 'kitchen.cancel_item',
             'serving.view', 'serving.update',
+            'shifts.open', 'shifts.view', 'shifts.close',
             'orders.view',
             'dashboard.view',
             'reports.view',

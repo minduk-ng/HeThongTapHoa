@@ -6,6 +6,11 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import {
+    formatDateTime,
+    formatVND,
+    paymentLabel,
+} from '../../components/reports/reportFormat';
 import ReportPage from '../../components/reports/ReportPage';
 import type { MetricCard } from '../../components/reports/ReportPage';
 import ReportTable from '../../components/reports/ReportTable';
@@ -19,6 +24,8 @@ interface InvoiceRow {
     payment_method: string;
     orders_count: number;
     total_amount: number;
+    gross_amount: number;
+    discount_amount: number;
     amount_received: number;
     change_amount: number;
     issued_at: string;
@@ -38,26 +45,6 @@ interface Props {
     endDate: string;
 }
 
-const PAYMENT_LABELS: Record<string, string> = {
-    cash: 'Tiền mặt',
-    bank_transfer: 'Chuyển khoản',
-};
-
-const formatVND = (v: number) =>
-    new Intl.NumberFormat('vi-VN', {
-        style: 'currency',
-        currency: 'VND',
-    }).format(v);
-
-const formatDateTime = (iso: string) =>
-    new Date(iso).toLocaleString('vi-VN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-    });
-
 const COLUMNS: ReportTableColumn[] = [
     { key: 'invoice_code', label: 'Mã HĐ' },
     { key: 'issued_at', label: 'Thời gian' },
@@ -65,6 +52,8 @@ const COLUMNS: ReportTableColumn[] = [
     { key: 'orders_count', label: 'Số order', numeric: true },
     { key: 'payment_method', label: 'PTTT' },
     { key: 'total_amount', label: 'Tổng tiền', numeric: true },
+    { key: 'gross_amount', label: 'Thu trước giảm', numeric: true },
+    { key: 'discount_amount', label: 'Giảm giá', numeric: true },
     {
         key: 'amount_received',
         label: 'Khách đưa',
@@ -149,11 +138,23 @@ export default function SalesInvoiceReport({
             case 'orders_count':
                 return row.orders_count;
             case 'payment_method':
-                return PAYMENT_LABELS[row.payment_method] ?? '—';
+                return paymentLabel(row.payment_method);
             case 'total_amount':
                 return (
                     <span className="font-medium text-zinc-900 dark:text-zinc-100">
                         {formatVND(row.total_amount)}
+                    </span>
+                );
+            case 'gross_amount':
+                return (
+                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                        {formatVND(row.gross_amount)}
+                    </span>
+                );
+            case 'discount_amount':
+                return (
+                    <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">
+                        {formatVND(row.discount_amount)}
                     </span>
                 );
             case 'amount_received':
@@ -175,7 +176,9 @@ export default function SalesInvoiceReport({
                     case 'table_name':
                         return inv.table_name ?? '';
                     case 'payment_method':
-                        return PAYMENT_LABELS[inv.payment_method] ?? '';
+                        return inv.payment_method
+                            ? paymentLabel(inv.payment_method)
+                            : '';
                     default:
                         return (
                             (inv as unknown as Record<string, string | number>)[

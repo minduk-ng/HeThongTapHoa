@@ -200,6 +200,37 @@ test('idempotency key chặn thanh toán gộp lặp không tạo hóa đơn tr�
     expect(Invoice::count())->toBe(1);
 });
 
+test('bulk checkout áp một mã và phân bổ discount đúng tổng, đơn cuối nhận phần dư', function () {
+    $this->actingAs(posAdmin());
+    $promo = App\Models\Promotion::create([
+        'code' => 'BULKFIX',
+        'name' => 'Bulk fixed',
+        'discount_type' => 'fixed_amount',
+        'discount_value' => 10001,
+    ]);
+    $table = posTable(['status' => 'occupied']);
+    $item = posMenuItem();
+    $order1 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 30000, 'status' => 'completed']], ['status' => 'completed']);
+    $order2 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 30000, 'status' => 'completed']], ['status' => 'completed']);
+
+    $this->post('/staff/pos/bulk-checkout', [
+        'order_ids' => [$order1->id, $order2->id],
+        'table_id' => $table->id,
+        'payment_method' => 'cash',
+        'amount_received' => 49999,
+        'change_amount' => 0,
+        'promotion_code' => $promo->code,
+    ])->assertSessionHasNoErrors();
+
+    $o1 = $order1->fresh();
+    $o2 = $order2->fresh();
+    expect((float) $o1->discount_amount)->toBe(5000.0);
+    expect((float) $o2->discount_amount)->toBe(5001.0);
+    expect((float) $o1->discount_amount + (float) $o2->discount_amount)->toBe(10001.0);
+    expect((float) App\Models\Invoice::firstOrFail()->total_amount)->toBe(49999.0);
+    expect($promo->fresh()->used_count)->toBe(1);
+});
+
 test('thanh toán gộp yêu cầu order_ids không rỗng', function () {
     $this->actingAs(posAdmin());
 

@@ -14,6 +14,7 @@ interface ReceiptPrintModalProps {
     invoiceCode?: string;
     depositAmount?: number;
     depositRefund?: number;
+    promotionDiscount?: number;
 }
 
 export default function ReceiptPrintModal({
@@ -27,6 +28,7 @@ export default function ReceiptPrintModal({
     invoiceCode = 'INV-' + Math.floor(100000 + Math.random() * 900000),
     depositAmount = 0,
     depositRefund = 0,
+    promotionDiscount = 0,
 }: ReceiptPrintModalProps) {
     useEffect(() => {
         if (isOpen) {
@@ -44,7 +46,7 @@ export default function ReceiptPrintModal({
         const itemSubtotal = item.quantity * item.unit_price;
         return sum + itemSubtotal * ((item.vat_rate || 0) / 100);
     }, 0);
-    const totalAmount = subtotal;
+    const totalAmount = Math.max(0, subtotal - promotionDiscount);
 
     const todayStr = new Date().toLocaleDateString('vi-VN');
     const timeNowStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -198,6 +200,12 @@ export default function ReceiptPrintModal({
                                 <span>Phí dịch vụ (0%):</span>
                                 <span className="font-mono tabular-nums">0</span>
                             </div>
+                            {promotionDiscount > 0 && (
+                                <div className="flex justify-between text-zinc-600">
+                                    <span>Giảm giá:</span>
+                                    <span className="font-mono tabular-nums">-{promotionDiscount.toLocaleString('vi-VN')} đ</span>
+                                </div>
+                            )}
                             <div className="flex justify-between text-zinc-600">
                                 <span>Thuế GTGT ({vatTotal > 0 ? '8%' : '0%'}):</span>
                                 <span className="font-mono tabular-nums">{vatTotal.toLocaleString('vi-VN')}</span>

@@ -36,3 +36,5 @@ skill-lock.json
 /.claude
 agents.md
 opencode.json
+/.workbuddy-ai
+claude.md

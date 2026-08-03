@@ -88,4 +88,25 @@ class SalesInvoiceReportTest extends TestCase
                 ->where('metrics.avg_invoice', 0)
             );
     }
+
+    public function test_invoice_exposes_gross_and_discount_columns()
+    {
+        $invoice = $this->makeInvoice('2026-07-15 12:00:00', 'cash', 80000);
+        posOrder(posTable(), [
+            ['item' => posMenuItem(['price' => 100000]), 'qty' => 1, 'price' => 100000],
+        ], [
+            'invoice_id' => $invoice->id,
+            'status' => 'paid',
+            'subtotal' => 100000,
+            'discount_amount' => 20000,
+        ]);
+
+        $this->actingAs($this->adminUser())
+            ->get('/reports/sales-invoices?start_date=2026-07-01&end_date=2026-07-31')
+            ->assertInertia(fn ($page) => $page
+                ->where('invoices.0.total_amount', 80000)
+                ->where('invoices.0.gross_amount', 100000)
+                ->where('invoices.0.discount_amount', 20000)
+            );
+    }
 }

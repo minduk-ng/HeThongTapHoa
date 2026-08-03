@@ -13,8 +13,11 @@ use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Promotion;
 use App\Models\Table;
 use App\Models\Deposit;
+use App\Models\Employee;
+use App\Services\InventoryIngredientService;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -25,6 +28,11 @@ use Inertia\Inertia;
 
 class POSController extends Controller
 {
+    public function __construct(
+        private InventoryIngredientService $inventoryIngredientService
+    ) {
+    }
+
     public function index(Request $request)
     {
         $isLocal = app()->environment('local');
@@ -376,7 +384,7 @@ class POSController extends Controller
                     }
                 }
 
-                $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
+                $employeeId = Employee::idForUser($request->user()?->id);
                 $orderCode = $this->generateOrderCode($table);
                 
                 $order = Order::create([
@@ -630,7 +638,7 @@ class POSController extends Controller
                             : false;
 
                         $orderCode = $this->generateOrderCode($table);
-                        $employeeId = DB::table('employees')->where('id', $request->user()?->id)->exists() ? $request->user()->id : null;
+                        $employeeId = Employee::idForUser($request->user()?->id);
                         
                         $createdOrder = Order::create([
                             'order_code' => $orderCode,
@@ -700,6 +708,34 @@ class POSController extends Controller
         }
     }
 
+    public function validatePromotion(Request $request)
+    {
+        $validated = $request->validate([
+            'code' => 'required|string|max:50',
+            'subtotal' => 'required|numeric|min:0',
+        ]);
+
+        $resolved = $this->resolvePromotion($validated['code'], (float) $validated['subtotal']);
+
+        if (! $resolved) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'Mã khuyến mãi không hợp lệ hoặc đã hết hạn.',
+            ], 422);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'discount_amount' => $resolved['discount_amount'],
+            'total' => (float) $validated['subtotal'] - $resolved['discount_amount'],
+            'promotion' => [
+                'id' => $resolved['promotion']->id,
+                'name' => $resolved['promotion']->name,
+                'code' => $resolved['promotion']->code,
+            ],
+        ]);
+    }
+
     public function checkout(Request $request)
     {
         $validated = $request->validate([
@@ -707,6 +743,7 @@ class POSController extends Controller
             'payment_method' => 'required|in:cash,bank_transfer',
             'amount_received' => 'required|numeric|min:0',
             'change_amount' => 'required|numeric|min:0',
+            'promotion_code' => 'nullable|string|max:50',
             'idempotency_key' => 'nullable|string|max:100',
         ]);
 
@@ -743,9 +780,6 @@ class POSController extends Controller
                     throw new \Exception('Bạn không có quyền duyệt khẩn cấp thanh toán khi món chưa được Bếp hoàn tất.');
                 }
 
-                // Mark only this order as paid/completed
-                $order->update(['status' => 'paid']);
-
                 $targetTable = $order->table_id ? Table::findOrFail($order->table_id) : null;
 
                 // Determine primary group table ID and all tables in this merged group
@@ -765,9 +799,28 @@ class POSController extends Controller
                     ? ($subTableNumbers ? "{$primaryTableObj->table_number} (Gộp {$subTableNumbers})" : $primaryTableObj->table_number)
                     : 'Mang đi';
 
-                $totalAmount = $order->items->where('status', '!=', 'cancelled')->sum(function ($item) {
+                $subtotal = $order->items->where('status', '!=', 'cancelled')->sum(function ($item) {
                     return (float) $item->quantity * (float) $item->unit_price;
                 });
+
+                $discountAmount = 0.0;
+                $promotion = null;
+                if (! empty($validated['promotion_code'])) {
+                    $resolved = $this->resolvePromotion($validated['promotion_code'], $subtotal, true);
+                    if (! $resolved) {
+                        throw new \Exception('Mã khuyến mãi không hợp lệ hoặc đã hết hạn.');
+                    }
+                    $promotion = $resolved['promotion'];
+                    $discountAmount = $resolved['discount_amount'];
+                }
+
+                $totalAmount = max(0, $subtotal - $discountAmount);
+                $order->update([
+                    'status' => 'paid',
+                    'promotion_id' => $promotion?->id,
+                    'discount_amount' => $discountAmount,
+                    'total' => $totalAmount,
+                ]);
 
                 $depositTotal = (float) $order->deposits()->where('status', 'held')->sum('amount');
                 $payable = max(0, $totalAmount - $depositTotal);
@@ -791,6 +844,10 @@ class POSController extends Controller
                 ]);
 
                 $order->update(['invoice_id' => $invoice->id]);
+
+                if ($promotion) {
+                    $promotion->increment('used_count');
+                }
 
                 if ($depositTotal > 0) {
                     $order->deposits()->where('status', 'held')->update([
@@ -891,6 +948,7 @@ class POSController extends Controller
             'payment_method' => 'required|in:cash,bank_transfer,e_wallet',
             'amount_received' => 'required|numeric|min:0',
             'change_amount' => 'required|numeric|min:0',
+            'promotion_code' => 'nullable|string|max:50',
             'idempotency_key' => 'nullable|string|max:100',
         ]);
 
@@ -937,12 +995,25 @@ class POSController extends Controller
                 }
 
                 // Compute total across all orders
-                $totalAmount = $orders->sum(function ($ord) {
+                $grandSubtotal = $orders->sum(function ($ord) {
                     return $ord->items->where('status', '!=', 'cancelled')->sum(function ($item) {
                         return (float) $item->quantity * (float) $item->unit_price;
                     });
                 });
-                
+
+                $discountAmount = 0.0;
+                $promotion = null;
+                if (! empty($validated['promotion_code'])) {
+                    $resolved = $this->resolvePromotion($validated['promotion_code'], $grandSubtotal, true);
+                    if (! $resolved) {
+                        throw new \Exception('Mã khuyến mãi không hợp lệ hoặc đã hết hạn.');
+                    }
+                    $promotion = $resolved['promotion'];
+                    $discountAmount = $resolved['discount_amount'];
+                }
+
+                $totalAmount = max(0, $grandSubtotal - $discountAmount);
+
                 $depositTotal = 0;
                 foreach ($orders as $ord) {
                     $depositTotal += (float) $ord->deposits()->where('status', 'held')->sum('amount');
@@ -984,10 +1055,29 @@ class POSController extends Controller
                     'issued_at' => now(),
                 ]);
 
-                // Mark all orders as paid + link invoice
-                foreach ($orders as $ord) {
-                    $orderTotal = $ord->items->sum(fn ($item) => (float) $item->quantity * (float) $item->unit_price);
-                    $ord->update(['status' => 'paid', 'invoice_id' => $invoice->id]);
+                // Mark all orders as paid + link invoice, distributing discount exactly.
+                $assignedDiscount = 0.0;
+                $orderCount = $orders->count();
+                foreach ($orders->values() as $index => $ord) {
+                    $orderSubtotal = $ord->items->where('status', '!=', 'cancelled')->sum(
+                        fn ($item) => (float) $item->quantity * (float) $item->unit_price
+                    );
+                    if ($discountAmount > 0 && $grandSubtotal > 0) {
+                        $orderDiscount = $index === $orderCount - 1
+                            ? $discountAmount - $assignedDiscount
+                            : floor($discountAmount * $orderSubtotal / $grandSubtotal);
+                        $assignedDiscount += $orderDiscount;
+                    } else {
+                        $orderDiscount = 0.0;
+                    }
+                    $orderTotal = max(0, $orderSubtotal - $orderDiscount);
+                    $ord->update([
+                        'status' => 'paid',
+                        'invoice_id' => $invoice->id,
+                        'promotion_id' => $promotion?->id,
+                        'discount_amount' => $orderDiscount,
+                        'total' => $orderTotal,
+                    ]);
 
                     if ($depositTotal > 0) {
                         $ord->deposits()->where('status', 'held')->update([
@@ -1003,6 +1093,10 @@ class POSController extends Controller
                         'total' => $orderTotal,
                         'bulk' => true,
                     ]);
+                }
+
+                if ($promotion) {
+                    $promotion->increment('used_count');
                 }
 
                 // Release tables if no active orders remain
@@ -1303,6 +1397,14 @@ class POSController extends Controller
                 foreach ($orders as $order) {
                     foreach ($order->items as $item) {
                         if ($item->status !== 'cancelled') {
+                            if ($item->status === 'completed') {
+                                $this->inventoryIngredientService->restoreIngredients(
+                                    $item,
+                                    $request->user()?->id,
+                                    $order->order_code ?? ''
+                                );
+                            }
+
                             $item->update([
                                 'status' => 'cancelled',
                                 'cancellation_reason' => $reasonStr,
@@ -1405,6 +1507,55 @@ class POSController extends Controller
 
             return response()->json(['error' => 'Đánh dấu phục vụ thất bại.'], 500);
         }
+    }
+
+    private function resolvePromotion(?string $code, float $subtotal, bool $lockForUpdate = false): ?array
+    {
+        if (! $code) {
+            return null;
+        }
+
+        $query = Promotion::query()->whereRaw('UPPER(code) = ?', [mb_strtoupper(trim($code))]);
+        if ($lockForUpdate) {
+            $query->lockForUpdate();
+        }
+        $promotion = $query->first();
+
+        if (! $promotion || ! $promotion->is_active) {
+            return null;
+        }
+
+        $now = now();
+        if (($promotion->starts_at && $now->lt($promotion->starts_at))
+            || ($promotion->expires_at && $now->gt($promotion->expires_at))) {
+            return null;
+        }
+
+        if ($promotion->max_uses !== null && $promotion->used_count >= $promotion->max_uses) {
+            return null;
+        }
+
+        if ($promotion->min_order_amount !== null && $subtotal < (float) $promotion->min_order_amount) {
+            return null;
+        }
+
+        return [
+            'promotion' => $promotion,
+            'discount_amount' => $this->discountFor($promotion, $subtotal),
+        ];
+    }
+
+    private function discountFor(Promotion $promotion, float $subtotal): float
+    {
+        $discount = $promotion->discount_type === 'percentage'
+            ? $subtotal * ((float) $promotion->discount_value / 100)
+            : (float) $promotion->discount_value;
+
+        if ($promotion->max_discount_amount !== null) {
+            $discount = min($discount, (float) $promotion->max_discount_amount);
+        }
+
+        return round(max(0, min($discount, $subtotal)), 2);
     }
 
     private function safeDispatch(callable $callback): void

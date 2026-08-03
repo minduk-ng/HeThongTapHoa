@@ -205,6 +205,17 @@ export default function DatePicker(props: DatePickerProps) {
     const reopenGuardRef = useRef(false);
     const [panelPos, setPanelPos] = useState({ top: 0, left: 0 });
 
+    const viewMonthRef = useRef(viewMonth);
+    const viewModeRef = useRef(viewMode);
+
+    useEffect(() => {
+        viewMonthRef.current = viewMonth;
+    }, [viewMonth]);
+
+    useEffect(() => {
+        viewModeRef.current = viewMode;
+    }, [viewMode]);
+
     const minD = parseYMD(minDate);
     const maxD = parseYMD(maxDate);
 
@@ -391,6 +402,56 @@ export default function DatePicker(props: DatePickerProps) {
         };
     }, [isOpen]);
 
+    // Cuộn chuột trên panel: chuyển tháng/năm nhanh (không cuộn trang phía sau).
+    useEffect(() => {
+        if (!isOpen || !panelRef.current) {
+            return;
+        }
+
+        let acc = 0;
+        const panel = panelRef.current;
+
+        function onWheel(e: WheelEvent) {
+            e.preventDefault();
+            acc += e.deltaY;
+
+            const step = Math.trunc(acc / 80);
+
+            if (step === 0) {
+                return;
+            }
+
+            acc = acc % 80;
+            const dir = step > 0 ? 1 : -1;
+            const current = viewMonthRef.current;
+            const modeNow = viewModeRef.current;
+
+            if (modeNow === 'days') {
+                setViewMonth(addMonths(current, dir));
+            } else if (modeNow === 'months') {
+                setViewMonth(
+                    new Date(
+                        current.getFullYear() + dir,
+                        current.getMonth(),
+                        1,
+                    ),
+                );
+            } else {
+                setViewMonth(
+                    new Date(
+                        current.getFullYear() + dir * 12,
+                        current.getMonth(),
+                        1,
+                    ),
+                );
+            }
+        }
+
+        panel.addEventListener('wheel', onWheel, { passive: false });
+
+        return () => panel.removeEventListener('wheel', onWheel);
+    }, [isOpen, viewMode]);
+
     const openPopover = () => {
         if (disabled) {
             return;
@@ -551,7 +612,7 @@ export default function DatePicker(props: DatePickerProps) {
                     <div
                         ref={panelRef}
                         style={{ top: panelPos.top, left: panelPos.left }}
-                        className="fixed z-50 w-[300px] rounded-2xl border border-zinc-200/80 bg-white p-3 shadow-xl dark:border-zinc-800/80 dark:bg-zinc-900"
+                        className="fixed z-[110] w-[300px] rounded-2xl border border-zinc-200/80 bg-white p-3 shadow-xl dark:border-zinc-800/80 dark:bg-zinc-900"
                     >
                         <div className="flex items-center justify-between px-1 pb-2">
                             <button
