@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -31,5 +32,15 @@ class Shift extends Model
     public function scopeOpen(Builder $query): Builder
     {
         return $query->where('status', 'open');
+    }
+
+    public function openedBy()
+    {
+        return $this->belongsTo(User::class, 'opened_by');
+    }
+
+    public function closedBy()
+    {
+        return $this->belongsTo(User::class, 'closed_by');
     }
 }
