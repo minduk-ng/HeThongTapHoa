@@ -69,6 +69,7 @@ class OrderListController extends Controller
                 'subtotal' => (float) $order->subtotal,
                 'vat_amount' => (float) $order->vat_amount,
                 'total' => (float) $order->total,
+                'discount_amount' => (float) $order->discount_amount,
                 'deposit_total' => (float) $order->deposits()->sum('amount'),
                 'deposits' => $order->deposits->map(fn ($d) => [
                     'id' => $d->id,
@@ -86,6 +87,7 @@ class OrderListController extends Controller
                     'quantity' => $item->quantity,
                     'unit_price' => (float) $item->unit_price,
                     'subtotal' => (float) $item->subtotal,
+                    'discount_amount' => (float) $item->discount_amount,
                     'note' => $item->note,
                     'status' => $item->status,
                     'served_at' => $item->served_at?->toIso8601String(),

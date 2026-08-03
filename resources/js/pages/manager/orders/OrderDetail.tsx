@@ -24,6 +24,7 @@ interface OrderItemData {
     quantity: number;
     unit_price: number;
     subtotal: number;
+    discount_amount: number;
     note: string | null;
     status: string;
     served_at: string | null;
@@ -66,6 +67,7 @@ interface OrderDetailData {
     subtotal: number;
     vat_amount: number;
     total: number;
+    discount_amount: number;
     deposit_total: number;
     deposits: DepositData[];
     created_at: string;
@@ -251,6 +253,7 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                                     <th className="px-3 py-2 text-center">SL</th>
                                                     <th className="px-3 py-2 text-right">Đơn giá</th>
                                                     <th className="px-3 py-2 text-right">Thành tiền</th>
+                                                    <th className="px-3 py-2 text-right">Giảm giá</th>
                                                     <th className="px-3 py-2">Trạng thái</th>
                                                     <th className="px-3 py-2">Thời gian</th>
                                                 </tr>
@@ -268,6 +271,15 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                                         <td className="px-3 py-2 text-center text-sm text-zinc-600 dark:text-zinc-400 tabular-nums">{item.quantity}</td>
                                                         <td className="px-3 py-2 text-right text-sm text-zinc-600 dark:text-zinc-400 tabular-nums">{formatCurrency(item.unit_price)}</td>
                                                         <td className="px-3 py-2 text-right text-sm font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(item.subtotal)}</td>
+                                                        <td className="px-3 py-2 text-right text-sm tabular-nums">
+                                                            {item.discount_amount > 0 ? (
+                                                                <span className="font-medium text-rose-600 dark:text-rose-400">
+                                                                    −{formatCurrency(item.discount_amount)}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-zinc-300 dark:text-zinc-600">—</span>
+                                                            )}
+                                                        </td>
                                                         <td className="px-3 py-2">
                                                             <span className={`text-xs font-medium ${
                                                                 item.status === 'cancelled' ? 'text-rose-500'
@@ -311,6 +323,12 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                                 <div className="flex justify-between text-zinc-500 dark:text-zinc-400">
                                                     <span>Thuế VAT:</span>
                                                     <span className="font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">{formatCurrency(order.vat_amount)}</span>
+                                                </div>
+                                            )}
+                                            {order.discount_amount > 0 && (
+                                                <div className="flex justify-between text-rose-600 dark:text-rose-400 font-medium">
+                                                    <span>Giảm giá:</span>
+                                                    <span className="font-semibold tabular-nums">−{formatCurrency(order.discount_amount)}</span>
                                                 </div>
                                             )}
                                             <div className="flex justify-between text-zinc-700 dark:text-zinc-300 font-medium">
