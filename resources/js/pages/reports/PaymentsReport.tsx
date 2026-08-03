@@ -39,6 +39,9 @@ interface Metrics {
     cash_total: number;
     bank_total: number;
     invoice_count: number;
+    gross_revenue: number;
+    total_discount: number;
+    discounted_invoice_count: number;
 }
 
 interface Comparison {
@@ -119,6 +122,18 @@ export default function PaymentsReport({
             value: formatVND(metrics.revenue),
             icon: ReceiptText,
             color: 'text-emerald-600 dark:text-emerald-400',
+        },
+        {
+            label: 'Thu trước giảm',
+            value: formatVND(metrics.gross_revenue),
+            icon: TrendingUp,
+            color: 'text-sky-600 dark:text-sky-400',
+        },
+        {
+            label: 'Tổng giảm giá',
+            value: formatVND(metrics.total_discount),
+            icon: TrendingDown,
+            color: 'text-rose-600 dark:text-rose-400',
         },
         {
             label: 'So kỳ trước',
