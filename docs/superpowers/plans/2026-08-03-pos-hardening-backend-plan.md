@@ -724,7 +724,7 @@ test('completeItems khong deduct khi order item đa bi huy giua chung', function
         ->assertSessionHasNoErrors();
 
     expect(InventoryTransaction::where('ingredient_id', $ingredient->id)->where('type', 'export')->count())->toBe(0);
-    expect((float) $ingredient->allPoints()[0]->stock_quantity)->toBe(1000.0);
+    expect((float) App\Models\Ingredient::find($ingredient->id)->stock_quantity)->toBe(1000.0);
 });
 ```
 
