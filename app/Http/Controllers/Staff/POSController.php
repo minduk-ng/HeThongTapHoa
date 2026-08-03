@@ -1576,30 +1576,35 @@ class POSController extends Controller
         }
         $promotion = $query->first();
 
-        if (! $promotion || ! $promotion->is_active) {
-            return null;
+        if (! $promotion) {
+            return ['status' => 'rejected', 'reason' => 'not_found'];
+        }
+        if (! $promotion->is_active) {
+            return ['status' => 'rejected', 'reason' => 'inactive'];
         }
 
         $now = now();
-        if (($promotion->starts_at && $now->lt($promotion->starts_at))
-            || ($promotion->expires_at && $now->gt($promotion->expires_at))) {
-            return null;
+        if ($promotion->starts_at && $now->lt($promotion->starts_at)) {
+            return ['status' => 'rejected', 'reason' => 'not_started'];
+        }
+        if ($promotion->expires_at && $now->gt($promotion->expires_at)) {
+            return ['status' => 'rejected', 'reason' => 'expired'];
         }
 
         if ($promotion->max_uses !== null && $promotion->used_count >= $promotion->max_uses) {
-            return null;
+            return ['status' => 'rejected', 'reason' => 'out_of_uses'];
         }
-
         if ($promotion->min_order_amount !== null && $orderSubtotal < (float) $promotion->min_order_amount) {
-            return null;
+            return ['status' => 'rejected', 'reason' => 'below_min'];
         }
 
         $targetSubtotal = Promotion::targetSubtotal($promotion, $lines);
         if ($targetSubtotal <= 0) {
-            return null;
+            return ['status' => 'rejected', 'reason' => 'no_eligible_line'];
         }
 
         return [
+            'status' => 'ok',
             'promotion' => $promotion,
             'discount_amount' => $this->discountFor($promotion, $targetSubtotal),
         ];
