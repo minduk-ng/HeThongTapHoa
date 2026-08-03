@@ -88,18 +88,19 @@ class KitchenController extends Controller
 
                 $employeeId = Employee::idForUser($request->user()?->id);
 
-                foreach ($order->items as $item) {
-                    if ($item->status === 'cancelled' || $item->status === 'completed') {
+                foreach ($order->items as $it) {
+                    if ($it->status === 'cancelled' || $it->status === 'completed') {
                         continue;
                     }
 
-                    $item->update([
-                        'status' => 'completed',
-                    ]);
+                    $updated = OrderItem::where('id', $it->id)
+                        ->whereIn('status', ['pending', 'processing'])
+                        ->update(['status' => 'completed']);
 
-                    $completedItems->push($item);
-
-                    $this->deductIngredients($item, $employeeId, $order->order_code);
+                    if ($updated === 1) {
+                        $completedItems->push($it);
+                        $this->deductIngredients($it, $employeeId, $order->order_code);
+                    }
                 }
 
                 // Audit log: completed
@@ -142,9 +143,14 @@ class KitchenController extends Controller
                     ->whereIn('status', ['pending', 'processing'])
                     ->get();
 
-                foreach ($completedItems as $item) {
-                    $item->update(['status' => 'completed']);
-                    $this->deductIngredients($item, $employeeId, $order->order_code);
+                foreach ($completedItems as $del) {
+                    $updated = OrderItem::where('id', $del->id)
+                        ->whereIn('status', ['pending', 'processing'])
+                        ->update(['status' => 'completed']);
+
+                    if ($updated === 1) {
+                        $this->deductIngredients($del, $employeeId, $order->order_code);
+                    }
                 }
 
                 $remainingActive = $order->items()
