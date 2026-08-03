@@ -67,10 +67,10 @@ class PromotionController extends Controller
         if (isset($data['code'])) {
             $data['code'] = mb_strtoupper(trim((string) $data['code']));
         }
-        if (! empty($data['starts_at'])) {
+        if (! empty($data['starts_at']) && strtotime((string) $data['starts_at']) !== false) {
             $data['starts_at'] = Carbon::parse($data['starts_at'])->startOfDay()->format('Y-m-d H:i:s');
         }
-        if (! empty($data['expires_at'])) {
+        if (! empty($data['expires_at']) && strtotime((string) $data['expires_at']) !== false) {
             $data['expires_at'] = Carbon::parse($data['expires_at'])->endOfDay()->format('Y-m-d H:i:s');
         }
         return $data;

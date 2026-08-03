@@ -79,3 +79,13 @@ test('store chan ma trung khong phan biet hoa thuong', function () {
         'discount_value' => 100,
     ])->assertSessionHasErrors(['code']);
 });
+
+test('store tra loi loi validation khi starts_at khong hop le', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'code' => 'BADDATE',
+        'name' => 'Sai ngay',
+        'discount_type' => 'fixed_amount',
+        'discount_value' => 100,
+        'starts_at' => 'garbage',
+    ])->assertSessionHasErrors(['starts_at']);
+});
