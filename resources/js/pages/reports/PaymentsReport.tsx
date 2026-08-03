@@ -25,12 +25,16 @@ interface PaymentRow {
     total_amount: number;
     amount_received: number;
     change_amount: number;
+    gross_amount: number;
+    discount_amount: number;
 }
 
 interface MethodRow {
     method: string;
     count: number;
     total: number;
+    gross_total: number;
+    discount_total: number;
     pct: number;
 }
 
@@ -61,6 +65,8 @@ const COLUMNS: ReportTableColumn[] = [
     { key: 'method', label: 'PTTT' },
     { key: 'count', label: 'Số HĐ', numeric: true },
     { key: 'total', label: 'Tổng tiền', numeric: true },
+    { key: 'gross_total', label: 'Thu trước giảm', numeric: true },
+    { key: 'discount_total', label: 'Giảm giá', numeric: true },
     { key: 'pct', label: 'Tỷ trọng %', numeric: true },
 ];
 
@@ -82,24 +88,37 @@ export default function PaymentsReport({
     const [showDonut, setShowDonut] = useState(true);
 
     const methodRows = useMemo(() => {
-        const map = new Map<string, { count: number; total: number }>();
+        const map = new Map<
+            string,
+            { count: number; total: number; gross: number; discount: number }
+        >();
 
         for (const r of safeRows) {
-            const cur = map.get(r.payment_method) ?? { count: 0, total: 0 };
+            const cur =
+                map.get(r.payment_method) ?? {
+                    count: 0,
+                    total: 0,
+                    gross: 0,
+                    discount: 0,
+                };
 
             cur.count += 1;
             cur.total += r.total_amount;
+            cur.gross += r.gross_amount;
+            cur.discount += r.discount_amount;
             map.set(r.payment_method, cur);
         }
 
         return [...map.entries()]
-            .map(([method, { count, total }]) => ({
+            .map(([method, c]) => ({
                 method,
-                count,
-                total,
+                count: c.count,
+                total: c.total,
+                gross_total: c.gross,
+                discount_total: c.discount,
                 pct:
                     metrics.revenue > 0
-                        ? Math.round((total / metrics.revenue) * 1000) / 10
+                        ? Math.round((c.total / metrics.revenue) * 1000) / 10
                         : 0,
             }))
             .sort((a, b) => b.total - a.total);
@@ -185,6 +204,18 @@ export default function PaymentsReport({
                         {formatVND(row.total)}
                     </span>
                 );
+            case 'gross_total':
+                return (
+                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                        {formatVND(row.gross_total)}
+                    </span>
+                );
+            case 'discount_total':
+                return (
+                    <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">
+                        {formatVND(row.discount_total)}
+                    </span>
+                );
             case 'pct':
                 return `${row.pct}%`;
             default:
@@ -200,6 +231,10 @@ export default function PaymentsReport({
                         return paymentLabel(r.method);
                     case 'total':
                         return r.total;
+                    case 'gross_total':
+                        return r.gross_total;
+                    case 'discount_total':
+                        return r.discount_total;
                     case 'pct':
                         return `${r.pct}%`;
                     default:
