@@ -1452,21 +1452,23 @@ class POSController extends Controller
 
                 foreach ($orders as $order) {
                     foreach ($order->items as $item) {
-                        if ($item->status !== 'cancelled') {
-                            if ($item->status === 'completed') {
-                                $this->inventoryIngredientService->restoreIngredients(
-                                    $item,
-                                    $request->user()?->id,
-                                    $order->order_code ?? ''
-                                );
-                            }
+                        $wasCompleted = $item->status === 'completed';
 
-                            $item->update([
+                        $updated = OrderItem::where('id', $item->id)
+                            ->where('status', '<>', 'cancelled')
+                            ->update([
                                 'status' => 'cancelled',
                                 'cancellation_reason' => $reasonStr,
                                 'cancelled_by_user_id' => $request->user()->id,
                                 'cancelled_at' => now(),
                             ]);
+
+                        if ($updated === 1 && $wasCompleted) {
+                            $this->inventoryIngredientService->restoreIngredients(
+                                $item,
+                                $request->user()?->id,
+                                $order->order_code ?? ''
+                            );
                         }
                     }
                     $order->update(['status' => 'cancelled']);
