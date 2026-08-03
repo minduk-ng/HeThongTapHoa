@@ -32,6 +32,8 @@ class InvoiceItemsReportController extends Controller
                 'order_items.quantity',
                 'order_items.unit_price',
                 'order_items.subtotal',
+                'orders.subtotal as order_subtotal',
+                'orders.discount_amount as order_discount',
             ])
             ->values()
             ->map(fn ($r) => [
@@ -44,6 +46,8 @@ class InvoiceItemsReportController extends Controller
                 'quantity' => (int) $r->quantity,
                 'unit_price' => (float) $r->unit_price,
                 'subtotal' => (float) $r->subtotal,
+                'order_gross' => (float) ($r->order_subtotal + $r->order_discount),
+                'order_discount' => (float) $r->order_discount,
                 'payment_method' => $r->payment_method,
             ]);
 

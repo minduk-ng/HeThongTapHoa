@@ -29,6 +29,8 @@ interface ItemRow {
     quantity: number;
     unit_price: number;
     subtotal: number;
+    order_gross: number;
+    order_discount: number;
     payment_method: string;
 }
 
@@ -40,6 +42,8 @@ interface TreeNode {
     table_name?: string | null;
     payment_method?: string;
     total?: number;
+    order_gross?: number;
+    order_discount?: number;
     item?: ItemRow;
 }
 
@@ -69,6 +73,9 @@ function buildNodes(filtered: ItemRow[], collapsed: Set<number>): TreeNode[] {
             table_name: first.table_name,
             payment_method: first.payment_method,
             total: items.reduce((s, it) => s + it.subtotal, 0),
+            // ponytail: lấy value row đầu nhóm — giả định 1 invoice ≈ 1 order.
+            order_gross: first.order_gross,
+            order_discount: first.order_discount,
         });
 
         if (!collapsed.has(invoice_id)) {
@@ -103,6 +110,8 @@ const COLUMNS: ReportTableColumn[] = [
     { key: 'quantity', label: 'SL', numeric: true, sortable: false },
     { key: 'unit_price', label: 'Đơn giá', numeric: true, sortable: false },
     { key: 'subtotal', label: 'Thành tiền', numeric: true, sortable: false },
+    { key: 'order_gross', label: 'Thu trước giảm', numeric: true, sortable: false },
+    { key: 'order_discount', label: 'Giảm giá', numeric: true, sortable: false },
     { key: 'payment_method', label: 'PTTT', sortable: false },
 ];
 
@@ -226,6 +235,18 @@ export default function InvoiceItemsReport({
                             {formatVND(row.total ?? 0)}
                         </span>
                     );
+                case 'order_gross':
+                    return (
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                            {formatVND(row.order_gross ?? 0)}
+                        </span>
+                    );
+                case 'order_discount':
+                    return (
+                        <span className="font-semibold tabular-nums text-rose-600 dark:text-rose-400">
+                            {formatVND(row.order_discount ?? 0)}
+                        </span>
+                    );
                 default:
                     return '—';
             }
@@ -246,6 +267,9 @@ export default function InvoiceItemsReport({
                 return formatVND(it.unit_price);
             case 'subtotal':
                 return formatVND(it.subtotal);
+            case 'order_gross':
+            case 'order_discount':
+                return '';
             default:
                 return '—';
         }
@@ -264,6 +288,10 @@ export default function InvoiceItemsReport({
                     return paymentLabel(row.payment_method ?? null);
                 case 'subtotal':
                     return row.total ?? 0;
+                case 'order_gross':
+                    return row.order_gross ?? 0;
+                case 'order_discount':
+                    return row.order_discount ?? 0;
                 default:
                     return '';
             }

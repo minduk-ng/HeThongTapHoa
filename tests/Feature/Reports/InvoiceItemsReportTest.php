@@ -85,4 +85,18 @@ class InvoiceItemsReportTest extends TestCase
                 ->where('metrics.invoice_count', 1)
             );
     }
+
+    public function test_rows_expose_order_gross_and_discount()
+    {
+        [$invoice] = $this->makeInvoiceWithItems('2026-07-15 12:00:00');
+        $invoice->orders()->update(['discount_amount' => 10000]);
+
+        $this->actingAs($this->adminUser())
+            ->get('/reports/invoice-items?start_date=2026-07-01&end_date=2026-07-31')
+            ->assertInertia(fn ($page) => $page
+                ->has('rows', 2)
+                ->where('rows.0.order_discount', 10000)
+                ->where('rows.0.order_gross', 100000)
+            );
+    }
 }
