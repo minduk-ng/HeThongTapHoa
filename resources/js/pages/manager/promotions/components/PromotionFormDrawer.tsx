@@ -257,64 +257,69 @@ export default function PromotionFormDrawer({
                         </label>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                        <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                            Phạm vi áp dụng
-                            <span className="mt-1.5 flex overflow-hidden rounded-xl border border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800">
-                                {(
-                                    [
-                                        ['order', 'Toàn đơn'],
-                                        ['item', 'Theo món'],
-                                        ['category', 'Theo danh mục'],
-                                    ] as const
-                                ).map(([type, label]) => (
-                                    <button
-                                        key={type}
-                                        type="button"
-                                        onClick={() =>
-                                            set('target_type', type)
-                                        }
-                                        className={`flex-1 px-2 py-2.5 text-xs font-semibold transition-colors ${
-                                            form.target_type === type
-                                                ? 'bg-sky-600 text-white'
-                                                : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                                        }`}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
+                        <div className="col-span-2 space-y-2">
+                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                Phạm vi áp dụng
                             </span>
-                            {form.target_type !== 'order' && (
-                                <SearchableSelect
-                                    options={
-                                        form.target_type === 'item'
-                                            ? menuItems ?? []
-                                            : menuCategories ?? []
-                                    }
-                                    value={
-                                        form.target_value === ''
-                                            ? null
-                                            : Number(form.target_value)
-                                    }
-                                    onChange={(id) =>
-                                        set(
-                                            'target_value',
-                                            id === null ? '' : String(id),
-                                        )
-                                    }
-                                    placeholder={
-                                        form.target_type === 'item'
-                                            ? 'Chọn món...'
-                                            : 'Chọn danh mục...'
-                                    }
-                                />
-                            )}
+                            <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3.5 dark:border-zinc-800/80 dark:bg-zinc-900/50 space-y-3">
+                                <span className="flex overflow-hidden rounded-xl border border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800">
+                                    {(
+                                        [
+                                            ['order', 'Toàn đơn'],
+                                            ['item', 'Theo món'],
+                                            ['category', 'Theo danh mục'],
+                                        ] as const
+                                    ).map(([type, label]) => (
+                                        <button
+                                            key={type}
+                                            type="button"
+                                            onClick={() =>
+                                                set('target_type', type)
+                                            }
+                                            className={`flex-1 px-3 py-2.5 text-xs font-semibold transition-colors ${
+                                                form.target_type === type
+                                                    ? 'bg-sky-600 text-white shadow-sm'
+                                                    : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                            }`}
+                                        >
+                                            {label}
+                                        </button>
+                                    ))}
+                                </span>
+                                {form.target_type !== 'order' && (
+                                    <div className="animate-in fade-in slide-in-from-top-1 duration-150">
+                                        <SearchableSelect
+                                            options={
+                                                form.target_type === 'item'
+                                                    ? menuItems ?? []
+                                                    : menuCategories ?? []
+                                            }
+                                            value={
+                                                form.target_value === ''
+                                                    ? null
+                                                    : Number(form.target_value)
+                                            }
+                                            onChange={(id) =>
+                                                set(
+                                                    'target_value',
+                                                    id === null ? '' : String(id),
+                                                )
+                                            }
+                                            placeholder={
+                                                form.target_type === 'item'
+                                                    ? 'Chọn món...'
+                                                    : 'Chọn danh mục...'
+                                            }
+                                        />
+                                    </div>
+                                )}
+                            </div>
                             {errors.target_value && (
                                 <span className="mt-1 block text-xs text-rose-500">
                                     {errors.target_value}
                                 </span>
                             )}
-                        </label>
-                        <div className="hidden md:block" />
+                        </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <label className="flex flex-col gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">

@@ -43,29 +43,29 @@ export default function SearchableSelect({
             <button
                 type="button"
                 onClick={() => (open ? setOpen(false) : openList())}
-                className="flex w-full items-center justify-between rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-800 transition-all hover:bg-zinc-50/50 hover:border-zinc-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800/50 dark:hover:border-zinc-700 dark:focus:border-sky-500 dark:focus:ring-sky-950/50 outline-none"
             >
-                <span className={selected ? '' : 'text-zinc-400'}>
+                <span className={selected ? 'font-medium' : 'text-zinc-400'}>
                     {selected ? selected.name : placeholder}
                 </span>
-                <ChevronDown className="h-4 w-4 text-zinc-400" />
+                <ChevronDown className="h-4 w-4 text-zinc-400 transition-transform duration-200" style={{ transform: open ? 'rotate(180deg)' : 'none' }} />
             </button>
 
             {open && (
-                <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800">
-                    <div className="flex items-center gap-2 border-b border-zinc-200 px-3 dark:border-zinc-700">
+                <div className="absolute z-20 mt-1.5 w-full overflow-hidden rounded-xl border border-zinc-200/80 bg-white/95 backdrop-blur-md shadow-lg dark:border-zinc-800/80 dark:bg-zinc-900/95 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="flex items-center gap-2 border-b border-zinc-100 px-3 dark:border-zinc-800/60">
                         <Search className="h-4 w-4 shrink-0 text-zinc-400" />
                         <input
                             ref={inputRef}
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             placeholder="Tìm kiếm..."
-                            className="w-full bg-transparent py-2 text-sm outline-none dark:text-zinc-100"
+                            className="w-full bg-transparent py-2.5 text-sm outline-none dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
                         />
                     </div>
-                    <div className="max-h-56 overflow-auto">
+                    <div className="max-h-56 overflow-auto py-1">
                         {filtered.length === 0 ? (
-                            <div className="px-3 py-4 text-center text-xs text-zinc-400">
+                            <div className="px-3 py-4 text-center text-xs text-zinc-400 dark:text-zinc-500">
                                 Không có kết quả
                             </div>
                         ) : (
@@ -77,11 +77,11 @@ export default function SearchableSelect({
                                         onChange(o.id);
                                         setOpen(false);
                                     }}
-                                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-zinc-50 dark:hover:bg-zinc-700"
+                                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50/80 active:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/80 dark:active:bg-zinc-800 transition-colors"
                                 >
-                                    <span>{o.name}</span>
+                                    <span className={o.id === value ? 'font-medium text-sky-600 dark:text-sky-400' : ''}>{o.name}</span>
                                     {o.id === value && (
-                                        <Check className="h-4 w-4 text-sky-500" />
+                                        <Check className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                                     )}
                                 </button>
                             ))

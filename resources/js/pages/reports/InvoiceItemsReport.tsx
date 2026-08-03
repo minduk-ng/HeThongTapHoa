@@ -114,9 +114,7 @@ const COLUMNS: ReportTableColumn[] = [
     { key: 'unit_price', label: 'Đơn giá', numeric: true, sortable: false },
     { key: 'subtotal', label: 'Thành tiền', numeric: true, sortable: false },
     { key: 'discount_amount', label: 'Giảm giá', numeric: true, sortable: false },
-    { key: 'net', label: 'Thu thực', numeric: true, sortable: false },
-    { key: 'order_gross', label: 'Thu trước giảm', numeric: true, sortable: false },
-    { key: 'order_discount', label: 'Giảm giá', numeric: true, sortable: false },
+    { key: 'net', label: 'Thực thu', numeric: true, sortable: false },
     { key: 'payment_method', label: 'PTTT', sortable: false },
 ];
 
@@ -246,16 +244,16 @@ export default function InvoiceItemsReport({
                             {formatVND(row.total ?? 0)}
                         </span>
                     );
-                case 'order_gross':
-                    return (
-                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                            {formatVND(row.order_gross ?? 0)}
-                        </span>
-                    );
-                case 'order_discount':
+                case 'discount_amount':
                     return (
                         <span className="font-semibold tabular-nums text-rose-600 dark:text-rose-400">
                             {formatVND(row.order_discount ?? 0)}
+                        </span>
+                    );
+                case 'net':
+                    return (
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                            {formatVND((row.order_gross ?? row.total ?? 0) - (row.order_discount ?? 0))}
                         </span>
                     );
                 default:
@@ -309,10 +307,10 @@ export default function InvoiceItemsReport({
                     return paymentLabel(row.payment_method ?? null);
                 case 'subtotal':
                     return row.total ?? 0;
-                case 'order_gross':
-                    return row.order_gross ?? 0;
-                case 'order_discount':
+                case 'discount_amount':
                     return row.order_discount ?? 0;
+                case 'net':
+                    return (row.order_gross ?? row.total ?? 0) - (row.order_discount ?? 0);
                 default:
                     return '';
             }
