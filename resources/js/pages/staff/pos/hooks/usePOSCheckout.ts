@@ -181,7 +181,8 @@ export function usePOSCheckout(
 
     const applyPromotion = async (
         code: string,
-        subtotal: number
+        subtotal: number,
+        items: { menu_item_id: number; quantity: number; unit_price: number }[] = []
     ): Promise<{ ok: boolean; discount_amount?: number; total?: number; error?: string }> => {
         const csrfToken = getCsrfTokenFromCookie();
 
@@ -194,7 +195,7 @@ export function usePOSCheckout(
                     'X-XSRF-TOKEN': csrfToken,
                     'X-Requested-With': 'XMLHttpRequest',
                 },
-                body: JSON.stringify({ code, subtotal }),
+                body: JSON.stringify({ code, subtotal, items }),
             });
             const data = await response.json().catch(() => ({}));
 

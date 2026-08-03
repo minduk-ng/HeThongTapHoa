@@ -12,7 +12,7 @@ interface PaymentDrawerProps {
     depositTotal?: number;
     reservationDraft?: ReservationDraft | null;
     promotionDiscount?: number;
-    onApplyPromotion?: (code: string, subtotal: number) => Promise<{ ok: boolean; discount_amount?: number; total?: number; error?: string }>;
+    onApplyPromotion?: (code: string, subtotal: number, items: { menu_item_id: number; quantity: number; unit_price: number }[]) => Promise<{ ok: boolean; discount_amount?: number; total?: number; error?: string }>;
     onClearPromotion?: () => void;
     onConfirmPayment: (paymentMethod: 'cash' | 'bank_transfer', amountReceived: number, changeAmount: number, shouldPrint: boolean) => void;
     onConfirmDeposit?: (amount: number, method: 'cash' | 'bank_transfer') => void;
@@ -95,7 +95,15 @@ export default function PaymentDrawer({
 
         setPromotionLoading(true);
         setPromotionError(null);
-        const result = await onApplyPromotion(code, totalAmount);
+        const result = await onApplyPromotion(
+            code,
+            totalAmount,
+            cartItems.map((item) => ({
+                menu_item_id: item.menu_item_id,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+            })),
+        );
         if (!result.ok) {
             setPromotionError(result.error || 'Mã khuyến mãi không hợp lệ.');
         }
