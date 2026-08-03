@@ -89,3 +89,73 @@ test('store tra loi loi validation khi starts_at khong hop le', function () {
         'starts_at' => 'garbage',
     ])->assertSessionHasErrors(['starts_at']);
 });
+
+test('store chap nhan target item/category va chuan hoa target_value ve null khi order', function () {
+    $cat = \App\Models\MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
+    $item = \App\Models\MenuItem::create(['category_id' => $cat->id, 'name' => 'Mon '.uniqid(), 'price' => 20000, 'vat_rate' => 0, 'is_available' => true]);
+
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'code' => 'KMITEM',
+        'name' => 'KM mon',
+        'discount_type' => 'percentage',
+        'discount_value' => 10,
+        'target_type' => 'item',
+        'target_value' => $item->id,
+    ])->assertSessionHasNoErrors();
+
+    $promo = \App\Models\Promotion::where('code', 'KMITEM')->first();
+    expect($promo->target_type)->toBe('item');
+    expect((int) $promo->target_value)->toBe($item->id);
+
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'code' => 'KMCAT',
+        'name' => 'KM danh muc',
+        'discount_type' => 'percentage',
+        'discount_value' => 10,
+        'target_type' => 'category',
+        'target_value' => $cat->id,
+    ])->assertSessionHasNoErrors();
+
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'code' => 'KMFREE',
+        'name' => 'KM toan don',
+        'discount_type' => 'percentage',
+        'discount_value' => 10,
+        'target_type' => 'order',
+        'target_value' => $item->id, // phải bị normalize về null
+    ])->assertSessionHasNoErrors();
+
+    expect(\App\Models\Promotion::where('code', 'KMFREE')->first()->target_value)->toBeNull();
+});
+
+test('store chặn target_value thiếu hoặc không tồn tại', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'code' => 'BADITEM',
+        'name' => 'Sai mon',
+        'discount_type' => 'percentage',
+        'discount_value' => 10,
+        'target_type' => 'item', // thiếu target_value
+    ])->assertSessionHasErrors(['target_value']);
+
+    $this->post('/manager/promotions', [
+        'code' => 'BADCAT',
+        'name' => 'Sai cat',
+        'discount_type' => 'percentage',
+        'discount_value' => 10,
+        'target_type' => 'category',
+        'target_value' => 999999, // không tồn tại
+    ])->assertSessionHasErrors(['target_value']);
+});
+
+test('index truyền menu_items và menu_categories cho form', function () {
+    $cat = \App\Models\MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
+    \App\Models\MenuItem::create(['category_id' => $cat->id, 'name' => 'Mon '.uniqid(), 'price' => 10000, 'vat_rate' => 0, 'is_available' => true]);
+
+    $this->actingAs(posAdmin())
+        ->get('/manager/promotions')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('manager/promotions/PromotionsManager')
+            ->has('menu_categories')
+            ->has('menu_items'));
+});
