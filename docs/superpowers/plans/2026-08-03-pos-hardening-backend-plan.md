@@ -156,58 +156,104 @@ git commit -m "feat: soft delete khuyen mai (deleted_at + SoftDeletes)"
 
 Lưu ý: Task này đổi shape, các caller ở Task 4. Test message ở Task 3 — nhưng Task 2 phải giữ suite cũ còn pass (PromotionApplyTest hiện assert `ok:false` chung — vẫn pass nếu `validatePromotion` map đúng).
 
-- [ ] **Step 1: Viết test fail cho shape mới (đơn vị qua validate hoặc trực tiếp)**
+- [ ] **Step 1: Viết test fail cho shape mới (unit qua ReflectionMethod)**
 
-Tạo `tests/Feature/POSRejectReasonProviderTest.php` — kiểm `validate-promotion` trả lý do cụ thể (sẽ pass sau Task 3 map). Để Task 2 test ở mức helper, thêm test fixture trực tiếp:
+Tạo `tests/Feature/POSPromotionRejectReasonTest.php`. Test gọi trực tiếp private `resolvePromotion` qua reflection để kiểm shape `['status'=>..., 'reason'=>...]` mà không phụ thuộc message của `validatePromotion` (Task 3 xử lý message).
 
 ```php
 <?php
 
+use App\Models\MenuCategory;
 use App\Models\Promotion;
+use App\Http\Controllers\Staff\POSController;
 
-function rejectReasonPromo(array $attrs = []): Promotion
+function posRejectReasonLines(): \Illuminate\Support\Collection
 {
-    return Promotion::create(array_merge([
+    // danh mục mặc định: không thuộc target category → phục vụ case no_eligible_line
+    return collect([[
+        'order_item_id' => 1,
+        'menu_item_id' => null,
+        'subtotal' => 100000.0,
+        'category_id' => null,
+    ]]);
+}
+
+test('resolvePromotion tra cac ly do tu choi rieng biet', function (array $attrs, string $expectReason) {
+    $promo = Promotion::create(array_merge([
         'code' => 'RRR'.substr(uniqid(), -5), 'name' => 'RR', 'discount_type' => 'percentage',
         'discount_value' => 10, 'is_active' => true,
     ], $attrs));
-}
 
-test('resolvePromotion phan lap cac ly do tu choi', function (array $attrs, string $expectReason) {
-    $per = \App\Models\Permission::firstOrCreate(['name' => 'pos.create']);
-    // resolvePromotion private; thông qua validate-promotion
-    $promo = rejectReasonProvider($attrs);
-    $controller = resolve(\App\Http\Controllers\Staff\POSController::class);
-    $reflection = new \ReflectionMethod($controller, 'resolvePromotion');
+    $controller = resolve(POSController::class);
+    $reflection = new ReflectionMethod($controller, 'resolvePromotion');
     $reflection->setAccessible(true);
 
-    $lines = collect([['order_item_id' => 1, 'menu_item_id' => null, 'subtotal' => 100000.0, 'category_id' => null]]);
-    $result = $reflection->invoke($controller, $promo->code, $lines, 100000.0, false);
+    $result = $reflection->invoke($controller, $promo->code, posRejectReasonLines(), 100000.0, false);
 
     expect($result['status'])->toBe('rejected');
     expect($result['reason'])->toBe($expectReason);
 })->with([
-    'khong ton tai' => [['code' => 'NOEXIST'], 'not_found'],
     'khong hoat dong' => [['is_active' => false], 'inactive'],
     'chua toi han' => [['starts_at' => now()->addDay()], 'not_started'],
     'het han' => [['expires_at' => now()->subDay()], 'expired'],
     'het luot' => [['max_uses' => 1, 'used_count' => 1], 'out_of_uses'],
     'duoi min' => [['min_order_amount' => 200000], 'below_min'],
-    'khong co dong khop' => ['no_eligible_line'], // target item khong co trong lines
 ]);
 
-test('resolvePromotion ok tra promotion va discount_amount', function () {
-    $promo = rejectReasonProvider();
-    $controller = resolveApp(parse_ini? );
+test('resolve_promotion khong tim thay ma tra not_found', function () {
+    $controller = app(POSController::class);
+    $reflection = new ReflectionMethod($controller, 'resolvePromotion');
+    $reflection->setAccessible(true);
+
+    $result = $reflection->invoke($controller, 'NOEXIST'.substr(uniqid(), -5), posRejectReasonLines(), 100000.0, false);
+
+    expect($result['status'])->toBe('rejected');
+    expect($result['reason'])->toBe('not_found');
+});
+
+test('resolve_promotion khong co dong khop target tra no_eligible_line', function () {
+    $category = MenuCategory::create(['name' => 'Cat RRR '.uniqid(), 'sort_order' => 1]);
+    $promo = Promotion::create([
+        'code' => 'RRC'.substr(uniqid(), -5), 'name' => 'RRC', 'discount_type' => 'percentage',
+        'discount_value' => 10, 'is_active' => true,
+        'target_type' => 'category', 'target_value' => $category->id,
+    ]);
+
+    // lines không thuộc category target → targetSubtotal = 0
+    $lines = collect([[
+        'order_item_id' => 1, 'menu_item_id' => null, 'subtotal' => 100000.0, 'category_id' => 99999,
+    ]]);
+
+    $controller = app(POSController::class);
+    $reflection = new ReflectionMethod($controller, 'resolvePromotion');
+    $reflection->setAccessible(true);
+    $result = $reflection->invoke($controller, $promo->code, $lines, 100000.0, false);
+
+    expect($result['status'])->toBe('rejected');
+    expect($result['reason'])->toBe('no_eligible_line');
+});
+
+test('resolve_promotion ok tra status ok, promotion va discount_amount', function () {
+    $promo = Promotion::create([
+        'code' => 'OKR'.substr(uniqid(), -5), 'name' => 'OK', 'discount_type' => 'percentage',
+        'discount_value' => 10, 'is_active' => true,
+    ]);
+
+    $controller = app(POSController::class);
+    $reflection = new ReflectionMethod($controller, 'resolvePromotion');
+    $reflection->setAccessible(true);
+    $result = $reflection->invoke($controller, $promo->code, posRejectReasonLines(), 100000.0, false);
+
+    expect($result['status'])->toBe('ok');
+    expect($result['promotion']->id)->toBe($promo->id);
+    expect($result['discount_amount'])->toBe(10000.0);
 });
 ```
 
-> Ghi chú: dùng `ReflectionMethod` để gọi private `resolvePromotion` trực tiếp (kiểm test ở mức controller nội bộ) — tránh phụ thuộc message của validatePromotion. Đặt helper `rejectReasonProvider`.
-
 - [ ] **Step 2: Chạy fail**
 
-Run: `php artisan test tests/Feature/POSPromotionProviderTest.php` (hoặc tên file đã tạo)
-Expected: FAIL vì `resolvePromotion` chưa trả `['status'=>..., 'reason'=>...]`.
+Run: `php artisan test tests/Feature/POSPromotionRejectReasonTest.php`
+Expected: FAIL — hiện `resolvePromotion` trả `['promotion'=>..., 'discount_amount'=>...]` không có `status`; `$result['status']` = null nên test báo `not 'rejected'`.
 
 - [ ] **Step 3: Implement resolvePromotion**
 
@@ -263,13 +309,13 @@ private function resolvePromotion(?string $code, $lines, float $orderSubtotal, b
 
 - [ ] **Step 4: Chạy test pass**
 
-Run: `php artisan test tests/Feature/POSPromotionProviderTest.php`
-Expected: PASS.
+Run: `php artisan test tests/Feature/POSPromotionRejectReasonTest.php`
+Expected: PASS (ok test: 10% của 100000 = 10000.0; discountFor round về 2 chữ số → 10000.0).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/Http/Controllers/Staff/POSController.php tests/Feature/POSPromotionProviderTest.php
+git add app/Http/Controllers/Staff/POSController.php tests/Feature/POSPromotionRejectReasonTest.php
 git commit -m "feat: resolvePromotion tra ly do tu choi chi tiet"
 ```
 
