@@ -980,7 +980,7 @@ test('expectedCash tinh ca hoa don o cac thoi diem can cua ca', function () {
     expect((float) $response->json('expected_cash'))->toBe(100000.0);
 });
 
-test('maziữchia ca dong tai cho khong tin them hoa don truoc khi mo', function () {
+test('ca dong tai cho khong tin them hoa don truoc khi mo', function () {
     $this->actingAs(posAdmin());
     $openedAt = now();
     $shift = Shift::create(['opened_at' => $openedAt, 'opening_cash' => 0, 'status' => 'open', 'opened_by' => auth()->id()]);
