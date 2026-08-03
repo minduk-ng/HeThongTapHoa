@@ -119,19 +119,8 @@ export default function PromotionFormDrawer({
         { key: 'code', label: 'Mã khuyến mãi', required: true },
         { key: 'name', label: 'Tên khuyến mãi', required: true },
         {
-            key: 'discount_value',
-            label: 'Giá trị giảm',
-            type: 'number',
-            required: true,
-        },
-        {
             key: 'min_order_amount',
             label: 'Đơn hàng tối thiểu',
-            type: 'number',
-        },
-        {
-            key: 'max_discount_amount',
-            label: 'Mức giảm tối đa',
             type: 'number',
         },
         { key: 'max_uses', label: 'Số lượt dùng tối đa', type: 'number' },
@@ -189,28 +178,6 @@ export default function PromotionFormDrawer({
                                     }
                                     className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                 />
-                                {field.key === 'discount_value' && (
-                                    <label className="mt-1.5 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                                        Loại giảm
-                                        <select
-                                            value={form.discount_type}
-                                            onChange={(e) =>
-                                                set(
-                                                    'discount_type',
-                                                    e.target.value,
-                                                )
-                                            }
-                                            className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                                        >
-                                            <option value="percentage">
-                                                Phần trăm
-                                            </option>
-                                            <option value="fixed_amount">
-                                                Số tiền cố định
-                                            </option>
-                                        </select>
-                                    </label>
-                                )}
                                 {errors[field.key] && (
                                     <span className="mt-1 block text-xs text-rose-500">
                                         {errors[field.key]}
@@ -218,6 +185,53 @@ export default function PromotionFormDrawer({
                                 )}
                             </label>
                         ))}
+                        <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                            Giá trị giảm<span className="text-rose-500"> *</span>
+                            <span className="mt-1.5 flex overflow-hidden rounded-xl border border-zinc-300 bg-zinc-50 focus-within:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800">
+                                <input
+                                    type="number"
+                                    value={form.discount_value}
+                                    onChange={(e) =>
+                                        set('discount_value', e.target.value)
+                                    }
+                                    className="w-full min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-zinc-900 outline-none dark:text-zinc-100"
+                                />
+                                <span className="border-l border-zinc-300 dark:border-zinc-700" />
+                                <select
+                                    value={form.discount_type}
+                                    onChange={(e) =>
+                                        set('discount_type', e.target.value)
+                                    }
+                                    className="shrink-0 bg-transparent px-2.5 py-2.5 text-sm text-zinc-700 outline-none dark:text-zinc-300"
+                                >
+                                    <option value="percentage">Phần trăm</option>
+                                    <option value="fixed_amount">Số tiền</option>
+                                </select>
+                            </span>
+                            {errors.discount_value && (
+                                <span className="mt-1 block text-xs text-rose-500">
+                                    {errors.discount_value}
+                                </span>
+                            )}
+                        </label>
+                        {form.discount_type === 'percentage' && (
+                            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                Mức giảm tối đa
+                                <input
+                                    type="number"
+                                    value={form.max_discount_amount}
+                                    onChange={(e) =>
+                                        set('max_discount_amount', e.target.value)
+                                    }
+                                    className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                />
+                                {errors.max_discount_amount && (
+                                    <span className="mt-1 block text-xs text-rose-500">
+                                        {errors.max_discount_amount}
+                                    </span>
+                                )}
+                            </label>
+                        )}
                         <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                             Ngày bắt đầu
                             <DatePicker
