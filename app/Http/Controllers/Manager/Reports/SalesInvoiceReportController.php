@@ -15,6 +15,7 @@ class SalesInvoiceReportController extends Controller
         $endDate = $request->input('end_date', today()->toDateString());
 
         $invoices = Invoice::withCount('orders')
+            ->with(['orders' => fn ($q) => $q->select('invoice_id', 'subtotal', 'discount_amount')])
             ->whereBetween('issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
             ->orderByDesc('issued_at')
             ->get()
@@ -26,6 +27,8 @@ class SalesInvoiceReportController extends Controller
                 'payment_method' => $invoice->payment_method,
                 'orders_count' => $invoice->orders_count,
                 'total_amount' => (float) $invoice->total_amount,
+                'gross_amount' => (float) $invoice->orders->sum('subtotal'),
+                'discount_amount' => (float) $invoice->orders->sum('discount_amount'),
                 'amount_received' => (float) $invoice->amount_received,
                 'change_amount' => (float) $invoice->change_amount,
                 'issued_at' => $invoice->issued_at?->toIso8601String(),

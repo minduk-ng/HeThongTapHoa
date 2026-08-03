@@ -24,6 +24,8 @@ interface InvoiceRow {
     payment_method: string;
     orders_count: number;
     total_amount: number;
+    gross_amount: number;
+    discount_amount: number;
     amount_received: number;
     change_amount: number;
     issued_at: string;
@@ -50,6 +52,8 @@ const COLUMNS: ReportTableColumn[] = [
     { key: 'orders_count', label: 'Số order', numeric: true },
     { key: 'payment_method', label: 'PTTT' },
     { key: 'total_amount', label: 'Tổng tiền', numeric: true },
+    { key: 'gross_amount', label: 'Thu trước giảm', numeric: true },
+    { key: 'discount_amount', label: 'Giảm giá', numeric: true },
     {
         key: 'amount_received',
         label: 'Khách đưa',
@@ -139,6 +143,18 @@ export default function SalesInvoiceReport({
                 return (
                     <span className="font-medium text-zinc-900 dark:text-zinc-100">
                         {formatVND(row.total_amount)}
+                    </span>
+                );
+            case 'gross_amount':
+                return (
+                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                        {formatVND(row.gross_amount)}
+                    </span>
+                );
+            case 'discount_amount':
+                return (
+                    <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">
+                        {formatVND(row.discount_amount)}
                     </span>
                 );
             case 'amount_received':
