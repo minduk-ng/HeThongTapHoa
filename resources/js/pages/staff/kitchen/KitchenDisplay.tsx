@@ -444,15 +444,6 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                         >
                             Thử lại tất cả
                         </button>
-                        <button
-                            type="button"
-                            onClick={() =>
-                                failedCommands.forEach((c) => discard(c.id))
-                            }
-                            className="shrink-0 rounded-lg border border-rose-300 px-2.5 py-1 text-[11px] font-bold text-rose-600 transition-colors hover:bg-rose-100 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-900/40"
-                        >
-                            Bỏ qua
-                        </button>
                     </div>
                 )}
                 {hasQueued && failedCommands.length === 0 && (
