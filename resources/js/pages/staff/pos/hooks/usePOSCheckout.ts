@@ -30,6 +30,7 @@ export function usePOSCheckout(
     const [isPaymentDrawerOpen, setIsPaymentDrawerOpen] = useState(false);
     const [promotionCode, setPromotionCode] = useState<string | null>(null);
     const [promotionDiscount, setPromotionDiscount] = useState(0);
+    const [promotionName, setPromotionName] = useState<string | null>(null);
 
     const submitting = kitchenSubmitting || (selectedTable
         ? (() => {
@@ -52,6 +53,7 @@ export function usePOSCheckout(
     const clearPromotion = () => {
         setPromotionCode(null);
         setPromotionDiscount(0);
+        setPromotionName(null);
     };
 
     const togglePaymentDrawer = (open: boolean) => {
@@ -202,6 +204,7 @@ export function usePOSCheckout(
             if (response.ok && data.ok) {
                 setPromotionCode(code);
                 setPromotionDiscount(data.discount_amount || 0);
+                setPromotionName(data.promotion?.name || null);
                 return {
                     ok: true,
                     discount_amount: data.discount_amount,
@@ -417,6 +420,7 @@ export function usePOSCheckout(
         isPaymentDrawerOpen,
         setIsPaymentDrawerOpen: togglePaymentDrawer,
         promotionCode,
+        promotionName,
         promotionDiscount,
         applyPromotion,
         clearPromotion,
