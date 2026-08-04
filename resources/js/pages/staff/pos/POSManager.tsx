@@ -189,6 +189,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         isPaymentDrawerOpen,
         setIsPaymentDrawerOpen,
         promotionDiscount,
+        promotionName,
         applyPromotion,
         clearPromotion,
         lockedCheckoutTables,
@@ -401,6 +402,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 depositTotal={currentDepositTotal}
                 reservationDraft={currentReservationDraft}
                 promotionDiscount={promotionDiscount}
+                promotionName={promotionName}
                 onApplyPromotion={applyPromotion}
                 onClearPromotion={clearPromotion}
                 onConfirmPayment={(paymentMethod, amountReceived, changeAmount, shouldPrint) => {
