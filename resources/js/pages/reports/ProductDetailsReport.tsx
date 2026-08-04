@@ -14,7 +14,7 @@ interface ProductRow {
     category_name: string | null;
     quantity: number;
     revenue: number;
-    avg_price: number;
+    discount_amount: number;
 }
 
 interface Metrics {
@@ -42,7 +42,7 @@ const COLUMNS: ReportTableColumn[] = [
     { key: 'category_name', label: 'Danh mục' },
     { key: 'quantity', label: 'SL bán', numeric: true },
     { key: 'revenue', label: 'Doanh thu', numeric: true },
-    { key: 'avg_price', label: 'Giá TB', numeric: true },
+    { key: 'discount_amount', label: 'Giảm giá', numeric: true },
 ];
 
 export default function ProductDetailsReport({
@@ -121,8 +121,8 @@ export default function ProductDetailsReport({
                         {formatVND(row.revenue)}
                     </span>
                 );
-            case 'avg_price':
-                return formatVND(row.avg_price);
+            case 'discount_amount':
+                return row.discount_amount > 0 ? formatVND(row.discount_amount) : '—';
             default:
                 return '—';
         }

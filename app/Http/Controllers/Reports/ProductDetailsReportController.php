@@ -23,7 +23,7 @@ class ProductDetailsReportController extends Controller
             ->whereBetween('invoices.issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
             ->where('order_items.status', '!=', 'cancelled')
             ->groupBy('menu_items.id', 'menu_items.name', 'menu_categories.name')
-            ->selectRaw('menu_items.id as menu_item_id, menu_items.name as item_name, menu_categories.name as category_name, SUM(order_items.quantity) as quantity, SUM(order_items.subtotal) as revenue')
+            ->selectRaw('menu_items.id as menu_item_id, menu_items.name as item_name, menu_categories.name as category_name, SUM(order_items.quantity) as quantity, SUM(order_items.subtotal - order_items.discount_amount) as revenue, SUM(order_items.discount_amount) as discount_amount')
             ->orderByDesc('revenue')
             ->get()
             ->values()
@@ -33,7 +33,7 @@ class ProductDetailsReportController extends Controller
                 'category_name' => $r->category_name,
                 'quantity' => (int) $r->quantity,
                 'revenue' => (float) $r->revenue,
-                'avg_price' => $r->quantity > 0 ? (int) round($r->revenue / $r->quantity) : 0,
+                'discount_amount' => (float) $r->discount_amount,
             ]);
 
         return Inertia::render('reports/ProductDetailsReport', [

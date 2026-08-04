@@ -74,6 +74,34 @@ class ProductDetailsReportTest extends TestCase
             );
     }
 
+    public function test_revenue_subtracts_line_discount()
+    {
+        $itemA = posMenuItem(['name' => 'Cà phê đen', 'price' => 15000]);
+        $itemB = posMenuItem(['name' => 'Trà đá', 'price' => 10000]);
+        $this->makePaidInvoice('2026-07-15 10:00:00', [
+            ['item' => $itemA, 'qty' => 2, 'price' => 15000],
+            ['item' => $itemB, 'qty' => 1, 'price' => 10000],
+        ]);
+
+        // Giảm giá 15.000 phân bổ xuống dòng Cà phê đen (vd: 1 đơn có mã KM)
+        \App\Models\OrderItem::where('menu_item_id', $itemA->id)
+            ->update(['discount_amount' => 15000]);
+
+        $this->actingAs($this->adminUser())
+            ->get('/reports/product-details?start_date=2026-07-01&end_date=2026-07-31')
+            ->assertInertia(fn ($page) => $page
+                ->has('rows', 2)
+                ->where('metrics.revenue', 25000)   // (2*15000 - 15000) + 1*10000
+                ->where('metrics.quantity_total', 3)
+                ->where('rows.0.item_name', 'Cà phê đen')
+                ->where('rows.0.revenue', 15000)    // 30000 - 15000 KM
+                ->where('rows.0.discount_amount', 15000)
+                ->where('rows.1.item_name', 'Trà đá')
+                ->where('rows.1.revenue', 10000)
+                ->where('rows.1.discount_amount', 0)
+            );
+    }
+
     public function test_date_filter_excludes_out_of_range_rows()
     {
         $itemA = posMenuItem(['name' => 'Phở bò']);
