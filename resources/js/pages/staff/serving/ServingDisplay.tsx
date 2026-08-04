@@ -86,12 +86,7 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
     const wsPopoverRef = useRef<HTMLDivElement>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [syncIds, setSyncIds] = useState<Set<string>>(new Set());
-    const syncIdsRef = useRef<Set<string>>(new Set());
     const cmdCardIdsRef = useRef<Set<string>>(new Set());
-
-    useEffect(() => {
-        syncIdsRef.current = syncIds;
-    }, [syncIds]);
 
     // Sync cards removed once their queued command syncs / is discarded
     useEffect(() => {
@@ -114,16 +109,16 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
         cmdCardIdsRef.current = all;
     }, [commands]);
 
-    // Sync when Inertia reloads props (keep in-flight syncing cards, never clobber)
+    // Sync when Inertia reloads props (keep cards with any live command — pending/flushing/failed — never clobber)
     useEffect(() => {
         const safe = (Array.isArray(servingQueue) ? servingQueue : Object.values(servingQueue || {})) as ServingItemData[];
         setQueue((prev) => {
-            const syncing = prev.filter((card) => syncIdsRef.current.has(card.id));
+            const retained = prev.filter((card) => cmdCardIdsRef.current.has(card.id));
             const safeIds = new Set(safe.map((card) => card.id));
-            return [...safe, ...syncing.filter((card) => !safeIds.has(card.id))];
+            return [...safe, ...retained.filter((card) => !safeIds.has(card.id))];
         });
         const validIds = new Set(safe.map((card) => card.id));
-        setSelectedIds((prev) => new Set([...prev].filter((id) => validIds.has(id) || syncIdsRef.current.has(id))));
+        setSelectedIds((prev) => new Set([...prev].filter((id) => validIds.has(id) || cmdCardIdsRef.current.has(id))));
     }, [servingQueue]);
 
     // Fullscreen
