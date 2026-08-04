@@ -9,6 +9,7 @@ use App\Models\OrderItem;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,7 +30,15 @@ class ServingController extends Controller
         $validated = $request->validate([
             'item_ids' => 'required|array|min:1',
             'item_ids.*' => 'required|integer|exists:order_items,id',
+            'idempotency_key' => 'nullable|string|max:100',
         ]);
+
+        if ($request->filled('idempotency_key')) {
+            $lockKey = "idempotency:serving_mark_served:{$request->input('idempotency_key')}";
+            if (! Cache::add($lockKey, true, 30)) {
+                return response()->json(['success' => true, 'served_count' => 0, 'message' => 'Đã ghi nhận phục vụ.']);
+            }
+        }
 
         try {
             $count = OrderItem::whereIn('id', $validated['item_ids'])

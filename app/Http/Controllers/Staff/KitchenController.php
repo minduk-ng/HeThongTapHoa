@@ -17,6 +17,7 @@ use App\Models\Table;
 use App\Services\InventoryIngredientService;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -77,6 +78,25 @@ class KitchenController extends Controller
 
     public function completeOrder(Request $request, Order $order)
     {
+        $request->validate(['idempotency_key' => 'nullable|string|max:100']);
+
+        if ($request->filled('idempotency_key')) {
+            $lockKey = "idempotency:kitchen_complete:{$request->input('idempotency_key')}";
+            if (! Cache::add($lockKey, true, 30)) {
+                Log::info("Duplicate kitchen completeOrder suppressed: {$request->input('idempotency_key')}");
+
+                return $request->wantsJson()
+                    ? response()->json(['success' => true, 'message' => 'Đơn đã được hoàn thành!'])
+                    : back()->with('success', 'Đơn đã được hoàn thành!');
+            }
+        }
+
+        if ($order->status === 'cancelled') {
+            return $request->wantsJson()
+                ? response()->json(['error' => 'Đơn đã bị hủy.'], 422)
+                : back()->withErrors(['error' => 'Đơn đã bị hủy.']);
+        }
+
         try {
             $completedItems = collect();
 
@@ -115,11 +135,17 @@ class KitchenController extends Controller
                 $this->safeDispatch(fn () => ItemsReadyToServe::dispatch($order, $completedItems));
             }
 
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Đã xác nhận hoàn thành.']);
+            }
+
             return back()->with('success', 'Đã xác nhận hoàn thành đơn order và tự động trừ nguyên liệu kho thành công!');
         } catch (\Throwable $e) {
             Log::error('Kitchen completeOrder DB error: '.$e->getMessage());
 
-            return back()->withErrors(['error' => 'Hoàn thành đơn thất bại: Không thể kết nối hoặc lưu cơ sở dữ liệu. Vui lòng thử lại.']);
+            return $request->wantsJson()
+                ? response()->json(['error' => 'Hoàn thành thất bại: '.$e->getMessage()], 422)
+                : back()->withErrors(['error' => 'Hoàn thành đơn thất bại: Không thể kết nối hoặc lưu cơ sở dữ liệu. Vui lòng thử lại.']);
         }
     }
 
@@ -130,6 +156,18 @@ class KitchenController extends Controller
             'item_ids' => 'required|array|min:1',
             'item_ids.*' => 'exists:order_items,id',
         ]);
+
+        $validated['idempotency_key'] = $request->input('idempotency_key');
+        if ($request->filled('idempotency_key')) {
+            $lockKey = "idempotency:kitchen_complete_items:{$request->input('idempotency_key')}";
+            if (! Cache::add($lockKey, true, 30)) {
+                Log::info("Duplicate kitchen completeItems suppressed: {$request->input('idempotency_key')}");
+
+                return $request->wantsJson()
+                    ? response()->json(['success' => true, 'message' => 'Các món đã được hoàn thành!'])
+                    : back()->with('success', 'Các món đã được hoàn thành!');
+            }
+        }
 
         try {
             $order = Order::findOrFail($validated['order_id']);
@@ -177,11 +215,17 @@ class KitchenController extends Controller
                 $this->safeDispatch(fn () => ItemsReadyToServe::dispatch($order, $completedItems));
             }
 
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Đã xác nhận hoàn thành.']);
+            }
+
             return back()->with('success', 'Đã xác nhận hoàn thành các món đã chọn và tự động trừ nguyên liệu kho thành công!');
         } catch (\Throwable $e) {
             Log::error('Kitchen completeItems DB error: '.$e->getMessage());
 
-            return back()->withErrors(['error' => 'Hoàn thành món thất bại: Không thể kết nối hoặc lưu cơ sở dữ liệu. Vui lòng thử lại.']);
+            return $request->wantsJson()
+                ? response()->json(['error' => 'Hoàn thành thất bại: '.$e->getMessage()], 422)
+                : back()->withErrors(['error' => 'Hoàn thành món thất bại: Không thể kết nối hoặc lưu cơ sở dữ liệu. Vui lòng thử lại.']);
         }
     }
 
