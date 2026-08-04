@@ -11,12 +11,15 @@ import {
     CheckSquare,
     Square,
     CheckCheck,
+    XCircle,
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import DashboardLayout from '../../../layouts/DashboardLayout';
 import AvatarDropdown from '../../../components/AvatarDropdown';
-import { useReverbStatus } from '../pos/hooks/useReverbStatus';
+import { useCommandQueue } from '../../../hooks/useCommandQueue';
+import DashboardLayout from '../../../layouts/DashboardLayout';
+import type { QueueCommand } from '../../../lib/commandQueue';
 import type { PageProps } from '../../../types/auth';
+import { useReverbStatus } from '../pos/hooks/useReverbStatus';
 
 interface ServingItemData {
     id: string;
@@ -61,34 +64,66 @@ function ElapsedTimer({ completedAt }: { completedAt: string }) {
     );
 }
 
-function getXSRFToken(): string {
-    if (typeof document === 'undefined') return '';
-    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
-    return match ? decodeURIComponent(match[1]) : '';
+function cardIdsInCommand(c: QueueCommand): string[] {
+    const p = c.payload as { __card_id?: string; __card_ids?: string[] };
+    return p.__card_ids ?? (p.__card_id ? [p.__card_id] : []);
 }
 
 export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
     const { auth } = usePage<PageProps>().props;
     const user = auth.user;
     const { status: reverbStatus } = useReverbStatus();
+    const { queue: commands, enqueue, retry, discard } = useCommandQueue({
+        reconcile: () => router.reload({ only: ['servingQueue'], onError: () => {} }),
+    });
 
     const [queue, setQueue] = useState<ServingItemData[]>(
         () => (Array.isArray(servingQueue) ? servingQueue : Object.values(servingQueue || {})) as ServingItemData[]
     );
     const [activeFilter, setActiveFilter] = useState<string>('all');
-    const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set());
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isWsPopoverOpen, setIsWsPopoverOpen] = useState(false);
     const wsPopoverRef = useRef<HTMLDivElement>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [batchSubmitting, setBatchSubmitting] = useState(false);
+    const [syncIds, setSyncIds] = useState<Set<string>>(new Set());
+    const syncIdsRef = useRef<Set<string>>(new Set());
+    const cmdCardIdsRef = useRef<Set<string>>(new Set());
 
-    // Sync when Inertia reloads props
+    useEffect(() => {
+        syncIdsRef.current = syncIds;
+    }, [syncIds]);
+
+    // Sync cards removed once their queued command syncs / is discarded
+    useEffect(() => {
+        const active = new Set<string>();
+        const all = new Set<string>();
+        commands.forEach((c) => {
+            const ids = cardIdsInCommand(c);
+            ids.forEach((id) => all.add(id));
+            if (c.status !== 'failed') ids.forEach((id) => active.add(id));
+        });
+
+        setSyncIds(active);
+
+        const gone = [...cmdCardIdsRef.current].filter((id) => !all.has(id));
+        if (gone.length > 0) {
+            const goneSet = new Set(gone);
+            setQueue((prev) => prev.filter((card) => !goneSet.has(card.id)));
+            setSelectedIds((prev) => new Set([...prev].filter((id) => !goneSet.has(id))));
+        }
+        cmdCardIdsRef.current = all;
+    }, [commands]);
+
+    // Sync when Inertia reloads props (keep in-flight syncing cards, never clobber)
     useEffect(() => {
         const safe = (Array.isArray(servingQueue) ? servingQueue : Object.values(servingQueue || {})) as ServingItemData[];
-        setQueue(safe);
-        const validIds = new Set(safe.map(c => c.id));
-        setSelectedIds(prev => new Set([...prev].filter(id => validIds.has(id))));
+        setQueue((prev) => {
+            const syncing = prev.filter((card) => syncIdsRef.current.has(card.id));
+            const safeIds = new Set(safe.map((card) => card.id));
+            return [...safe, ...syncing.filter((card) => !safeIds.has(card.id))];
+        });
+        const validIds = new Set(safe.map((card) => card.id));
+        setSelectedIds((prev) => new Set([...prev].filter((id) => validIds.has(id) || syncIdsRef.current.has(id))));
     }, [servingQueue]);
 
     // Fullscreen
@@ -173,44 +208,19 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
         }
     }, [isDuplicateEvent]);
 
-    // Mark served handler with guard re-entry and safety timeout
+    const markSync = useCallback((id: string) => {
+        setSyncIds((prev) => new Set(prev).add(id));
+    }, []);
+
+    // Mark served via offline command queue — card stays until command syncs
     const handleServed = useCallback((card: ServingItemData) => {
-        if (submittingIds.has(card.id)) return;
-        setSubmittingIds(prev => new Set(prev).add(card.id));
-
-        const itemIds = card.items.map(i => i.id);
-        const timeoutId = setTimeout(() => {
-            setSubmittingIds(prev => { const n = new Set(prev); n.delete(card.id); return n; });
-        }, 8000);
-
-        fetch('/staff/serving/mark-served', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-XSRF-TOKEN': getXSRFToken(),
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: JSON.stringify({ item_ids: itemIds }),
-        })
-            .then(res => {
-                if (!res.ok) throw new Error('Lỗi máy chủ hoặc kết nối mạng.');
-                return res.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    setQueue(prev => prev.filter(c => c.id !== card.id));
-                    setSelectedIds(prev => { const n = new Set(prev); n.delete(card.id); return n; });
-                }
-            })
-            .catch((err) => {
-                console.error('Serving mark-served failed:', err);
-            })
-            .finally(() => {
-                clearTimeout(timeoutId);
-                setSubmittingIds(prev => { const n = new Set(prev); n.delete(card.id); return n; });
-            });
-    }, [submittingIds]);
+        if (commands.some((c) => cardIdsInCommand(c).includes(card.id))) return;
+        markSync(card.id);
+        enqueue('serving.mark-served', '/staff/serving/mark-served', {
+            item_ids: card.items.map((i) => i.id),
+            __card_id: card.id,
+        });
+    }, [commands, enqueue, markSync]);
 
     // Filter pills — extract unique tables from queue
     const tableFilters = React.useMemo(() => {
@@ -259,45 +269,25 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
         setSelectedIds(new Set());
     }, []);
 
-    // Batch mark served
+    // Batch mark served via queue — one command covering all selected cards
     const handleBatchServed = useCallback(() => {
-        if (batchSubmitting || selectedIds.size === 0) return;
-        setBatchSubmitting(true);
+        if (selectedIds.size === 0) return;
+        if ([...selectedIds].some((id) => commands.some((c) => cardIdsInCommand(c).includes(id)))) return;
 
         const allItemIds = queue
-            .filter(c => selectedIds.has(c.id))
-            .flatMap(c => c.items.map(i => i.id));
+            .filter((c) => selectedIds.has(c.id))
+            .flatMap((c) => c.items.map((i) => i.id));
+        [...selectedIds].forEach((id) => markSync(id));
+        enqueue('serving.mark-served', '/staff/serving/mark-served', {
+            item_ids: allItemIds,
+            __card_ids: [...selectedIds],
+        });
+    }, [queue, selectedIds, commands, enqueue, markSync]);
 
-        const timeoutId = setTimeout(() => setBatchSubmitting(false), 8000);
-
-        fetch('/staff/serving/mark-served', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-XSRF-TOKEN': getXSRFToken(),
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: JSON.stringify({ item_ids: allItemIds }),
-        })
-            .then(res => {
-                if (!res.ok) throw new Error('Lỗi máy chủ hoặc kết nối mạng.');
-                return res.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    setQueue(prev => prev.filter(c => !selectedIds.has(c.id)));
-                    setSelectedIds(new Set());
-                }
-            })
-            .catch((err) => {
-                console.error('Serving batch mark-served failed:', err);
-            })
-            .finally(() => {
-                clearTimeout(timeoutId);
-                setBatchSubmitting(false);
-            });
-    }, [batchSubmitting, selectedIds, queue]);
+    const batchDisabled =
+        selectedIds.size === 0 ||
+        [...selectedIds].some((id) => commands.some((c) => cardIdsInCommand(c).includes(id)));
+    const batchSyncing = [...selectedIds].some((id) => syncIds.has(id));
 
     // WS status config
     const statusConfig = {
@@ -384,11 +374,11 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                                 <button
                                     type="button"
                                     onClick={handleBatchServed}
-                                    disabled={batchSubmitting}
+                                    disabled={batchDisabled}
                                     className="flex shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     <CheckCheck className="h-4 w-4 stroke-[1.5]" />
-                                    <span>{batchSubmitting ? 'Đang xử lý…' : `Phục vụ đã chọn (${selectedIds.size})`}</span>
+                                    <span>{batchSyncing ? 'Đang đồng bộ…' : `Phục vụ đã chọn (${selectedIds.size})`}</span>
                                 </button>
                             </div>
                         ) : (
@@ -495,6 +485,18 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                             {filteredQueue.map((card) => {
                                 const isSelected = selectedIds.has(card.id);
+                                const isSyncing = syncIds.has(card.id);
+                                const failedCmd = commands.find(
+                                    (c) => c.status === 'failed' && cardIdsInCommand(c).includes(card.id),
+                                );
+                                const handleServeClick = (e: React.MouseEvent) => {
+                                    e.stopPropagation();
+                                    if (failedCmd) {
+                                        retry(failedCmd.id);
+                                        return;
+                                    }
+                                    handleServed(card);
+                                };
                                 return (
                                     <div
                                         key={card.id}
@@ -502,7 +504,7 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                                             isSelected
                                                 ? 'border-sky-300 ring-2 ring-sky-500 dark:border-sky-700'
                                                 : 'border-zinc-200/80 dark:border-zinc-800/80'
-                                        }`}
+                                        } ${isSyncing ? 'opacity-60' : ''}`}
                                         onClick={() => toggleSelect(card.id)}
                                     >
                                         <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
@@ -544,16 +546,44 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                                             ))}
                                         </div>
 
-                                        <div className="px-4 py-2.5 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.stopPropagation(); handleServed(card); }}
-                                                disabled={submittingIds.has(card.id)}
-                                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
-                                            >
-                                                <CheckCircle className="w-3.5 h-3.5 stroke-[1.5]" />
-                                                {submittingIds.has(card.id) ? 'Đang xử lý…' : 'Đã phục vụ'}
-                                            </button>
+                                        <div className="px-4 py-2.5 border-t border-zinc-100 dark:border-zinc-800 flex flex-col gap-2">
+                                            <div className="flex justify-end">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleServeClick}
+                                                    disabled={isSyncing}
+                                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
+                                                >
+                                                    <CheckCircle className="w-3.5 h-3.5 stroke-[1.5]" />
+                                                    {isSyncing ? 'Đang đồng bộ…' : 'Đã phục vụ'}
+                                                </button>
+                                            </div>
+                                            {failedCmd && (
+                                                <div className="flex items-center justify-between gap-1.5 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs font-medium text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
+                                                    <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                                                        <XCircle className="h-3.5 w-3.5 shrink-0 stroke-[1.5]" />
+                                                        <span className="truncate">
+                                                            {failedCmd.error || 'Không thể đồng bộ. Kiểm tra mạng và thử lại.'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex shrink-0 items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); retry(failedCmd.id); }}
+                                                            className="rounded-md bg-rose-600 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-rose-700"
+                                                        >
+                                                            Thử lại
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); discard(failedCmd.id); }}
+                                                            className="rounded-md border border-rose-300 px-2 py-1 text-[10px] font-bold text-rose-600 transition-colors hover:bg-rose-100 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-900/40"
+                                                        >
+                                                            Bỏ qua
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );
