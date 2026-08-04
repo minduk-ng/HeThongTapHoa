@@ -17,6 +17,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import { useReverbStatus } from '../pos/hooks/useReverbStatus';
 import AvatarDropdown from '../../../components/AvatarDropdown';
+import { useCommandQueue } from '../../../hooks/useCommandQueue';
 import type { PageProps } from '../../../types/auth';
 import type { KitchenOrderData } from './components/KitchenOrderCard';
 import KitchenOrderCard from './components/KitchenOrderCard';
@@ -42,6 +43,14 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
     const { status: reverbStatus } = useReverbStatus();
     const { auth } = usePage<PageProps>().props;
     const user = auth.user;
+
+    const { queue, enqueue, retry, discard } = useCommandQueue({
+        reconcile: () => router.reload({ only: ['orders', 'stats'], onError: () => {} }),
+    });
+    const hasQueued = queue.some(
+        (c) => c.status === 'pending' || c.status === 'flushing',
+    );
+    const failedCommands = queue.filter((c) => c.status === 'failed');
 
     // Fullscreen toggle
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -417,6 +426,44 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                     </div>
                 </div>
 
+                {/* Offline Command Queue status strip */}
+                {failedCommands.length > 0 && (
+                    <div className="flex shrink-0 items-center justify-between gap-3 border-b border-rose-200 bg-rose-50/90 px-5 py-2 dark:border-rose-900/60 dark:bg-rose-950/40">
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 shrink-0 stroke-[1.5] text-rose-600 dark:text-rose-400" />
+                            <span className="truncate text-xs font-medium text-rose-700 dark:text-rose-300">
+                                {failedCommands.length} thao tác chưa được đồng bộ do lỗi mạng
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                failedCommands.forEach((c) => retry(c.id))
+                            }
+                            className="shrink-0 rounded-lg bg-rose-600 px-2.5 py-1 text-[11px] font-bold text-white transition-colors hover:bg-rose-700"
+                        >
+                            Thử lại tất cả
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                failedCommands.forEach((c) => discard(c.id))
+                            }
+                            className="shrink-0 rounded-lg border border-rose-300 px-2.5 py-1 text-[11px] font-bold text-rose-600 transition-colors hover:bg-rose-100 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-900/40"
+                        >
+                            Bỏ qua
+                        </button>
+                    </div>
+                )}
+                {hasQueued && failedCommands.length === 0 && (
+                    <div className="flex shrink-0 items-center justify-center gap-2 border-b border-amber-200 bg-amber-50/90 px-5 py-2 dark:border-amber-900/60 dark:bg-amber-950/40">
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+                        <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                            Đang đồng bộ lệnh khi mạng chưa kết nối…
+                        </span>
+                    </div>
+                )}
+
                 {/* Full-width Order Cards Grid */}
                 <div className="flex-1 overflow-y-auto p-4">
                     {filteredOrders.length === 0 ? (
@@ -439,6 +486,10 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                                 <KitchenOrderCard
                                     key={order.id}
                                     order={order}
+                                    queueCommands={queue}
+                                    onEnqueue={enqueue}
+                                    onRetry={retry}
+                                    onDiscard={discard}
                                 />
                             ))}
                         </div>

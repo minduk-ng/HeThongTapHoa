@@ -1,6 +1,6 @@
-import { router } from '@inertiajs/react';
-import { AlertTriangle, Check, Clock, XCircle, X } from 'lucide-react';
+import { AlertTriangle, Check, Clock, XCircle } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+import type { QueueCommand } from '../../../../lib/commandQueue';
 
 export interface KitchenOrderData {
     id: number;
@@ -32,9 +32,23 @@ export interface KitchenOrderData {
 
 interface KitchenOrderCardProps {
     order: KitchenOrderData;
+    queueCommands: QueueCommand[];
+    onEnqueue: (
+        type: 'kitchen.complete' | 'kitchen.complete-items',
+        url: string,
+        payload: Record<string, unknown>,
+    ) => void;
+    onRetry: (commandId: string) => void;
+    onDiscard: (commandId: string) => void;
 }
 
-export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
+export default function KitchenOrderCard({
+    order,
+    queueCommands,
+    onEnqueue,
+    onRetry,
+    onDiscard,
+}: KitchenOrderCardProps) {
     const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>(
         () => {
             const initial: Record<number, boolean> = {};
@@ -47,8 +61,6 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
             return initial;
         },
     );
-    const [submitting, setSubmitting] = useState(false);
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [nowTime, setNowTime] = useState(() => Date.now());
 
     // Update elapsed timer periodically
@@ -108,59 +120,70 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
         .map((i) => i.id);
     const isPartial = checkedItemIds.length > 0;
 
-    const handleCompleteOrder = () => {
-        if (submitting) return;
-        setErrorMessage(null);
-        setSubmitting(true);
+    // Commands queued for THIS order (payload.order_id matches)
+    const cardCommands = queueCommands.filter(
+        (c) => (c.payload.order_id as number) === order.id,
+    );
+    const hasSyncing = cardCommands.some(
+        (c) => c.status === 'pending' || c.status === 'flushing',
+    );
+    const failed = cardCommands.find((c) => c.status === 'failed');
 
-        const timeout = setTimeout(() => {
-            setSubmitting(false);
-            setErrorMessage(
-                'Kết nối CSDL/Máy chủ quá thời gian chờ. Vui lòng thử lại!',
-            );
-        }, 8000);
+    const handleCompleteOrder = () => {
+        const subjectIds = isPartial
+            ? checkedItemIds
+            : pendItems.map((i) => i.id);
 
         if (isPartial) {
-            router.post(
-                '/staff/kitchen/complete-items',
-                { order_id: order.id, item_ids: checkedItemIds },
-                {
-                    onFinish: () => {
-                        clearTimeout(timeout);
-                        setSubmitting(false);
-                    },
-                    onError: (errors: any) => {
-                        clearTimeout(timeout);
-                        setSubmitting(false);
-                        const msg =
-                            errors.error ||
-                            errors.message ||
-                            'Không thể hoàn thành món.';
-                        setErrorMessage(msg);
-                    },
-                },
-            );
+            onEnqueue('kitchen.complete-items', '/staff/kitchen/complete-items', {
+                order_id: order.id,
+                item_ids: checkedItemIds,
+            });
         } else {
-            router.post(
-                `/staff/kitchen/complete/${order.id}`,
-                {},
-                {
-                    onFinish: () => {
-                        clearTimeout(timeout);
-                        setSubmitting(false);
-                    },
-                    onError: (errors: any) => {
-                        clearTimeout(timeout);
-                        setSubmitting(false);
-                        const msg =
-                            errors.error ||
-                            errors.message ||
-                            'Không thể hoàn thành đơn.';
-                        setErrorMessage(msg);
-                    },
-                },
-            );
+            onEnqueue('kitchen.complete', `/staff/kitchen/complete/${order.id}`, {
+                order_id: order.id,
+            });
         }
+
+        // Optimistic: mark subject items completed locally (remove from pending)
+        setCheckedItems((prev) => {
+            const next = { ...prev };
+            subjectIds.forEach((id) => {
+                next[id] = true;
+            });
+
+            return next;
+        });
+    };
+
+    const handleRetryFailed = () => {
+        if (failed) {
+            onRetry(failed.id);
+        }
+    };
+
+    const handleDiscardFailed = () => {
+        if (!failed) {
+            return;
+        }
+
+        onDiscard(failed.id);
+
+        // Rollback optimistic checks so the items reappear as pending
+        const failedIds: number[] = Array.isArray(failed.payload.item_ids)
+            ? (failed.payload.item_ids as number[])
+            : order.items
+                  .filter((i) => i.status !== 'completed')
+                  .map((i) => i.id);
+
+        setCheckedItems((prev) => {
+            const next = { ...prev };
+            failedIds.forEach((id) => {
+                delete next[id];
+            });
+
+            return next;
+        });
     };
 
     // Premium gradients and borders
@@ -263,31 +286,43 @@ export default function KitchenOrderCard({ order }: KitchenOrderCardProps) {
 
             {/* Complete Order Footer */}
             <div className="space-y-2 border-t border-zinc-100 bg-zinc-50/80 p-3.5 dark:border-zinc-800/40 dark:bg-zinc-900/20">
-                {errorMessage && (
+                {failed && (
                     <div className="flex items-center justify-between gap-1.5 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs font-medium text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-350">
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <div className="flex min-w-0 flex-1 items-center gap-1.5">
                             <XCircle className="h-3.5 w-3.5 shrink-0 stroke-[1.5]" />
-                            <span className="truncate">{errorMessage}</span>
+                            <span className="truncate">
+                                {failed.error ||
+                                    'Không thể đồng bộ. Kiểm tra mạng và thử lại.'}
+                            </span>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => setErrorMessage(null)}
-                            className="text-rose-500 hover:text-rose-700 p-0.5 rounded transition-colors"
-                        >
-                            <X className="w-3.5 h-3.5 stroke-2" />
-                        </button>
+                        <div className="flex shrink-0 items-center gap-1">
+                            <button
+                                type="button"
+                                onClick={handleRetryFailed}
+                                className="rounded-md bg-rose-600 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-rose-700"
+                            >
+                                Thử lại
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDiscardFailed}
+                                className="rounded-md border border-rose-300 px-2 py-1 text-[10px] font-bold text-rose-600 transition-colors hover:bg-rose-100 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-900/40"
+                            >
+                                Bỏ qua
+                            </button>
+                        </div>
                     </div>
                 )}
                 <button
                     type="button"
-                    disabled={submitting}
+                    disabled={hasSyncing}
                     onClick={handleCompleteOrder}
                     className="flex w-full items-center justify-center space-x-2 rounded-xl bg-sky-600 hover:bg-sky-700 py-2.5 text-xs font-bold text-white shadow-xs transition-colors disabled:opacity-50 dark:bg-sky-600 dark:hover:bg-sky-500"
                 >
                     <Check className="h-4 w-4 stroke-[2]" />
                     <span>
-                        {submitting
-                            ? 'Đang cập nhật...'
+                        {hasSyncing
+                            ? 'Đang đồng bộ…'
                             : isPartial
                               ? `Hoàn thành ${checkedItemIds.length}/${pendItems.length} món`
                               : 'Hoàn thành toàn bộ đơn'}
