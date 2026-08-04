@@ -151,6 +151,8 @@ const depositRefund = Math.max(0, depositTotal - discountedTotal);
 
 > Lưu ý: `useEffect` reset đã phụ thuộc `[isOpen, mode, payable, totalAmount]` — giờ `payable`/`totalAmount` được khai báo trước `useEffect` vì derived đặt sau `useState` nhưng trước `useEffect`. Thứ tự base: `useState` (53-57) → derived → `useEffect` (reset). Không đổi logic.
 
+> ⚠️ TDZ (used-before-declaration): dòng 54 `useState<number>(mode === 'payment' ? payable : (mode === 'deposit' ? totalAmount : 0))` tham chiếu `payable`/`totalAmount` — sau khi derived chuyển XUỐNG dưới khối `useState`, initializer này sẽ lỗi `Block-scoped variable used before its declaration`. Fix: đổi initializer `amountReceived` thành `useState<number>(0)` — `useEffect` reset (lines 59-72) đã tự set `amountReceived` đúng mỗi khi drawer mở/đổi mode, nên giá trị khởi tạo chỉ dùng đúng 1 frame đầu. Không đổi hành vi sau khi mở.
+
 - [ ] **Step 4: Thêm `promotionApplied` flag sau khối derived**
 
 Đặt cạnh `changeAmount`:

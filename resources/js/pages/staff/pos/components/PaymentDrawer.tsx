@@ -12,6 +12,7 @@ interface PaymentDrawerProps {
     depositTotal?: number;
     reservationDraft?: ReservationDraft | null;
     promotionDiscount?: number;
+    promotionName?: string | null;
     onApplyPromotion?: (code: string, subtotal: number, items: { menu_item_id: number; quantity: number; unit_price: number }[]) => Promise<{ ok: boolean; discount_amount?: number; total?: number; error?: string }>;
     onClearPromotion?: () => void;
     onConfirmPayment: (paymentMethod: 'cash' | 'bank_transfer', amountReceived: number, changeAmount: number, shouldPrint: boolean) => void;
@@ -30,6 +31,7 @@ export default function PaymentDrawer({
     depositTotal = 0,
     reservationDraft,
     promotionDiscount = 0,
+    promotionName = null,
     onApplyPromotion,
     onClearPromotion,
     onConfirmPayment,
@@ -37,7 +39,11 @@ export default function PaymentDrawer({
     onConfirmReservation,
     submitting,
 }: PaymentDrawerProps) {
-    if (!isOpen || !selectedTable) return null;
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer'>('cash');
+    const [amountReceived, setAmountReceived] = useState<number>(0);
+    const [promotionInput, setPromotionInput] = useState('');
+    const [promotionError, setPromotionError] = useState<string | null>(null);
+    const [promotionLoading, setPromotionLoading] = useState(false);
 
     const subtotal = cartItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
     const vatTotal = cartItems.reduce((sum, item) => {
@@ -49,12 +55,6 @@ export default function PaymentDrawer({
     const discountedTotal = Math.max(0, totalAmount - promotionDiscount);
     const payable = Math.max(0, discountedTotal - depositTotal);
     const depositRefund = Math.max(0, depositTotal - discountedTotal);
-
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer'>('cash');
-    const [amountReceived, setAmountReceived] = useState<number>(mode === 'payment' ? payable : (mode === 'deposit' ? totalAmount : 0));
-    const [promotionInput, setPromotionInput] = useState('');
-    const [promotionError, setPromotionError] = useState<string | null>(null);
-    const [promotionLoading, setPromotionLoading] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -88,6 +88,7 @@ export default function PaymentDrawer({
 
     const cashPresets = mode === 'payment' ? calculatePresets(payable) : [100000, 200000, 500000, totalAmount];
     const changeAmount = mode === 'payment' ? Math.max(0, amountReceived - payable) + depositRefund : 0;
+    const promotionApplied = promotionName != null && promotionName !== '';
 
     const handlePromotion = async () => {
         const code = promotionInput.trim();
@@ -131,6 +132,8 @@ export default function PaymentDrawer({
         acc[code].push(item);
         return acc;
     }, {} as Record<string, CartItem[]>);
+
+    if (!isOpen || !selectedTable) return null;
 
     return (
         <div className="fixed inset-0 z-[100] overflow-hidden flex justify-end">
@@ -241,11 +244,11 @@ export default function PaymentDrawer({
                                         <input
                                             value={promotionInput}
                                             onChange={(event) => setPromotionInput(event.target.value.toUpperCase())}
-                                            disabled={promotionDiscount > 0}
+                                            disabled={promotionApplied}
                                             placeholder="Nhập mã…"
                                             className="min-w-0 flex-1 rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-semibold uppercase outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800"
                                         />
-                                        {promotionDiscount > 0 ? (
+                                        {promotionApplied ? (
                                             <button type="button" onClick={() => { onClearPromotion?.(); setPromotionInput(''); setPromotionError(null); }} className="rounded-xl border border-zinc-300 px-3 py-2 text-xs font-semibold dark:border-zinc-700">
                                                 Hủy mã
                                             </button>
@@ -269,9 +272,9 @@ export default function PaymentDrawer({
                                         <span>Thuế VAT:</span>
                                         <span className="font-semibold tabular-nums">{vatTotal.toLocaleString('vi-VN')} đ</span>
                                     </div>
-                                    {mode === 'payment' && promotionDiscount > 0 && (
+                                    {mode === 'payment' && promotionApplied && (
                                         <div className="flex justify-between border-t border-sky-200/60 pt-2 text-xs font-semibold text-rose-600 dark:border-sky-800/60 dark:text-rose-400">
-                                            <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5 stroke-[1.5]" />Giảm giá:</span>
+                                            <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5 stroke-[1.5]" />{promotionName}:</span>
                                             <span className="tabular-nums">−{promotionDiscount.toLocaleString('vi-VN')} đ</span>
                                         </div>
                                     )}
