@@ -277,3 +277,20 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
 - Key tab hóa đơn: đơn thật dùng `order_code`; nháp chưa gửi bếp dùng `draft_${id}` / `draft_default`. Đơn nháp xác định bằng `order.status === 'draft'`.
 - Bàn ảo **"Mang đi"** có `id = 0`: mỗi đơn là khách độc lập, không có thanh toán gộp, không đặt bàn.
 - Types tập trung tại `resources/js/pages/staff/pos/types/pos.types.ts` (`POSOrderData` mang `deposit_total` + `reservation_*`).
+
+---
+
+## 10. 🖼️ Quản Lý & Lưu Trữ Hình Ảnh Qua Sirv CDN (Sirv CDN Storage & Integration)
+
+> Spec chi tiết: [2026-08-05-sirv-cdn-integration-design.md](file:///d:/Projects/TapHoa/docs/superpowers/specs/2026-08-05-sirv-cdn-integration-design.md)
+
+### 10.1 Cấu Trúc Kỹ Thuật (Architecture & Components)
+- **Công tắc môi trường (`SIRV_ENABLED=true/false` trong `.env`)**: Cho phép chuyển đổi linh hoạt giữa lưu trữ Sirv CDN (`https://ngminduk-191.sirv.com/TapHoa/...`) và asset local khi chạy offline dev.
+- **Custom Flysystem Driver (`sirv`)**:
+  - `App\Services\Sirv\SirvClientService`: Quản lý OAuth2 Token v2 (với cache 1000s & cơ chế fallback), upload, delete, fileExists qua Sirv REST API v2.
+  - `App\Services\Sirv\SirvFlysystemAdapter`: Implement `League\Flysystem\FilesystemAdapter` bổ sung `getUrl($path)` cho chuẩn Laravel.
+  - `App\Providers\SirvStorageServiceProvider`: Đăng ký `Storage::extend('sirv', ...)` trong hệ thống Laravel Storage Manager.
+- **Helper URL dùng chung**:
+  - Backend: `cdn_asset($path)` tự động sinh URL Sirv CDN khi `SIRV_ENABLED=true` và URL local khi `false`.
+  - Frontend: `resources/js/utils/cdn.ts` (`cdnAsset(path)`).
+- **Artisan Sync Command**: Lệnh `php artisan sirv:sync` tự động duyệt và tải toàn bộ ảnh tĩnh cũ (`public/logo`, `public/banner`, `public/QR_chuyen_khoan`) và ảnh sản phẩm lên Sirv CDN dưới thư mục `/TapHoa/...`.
