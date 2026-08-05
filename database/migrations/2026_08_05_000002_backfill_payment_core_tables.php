@@ -85,8 +85,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::table('payments')->truncate();
-        DB::table('invoice_lines')->truncate();
-        DB::table('invoice_promotions')->truncate();
+        // Backfill is one-way historical reconstruction. Truncating would destroy
+        // live post-deploy checkout data in payments/invoice_lines/invoice_promotions.
+        // Intentionally a no-op.
     }
 };

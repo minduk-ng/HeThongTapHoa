@@ -228,6 +228,7 @@ class CheckoutService
                     'invoice_code' => $invoiceCode,
                     'total' => $orderTotal,
                     'bulk' => $count > 1,
+                    'payment_method' => count($paymentRows) === 1 ? $paymentRows[0]['method'] : 'mixed',
                 ]);
             }
 
