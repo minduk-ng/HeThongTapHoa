@@ -79,10 +79,11 @@ class ProductController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
+            $disk = config('filesystems.disks.sirv.enabled') ? 'sirv' : 'public';
             $file = $request->file('image');
             $filename = Str::slug($validated['name']).'_'.date('Ymd_His').'.'.$file->getClientOriginalExtension();
-            $path = $file->storeAs('menu', $filename, 'public');
-            $validated['image'] = '/storage/'.$path;
+            $file->storeAs('products', $filename, $disk);
+            $validated['image'] = Storage::disk($disk)->url('products/'.$filename);
         }
 
         $validated['vat_rate'] = $validated['vat_rate'] ?? 0;
@@ -106,16 +107,24 @@ class ProductController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
+            $disk = config('filesystems.disks.sirv.enabled') ? 'sirv' : 'public';
             // Delete old image file if exists
-            if ($product->image && str_starts_with($product->image, '/storage/')) {
-                $oldPath = str_replace('/storage/', '', $product->image);
-                Storage::disk('public')->delete($oldPath);
+            if ($product->image) {
+                if (str_starts_with($product->image, '/storage/')) {
+                    $oldPath = str_replace('/storage/', '', $product->image);
+                    Storage::disk('public')->delete($oldPath);
+                } elseif (str_contains($product->image, 'sirv.com')) {
+                    $oldPath = parse_url($product->image, PHP_URL_PATH);
+                    $baseFolder = (string) config('filesystems.disks.sirv.base_folder', '/TapHoa');
+                    $relativeSirvPath = ltrim(str_replace($baseFolder, '', (string) $oldPath), '/');
+                    Storage::disk('sirv')->delete($relativeSirvPath);
+                }
             }
 
             $file = $request->file('image');
             $filename = Str::slug($validated['name']).'_'.date('Ymd_His').'.'.$file->getClientOriginalExtension();
-            $path = $file->storeAs('menu', $filename, 'public');
-            $validated['image'] = '/storage/'.$path;
+            $file->storeAs('products', $filename, $disk);
+            $validated['image'] = Storage::disk($disk)->url('products/'.$filename);
         } else {
             unset($validated['image']);
         }
@@ -139,9 +148,16 @@ class ProductController extends Controller
         }
 
         // Delete image file if exists
-        if ($product->image && str_starts_with($product->image, '/storage/')) {
-            $oldPath = str_replace('/storage/', '', $product->image);
-            Storage::disk('public')->delete($oldPath);
+        if ($product->image) {
+            if (str_starts_with($product->image, '/storage/')) {
+                $oldPath = str_replace('/storage/', '', $product->image);
+                Storage::disk('public')->delete($oldPath);
+            } elseif (str_contains($product->image, 'sirv.com')) {
+                $oldPath = parse_url($product->image, PHP_URL_PATH);
+                $baseFolder = (string) config('filesystems.disks.sirv.base_folder', '/TapHoa');
+                $relativeSirvPath = ltrim(str_replace($baseFolder, '', (string) $oldPath), '/');
+                Storage::disk('sirv')->delete($relativeSirvPath);
+            }
         }
 
         $product->delete();
