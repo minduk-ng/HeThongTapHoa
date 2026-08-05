@@ -276,3 +276,25 @@ test('bulk checkout ghi discount xuong tung dong trong moi order', function () {
     expect((float) $o2->items->sum('discount_amount'))->toBe((float) $o2->discount_amount);
     expect((float) $o1->discount_amount + (float) $o2->discount_amount)->toBe(15000.0);
 });
+
+test('bulk checkout ghi lines cho moi don va tong payments', function () {
+    $this->actingAs(posAdmin());
+    $item = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order1 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 60000, 'status' => 'completed']], ['status' => 'completed']);
+    $order2 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 40000, 'status' => 'completed']], ['status' => 'completed']);
+
+    $this->post('/staff/pos/bulk-checkout', [
+        'order_ids' => [$order1->id, $order2->id],
+        'table_id' => $table->id,
+        'payment_method' => 'cash',
+        'amount_received' => 100000,
+        'change_amount' => 0,
+    ])->assertSessionHasNoErrors();
+
+    $invoice = \App\Models\Invoice::firstOrFail();
+    expect($invoice->lines)->toHaveCount(2);
+    expect((float) $invoice->subtotal_amount)->toBe(100000.0);
+    expect((float) $invoice->total_amount)->toBe(100000.0);
+    expect($invoice->payments)->toHaveCount(1);
+});

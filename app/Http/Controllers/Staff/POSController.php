@@ -986,42 +986,6 @@ class POSController extends Controller
                     }
                 }
 
-                // Compute total across all orders
-                $grandSubtotal = $orders->sum(function ($ord) {
-                    return $ord->items->where('status', '!=', 'cancelled')->sum(function ($item) {
-                        return (float) $item->quantity * (float) $item->unit_price;
-                    });
-                });
-
-                $grandLines = $orders->flatMap(function ($ord) {
-                    return $this->orderLines($ord->items->where('status', '!=', 'cancelled'));
-                });
-
-                $discountAmount = 0.0;
-                $promotion = null;
-                if (! empty($validated['promotion_code'])) {
-                    $resolved = $this->resolvePromotion($validated['promotion_code'], $grandLines, $grandSubtotal, true);
-                    if (! $resolved || $resolved['status'] === 'rejected') {
-                        throw new \Exception('Mã khuyến mãi không hợp lệ hoặc đã hết hạn.');
-                    }
-                    $promotion = $resolved['promotion'];
-                    $discountAmount = $resolved['discount_amount'];
-                }
-
-                $totalAmount = max(0, $grandSubtotal - $discountAmount);
-
-                $depositTotal = 0;
-                foreach ($orders as $ord) {
-                    $depositTotal += (float) $ord->deposits()->where('status', 'held')->sum('amount');
-                }
-
-                $payable = max(0, $totalAmount - $depositTotal);
-                $depositRefund = max(0, $depositTotal - $totalAmount);
-
-                if ($validated['amount_received'] < $payable) {
-                    throw new \Exception('Số tiền khách đưa không đủ.');
-                }
-
                 // Determine table name
                 $tableId = $validated['table_id'] ?? $orders->first()?->table_id;
                 $targetTable = $tableId ? Table::find($tableId) : null;
@@ -1038,70 +1002,26 @@ class POSController extends Controller
                     $tableNameStr = 'Mang đi';
                 }
 
-                // Create single invoice
-                $invoiceCode = 'INV-'.date('Ymd').strtoupper(Str::random(4));
-                $invoice = Invoice::create([
-                    'invoice_code' => $invoiceCode,
-                    'table_name' => $tableNameStr,
-                    'total_amount' => $totalAmount,
-                    'deposit_amount' => $depositTotal,
-                    'payment_method' => $validated['payment_method'],
-                    'amount_received' => $validated['amount_received'],
-                    'change_amount' => $validated['change_amount'],
-                    'issued_at' => now(),
-                ]);
+                // CheckoutService ghi invoice_lines/payments/invoice_promotions, cập nhật order,
+                // cọc applied + audit log trong 1 transaction. Truyền tableNameStr để giữ nguyên
+                // chuỗi tên bàn legacy (vd "Mang đi" thường).
+                $paymentRows = [[
+                    'method' => $validated['payment_method'],
+                    'amount' => (float) $validated['amount_received'],
+                ]];
+                $codes = ! empty($validated['promotion_code']) ? [$validated['promotion_code']] : [];
 
-                // Mark all orders as paid + link invoice, distributing discount exactly.
-                $assignedDiscount = 0.0;
-                $orderCount = $orders->count();
-                foreach ($orders->values() as $index => $ord) {
-                    $orderSubtotal = $ord->items->where('status', '!=', 'cancelled')->sum(
-                        fn ($item) => (float) $item->quantity * (float) $item->unit_price
-                    );
-                    if ($discountAmount > 0 && $grandSubtotal > 0) {
-                        $orderDiscount = $index === $orderCount - 1
-                            ? $discountAmount - $assignedDiscount
-                            : floor($discountAmount * $orderSubtotal / $grandSubtotal);
-                        $assignedDiscount += $orderDiscount;
-                    } else {
-                        $orderDiscount = 0.0;
-                    }
-                    $orderTotal = max(0, $orderSubtotal - $orderDiscount);
-                    $ord->update([
-                        'status' => 'paid',
-                        'invoice_id' => $invoice->id,
-                        'promotion_id' => $promotion?->id,
-                        'discount_amount' => $orderDiscount,
-                        'total' => $orderTotal,
-                    ]);
+                $invoice = \App\Services\Checkout\CheckoutService::runBulk(
+                    $orders,
+                    $paymentRows,
+                    $codes,
+                    $request->user()?->id,
+                    $tableNameStr,
+                );
 
-                    if ($promotion && $orderDiscount > 0) {
-                        $orderActiveItems = $ord->items->where('status', '!=', 'cancelled');
-                        $alloc = Promotion::allocateLineDiscounts($promotion, $this->orderLines($orderActiveItems), $orderDiscount);
-                        foreach ($alloc as $orderItemId => $discount) {
-                            OrderItem::where('id', $orderItemId)->update(['discount_amount' => $discount]);
-                        }
-                    }
-
-                    if ($depositTotal > 0) {
-                        $ord->deposits()->where('status', 'held')->update([
-                            'status' => 'applied',
-                            'resolved_at' => now(),
-                            'resolved_by_user_id' => $request->user()?->id,
-                        ]);
-                    }
-
-                    OrderActivityLogger::log($ord, 'checkout', $request->user()?->id, [
-                        'invoice_code' => $invoiceCode,
-                        'payment_method' => $validated['payment_method'],
-                        'total' => $orderTotal,
-                        'bulk' => true,
-                    ]);
-                }
-
-                if ($promotion) {
-                    $promotion->increment('used_count');
-                }
+                $totalAmount = (float) $invoice->total_amount;
+                $depositTotal = (float) $invoice->deposit_amount;
+                $depositRefund = max(0.0, $depositTotal - $totalAmount);
 
                 // Release tables if no active orders remain
                 $allGroupTableIds = $allGroupTables->pluck('id');
