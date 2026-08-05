@@ -92,16 +92,19 @@ class CheckoutService
                     ];
                 }
 
-                // Phân bổ tổng discount xuống lines theo tỷ trọng subtotal
-                if ($totalDiscount > 0 && $subtotal > 0) {
-                    $assigned = 0.0;
-                    $count = count($lineInputs);
-                    foreach ($lineInputs as $idx => $li) {
-                        $d = ($idx === $count - 1)
-                            ? round($totalDiscount - $assigned, 2)
-                            : floor($totalDiscount * $li['subtotal'] / $subtotal);
-                        $lineInputs[$idx]['discount_amount'] = round(max(0, min($d, $li['subtotal'])), 2);
-                        $assigned += $lineInputs[$idx]['discount_amount'];
+                // Phân bổ discount theo từng mã (giữ đúng item/category scope), cộng dồn xuống lines
+                if ($totalDiscount > 0) {
+                    foreach ($resolved['promotions'] as $pr) {
+                        $alloc = \App\Models\Promotion::allocateLineDiscounts($pr['promotion'], $engineLines, (float) $pr['amount']);
+                        foreach ($lineInputs as $idx => $li) {
+                            $lineInputs[$idx]['discount_amount'] = round(
+                                max(0.0, min(
+                                    (float) $lineInputs[$idx]['discount_amount'] + (float) ($alloc[(int) $li['order_item_id']] ?? 0.0),
+                                    (float) $li['subtotal']
+                                )),
+                                2
+                            );
+                        }
                     }
                 }
             }
@@ -182,6 +185,13 @@ class CheckoutService
                     'vat_amount' => $li['vat_amount'],
                     'discount_amount' => $li['discount_amount'],
                 ]);
+            }
+
+            // Đồng bộ discount xuống order_items (giữ tương thích hành vi endpoint cũ)
+            foreach ($lineInputs as $li) {
+                if ($li['order_item_id']) {
+                    \App\Models\OrderItem::where('id', $li['order_item_id'])->update(['discount_amount' => $li['discount_amount']]);
+                }
             }
 
             // 7. Ghi invoice_promotions + tăng used_count

@@ -835,78 +835,26 @@ class POSController extends Controller
                     ? ($subTableNumbers ? "{$primaryTableObj->table_number} (Gộp {$subTableNumbers})" : $primaryTableObj->table_number)
                     : 'Mang đi';
 
-                $subtotal = $order->items->where('status', '!=', 'cancelled')->sum(function ($item) {
-                    return (float) $item->quantity * (float) $item->unit_price;
-                });
+                $paymentRows = [[
+                    'method' => $validated['payment_method'],
+                    'amount' => (float) $validated['amount_received'],
+                ]];
+                $codes = ! empty($validated['promotion_code']) ? [$validated['promotion_code']] : [];
 
-                $activeItems = $order->items->where('status', '!=', 'cancelled');
-                $discountAmount = 0.0;
-                $promotion = null;
-                if (! empty($validated['promotion_code'])) {
-                    $resolved = $this->resolvePromotion($validated['promotion_code'], $this->orderLines($activeItems), $subtotal, true);
-                    if (! $resolved || $resolved['status'] === 'rejected') {
-                        throw new \Exception('Mã khuyến mãi không hợp lệ hoặc đã hết hạn.');
-                    }
-                    $promotion = $resolved['promotion'];
-                    $discountAmount = $resolved['discount_amount'];
-                }
+                // CheckoutService ghi invoice_lines/payments/invoice_promotions, cập nhật order,
+                // cọc applied + audit log trong 1 transaction. Truyền tableNameStr để giữ nguyên
+                // chuỗi tên bàn legacy (vd "Mang đi" thường).
+                $invoice = \App\Services\Checkout\CheckoutService::runBulk(
+                    collect([$order]),
+                    $paymentRows,
+                    $codes,
+                    $request->user()?->id,
+                    $tableNameStr,
+                );
 
-                $totalAmount = max(0, $subtotal - $discountAmount);
-                $order->update([
-                    'status' => 'paid',
-                    'promotion_id' => $promotion?->id,
-                    'discount_amount' => $discountAmount,
-                    'total' => $totalAmount,
-                ]);
-
-                if ($promotion && $discountAmount > 0) {
-                    $alloc = Promotion::allocateLineDiscounts($promotion, $this->orderLines($activeItems), $discountAmount);
-                    foreach ($alloc as $orderItemId => $discount) {
-                        OrderItem::where('id', $orderItemId)->update(['discount_amount' => $discount]);
-                    }
-                }
-
-                $depositTotal = (float) $order->deposits()->where('status', 'held')->sum('amount');
-                $payable = max(0, $totalAmount - $depositTotal);
-                $depositRefund = max(0, $depositTotal - $totalAmount);
-
-                if ($validated['amount_received'] < $payable) {
-                    throw new \Exception('Số tiền khách đưa không đủ.');
-                }
-
-                // Create Invoice record and link to order
-                $invoiceCode = 'INV-'.date('Ymd').strtoupper(Str::random(4));
-                $invoice = Invoice::create([
-                    'invoice_code' => $invoiceCode,
-                    'table_name' => $tableNameStr,
-                    'total_amount' => $totalAmount,
-                    'deposit_amount' => $depositTotal,
-                    'payment_method' => $validated['payment_method'],
-                    'amount_received' => $validated['amount_received'],
-                    'change_amount' => $validated['change_amount'],
-                    'issued_at' => now(),
-                ]);
-
-                $order->update(['invoice_id' => $invoice->id]);
-
-                if ($promotion) {
-                    $promotion->increment('used_count');
-                }
-
-                if ($depositTotal > 0) {
-                    $order->deposits()->where('status', 'held')->update([
-                        'status' => 'applied',
-                        'resolved_at' => now(),
-                        'resolved_by_user_id' => $request->user()?->id,
-                    ]);
-                }
-
-                // Audit log: checkout
-                OrderActivityLogger::log($order, 'checkout', $request->user()?->id, [
-                    'invoice_code' => $invoiceCode,
-                    'payment_method' => $validated['payment_method'],
-                    'total' => $totalAmount,
-                ]);
+                $totalAmount = (float) $invoice->total_amount;
+                $depositTotal = (float) $invoice->deposit_amount;
+                $depositRefund = max(0.0, $depositTotal - $totalAmount);
 
                 $hasOtherActive = $allGroupTableIds->isNotEmpty()
                     ? Order::whereIn('table_id', $allGroupTableIds)

@@ -356,3 +356,26 @@ test('checkout order scope phan bo discount xuong cac dong theo ty trong, dong c
     expect((float) $items[$itemA->id]->discount_amount)->toBe(10000.0);
     expect((float) $items[$itemB->id]->discount_amount)->toBe(30000.0);
 });
+
+test('checkout qua endpoint ghi invoice_lines payments va invoice_promotions', function () {
+    $this->actingAs(posAdmin());
+    $promo = \App\Models\Promotion::create(['code' => 'EP10', 'name' => '10%', 'discount_type' => 'percentage', 'discount_value' => 10, 'is_active' => true]);
+    $item = posMenuItem(['name' => 'Cf ep', 'price' => 50000, 'vat_rate' => 10]);
+    $order = posOrder(posTable(['table_number' => 'B77']), [['item' => $item, 'qty' => 2, 'price' => 50000, 'status' => 'completed']], ['status' => 'completed']);
+
+    $this->post('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 90000,
+        'change_amount' => 0,
+        'promotion_code' => $promo->code,
+    ])->assertSessionHasNoErrors();
+
+    $invoice = \App\Models\Invoice::firstOrFail();
+    expect($invoice->lines)->toHaveCount(1);
+    expect($invoice->lines->first()->name_snapshot)->toBe('Cf ep');
+    expect($invoice->payments)->toHaveCount(1);
+    expect((float) $invoice->payments->first()->amount)->toBe(90000.0);
+    expect($invoice->promotions)->toHaveCount(1);
+    expect((float) $invoice->total_amount)->toBe(90000.0); // 100k - 10k
+});
