@@ -711,7 +711,9 @@ class POSController extends Controller
     public function validatePromotion(Request $request)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:50',
+            'code' => 'required_without:codes|nullable|string|max:50',
+            'codes' => 'nullable|array|min:1',
+            'codes.*' => 'string|max:50',
             'subtotal' => 'required|numeric|min:0',
             'items' => 'nullable|array',
             'items.*.menu_item_id' => 'required_with:items|integer|exists:menu_items,id',
@@ -740,10 +742,12 @@ class POSController extends Controller
             ]]);
         }
 
-        $resolved = $this->resolvePromotion($validated['code'], $lines, (float) $validated['subtotal']);
+        $codes = $validated['codes'] ?? [$validated['code'] ?? null];
 
-        if (! $resolved || $resolved['status'] === 'rejected') {
-            $reason = $resolved ? ($resolved['reason'] ?? 'not_found') : 'not_found';
+        $resolved = \App\Services\Promotions\PromotionEngine::resolveAll($codes, $lines, (float) $validated['subtotal']);
+
+        if ($resolved['status'] === 'rejected') {
+            $reason = $resolved['reason'] ?? 'not_found';
             $map = [
                 'not_found' => 'Mã khuyến mãi không tồn tại.',
                 'inactive' => 'Mã khuyến mãi đang tạm ngưng.',
@@ -757,18 +761,23 @@ class POSController extends Controller
             return response()->json([
                 'ok' => false,
                 'error' => $map[$reason] ?? 'Mã khuyến mãi không hợp lệ.',
+                'code' => $resolved['code'] ?? ($validated['code'] ?? null),
             ], 422);
         }
 
+        $promotions = collect($resolved['promotions'])->map(fn ($r) => [
+            'id' => $r['promotion']->id,
+            'name' => $r['promotion']->name,
+            'code' => $r['promotion']->code,
+            'discount_amount' => $r['amount'],
+        ])->values()->all();
+
         return response()->json([
             'ok' => true,
-            'discount_amount' => $resolved['discount_amount'],
-            'total' => (float) $validated['subtotal'] - $resolved['discount_amount'],
-            'promotion' => [
-                'id' => $resolved['promotion']->id,
-                'name' => $resolved['promotion']->name,
-                'code' => $resolved['promotion']->code,
-            ],
+            'discount_amount' => $resolved['total_discount'],
+            'total' => (float) $validated['subtotal'] - $resolved['total_discount'],
+            'promotion' => $promotions[0] ?? null,
+            'promotions' => $promotions,
         ]);
     }
 
@@ -1443,22 +1452,6 @@ class POSController extends Controller
             'subtotal' => (float) $item->subtotal,
             'category_id' => $item->menuItem?->category_id,
         ])->values();
-    }
-
-    private function resolvePromotion(?string $code, $lines, float $orderSubtotal, bool $lockForUpdate = false): ?array
-    {
-        if (! $code) {
-            return null;
-        }
-        $r = \App\Services\Promotions\PromotionEngine::resolveAll([$code], $lines, $orderSubtotal, $lockForUpdate);
-        if ($r['status'] === 'rejected') {
-            return ['status' => 'rejected', 'reason' => $r['reason']];
-        }
-        return [
-            'status' => 'ok',
-            'promotion' => $r['promotions'][0]['promotion'],
-            'discount_amount' => $r['promotions'][0]['amount'],
-        ];
     }
 
     private function discountFor(\App\Models\Promotion $promotion, float $subtotal): float
