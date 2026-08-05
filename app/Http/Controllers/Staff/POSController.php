@@ -575,20 +575,7 @@ class POSController extends Controller
 
                         $parentOrder = $orderItem->order;
                         if ($parentOrder) {
-                            $activeSubtotal = (float) $parentOrder->items()->where('status', '!=', 'cancelled')->sum('subtotal');
-                            
-                            // Tính lại VAT thực tế cho các món còn lại trong đơn
-                            $activeVatAmount = $parentOrder->items()->where('status', '!=', 'cancelled')->get()->sum(function ($item) {
-                                $vatRate = $item->menuItem->vat_rate ?? 0;
-                                return $item->subtotal * ($vatRate / 100);
-                            });
-                            
-                            $parentOrder->update([
-                                'subtotal' => $activeSubtotal,
-                                'vat_amount' => $activeVatAmount,
-                                'total' => $activeSubtotal,
-                            ]);
-
+                            // ponytail: subtotal/vat/total giữ snapshot ban đầu khi pending — preview JIT từ order_items (OrderTotals::preview)
                             if ($parentOrder->items()->where('status', '!=', 'cancelled')->count() === 0) {
                                 $parentOrder->update(['status' => 'cancelled']);
                             }

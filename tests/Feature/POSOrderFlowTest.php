@@ -13,7 +13,7 @@ use App\Models\OrderItem;
 | - REGRESSION: trùng order_code sau khi chuyển/gộp bàn (đếm theo table_id cũ)
 | - Đơn Mang đi (table_id NULL, prefix MD)
 | - Gọi thêm món vào đơn có sẵn (cộng dồn tiền, has_additional_items)
-| - Giảm/hủy món đã gửi bếp (reduced_items) và tính lại tổng tiền
+| - Giảm/hủy món đã gửi bếp (reduced_items); orders.subtotal/total giữ snapshot, preview JIT là nguồn đúng
 | - Idempotency key chống double-submit
 | - Phân quyền pos.create
 */
@@ -143,7 +143,7 @@ test('gọi thêm món vào đơn có sẵn cộng dồn tiền và bật cờ h
         ->toContain('additional');
 });
 
-test('giảm một phần số lượng món đã gửi bếp cập nhật lại tổng tiền đơn', function () {
+test('giảm một phần số lượng món đã gửi bếp giữ snapshot orders.total, preview JIT tính lại', function () {
     $this->actingAs(posAdmin());
     $table = posTable();
     $item = posMenuItem();
@@ -172,8 +172,11 @@ test('giảm một phần số lượng món đã gửi bếp cập nhật lại
     expect($orderItem->status)->not->toBe('cancelled');
 
     $order->refresh();
-    expect((float) $order->subtotal)->toBe(40000.0);
-    expect((float) $order->total)->toBe(40000.0);
+    // Gỡ ghi total trong reduce flow: orders.subtotal/total giữ snapshot ban đầu,
+    // preview JIT (OrderTotals::preview) là nguồn đúng.
+    expect((float) $order->subtotal)->toBe(60000.0);
+    expect((float) $order->total)->toBe(60000.0);
+    expect(\App\Services\Checkout\OrderTotals::preview($order->items()->where('status', '!=', 'cancelled')->get())['subtotal'])->toBe(40000.0);
     expect($order->status)->not->toBe('cancelled');
 
     expect(OrderActivity::where('order_id', $order->id)->where('action', 'item_cancel')->exists())->toBeTrue();
