@@ -20,6 +20,7 @@ class SyncSirvAssetsCommand extends Command
             public_path('banner') => 'banner',
             public_path('QR_chuyen_khoan') => 'QR_chuyen_khoan',
             storage_path('app/public/products') => 'products',
+            storage_path('app/public/menu') => 'products',
         ];
 
         $filesToUpload = [];
@@ -66,7 +67,35 @@ class SyncSirvAssetsCommand extends Command
         $bar->finish();
         $this->newLine(2);
 
-        $this->info("Synchronization finished: {$successCount} uploaded successfully, {$failCount} failed.");
+        $this->info("Asset files upload finished: {$successCount} uploaded, {$failCount} failed.");
+
+        // Sync MenuItem records in Database with local image paths
+        $this->info('Updating MenuItem image records in Database...');
+        $localProducts = \App\Models\MenuItem::whereNotNull('image')
+            ->where(function ($q) {
+                $q->where('image', 'like', '/storage/%')
+                  ->orWhere('image', 'like', 'storage/%');
+            })->get();
+
+        $dbUpdatedCount = 0;
+        foreach ($localProducts as $product) {
+            $relativePath = str_replace(['/storage/', 'storage/'], '', $product->image);
+            $localFullPath = storage_path('app/public/' . $relativePath);
+
+            if (File::exists($localFullPath)) {
+                $filename = basename($relativePath);
+                $sirvPath = 'products/' . $filename;
+                $contents = file_get_contents($localFullPath);
+
+                if ($sirvClient->uploadFile($sirvPath, $contents)) {
+                    $cdnUrl = $sirvClient->getUrl($sirvPath);
+                    $product->forceFill(['image' => $cdnUrl])->save();
+                    $dbUpdatedCount++;
+                }
+            }
+        }
+
+        $this->info("Updated {$dbUpdatedCount} MenuItem image URLs in database to Sirv CDN.");
 
         return Command::SUCCESS;
     }
