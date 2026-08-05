@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
-use App\Models\Invoice;
+use App\Models\InvoiceLine;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -14,27 +14,16 @@ class InvoiceItemsReportController extends Controller
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
 
-        $rows = Invoice::query()
-            ->join('orders', 'orders.invoice_id', '=', 'invoices.id')
-            ->join('order_items', 'order_items.order_id', '=', 'orders.id')
-            ->join('menu_items', 'menu_items.id', '=', 'order_items.menu_item_id')
+        $rows = InvoiceLine::query()
+            ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
             ->whereBetween('invoices.issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
-            ->where('order_items.status', '!=', 'cancelled')
             ->orderByDesc('invoices.issued_at')
+            ->orderBy('invoice_lines.id')
             ->get([
-                'order_items.id as id',
-                'invoices.id as invoice_id',
-                'invoices.invoice_code',
-                'invoices.issued_at',
-                'invoices.table_name',
-                'invoices.payment_method',
-                'menu_items.name as item_name',
-                'order_items.quantity',
-                'order_items.unit_price',
-                'order_items.subtotal',
-                'order_items.discount_amount as discount_amount',
-                'orders.subtotal as order_subtotal',
-                'orders.discount_amount as order_discount',
+                'invoice_lines.id as id', 'invoices.id as invoice_id', 'invoices.invoice_code',
+                'invoices.issued_at', 'invoices.table_name', 'invoices.payment_method',
+                'invoice_lines.name_snapshot as item_name', 'invoice_lines.quantity',
+                'invoice_lines.unit_price', 'invoice_lines.subtotal', 'invoice_lines.discount_amount',
             ])
             ->values()
             ->map(fn ($r) => [
@@ -49,9 +38,9 @@ class InvoiceItemsReportController extends Controller
                 'subtotal' => (float) $r->subtotal,
                 'discount_amount' => (float) $r->discount_amount,
                 'net' => (float) $r->subtotal - (float) $r->discount_amount,
-                // order_gross = orders.subtotal (đã là gross); bỏ + order_discount (bug double-count)
-                'order_gross' => (float) $r->order_subtotal,
-                'order_discount' => (float) $r->order_discount,
+                // order_gross/order_discount = value dòng đầu nhóm (invoice ≈ 1 order, giữ shape cũ).
+                'order_gross' => (float) $r->subtotal,
+                'order_discount' => (float) $r->discount_amount,
                 'payment_method' => $r->payment_method,
             ]);
 

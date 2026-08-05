@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
+use App\Models\InvoiceLine;
 use App\Models\MenuCategory;
-use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -15,15 +15,13 @@ class ProductDetailsReportController extends Controller
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
 
-        $rows = OrderItem::query()
-            ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->join('invoices', 'invoices.id', '=', 'orders.invoice_id')
-            ->join('menu_items', 'menu_items.id', '=', 'order_items.menu_item_id')
+        $rows = InvoiceLine::query()
+            ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
+            ->join('menu_items', 'menu_items.id', '=', 'invoice_lines.menu_item_id')
             ->leftJoin('menu_categories', 'menu_categories.id', '=', 'menu_items.category_id')
             ->whereBetween('invoices.issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
-            ->where('order_items.status', '!=', 'cancelled')
-            ->groupBy('menu_items.id', 'menu_items.name', 'menu_categories.name')
-            ->selectRaw('menu_items.id as menu_item_id, menu_items.name as item_name, menu_categories.name as category_name, SUM(order_items.quantity) as quantity, SUM(order_items.subtotal - order_items.discount_amount) as revenue, SUM(order_items.discount_amount) as discount_amount')
+            ->groupBy('invoice_lines.menu_item_id', 'invoice_lines.name_snapshot', 'menu_categories.name')
+            ->selectRaw('invoice_lines.menu_item_id, invoice_lines.name_snapshot as item_name, menu_categories.name as category_name, SUM(invoice_lines.quantity) as quantity, SUM(invoice_lines.subtotal - invoice_lines.discount_amount) as revenue, SUM(invoice_lines.discount_amount) as discount_amount')
             ->orderByDesc('revenue')
             ->get()
             ->values()
