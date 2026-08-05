@@ -17,6 +17,7 @@ class Deposit extends Model
         'received_by_user_id',
         'resolved_by_user_id',
         'resolved_at',
+        'payment_id',
         'note',
     ];
 
@@ -28,6 +29,11 @@ class Deposit extends Model
     public function order()
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function payment()
+    {
+        return $this->belongsTo(Payment::class, 'payment_id');
     }
 
     public function receivedBy()
