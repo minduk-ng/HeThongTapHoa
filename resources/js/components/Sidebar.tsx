@@ -82,12 +82,12 @@ export default function Sidebar() {
                     {/* Far Left Banner (Light & Dark Mode) */}
                     <Link href="/" className="flex items-center shrink-0">
                         <img 
-                            src={cdnAsset('/banner/banner_v2.jpg')} 
+                            src={cdnAsset('/banner/banner_v2.jpg', { h: 72, q: 80, format: 'webp' })} 
                             alt="Coffee Shop Banner" 
                             className="h-9 w-auto rounded-lg object-contain shadow-xs transition-opacity hover:opacity-90 dark:hidden"
                         />
                         <img 
-                            src={cdnAsset('/banner/banner_v2.jpg')} //setting banner dark
+                            src={cdnAsset('/banner/banner_v2.jpg', { h: 72, q: 80, format: 'webp' })} //setting banner dark
                             alt="Coffee Shop Banner Dark" 
                             className="hidden h-9 w-auto rounded-lg object-contain shadow-xs transition-opacity hover:opacity-90 dark:block"
                         />

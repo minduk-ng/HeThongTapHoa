@@ -1,5 +1,12 @@
 import { usePage } from '@inertiajs/react';
 
+export interface CdnOptions {
+    w?: number;
+    h?: number;
+    q?: number;
+    format?: 'webp' | 'png' | 'jpg' | 'avif';
+}
+
 /**
  * Gets CDN base URL from Inertia shared props.
  */
@@ -18,18 +25,26 @@ export function getCdnBaseUrl(): string {
 }
 
 /**
- * Resolves full asset URL based on path.
- * If path is already a full URL (http/https), returns as is.
+ * Resolves full asset URL based on path with optional Sirv dynamic image parameters.
+ * E.g., cdnAsset('/banner/banner_v2.jpg', { h: 72, q: 80, format: 'webp' })
  */
-export function cdnAsset(path?: string | null): string {
+export function cdnAsset(path?: string | null, options?: CdnOptions): string {
     if (!path) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-        return path;
+    let url = path;
+    if (!path.startsWith('http://') && !path.startsWith('https://')) {
+        const cleanPath = path.startsWith('/') ? path : `/${path}`;
+        const baseUrl = getCdnBaseUrl();
+        url = baseUrl ? `${baseUrl}${cleanPath}` : cleanPath;
     }
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    const baseUrl = getCdnBaseUrl();
-    if (baseUrl) {
-        return `${baseUrl}${cleanPath}`;
+
+    if (options && (options.w || options.h || options.q || options.format)) {
+        const params = new URLSearchParams();
+        if (options.w) params.set('w', options.w.toString());
+        if (options.h) params.set('h', options.h.toString());
+        if (options.q) params.set('q', options.q.toString());
+        if (options.format) params.set('format', options.format);
+        url += (url.includes('?') ? '&' : '?') + params.toString();
     }
-    return cleanPath;
+
+    return url;
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Banknote, QrCode, X, Printer, CalendarClock, Tag, Ticket } from 'lucide-react';
 import { POSTableData, CartItem, ReservationDraft } from '../types/pos.types';
+import { cdnAsset } from '../../../../utils/cdn';
 
 interface PaymentDrawerProps {
     isOpen: boolean;
@@ -418,7 +419,7 @@ export default function PaymentDrawer({
                                             </span>
                                             <div className="p-2 bg-white rounded-xl shadow-md border border-zinc-200">
                                                 <img
-                                                    src="/QR_chuyen_khoan/stk_duc.jpg"
+                                                    src={cdnAsset('/QR_chuyen_khoan/stk_duc.jpg', { w: 320, q: 85, format: 'webp' })}
                                                     alt="Mã QR"
                                                     className="w-40 h-40 object-contain rounded-lg"
                                                     onError={(e) => {

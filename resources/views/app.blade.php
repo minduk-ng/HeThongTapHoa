@@ -18,8 +18,8 @@
             })();
         </script>
 
-        <link rel="icon" href="/logo/minilogo_v2.png" type="image/png">
-        <link rel="apple-touch-icon" href="/logo/minilogo_v2.png">
+        <link rel="icon" href="{{ cdn_asset('/logo/minilogo_v2.png', ['w' => 64, 'h' => 64, 'format' => 'webp']) }}" type="image/webp">
+        <link rel="apple-touch-icon" href="{{ cdn_asset('/logo/minilogo_v2.png', ['w' => 180, 'h' => 180, 'format' => 'webp']) }}">
 
         @fonts
 
