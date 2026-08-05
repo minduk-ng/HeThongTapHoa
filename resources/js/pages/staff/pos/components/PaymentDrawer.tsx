@@ -416,7 +416,7 @@ export default function PaymentDrawer({
                                         const qrAmount = Math.max(0, Math.round(mode === 'payment' ? payable : amountReceived));
                                         const tableLabel = selectedTable ? selectedTable.table_number : '';
                                         const addInfo = `${mode === 'payment' ? 'Thanh toan' : 'Dat coc'} ${tableLabel}`.trim();
-                                        const vietQrUrl = `https://img.vietqr.io/image/970422-0368192905-compact2.png?amount=${qrAmount}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent('NGUYEN MINH DUC')}`;
+                                        const vietQrUrl = `https://img.vietqr.io/image/970422-0368192905-qr_only.png?amount=${qrAmount}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent('NGUYEN MINH DUC')}`;
 
                                         return (
                                             <div className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 flex flex-col items-center">
