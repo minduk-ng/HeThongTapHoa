@@ -24,19 +24,27 @@ class SirvClientService
 
     public function getAccessToken(): ?string
     {
-        return Cache::remember('sirv_access_token', 1000, function () {
-            $response = Http::post('https://api.sirv.com/v2/token', [
-                'clientId' => $this->clientId,
-                'clientSecret' => $this->clientSecret,
-            ]);
+        try {
+            return Cache::remember('sirv_access_token', 1000, fn() => $this->fetchTokenFromApi());
+        } catch (\Throwable $e) {
+            Log::warning('Sirv cache store unavailable, fetching token directly', ['error' => $e->getMessage()]);
+            return $this->fetchTokenFromApi();
+        }
+    }
 
-            if ($response->successful()) {
-                return $response->json('token');
-            }
+    protected function fetchTokenFromApi(): ?string
+    {
+        $response = Http::post('https://api.sirv.com/v2/token', [
+            'clientId' => $this->clientId,
+            'clientSecret' => $this->clientSecret,
+        ]);
 
-            Log::error('Sirv authentication failed', ['response' => $response->body()]);
-            return null;
-        });
+        if ($response->successful()) {
+            return $response->json('token');
+        }
+
+        Log::error('Sirv authentication failed', ['response' => $response->body()]);
+        return null;
     }
 
     public function getUrl(string $path): string
