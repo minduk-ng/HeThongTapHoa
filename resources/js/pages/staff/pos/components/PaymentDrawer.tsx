@@ -412,28 +412,37 @@ export default function PaymentDrawer({
                                         </div>
                                     )}
                                     
-                                    {((mode === 'reservation' && amountReceived > 0) || mode !== 'reservation') && (
-                                        <div className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 flex flex-col items-center">
-                                            <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2">
-                                                Quét mã QR Ngân hàng
-                                            </span>
-                                            <div className="p-2 bg-white rounded-xl shadow-md border border-zinc-200">
-                                                <img
-                                                    src={cdnAsset('/QR_chuyen_khoan/stk_duc.jpg', { w: 320, q: 85, format: 'webp' })}
-                                                    alt="Mã QR"
-                                                    className="w-40 h-40 object-contain rounded-lg"
-                                                    onError={(e) => {
-                                                        (e.target as HTMLElement).style.display = 'none';
-                                                    }}
-                                                />
+                                    {((mode === 'reservation' && amountReceived > 0) || mode !== 'reservation') && (() => {
+                                        const qrAmount = Math.max(0, Math.round(mode === 'payment' ? payable : amountReceived));
+                                        const tableLabel = selectedTable ? selectedTable.table_number : '';
+                                        const addInfo = `${mode === 'payment' ? 'Thanh toan' : 'Dat coc'} ${tableLabel}`.trim();
+                                        const vietQrUrl = `https://img.vietqr.io/image/970422-0368192905-compact2.png?amount=${qrAmount}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent('NGUYEN MINH DUC')}`;
+
+                                        return (
+                                            <div className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 flex flex-col items-center">
+                                                <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2">
+                                                    Quét mã QR Ngân hàng (VietQR)
+                                                </span>
+                                                <div className="p-2 bg-white rounded-xl shadow-md border border-zinc-200">
+                                                    <img
+                                                        key={vietQrUrl}
+                                                        src={vietQrUrl}
+                                                        alt="Mã VietQR Chuyển Khoản"
+                                                        className="w-48 h-48 object-contain rounded-lg"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLElement).style.display = 'none';
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="mt-3 text-xs space-y-1 text-zinc-700 dark:text-zinc-300 font-medium text-center">
+                                                    <p><span className="font-bold">Chủ TK:</span> NGUYEN MINH DUC</p>
+                                                    <p><span className="font-bold">Ngân hàng:</span> MBBank (970422) — 0368192905</p>
+                                                    <p><span className="font-bold">Số tiền:</span> <span className="font-black text-sky-600 dark:text-sky-400 tabular-nums">{qrAmount.toLocaleString('vi-VN')} đ</span></p>
+                                                    <p><span className="font-bold">Nội dung:</span> {addInfo}</p>
+                                                </div>
                                             </div>
-                                            <div className="mt-3 text-xs space-y-1 text-zinc-700 dark:text-zinc-300 font-medium">
-                                                <p><span className="font-bold">Chủ TK:</span> NGUYEN MINH DUC</p>
-                                                <p><span className="font-bold">Số tiền:</span> <span className="font-black text-sky-600 dark:text-sky-400 tabular-nums">{(mode === 'payment' ? payable : amountReceived).toLocaleString('vi-VN')} đ</span></p>
-                                                <p><span className="font-bold">Nội dung:</span> {mode === 'payment' ? 'Thanh toan' : 'Dat coc'} {selectedTable.table_number}</p>
-                                            </div>
-                                        </div>
-                                    )}
+                                        );
+                                    })()}
                                 </div>
                             )}
                         </div>
