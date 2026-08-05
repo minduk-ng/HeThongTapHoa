@@ -143,6 +143,7 @@ class HandleInertiaRequests extends Middleware
                 'is_admin' => $cachedData['is_admin'],
             ],
             'navigation' => $cachedData['navigation'],
+            'cdn_url' => cdn_asset(''),
             'failedAttempts' => 0,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

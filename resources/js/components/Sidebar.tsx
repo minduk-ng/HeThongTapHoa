@@ -2,6 +2,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import React, { useState, useRef, useEffect } from 'react';
 import type { PageProps } from '../types/auth';
 import ThemeToggle from './ThemeToggle';
+import { cdnAsset } from '../utils/cdn';
 
 export default function Sidebar() {
     const { auth, navigation } = usePage<PageProps>().props;
@@ -81,12 +82,12 @@ export default function Sidebar() {
                     {/* Far Left Banner (Light & Dark Mode) */}
                     <Link href="/" className="flex items-center shrink-0">
                         <img 
-                            src="/banner/banner_v2.jpg" 
+                            src={cdnAsset('/banner/banner_v2.jpg')} 
                             alt="Coffee Shop Banner" 
                             className="h-9 w-auto rounded-lg object-contain shadow-xs transition-opacity hover:opacity-90 dark:hidden"
                         />
                         <img 
-                            src="/banner/banner_v2.jpg" //setting banner dark
+                            src={cdnAsset('/banner/banner_v2.jpg')} //setting banner dark
                             alt="Coffee Shop Banner Dark" 
                             className="hidden h-9 w-auto rounded-lg object-contain shadow-xs transition-opacity hover:opacity-90 dark:block"
                         />
