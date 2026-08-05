@@ -1582,58 +1582,20 @@ class POSController extends Controller
         if (! $code) {
             return null;
         }
-
-        $query = Promotion::query()->whereRaw('UPPER(code) = ?', [mb_strtoupper(trim($code))]);
-        if ($lockForUpdate) {
-            $query->lockForUpdate();
+        $r = \App\Services\Promotions\PromotionEngine::resolveAll([$code], $lines, $orderSubtotal, $lockForUpdate);
+        if ($r['status'] === 'rejected') {
+            return ['status' => 'rejected', 'reason' => $r['reason']];
         }
-        $promotion = $query->first();
-
-        if (! $promotion) {
-            return ['status' => 'rejected', 'reason' => 'not_found'];
-        }
-        if (! $promotion->is_active) {
-            return ['status' => 'rejected', 'reason' => 'inactive'];
-        }
-
-        $now = now();
-        if ($promotion->starts_at && $now->lt($promotion->starts_at)) {
-            return ['status' => 'rejected', 'reason' => 'not_started'];
-        }
-        if ($promotion->expires_at && $now->gt($promotion->expires_at)) {
-            return ['status' => 'rejected', 'reason' => 'expired'];
-        }
-
-        if ($promotion->max_uses !== null && $promotion->used_count >= $promotion->max_uses) {
-            return ['status' => 'rejected', 'reason' => 'out_of_uses'];
-        }
-        if ($promotion->min_order_amount !== null && $orderSubtotal < (float) $promotion->min_order_amount) {
-            return ['status' => 'rejected', 'reason' => 'below_min'];
-        }
-
-        $targetSubtotal = Promotion::targetSubtotal($promotion, $lines);
-        if ($targetSubtotal <= 0) {
-            return ['status' => 'rejected', 'reason' => 'no_eligible_line'];
-        }
-
         return [
             'status' => 'ok',
-            'promotion' => $promotion,
-            'discount_amount' => $this->discountFor($promotion, $targetSubtotal),
+            'promotion' => $r['promotions'][0]['promotion'],
+            'discount_amount' => $r['promotions'][0]['amount'],
         ];
     }
 
-    private function discountFor(Promotion $promotion, float $subtotal): float
+    private function discountFor(\App\Models\Promotion $promotion, float $subtotal): float
     {
-        $discount = $promotion->discount_type === 'percentage'
-            ? $subtotal * ((float) $promotion->discount_value / 100)
-            : (float) $promotion->discount_value;
-
-        if ($promotion->max_discount_amount !== null) {
-            $discount = min($discount, (float) $promotion->max_discount_amount);
-        }
-
-        return round(max(0, min($discount, $subtotal)), 2);
+        return \App\Services\Promotions\PromotionEngine::discountFor($promotion, $subtotal);
     }
 
     private function safeDispatch(callable $callback): void
