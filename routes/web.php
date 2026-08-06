@@ -26,9 +26,12 @@ use App\Http\Controllers\Reports\ShiftReportController;
 use App\Http\Controllers\Reports\ProductDetailsReportController;
 use App\Http\Controllers\Manager\TableController;
 use App\Http\Controllers\Staff\KitchenController;
+use App\Http\Controllers\Staff\PaymentController;
 use App\Http\Controllers\Staff\POSController;
+use App\Http\Controllers\Staff\ReservationController;
 use App\Http\Controllers\Staff\ServingController;
 use App\Http\Controllers\Staff\ShiftController;
+use App\Http\Controllers\Staff\TableOperationController;
 use App\Http\Middleware\CheckPageAccess;
 use Illuminate\Support\Facades\Route;
 
@@ -155,19 +158,17 @@ Route::middleware('auth')->group(function () {
     // Staff Features (POS & Kitchen Display)
     Route::prefix('staff')->middleware(CheckPageAccess::class)->group(function () {
         Route::get('/pos', [POSController::class, 'index'])->middleware('permission:pos.view');
-        Route::post('/pos/reserve', [POSController::class, 'reserve'])->middleware('permission:pos.create');
-        Route::post('/pos/reservation/check-in', [POSController::class, 'checkInReservation'])->middleware('permission:pos.create');
-        Route::post('/pos/reservation/cancel', [POSController::class, 'cancelReservation'])->middleware('permission:pos.create');
-        Route::post('/pos/deposit', [POSController::class, 'deposit'])->middleware('permission:pos.create');
+        Route::post('/pos/reserve', [ReservationController::class, 'reserve'])->middleware('permission:pos.create');
+        Route::post('/pos/reservation/check-in', [ReservationController::class, 'checkInReservation'])->middleware('permission:pos.create');
+        Route::post('/pos/reservation/cancel', [ReservationController::class, 'cancelReservation'])->middleware('permission:pos.create');
+        Route::post('/pos/deposit', [ReservationController::class, 'deposit'])->middleware('permission:pos.create');
         Route::post('/pos/send-to-kitchen', [POSController::class, 'sendToKitchen'])->middleware('permission:pos.create');
-        Route::post('/pos/validate-promotion', [POSController::class, 'validatePromotion'])->middleware('permission:pos.create');
-        Route::post('/pos/checkout', [POSController::class, 'checkout'])->middleware('permission:pos.create');
-        Route::post('/pos/bulk-checkout', [POSController::class, 'bulkCheckout'])->middleware('permission:pos.create');
-        Route::post('/pos/transfer-table', [POSController::class, 'transferTable'])->middleware('permission:pos.create');
-        Route::post('/pos/merge-tables', [POSController::class, 'mergeTables'])->middleware('permission:pos.create');
-        Route::post('/pos/unmerge-table', [POSController::class, 'unmergeTable'])->middleware('permission:pos.create');
-        Route::get('/pos/serving-queue', [POSController::class, 'servingQueue'])->middleware('permission:pos.view');
-        Route::post('/pos/mark-served', [POSController::class, 'markServed'])->middleware('permission:pos.create');
+        Route::post('/pos/validate-promotion', [PaymentController::class, 'validatePromotion'])->middleware('permission:pos.create');
+        Route::post('/pos/checkout', [PaymentController::class, 'checkout'])->middleware('permission:pos.create');
+        Route::post('/pos/bulk-checkout', [PaymentController::class, 'bulkCheckout'])->middleware('permission:pos.create');
+        Route::post('/pos/transfer-table', [TableOperationController::class, 'transferTable'])->middleware('permission:pos.create');
+        Route::post('/pos/merge-tables', [TableOperationController::class, 'mergeTables'])->middleware('permission:pos.create');
+        Route::post('/pos/unmerge-table', [TableOperationController::class, 'unmergeTable'])->middleware('permission:pos.create');
         Route::post('/pos/cancel-order', [POSController::class, 'cancelOrder'])->middleware('permission:pos.cancel_item|kitchen.cancel_item');
 
         Route::get('/shifts', [ShiftController::class, 'index'])->middleware('permission:shifts.view');
