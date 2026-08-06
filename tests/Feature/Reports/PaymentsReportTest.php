@@ -46,6 +46,30 @@ class PaymentsReportTest extends TestCase
         ]);
     }
 
+    public function test_metrics_gom_coc_held_tao_trong_ky()
+    {
+        $this->actingAs($this->adminUser());
+
+        // Tạo 2 đơn tối thiểu để có order_id hợp lệ cho deposits
+        $item = \App\Models\MenuItem::firstOrCreate(['name' => 'Cf held'], ['price' => 100000, 'vat_rate' => 0, 'is_available' => true]);
+        $table = \App\Models\Table::create(['table_number' => 'BH'.uniqid(), 'area' => 'Trong nhà', 'status' => 'available', 'capacity' => 4]);
+
+        $order1 = \App\Models\Order::create(['order_code' => 'H1'.uniqid(), 'table_id' => $table->id, 'status' => 'pending', 'total' => 100000]);
+        $order2 = \App\Models\Order::create(['order_code' => 'H2'.uniqid(), 'table_id' => $table->id, 'status' => 'pending', 'total' => 100000]);
+
+        \App\Models\Deposit::create(['order_id' => $order1->id, 'amount' => 30000, 'method' => 'cash', 'status' => 'held']);
+        \App\Models\Deposit::create(['order_id' => $order2->id, 'amount' => 50000, 'method' => 'bank_transfer', 'status' => 'held']);
+        \App\Models\Deposit::create(['order_id' => $order2->id, 'amount' => 20000, 'method' => 'cash', 'status' => 'applied']);
+
+        $this->get('/reports/payments?start_date='.today()->toDateString().'&end_date='.today()->toDateString())
+            ->assertInertia(fn ($page) => $page
+                ->where('metrics.held_deposit_total', 80000)
+                ->where('metrics.held_deposit_cash', 30000)
+                ->where('metrics.held_deposit_bank', 50000)
+                ->where('metrics.held_deposit_count', 2)
+            );
+    }
+
     public function test_unauthorized_user_cannot_access()
     {
         $this->actingAs(User::factory()->create())

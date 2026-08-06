@@ -46,6 +46,7 @@ interface Metrics {
     gross_revenue: number;
     total_discount: number;
     discounted_invoice_count: number;
+    held_deposit_total: number;
 }
 
 interface Comparison {
@@ -179,6 +180,12 @@ export default function PaymentsReport({
             value: formatVND(metrics.bank_total),
             icon: CreditCard,
             color: 'text-amber-600 dark:text-amber-400',
+        },
+        {
+            label: 'Cọc đang giữ',
+            value: formatVND(metrics.held_deposit_total),
+            icon: Banknote,
+            color: 'text-violet-600 dark:text-violet-400',
         },
     ];
 

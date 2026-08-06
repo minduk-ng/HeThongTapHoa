@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
+use App\Models\Deposit;
 use App\Models\Invoice;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -44,6 +45,16 @@ class PaymentsReportController extends Controller
         $cashTotal = (float) $rows->sum(fn ($r) => (float) ($r['payments']['cash'] ?? 0));
         $bankTotal = (float) $rows->sum(fn ($r) => (float) ($r['payments']['bank_transfer'] ?? 0));
 
+        // Cọc đang giữ tạo trong kỳ (chưa có invoice — tiền thật đã thu)
+        $heldDeposits = Deposit::query()
+            ->where('status', 'held')
+            ->whereBetween('created_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
+            ->get();
+
+        $heldCash = (float) $heldDeposits->where('method', 'cash')->sum('amount');
+        $heldBank = (float) $heldDeposits->where('method', 'bank_transfer')->sum('amount');
+        $heldTotal = (float) $heldDeposits->sum('amount');
+
         // Kỳ liền trước cùng độ dài.
         $start = Carbon::parse($startDate);
         $end = Carbon::parse($endDate);
@@ -66,6 +77,10 @@ class PaymentsReportController extends Controller
                 'gross_revenue' => $grossRevenue,
                 'total_discount' => $totalDiscount,
                 'discounted_invoice_count' => $discountedCount,
+                'held_deposit_total' => $heldTotal,
+                'held_deposit_cash' => $heldCash,
+                'held_deposit_bank' => $heldBank,
+                'held_deposit_count' => $heldDeposits->count(),
             ],
             'comparison' => [
                 'prev_revenue' => $prevRevenue,
