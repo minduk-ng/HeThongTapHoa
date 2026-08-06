@@ -90,9 +90,9 @@ final class DashboardService
         }
 
         $kdsPending = OrderItem::whereDate('created_at', Carbon::today())
-            ->whereIn('status', ['pending', 'cooking'])->count();
+            ->whereIn('status', ['pending', 'processing'])->count();
         $kdsCompleted = OrderItem::whereDate('created_at', Carbon::today())
-            ->whereIn('status', ['ready', 'served'])->count();
+            ->whereIn('status', ['completed'])->count();
 
         $recentKdsItems = OrderItem::with('menuItem')
             ->whereDate('created_at', Carbon::today())
