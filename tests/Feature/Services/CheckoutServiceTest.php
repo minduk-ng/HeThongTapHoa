@@ -2,12 +2,13 @@
 
 use App\Models\Deposit;
 use App\Models\Invoice;
+use App\Models\MenuCategory;
 use App\Models\Promotion;
 use App\Services\Checkout\CheckoutService;
 
 test('checkout 1 don: invoice + payments + lines + promotion snapshot, dung VAT trong gia', function () {
     $this->actingAs(posAdmin());
-    $cat = \App\Models\MenuCategory::firstOrCreate(['name' => 'Cat CS', 'sort_order' => 1]);
+    $cat = MenuCategory::firstOrCreate(['name' => 'Cat CS', 'sort_order' => 1]);
     $itemA = posMenuItem(['category_id' => $cat->id, 'name' => 'Cf den', 'price' => 50000, 'vat_rate' => 10]);
     $itemB = posMenuItem(['category_id' => $cat->id, 'name' => 'Tra', 'price' => 20000, 'vat_rate' => 0]);
     $promo = Promotion::create(['code' => 'CS10', 'name' => '10%', 'discount_type' => 'percentage', 'discount_value' => 10, 'is_active' => true]);
@@ -92,6 +93,24 @@ test('checkout ap coc: deposit applied va link payment', function () {
     expect($deposit->fresh()->payment_id)->toBe($depositPayment->id);
 });
 
+test('checkout refresh subtotal va vat_amount cho order (khong lech sau reduce)', function () {
+    $this->actingAs(posAdmin());
+    $item = posMenuItem(['price' => 30000, 'vat_rate' => 10]);
+    $order = posOrder(posTable(), [['item' => $item, 'qty' => 2, 'price' => 30000, 'status' => 'completed']], ['status' => 'completed']);
+
+    // Giả lập: order subtotal snapshot cũ lệch (như sau reduce-items)
+    $order->update(['subtotal' => 90000, 'vat_amount' => 0, 'total' => 90000]);
+
+    $invoice = CheckoutService::run($order, [['method' => 'cash', 'amount' => 60000]], [], auth()->id());
+
+    $fresh = $order->fresh();
+    expect((float) $fresh->subtotal)->toBe(60000.0);       // 2 x 30000
+    expect((float) $fresh->discount_amount)->toBe(0.0);
+    expect((float) $fresh->total)->toBe(60000.0);
+    // VAT trong giá: 60000 -> net=floor(60000/1.1)=54545, vat=5455
+    expect((float) $fresh->vat_amount)->toBe(5455.0);
+});
+
 test('checkout rollback khi promotion khong con hop le', function () {
     $this->actingAs(posAdmin());
     $promo = Promotion::create(['code' => 'EXP', 'name' => 'x', 'discount_type' => 'fixed_amount', 'discount_value' => 10000, 'expires_at' => now()->subDay(), 'is_active' => true]);
@@ -101,7 +120,7 @@ test('checkout rollback khi promotion khong con hop le', function () {
     try {
         CheckoutService::run($order, [['method' => 'cash', 'amount' => 90000]], [$promo->code], auth()->id());
         $this->fail('Phai nem exception');
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         expect(Invoice::count())->toBe(0);
         expect($order->fresh()->status)->toBe('completed');
     }

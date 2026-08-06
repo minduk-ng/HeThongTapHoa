@@ -2,20 +2,25 @@
 
 namespace App\Services\Checkout;
 
-use App\Models\Deposit;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\InvoicePromotion;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Payment;
+use App\Models\Promotion;
+use App\Models\Table;
 use App\Services\OrderActivityLogger;
 use App\Services\Promotions\PromotionEngine;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CheckoutService
 {
     /**
      * Thanh toán 1 đơn.
+     *
      * @param  array<int,array{method:string,amount:float,reference?:?string,note?:?string}>  $paymentRows
      * @param  array<string>  $promotionCodes
      */
@@ -26,11 +31,12 @@ class CheckoutService
 
     /**
      * Thanh toán nhiều đơn trong 1 invoice (bulk).
-     * @param  \Illuminate\Support\Collection<int,Order>  $orders
+     *
+     * @param  Collection<int,Order>  $orders
      * @param  array<int,array{method:string,amount:float,reference?:?string,note?:?string}>  $paymentRows
      * @param  array<string>  $promotionCodes
      */
-    public static function runBulk(\Illuminate\Support\Collection $orders, array $paymentRows, array $promotionCodes, ?int $userId, ?string $tableName = null): Invoice
+    public static function runBulk(Collection $orders, array $paymentRows, array $promotionCodes, ?int $userId, ?string $tableName = null): Invoice
     {
         return DB::transaction(function () use ($orders, $paymentRows, $promotionCodes, $userId, $tableName) {
             $orders = $orders->values();
@@ -95,7 +101,7 @@ class CheckoutService
                 // Phân bổ discount theo từng mã (giữ đúng item/category scope), cộng dồn xuống lines
                 if ($totalDiscount > 0) {
                     foreach ($resolved['promotions'] as $pr) {
-                        $alloc = \App\Models\Promotion::allocateLineDiscounts($pr['promotion'], $engineLines, (float) $pr['amount']);
+                        $alloc = Promotion::allocateLineDiscounts($pr['promotion'], $engineLines, (float) $pr['amount']);
                         foreach ($lineInputs as $idx => $li) {
                             $lineInputs[$idx]['discount_amount'] = round(
                                 max(0.0, min(
@@ -129,7 +135,7 @@ class CheckoutService
             }
 
             // 4. Tạo invoice
-            $invoiceCode = 'INV-'.date('Ymd').strtoupper(\Illuminate\Support\Str::random(4));
+            $invoiceCode = 'INV-'.date('Ymd').strtoupper(Str::random(4));
             $invoice = Invoice::create([
                 'invoice_code' => $invoiceCode,
                 'table_name' => $tableName ?? static::tableNameFor($orders),
@@ -190,21 +196,23 @@ class CheckoutService
             // Đồng bộ discount xuống order_items (giữ tương thích hành vi endpoint cũ)
             foreach ($lineInputs as $li) {
                 if ($li['order_item_id']) {
-                    \App\Models\OrderItem::where('id', $li['order_item_id'])->update(['discount_amount' => $li['discount_amount']]);
+                    OrderItem::where('id', $li['order_item_id'])->update(['discount_amount' => $li['discount_amount']]);
                 }
             }
 
             // 7. Ghi invoice_promotions + tăng used_count
             foreach ($promotionRows as $pr) {
                 InvoicePromotion::create(array_merge($pr, ['invoice_id' => $invoice->id]));
-                \App\Models\Promotion::where('id', $pr['promotion_id'])->increment('used_count');
+                Promotion::where('id', $pr['promotion_id'])->increment('used_count');
             }
 
             // 8. Cập nhật orders (1 nguồn duy nhất): phân bổ discount theo tỷ trọng, đơn cuối nhận phần dư
             $count = $orders->count();
             $assignedDiscount = 0.0;
             foreach ($orders as $idx => $order) {
-                $orderSubtotal = (float) $order->items()->where('status', '!=', 'cancelled')->sum('subtotal');
+                $activeItems = $order->items()->where('status', '!=', 'cancelled')->with('menuItem')->get();
+                $orderSubtotal = (float) $activeItems->sum('subtotal');
+                $orderVat = (float) $activeItems->sum(fn ($item) => OrderTotals::vatInPrice((float) $item->subtotal, (float) ($item->menuItem?->vat_rate ?? 0)));
                 $orderDiscount = 0.0;
                 if ($totalDiscount > 0 && $subtotal > 0) {
                     if ($idx === $count - 1) {
@@ -220,6 +228,8 @@ class CheckoutService
                     'status' => 'paid',
                     'invoice_id' => $invoice->id,
                     'promotion_id' => $promotionRows[0]['promotion_id'] ?? null,
+                    'subtotal' => $orderSubtotal,
+                    'vat_amount' => $orderVat,
                     'discount_amount' => $orderDiscount,
                     'total' => $orderTotal,
                 ]);
@@ -236,7 +246,7 @@ class CheckoutService
         });
     }
 
-    private static function tableNameFor(\Illuminate\Support\Collection $orders): string
+    private static function tableNameFor(Collection $orders): string
     {
         $first = $orders->first();
         $table = $first?->table;
@@ -244,9 +254,10 @@ class CheckoutService
             return 'Mang Đi';
         }
         $primaryId = $table->merged_into_table_id ?? $table->id;
-        $all = \App\Models\Table::where('id', $primaryId)->orWhere('merged_into_table_id', $primaryId)->get();
+        $all = Table::where('id', $primaryId)->orWhere('merged_into_table_id', $primaryId)->get();
         $sub = $all->where('id', '!=', $primaryId)->pluck('table_number')->implode(', ');
         $primary = $all->firstWhere('id', $primaryId);
+
         return $sub ? "{$primary->table_number} (Gộp {$sub})" : $primary->table_number;
     }
 }
