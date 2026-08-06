@@ -89,9 +89,28 @@ class SalesInvoiceReportTest extends TestCase
             );
     }
 
+    public function test_gross_discount_doc_tu_invoice_snapshot_khong_phai_orders_child()
+    {
+        $this->actingAs($this->adminUser());
+        $invoice = \App\Models\Invoice::create([
+            'invoice_code' => 'SIR1', 'table_name' => 'B01', 'payment_method' => 'cash',
+            'amount_received' => 90000, 'change_amount' => 0, 'total_amount' => 90000,
+            'subtotal_amount' => 100000, 'discount_amount' => 10000,
+        ]);
+        $invoice->forceFill(['issued_at' => '2026-07-15 10:00:00'])->save();
+
+        $this->get('/reports/sales-invoices?start_date=2026-07-01&end_date=2026-07-31')
+            ->assertInertia(fn ($page) => $page
+                ->has('invoices', 1)
+                ->where('invoices.0.gross_amount', 100000)
+                ->where('invoices.0.discount_amount', 10000)
+            );
+    }
+
     public function test_invoice_exposes_gross_and_discount_columns()
     {
         $invoice = $this->makeInvoice('2026-07-15 12:00:00', 'cash', 80000);
+        $invoice->forceFill(['subtotal_amount' => 100000, 'discount_amount' => 20000])->save();
         posOrder(posTable(), [
             ['item' => posMenuItem(['price' => 100000]), 'qty' => 1, 'price' => 100000],
         ], [
