@@ -395,6 +395,7 @@ export function usePOSCheckout(
             .then(async (response) => {
                 const data = await response.json().catch(() => ({}));
                 if (response.ok && data.success) {
+                    togglePaymentDrawer(false);
                     if (data.deposit_refund > 0) {
                         alert(`Hoàn khách ${data.deposit_refund.toLocaleString('vi-VN')} đ từ tiền cọc thừa.`);
                     }
