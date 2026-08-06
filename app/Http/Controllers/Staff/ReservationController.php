@@ -12,6 +12,7 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Table;
+use App\Services\IdempotencyGuard;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -31,11 +32,11 @@ class ReservationController extends Controller
             'idempotency_key' => 'nullable|string',
         ]);
 
-        if ($request->filled('idempotency_key')) {
-            $lockKey = "idempotency:cancel_reservation:{$request->input('idempotency_key')}";
-            if (! Cache::add($lockKey, true, 30)) {
-                return response()->json(['success' => true]);
-            }
+        if (IdempotencyGuard::isDuplicate($request, 'cancel_reservation', [
+            'order_id' => $validated['order_id'],
+            'deposit_resolution' => $validated['deposit_resolution'] ?? null,
+        ])) {
+            return response()->json(['success' => true]);
         }
 
         try {
@@ -115,11 +116,10 @@ class ReservationController extends Controller
             'idempotency_key' => 'nullable|string',
         ]);
 
-        if ($request->filled('idempotency_key')) {
-            $lockKey = "idempotency:check_in_reservation:{$request->input('idempotency_key')}";
-            if (! Cache::add($lockKey, true, 30)) {
-                return response()->json(['success' => true]);
-            }
+        if (IdempotencyGuard::isDuplicate($request, 'check_in_reservation', [
+            'order_id' => $validated['order_id'],
+        ])) {
+            return response()->json(['success' => true]);
         }
 
         try {
@@ -184,11 +184,12 @@ class ReservationController extends Controller
             'idempotency_key' => 'nullable|string',
         ]);
 
-        if ($request->filled('idempotency_key')) {
-            $lockKey = "idempotency:reserve:{$request->input('idempotency_key')}";
-            if (! Cache::add($lockKey, true, 30)) {
-                return response()->json(['success' => true]);
-            }
+        if (IdempotencyGuard::isDuplicate($request, 'reserve', [
+            'table_id' => $validated['table_id'],
+            'reservation_name' => $validated['reservation_name'],
+            'reservation_time' => $validated['reservation_time'],
+        ])) {
+            return response()->json(['success' => true]);
         }
 
         try {
@@ -314,7 +315,7 @@ class ReservationController extends Controller
             'idempotency_key' => 'nullable|string',
         ]);
 
-        if (\App\Services\IdempotencyGuard::isDuplicate($request, 'deposit', [
+        if (IdempotencyGuard::isDuplicate($request, 'deposit', [
             'order_id' => $validated['order_id'],
             'amount' => $validated['amount'],
             'method' => $validated['method'],
