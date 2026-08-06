@@ -196,7 +196,7 @@ class POSController extends Controller
                 if (! empty($validated['reduced_items'])) {
                     foreach ($validated['reduced_items'] as $red) {
                         $orderItem = OrderItem::lockForUpdate()->find($red['order_item_id']);
-                        if (! $orderItem || $orderItem->status === 'completed' || $orderItem->order?->status === 'completed') {
+                        if (! $orderItem || $orderItem->status === 'completed' || in_array($orderItem->order?->status, ['paid', 'cancelled', 'completed'], true)) {
                             continue;
                         }
 
@@ -246,6 +246,9 @@ class POSController extends Controller
                 if (! empty($validated['items'])) {
                     if (! empty($validated['order_id'])) {
                         $createdOrder = Order::lockForUpdate()->findOrFail($validated['order_id']);
+                        if (in_array($createdOrder->status, ['paid', 'cancelled'], true)) {
+                            throw new \Exception('Đơn đã thanh toán hoặc đã hủy, không thể gửi bếp.', 422);
+                        }
                         $wasDraft = $createdOrder->status === 'draft';
 
                         if ($wasDraft) {
