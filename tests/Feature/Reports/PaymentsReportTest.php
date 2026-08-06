@@ -3,7 +3,6 @@
 namespace Tests\Feature\Reports;
 
 use App\Models\Invoice;
-use App\Models\Order;
 use App\Models\User;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,20 +35,14 @@ class PaymentsReportTest extends TestCase
             'amount_received' => $total,
             'change_amount' => 0,
             'total_amount' => $total,
+            'subtotal_amount' => $total,
             'deposit_amount' => 0,
         ]);
         $invoice->forceFill(['issued_at' => $issuedAt])->save();
-    }
-
-    private function makeOrder(Invoice $invoice, float $subtotal, float $discount): void
-    {
-        Order::create([
-            'order_code' => 'V-'.strtoupper(uniqid()),
+        \App\Models\Payment::create([
             'invoice_id' => $invoice->id,
-            'status' => 'paid',
-            'subtotal' => $subtotal,
-            'discount_amount' => $discount,
-            'total' => $subtotal - $discount,
+            'method' => $method,
+            'amount' => $total,
         ]);
     }
 
@@ -100,10 +93,12 @@ class PaymentsReportTest extends TestCase
             'amount_received' => 90000,
             'change_amount' => 0,
             'total_amount' => 90000,
+            'subtotal_amount' => 100000,
+            'discount_amount' => 10000,
             'deposit_amount' => 0,
         ]);
         $inv1->forceFill(['issued_at' => '2026-07-10 10:00:00'])->save();
-        $this->makeOrder($inv1, 100000, 10000);
+        \App\Models\Payment::create(['invoice_id' => $inv1->id, 'method' => 'cash', 'amount' => 90000]);
 
         $inv2 = Invoice::create([
             'invoice_code' => 'HD2',
@@ -112,10 +107,12 @@ class PaymentsReportTest extends TestCase
             'amount_received' => 50000,
             'change_amount' => 0,
             'total_amount' => 50000,
+            'subtotal_amount' => 50000,
+            'discount_amount' => 0,
             'deposit_amount' => 0,
         ]);
         $inv2->forceFill(['issued_at' => '2026-07-11 10:00:00'])->save();
-        $this->makeOrder($inv2, 50000, 0);
+        \App\Models\Payment::create(['invoice_id' => $inv2->id, 'method' => 'bank_transfer', 'amount' => 50000]);
 
         $this->actingAs($this->adminUser())
             ->get('/reports/payments?start_date=2026-07-01&end_date=2026-07-31')

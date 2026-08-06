@@ -16,7 +16,7 @@ class PaymentsReportController extends Controller
         $endDate = $request->input('end_date', today()->toDateString());
 
         $rows = Invoice::query()
-            ->with(['orders' => fn ($q) => $q->select('invoice_id', 'subtotal', 'discount_amount')])
+            ->with(['payments' => fn ($q) => $q->select('invoice_id', 'method', 'amount')])
             ->whereBetween('issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
             ->orderByDesc('issued_at')
             ->get()
@@ -30,8 +30,9 @@ class PaymentsReportController extends Controller
                 'total_amount' => (float) $i->total_amount,
                 'amount_received' => (float) $i->amount_received,
                 'change_amount' => (float) $i->change_amount,
-                'gross_amount' => (float) $i->orders->sum('subtotal'),
-                'discount_amount' => (float) $i->orders->sum('discount_amount'),
+                'gross_amount' => (float) $i->subtotal_amount,
+                'discount_amount' => (float) $i->discount_amount,
+                'payments' => $i->payments->groupBy('method')->map(fn ($p) => (float) $p->sum('amount'))->toArray(),
             ]);
 
         $revenue = (float) $rows->sum('total_amount');
@@ -39,6 +40,9 @@ class PaymentsReportController extends Controller
         $grossRevenue = (float) $rows->sum('gross_amount');
         $totalDiscount = (float) $rows->sum('discount_amount');
         $discountedCount = (int) $rows->where('discount_amount', '>', 0)->count();
+
+        $cashTotal = (float) $rows->sum(fn ($r) => (float) ($r['payments']['cash'] ?? 0));
+        $bankTotal = (float) $rows->sum(fn ($r) => (float) ($r['payments']['bank_transfer'] ?? 0));
 
         // Kỳ liền trước cùng độ dài.
         $start = Carbon::parse($startDate);
@@ -56,8 +60,8 @@ class PaymentsReportController extends Controller
             'rows' => $rows,
             'metrics' => [
                 'revenue' => $revenue,
-                'cash_total' => (float) $rows->where('payment_method', 'cash')->sum('total_amount'),
-                'bank_total' => (float) $rows->where('payment_method', 'bank_transfer')->sum('total_amount'),
+                'cash_total' => $cashTotal,
+                'bank_total' => $bankTotal,
                 'invoice_count' => $rows->count(),
                 'gross_revenue' => $grossRevenue,
                 'total_discount' => $totalDiscount,

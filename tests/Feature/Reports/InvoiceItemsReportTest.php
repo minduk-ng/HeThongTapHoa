@@ -47,6 +47,26 @@ class InvoiceItemsReportTest extends TestCase
             ['item' => $itemB, 'qty' => 1, 'price' => 50000],
         ], ['invoice_id' => $invoice->id, 'status' => 'paid']);
 
+        $specs = [
+            ['item' => $itemA, 'qty' => 2, 'price' => 20000],
+            ['item' => $itemB, 'qty' => 1, 'price' => 50000],
+        ];
+        foreach ($specs as $i => $spec) {
+            $oi = $order->items[$i];
+            \App\Models\InvoiceLine::create([
+                'invoice_id' => $invoice->id,
+                'order_item_id' => $oi->id,
+                'menu_item_id' => $spec['item']->id,
+                'name_snapshot' => $spec['item']->name,
+                'quantity' => $spec['qty'],
+                'unit_price' => $spec['price'],
+                'subtotal' => $spec['qty'] * $spec['price'],
+                'vat_rate' => 0,
+                'vat_amount' => 0,
+                'discount_amount' => $oi->discount_amount,
+            ]);
+        }
+
         return [$invoice, $order->items];
     }
 
@@ -73,8 +93,9 @@ class InvoiceItemsReportTest extends TestCase
     public function test_metrics_and_excludes_cancelled_items()
     {
         [$invoice, $items] = $this->makeInvoiceWithItems('2026-07-15 12:00:00');
-        // Huỷ 1 dòng (qty 1, giá 50000) — còn 2×20000 = 40000.
+        // Huỷ 1 dòng (qty 1, giá 50000) — còn 2×20000 = 40000. Snapshot cũng không chứa dòng huỷ.
         $items->last()->forceFill(['status' => 'cancelled', 'cancelled_at' => now()])->save();
+        \App\Models\InvoiceLine::where('order_item_id', $items->last()->id)->delete();
 
         $this->actingAs($this->adminUser())
             ->get('/reports/invoice-items?start_date=2026-07-01&end_date=2026-07-31')
@@ -91,16 +112,17 @@ class InvoiceItemsReportTest extends TestCase
         [$invoice, $items] = $this->makeInvoiceWithItems('2026-07-15 12:00:00');
         $invoice->orders()->update(['discount_amount' => 10000]);
         $items->each(fn ($i) => $i->update(['discount_amount' => 5000]));
+        $invoice->lines()->each(fn ($l) => $l->update(['discount_amount' => 5000]));
 
         $this->actingAs($this->adminUser())
             ->get('/reports/invoice-items?start_date=2026-07-01&end_date=2026-07-31')
             ->assertInertia(fn ($page) => $page
                 ->has('rows', 2)
-                // orders.subtotal = 2*20000 + 1*50000 = 90000 (gross, KHÔNG + discount)
-                ->where('rows.0.order_gross', 90000)
-                ->where('rows.0.order_discount', 10000)
+                // order_gross/order_discount giờ = dòng đầu nhóm (line subtotal/discount).
+                ->where('rows.0.order_gross', 40000)
+                ->where('rows.0.order_discount', 5000)
                 ->where('rows.0.discount_amount', 5000)
-                // net của item đầu: subtotal 40000 - 5000 = 35000
+                // net của dòng đầu: subtotal 40000 - 5000 = 35000
                 ->where('rows.0.net', 35000)
                 // metrics: total_amount = tổng net = (40000-5000)+(50000-5000) = 80000
                 ->where('metrics.total_amount', 80000)
@@ -116,6 +138,9 @@ class InvoiceItemsReportTest extends TestCase
         // 1 order, 2 dòng: 40000 + 50000. Phân bổ 10000 → dòng1 4000, dòng2 6000 (dòng cuối nhận phần dư).
         $items[0]->update(['discount_amount' => 4000]);
         $items[1]->update(['discount_amount' => 6000]);
+        $lines = $invoice->lines()->orderBy('id')->get();
+        $lines[0]->update(['discount_amount' => 4000]);
+        $lines[1]->update(['discount_amount' => 6000]);
 
         $this->actingAs($this->adminUser())
             ->get('/reports/invoice-items?start_date=2026-07-01&end_date=2026-07-31')

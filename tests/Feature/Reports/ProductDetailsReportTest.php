@@ -39,7 +39,21 @@ class ProductDetailsReportTest extends TestCase
             'deposit_amount' => 0,
         ]);
         $invoice->forceFill(['issued_at' => $issuedAt])->save();
-        posOrder(posTable(), $specs, ['invoice_id' => $invoice->id, 'status' => 'paid']);
+        $order = posOrder(posTable(), $specs, ['invoice_id' => $invoice->id, 'status' => 'paid']);
+        foreach ($order->items as $oi) {
+            \App\Models\InvoiceLine::create([
+                'invoice_id' => $invoice->id,
+                'order_item_id' => $oi->id,
+                'menu_item_id' => $oi->menu_item_id,
+                'name_snapshot' => $oi->menuItem->name,
+                'quantity' => $oi->quantity,
+                'unit_price' => $oi->unit_price,
+                'subtotal' => $oi->subtotal,
+                'vat_rate' => 0,
+                'vat_amount' => 0,
+                'discount_amount' => $oi->discount_amount,
+            ]);
+        }
     }
 
     public function test_unauthorized_user_cannot_access()
@@ -86,6 +100,8 @@ class ProductDetailsReportTest extends TestCase
         // Giảm giá 15.000 phân bổ xuống dòng Cà phê đen (vd: 1 đơn có mã KM)
         \App\Models\OrderItem::where('menu_item_id', $itemA->id)
             ->update(['discount_amount' => 15000]);
+        \App\Models\InvoiceLine::where('menu_item_id', $itemA->id)
+            ->update(['discount_amount' => 15000]);
 
         $this->actingAs($this->adminUser())
             ->get('/reports/product-details?start_date=2026-07-01&end_date=2026-07-31')
@@ -112,5 +128,28 @@ class ProductDetailsReportTest extends TestCase
         $this->actingAs($this->adminUser())
             ->get('/reports/product-details?start_date=2026-07-01&end_date=2026-07-31')
             ->assertInertia(fn ($page) => $page->has('rows', 0));
+    }
+
+    public function test_report_reads_from_invoice_lines_snapshot()
+    {
+        $this->actingAs($this->adminUser());
+        $invoice = Invoice::create([
+            'invoice_code' => 'HS1', 'table_name' => 'B01', 'payment_method' => 'cash',
+            'amount_received' => 15000, 'change_amount' => 0, 'total_amount' => 15000,
+        ]);
+        $invoice->forceFill(['issued_at' => '2026-07-15 10:00:00'])->save();
+
+        $mi = posMenuItem(['name' => 'Cà phê đen']);
+        \App\Models\InvoiceLine::create([
+            'invoice_id' => $invoice->id, 'menu_item_id' => $mi->id, 'name_snapshot' => 'Cà phê đen',
+            'quantity' => 2, 'unit_price' => 15000, 'subtotal' => 30000, 'vat_rate' => 0, 'vat_amount' => 0, 'discount_amount' => 15000,
+        ]);
+
+        $this->get('/reports/product-details?start_date=2026-07-01&end_date=2026-07-31')
+            ->assertInertia(fn ($page) => $page
+                ->has('rows', 1)
+                ->where('rows.0.item_name', 'Cà phê đen')
+                ->where('rows.0.revenue', 15000)
+            );
     }
 }

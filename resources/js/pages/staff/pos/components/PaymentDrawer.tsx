@@ -47,9 +47,18 @@ export default function PaymentDrawer({
     const [promotionLoading, setPromotionLoading] = useState(false);
 
     const subtotal = cartItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
-    const vatTotal = cartItems.reduce((sum, item) => {
-        const itemSubtotal = item.quantity * item.unit_price;
-        return sum + itemSubtotal * ((item.vat_rate || 0) / 100);
+    // VAT trong giá: thuế nằm trong line, không cộng thêm vào payable (giá đã gồm thuế).
+    const vatInTotal = cartItems.reduce((sum, item) => {
+        const line = item.quantity * item.unit_price;
+        const rate = item.vat_rate || 0;
+
+        if (rate <= 0) {
+            return sum;
+        }
+
+        const net = Math.floor(line / (1 + rate / 100));
+
+        return sum + (line - net);
     }, 0);
     const totalAmount = subtotal;
 
@@ -270,8 +279,8 @@ export default function PaymentDrawer({
                                         <span className="font-semibold tabular-nums">{subtotal.toLocaleString('vi-VN')} đ</span>
                                     </div>
                                     <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
-                                        <span>Thuế VAT:</span>
-                                        <span className="font-semibold tabular-nums">{vatTotal.toLocaleString('vi-VN')} đ</span>
+                                        <span>Trong đó VAT:</span>
+                                        <span className="font-semibold tabular-nums">{vatInTotal.toLocaleString('vi-VN')} đ</span>
                                     </div>
                                     {mode === 'payment' && promotionApplied && (
                                         <div className="flex justify-between border-t border-sky-200/60 pt-2 text-xs font-semibold text-rose-600 dark:border-sky-800/60 dark:text-rose-400">

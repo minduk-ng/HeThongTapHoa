@@ -95,6 +95,28 @@ test('validate-promotion tu choi khi item/category scope khong co dong khop tron
     ])->assertStatus(422)->assertJson(['ok' => false]);
 });
 
+test('validate-promotion stack nhieu ma', function () {
+    $p1 = makePromotion(['code' => 'ST1'.substr(uniqid(),-4), 'discount_type' => 'percentage', 'discount_value' => 10]);
+    $p2 = makePromotion(['code' => 'ST2'.substr(uniqid(),-4), 'discount_type' => 'fixed_amount', 'discount_value' => 20000]);
+
+    $this->actingAs(posStaff())->postJson('/staff/pos/validate-promotion', [
+        'codes' => [$p1->code, $p2->code],
+        'subtotal' => 100000,
+    ])->assertOk()->assertJson([
+        'ok' => true,
+        'discount_amount' => 30000,
+        'total' => 70000,
+    ]);
+});
+
+test('validate-promotion mot ma trong codes van tra promotion don', function () {
+    $p = makePromotion(['code' => 'ST3'.substr(uniqid(),-4), 'discount_type' => 'percentage', 'discount_value' => 10]);
+    $this->actingAs(posStaff())->postJson('/staff/pos/validate-promotion', [
+        'codes' => [$p->code],
+        'subtotal' => 100000,
+    ])->assertOk()->assertJson(['ok' => true, 'discount_amount' => 10000]);
+});
+
 test('validate-promotion min_order_amount kiem tra tong don khong phai subtotal muc tieu', function () {
     $cat = \App\Models\MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
     $itemA = posMenuItem(['category_id' => $cat->id, 'price' => 100000]);

@@ -28,6 +28,25 @@ class ProfitReportTest extends TestCase
         return $adminUser;
     }
 
+    /** Ghi snapshot invoice_lines theo các dòng đơn; $discounts theo index dòng. */
+    private function snapshotLines(Invoice $invoice, \App\Models\Order $order, array $discounts = []): void
+    {
+        foreach ($order->items as $i => $oi) {
+            \App\Models\InvoiceLine::create([
+                'invoice_id' => $invoice->id,
+                'order_item_id' => $oi->id,
+                'menu_item_id' => $oi->menu_item_id,
+                'name_snapshot' => $oi->menuItem->name,
+                'quantity' => $oi->quantity,
+                'unit_price' => $oi->unit_price,
+                'subtotal' => $oi->subtotal,
+                'vat_rate' => 0,
+                'vat_amount' => 0,
+                'discount_amount' => $discounts[$i] ?? $oi->discount_amount,
+            ]);
+        }
+    }
+
     public function test_unauthorized_user_cannot_access()
     {
         $this->actingAs(User::factory()->create())
@@ -57,10 +76,11 @@ class ProfitReportTest extends TestCase
             'deposit_amount' => 0,
         ]);
         $invoice->forceFill(['issued_at' => '2026-07-15 12:00:00'])->save();
-        posOrder(posTable(), [
+        $order = posOrder(posTable(), [
             ['item' => $itemA, 'qty' => 2, 'price' => 50000],   // doanh thu 100000, vốn 24000, LN 76000
             ['item' => $itemB, 'qty' => 1, 'price' => 10000],   // doanh thu 10000, vốn 0, LN 10000
         ], ['invoice_id' => $invoice->id, 'status' => 'paid']);
+        $this->snapshotLines($invoice, $order);
 
         $this->actingAs($this->adminUser())
             ->get('/reports/profit?start_date=2026-07-01&end_date=2026-07-31')
@@ -92,6 +112,7 @@ class ProfitReportTest extends TestCase
         ], ['invoice_id' => $invoice->id, 'status' => 'paid', 'discount_amount' => 10000, 'total' => 90000]);
         // Phân bổ 10000 cho 1 dòng (2×50000=100000).
         $order->items->first()->update(['discount_amount' => 10000]);
+        $this->snapshotLines($invoice, $order, [0 => 10000]);
 
         $this->actingAs($this->adminUser())
             ->get('/reports/profit?start_date=2026-07-01&end_date=2026-07-31')

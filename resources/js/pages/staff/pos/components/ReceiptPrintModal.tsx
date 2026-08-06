@@ -42,10 +42,19 @@ export default function ReceiptPrintModal({
     if (!isOpen || !selectedTable) return null;
 
     const subtotal = cartItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
-    const vatTotal = cartItems.reduce((sum, item) => {
-        const itemSubtotal = item.quantity * item.unit_price;
-        return sum + itemSubtotal * ((item.vat_rate || 0) / 100);
+    const vatInTotal = cartItems.reduce((sum, item) => {
+        const line = item.quantity * item.unit_price;
+        const rate = item.vat_rate || 0;
+
+        if (rate <= 0) {
+            return sum;
+        }
+
+        const net = Math.floor(line / (1 + rate / 100));
+
+        return sum + (line - net);
     }, 0);
+    const appliedVatRate = cartItems.find((item) => (item.vat_rate || 0) > 0)?.vat_rate || 0;
     const totalAmount = Math.max(0, subtotal - promotionDiscount);
 
     const todayStr = new Date().toLocaleDateString('vi-VN');
@@ -207,8 +216,8 @@ export default function ReceiptPrintModal({
                                 </div>
                             )}
                             <div className="flex justify-between text-zinc-600">
-                                <span>Thuế GTGT ({vatTotal > 0 ? '8%' : '0%'}):</span>
-                                <span className="font-mono tabular-nums">{vatTotal.toLocaleString('vi-VN')}</span>
+                                <span>Thuế GTGT ({appliedVatRate}%):</span>
+                                <span className="font-mono tabular-nums">{vatInTotal.toLocaleString('vi-VN')}</span>
                             </div>
                             <div className="flex justify-between font-bold text-zinc-900 border-t border-dotted border-zinc-400 pt-1">
                                 <span>Vị trí / Bàn thực hiện:</span>

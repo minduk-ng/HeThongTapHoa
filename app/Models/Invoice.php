@@ -19,6 +19,11 @@ class Invoice extends Model
         'change_amount',
         'total_amount',
         'deposit_amount',
+        'subtotal_amount',
+        'vat_amount',
+        'discount_amount',
+        'external_no',
+        'external_ref',
         'issued_at',
     ];
 
@@ -27,11 +32,29 @@ class Invoice extends Model
         'change_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'deposit_amount' => 'decimal:2',
+        'subtotal_amount' => 'decimal:2',
+        'vat_amount' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'issued_at' => 'datetime',
     ];
 
     public function orders()
     {
         return $this->hasMany(Order::class, 'invoice_id');
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class, 'invoice_id');
+    }
+
+    public function lines()
+    {
+        return $this->hasMany(InvoiceLine::class, 'invoice_id');
+    }
+
+    public function promotions()
+    {
+        return $this->hasMany(InvoicePromotion::class, 'invoice_id');
     }
 }

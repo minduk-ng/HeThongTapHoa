@@ -158,9 +158,17 @@ export default function POSCartPanel({
         (sum, item) => sum + item.quantity * item.unit_price,
         0,
     );
-    const vatTotal = cartItems.reduce((sum, item) => {
-        const itemSubtotal = item.quantity * item.unit_price;
-        return sum + itemSubtotal * ((item.vat_rate || 0) / 100);
+    const vatInTotal = cartItems.reduce((sum, item) => {
+        const line = item.quantity * item.unit_price;
+        const rate = item.vat_rate || 0;
+
+        if (rate <= 0) {
+            return sum;
+        }
+
+        const net = Math.floor(line / (1 + rate / 100));
+
+        return sum + (line - net);
     }, 0);
     const totalAmount = subtotal;
 
@@ -769,9 +777,9 @@ export default function POSCartPanel({
                         </span>
                     </div>
                     <div className="flex justify-between text-zinc-500 dark:text-zinc-400">
-                        <span>Thuế VAT:</span>
+                        <span>Trong đó VAT:</span>
                         <span className="font-semibold text-zinc-800 tabular-nums dark:text-zinc-200">
-                            {vatTotal.toLocaleString('vi-VN')} đ
+                            {vatInTotal.toLocaleString('vi-VN')} đ
                         </span>
                     </div>
                     {depositTotal > 0 && (
