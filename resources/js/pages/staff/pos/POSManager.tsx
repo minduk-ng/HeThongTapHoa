@@ -433,7 +433,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 }}
                 onConfirmDeposit={(amount, method) => {
                     if (activeOrderForDrawer?.id) {
-                        submitDeposit(activeOrderForDrawer.id, amount, method, () => {
+                        return submitDeposit(activeOrderForDrawer.id, amount, method, () => {
                             setIsPaymentDrawerOpen(false);
                             setDrawerMode('payment');
                             router.reload({ only: ['tables'] });
@@ -446,7 +446,7 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                             .filter(i => !i.isConfirmed && i.quantity > 0)
                             .map(i => ({ menu_item_id: i.menu_item_id, quantity: i.quantity }));
                         
-                        submitReservation({
+                        return submitReservation({
                             table_id: selectedTable.id,
                             reservation_name: currentReservationDraft.name,
                             reservation_phone: currentReservationDraft.phone,
