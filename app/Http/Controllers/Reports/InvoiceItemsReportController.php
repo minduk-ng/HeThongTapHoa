@@ -14,9 +14,7 @@ class InvoiceItemsReportController extends Controller
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
 
-        $rows = InvoiceLine::query()
-            ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
-            ->whereBetween('invoices.issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
+        $rows = InvoiceLine::settledBetween($startDate, $endDate)
             ->orderByDesc('invoices.issued_at')
             ->orderBy('invoice_lines.id')
             ->get([
@@ -37,7 +35,7 @@ class InvoiceItemsReportController extends Controller
                 'unit_price' => (float) $r->unit_price,
                 'subtotal' => (float) $r->subtotal,
                 'discount_amount' => (float) $r->discount_amount,
-                'net' => (float) $r->subtotal - (float) $r->discount_amount,
+                'net' => (float) $r->net,
                 // order_gross/order_discount = value dòng đầu nhóm (invoice ≈ 1 order, giữ shape cũ).
                 'order_gross' => (float) $r->subtotal,
                 'order_discount' => (float) $r->discount_amount,

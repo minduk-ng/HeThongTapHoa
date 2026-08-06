@@ -20,8 +20,25 @@ class InvoiceLine extends Model
         'discount_amount' => 'float',
     ];
 
+    /** Doanh thu thực thu 1 dòng = giá bán sau giảm giá (đã gồm VAT). */
+    public const REVENUE_SQL = 'invoice_lines.subtotal - invoice_lines.discount_amount';
+
     public function invoice()
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    /** Thực thu dòng (PHP-side, khớp REVENUE_SQL). */
+    public function getNetAttribute(): float
+    {
+        return (float) $this->subtotal - (float) $this->discount_amount;
+    }
+
+    /** Giới hạn lines thuộc các hóa đơn phát hành trong khoảng ngày. */
+    public function scopeSettledBetween($query, string $from, string $to)
+    {
+        return $query
+            ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
+            ->whereBetween('invoices.issued_at', ["{$from} 00:00:00", "{$to} 23:59:59"]);
     }
 }

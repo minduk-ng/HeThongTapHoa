@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Reports;
 use App\Http\Controllers\Controller;
 use App\Models\InvoiceLine;
 use App\Models\ProductRecipe;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -23,11 +24,9 @@ class ProfitReportController extends Controller
             ->pluck('cost', 'menu_item_id');
 
         // Món bán trong kỳ kèm ngày phát hành (để dựng daily series).
-        $items = InvoiceLine::query()
-            ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
+        $items = InvoiceLine::settledBetween($startDate, $endDate)
             ->join('menu_items', 'menu_items.id', '=', 'invoice_lines.menu_item_id')
-            ->whereBetween('invoices.issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
-            ->selectRaw('DATE(invoices.issued_at) as day, invoice_lines.menu_item_id as menu_item_id, invoice_lines.name_snapshot as item_name, SUM(invoice_lines.quantity) as quantity, SUM(invoice_lines.subtotal - invoice_lines.discount_amount) as revenue')
+            ->selectRaw('DATE(invoices.issued_at) as day, invoice_lines.menu_item_id as menu_item_id, invoice_lines.name_snapshot as item_name, SUM(invoice_lines.quantity) as quantity, SUM('.InvoiceLine::REVENUE_SQL.') as revenue')
             ->groupBy('day', 'invoice_lines.menu_item_id', 'invoice_lines.name_snapshot')
             ->get()
             ->values();
@@ -67,7 +66,7 @@ class ProfitReportController extends Controller
                 );
 
                 return [
-                    'label' => \Carbon\Carbon::parse($day)->format('d/m'),
+                    'label' => Carbon::parse($day)->format('d/m'),
                     'sort_key' => $day,
                     'revenue' => $revenue,
                     'profit' => $revenue - $cost,
