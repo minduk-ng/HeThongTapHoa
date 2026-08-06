@@ -114,6 +114,23 @@ const { isSubmitting, guard } = useSubmitGuard();
 - `useSubmitGuard` là nguồn duy nhất guard frontend; thay pattern `setSubmitting` thủ công ở TransferMergeModal.
 - Không đụng commandQueue/kitchen/serving (đã có guard qua command id).
 
+## Phần 4b — PaymentDrawer tự đóng sau thành công (cả 3 mode)
+
+**Hiện trạng:**
+- Payment **có in**: đóng sau thành công + mở receipt modal (`usePOSCheckout.ts:311-344`) ✓
+- Payment **không in**: đóng **ngay trước fetch** (`usePOSCheckout.ts:288-290`) — đóng cả khi thất bại ✗
+- Deposit: đóng trong onSuccess của POSManager (`POSManager.tsx:436-441`) — sau thành công ✓
+- Reservation: đóng trong onSuccess (`POSManager.tsx:458-464`) — sau thành công ✓
+
+**Yêu cầu:** PaymentDrawer tự đóng sau khi tương tác **thành công** ở cả 3 mode (thanh toán không in, đặt cọc, đặt bàn).
+
+**Sửa `usePOSCheckout.ts` `handleConfirmPayment`:**
+- **Bỏ** khối `if (!shouldPrint) { togglePaymentDrawer(false); }` trước fetch (dòng 288-290).
+- Trong `then` thành công (`response.ok && data.success`), gọi `togglePaymentDrawer(false)` **bất kể shouldPrint** — đặt trước khi mở receipt modal (nhánh print vẫn mở modal sau khi đóng).
+- Thất bại / lỗi → **không đóng** drawer; hiển thị alert như hiện tại (người dùng còn ở lại để sửa).
+
+Deposit + Reservation giữ nguyên (đã đóng sau thành công qua onSuccess).
+
 ## Phần 5 — Kiểm thử
 
 - **Backend:** test mới `tests/Feature/IdempotencyGuardTest.php`:
@@ -122,8 +139,10 @@ const { isSubmitting, guard } = useSubmitGuard();
   - Endpoint có `idempotency_key` client gửi → key thắng (TTL 30s).
 - **Regression:** toàn bộ suite POS hiện có (deposit, checkout, reservation, table ops) vẫn pass.
 - **Frontend:** `npm run types:check` + `npm run build` pass.
+- **Frontend (Phần 4b):** payment không in — drawer không đóng khi thất bại, đóng sau thành công; verify thủ công qua luồng POS (không có test React tự động cho drawer hiện tại).
 
 ## Ngoài phạm vi
 
 - Không đụng KitchenController/ServingController (đã có guard qua command id).
 - Không đổi luồng checkout hiện có (đã gửi key) — chỉ thêm auto-guard backend.
+- Không đổi luồng deposit/reservation đóng drawer (đã đóng sau thành công).
