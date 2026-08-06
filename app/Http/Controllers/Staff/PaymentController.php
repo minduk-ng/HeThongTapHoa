@@ -10,9 +10,9 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\Table;
 use App\Services\Checkout\CheckoutService;
+use App\Services\IdempotencyGuard;
 use App\Services\Promotions\PromotionEngine;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -104,13 +104,13 @@ class PaymentController extends Controller
             'idempotency_key' => 'nullable|string|max:100',
         ]);
 
-        if ($request->filled('idempotency_key')) {
-            $lockKey = "idempotency:checkout:{$request->input('idempotency_key')}";
-            if (! Cache::add($lockKey, true, 30)) {
-                Log::info("Duplicate checkout request suppressed: {$request->input('idempotency_key')}");
+        if (IdempotencyGuard::isDuplicate($request, 'checkout', [
+            'order_id' => $validated['order_id'],
+            'amount_received' => $validated['amount_received'],
+        ])) {
+            Log::info("Duplicate checkout request suppressed: {$request->input('idempotency_key')}");
 
-                return back()->with('success', 'Thanh toán đã được ghi nhận thành công!');
-            }
+            return back()->with('success', 'Thanh toán đã được ghi nhận thành công!');
         }
 
         try {
@@ -265,13 +265,13 @@ class PaymentController extends Controller
             'idempotency_key' => 'nullable|string|max:100',
         ]);
 
-        if ($request->filled('idempotency_key')) {
-            $lockKey = "idempotency:bulk_checkout:{$request->input('idempotency_key')}";
-            if (! Cache::add($lockKey, true, 30)) {
-                return $request->wantsJson()
-                    ? response()->json(['success' => true, 'message' => 'Thanh toán đã được ghi nhận!'])
-                    : back()->with('success', 'Thanh toán đã được ghi nhận!');
-            }
+        if (IdempotencyGuard::isDuplicate($request, 'bulk_checkout', [
+            'order_ids' => collect($validated['order_ids'])->sort()->values()->all(),
+            'amount_received' => $validated['amount_received'],
+        ])) {
+            return $request->wantsJson()
+                ? response()->json(['success' => true, 'message' => 'Thanh toán đã được ghi nhận!'])
+                : back()->with('success', 'Thanh toán đã được ghi nhận!');
         }
 
         try {
