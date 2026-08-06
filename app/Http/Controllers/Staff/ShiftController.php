@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
-use App\Models\Invoice;
 use App\Models\Shift;
+use App\Services\Manager\ShiftService;
 use Carbon\CarbonInterface;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Database\QueryException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -117,11 +117,6 @@ class ShiftController extends Controller
 
     private function expectedCash(Shift $shift, CarbonInterface $until): float
     {
-        $received = Invoice::query()
-            ->where('payment_method', 'cash')
-            ->whereBetween('issued_at', [$shift->opened_at, $until])
-            ->sum('amount_received');
-
-        return round((float) $shift->opening_cash + (float) $received, 2);
+        return (new ShiftService)->expectedCash($shift, $until);
     }
 }
