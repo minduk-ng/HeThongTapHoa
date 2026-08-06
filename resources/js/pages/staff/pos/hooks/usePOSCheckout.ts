@@ -285,10 +285,6 @@ export function usePOSCheckout(
         const snapshotCart = [...currentCart];
         const snapshotTable = { ...selectedTable };
 
-        if (!shouldPrint) {
-            togglePaymentDrawer(false);
-        }
-
         const csrfToken = getCsrfTokenFromCookie();
         const currentOrderId = orderId;
 
@@ -308,9 +304,7 @@ export function usePOSCheckout(
 
                 const data = await response.json().catch(() => ({}));
                 if (response.ok && data.success) {
-                    if (shouldPrint) {
-                        togglePaymentDrawer(false);
-                    }
+                    togglePaymentDrawer(false);
                     onSuccessClearCart();
 
                     if (data.deposit_refund > 0) {
