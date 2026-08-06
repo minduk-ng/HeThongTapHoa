@@ -13,6 +13,7 @@ use App\Services\Checkout\CheckoutService;
 use App\Services\IdempotencyGuard;
 use App\Services\Promotions\PromotionEngine;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -215,6 +216,8 @@ class PaymentController extends Controller
                 return ['table' => $targetTable, 'deposit_total' => $depositTotal, 'deposit_refund' => $depositRefund];
             });
 
+            Cache::tags(['pos_tables'])->flush();
+
             $targetTable = $result['table'];
             $depositTotal = $result['deposit_total'];
             $depositRefund = $result['deposit_refund'];
@@ -376,6 +379,8 @@ class PaymentController extends Controller
 
                 return ['table' => $targetTable, 'deposit_total' => $depositTotal, 'deposit_refund' => $depositRefund];
             });
+
+            Cache::tags(['pos_tables'])->flush();
 
             $targetTable = $result['table'];
             $depositTotal = $result['deposit_total'];
