@@ -34,129 +34,127 @@ class POSController extends Controller
     {
         $isLocal = app()->environment('local');
 
-        $loadTables = function () {
-            $tables = Table::with(['mergedIntoTable', 'orders' => function ($query) {
-                $query->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed', 'reserved'])
-                    ->with(['items' => function ($q) {
-                        $q->where('status', '!=', 'cancelled')->with('menuItem');
-                    }, 'deposits' => function ($q) {
-                        $q->where('status', 'held');
-                    }]);
-            }])->where('status', '!=', 'maintenance')->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
+        $tables = $this->cachedPayload($isLocal, 'pos_tables', 'pos_tables_list', 1800, fn () => $this->loadTablesPayload());
 
-            $tables->each(function ($table) use ($tables) {
-                if ($table->merged_into_table_id || $tables->contains('merged_into_table_id', $table->id)) {
-                    $groupId = $table->merged_into_table_id ?? $table->id;
-                    $allGroupTableIds = $tables->filter(fn ($t) => $t->id == $groupId || $t->merged_into_table_id == $groupId)->pluck('id');
-                    $allGroupOrders = Order::with(['items' => function ($query) {
-                        $query->where('status', '!=', 'cancelled')->with('menuItem');
-                    }, 'deposits' => function ($q) {
-                        $q->where('status', 'held');
-                    }])->whereIn('table_id', $allGroupTableIds)->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed', 'reserved'])->get();
-                    $allGroupOrders->each(function ($order) {
-                        $order->deposit_total = (float) $order->deposits->sum('amount');
-                    });
-                    $table->setRelation('activeOrders', $allGroupOrders);
-                    $table->setRelation('activeOrder', $allGroupOrders->first());
-                } else {
-                    $table->setRelation('activeOrders', $table->orders);
-                    $table->activeOrders->each(function ($order) {
-                        $order->deposit_total = (float) $order->deposits->sum('amount');
-                    });
-                }
-            });
-
-            $result = $tables->values()->toArray();
-
-            // Inject virtual "Mang đi" table with takeaway orders (table_id IS NULL)
-            $takeawayOrders = Order::with(['items' => function ($query) {
-                $query->where('status', '!=', 'cancelled')->with('menuItem');
-            }, 'deposits' => function ($q) {
-                $q->where('status', 'held');
-            }])->whereNull('table_id')
-                ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed', 'reserved'])
-                ->get();
-            $takeawayOrders->each(function ($order) {
-                $order->deposit_total = (float) $order->deposits->sum('amount');
-            });
-
-            array_unshift($result, [
-                'id' => 0,
-                'table_number' => 'Mang đi',
-                'area' => 'Mang đi',
-                'capacity' => 0,
-                'status' => $takeawayOrders->isNotEmpty() ? 'occupied' : 'available',
-                'merged_into_table_id' => null,
-                'merged_into_table' => null,
-                'reservation_time' => null,
-                'reservation_name' => null,
-                'reservation_phone' => null,
-                'reservation_note' => null,
-                'active_orders' => $takeawayOrders->toArray(),
-                'active_order' => $takeawayOrders->first()?->toArray(),
-            ]);
-
-            return $result;
-        };
-
-        if ($isLocal) {
-            $tables = $loadTables();
-        } else {
-            try {
-                $tables = Cache::tags(['pos_tables'])->remember('pos_tables_list', 1800, $loadTables);
-            } catch (\Exception $e) {
-                Log::error('Redis connection failed in POSController tables loading: '.$e->getMessage());
-                $tables = $loadTables();
-            }
-        }
-
-        $loadCategories = function () {
-            return MenuCategory::orderBy('sort_order', 'asc')->get()->toArray();
-        };
-
-        $loadProducts = function () {
-            $prods = MenuItem::with(['category', 'recipes.ingredient'])->where('is_available', true)->get();
-
-            $prods->transform(function ($product) {
-                if ($product->recipes && $product->recipes->count() > 0) {
-                    $possibleServings = [];
-                    foreach ($product->recipes as $recipe) {
-                        if ($recipe->ingredient && (float) $recipe->amount > 0) {
-                            $stock = (float) $recipe->ingredient->stock_quantity;
-                            $possible = (int) floor($stock / (float) $recipe->amount);
-                            $possibleServings[] = max(0, $possible);
-                        }
-                    }
-                    $product->max_servings = count($possibleServings) > 0 ? min($possibleServings) : 999;
-                } else {
-                    $product->max_servings = 999;
-                }
-
-                return $product;
-            });
-
-            return $prods->toArray();
-        };
-
-        if ($isLocal) {
-            $categories = $loadCategories();
-            $products = $loadProducts();
-        } else {
-            try {
-                $categories = Cache::tags(['pos_products_and_categories'])->remember('pos_categories', 86400, $loadCategories);
-                $products = Cache::tags(['pos_products_and_categories'])->remember('pos_products', 86400, $loadProducts);
-            } catch (\Exception $e) {
-                Log::error('Redis connection failed in POSController products loading: '.$e->getMessage());
-                $categories = $loadCategories();
-                $products = $loadProducts();
-            }
-        }
+        $categories = $this->cachedPayload($isLocal, 'pos_products_and_categories', 'pos_categories', 86400, fn () => $this->loadCategoriesPayload());
+        $products = $this->cachedPayload($isLocal, 'pos_products_and_categories', 'pos_products', 86400, fn () => $this->loadProductsPayload());
 
         return Inertia::render('staff/pos/POSManager', [
             'tables' => $tables,
             'categories' => $categories,
             'products' => $products,
         ]);
+    }
+
+    private function loadTablesPayload(): array
+    {
+        $tables = Table::with(['mergedIntoTable', 'orders' => function ($query) {
+            $query->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed', 'reserved'])
+                ->with(['items' => function ($q) {
+                    $q->where('status', '!=', 'cancelled')->with('menuItem');
+                }, 'deposits' => function ($q) {
+                    $q->where('status', 'held');
+                }]);
+        }])->where('status', '!=', 'maintenance')->orderBy('area', 'asc')->orderBy('table_number', 'asc')->get();
+
+        $tables->each(function ($table) use ($tables) {
+            if ($table->merged_into_table_id || $tables->contains('merged_into_table_id', $table->id)) {
+                $groupId = $table->merged_into_table_id ?? $table->id;
+                $allGroupTableIds = $tables->filter(fn ($t) => $t->id == $groupId || $t->merged_into_table_id == $groupId)->pluck('id');
+                $allGroupOrders = Order::with(['items' => function ($query) {
+                    $query->where('status', '!=', 'cancelled')->with('menuItem');
+                }, 'deposits' => function ($q) {
+                    $q->where('status', 'held');
+                }])->whereIn('table_id', $allGroupTableIds)->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed', 'reserved'])->get();
+                $allGroupOrders->each(function ($order) {
+                    $order->deposit_total = (float) $order->deposits->sum('amount');
+                });
+                $table->setRelation('activeOrders', $allGroupOrders);
+                $table->setRelation('activeOrder', $allGroupOrders->first());
+            } else {
+                $table->setRelation('activeOrders', $table->orders);
+                $table->activeOrders->each(function ($order) {
+                    $order->deposit_total = (float) $order->deposits->sum('amount');
+                });
+            }
+        });
+
+        $result = $tables->values()->toArray();
+
+        // Inject virtual "Mang đi" table with takeaway orders (table_id IS NULL)
+        $takeawayOrders = Order::with(['items' => function ($query) {
+            $query->where('status', '!=', 'cancelled')->with('menuItem');
+        }, 'deposits' => function ($q) {
+            $q->where('status', 'held');
+        }])->whereNull('table_id')
+            ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed', 'reserved'])
+            ->get();
+        $takeawayOrders->each(function ($order) {
+            $order->deposit_total = (float) $order->deposits->sum('amount');
+        });
+
+        array_unshift($result, [
+            'id' => 0,
+            'table_number' => 'Mang đi',
+            'area' => 'Mang đi',
+            'capacity' => 0,
+            'status' => $takeawayOrders->isNotEmpty() ? 'occupied' : 'available',
+            'merged_into_table_id' => null,
+            'merged_into_table' => null,
+            'reservation_time' => null,
+            'reservation_name' => null,
+            'reservation_phone' => null,
+            'reservation_note' => null,
+            'active_orders' => $takeawayOrders->toArray(),
+            'active_order' => $takeawayOrders->first()?->toArray(),
+        ]);
+
+        return $result;
+    }
+
+    private function loadCategoriesPayload(): array
+    {
+        return MenuCategory::orderBy('sort_order', 'asc')->get()->toArray();
+    }
+
+    private function loadProductsPayload(): array
+    {
+        $prods = MenuItem::with(['category', 'recipes.ingredient'])->where('is_available', true)->get();
+
+        $prods->transform(function ($product) {
+            if ($product->recipes && $product->recipes->count() > 0) {
+                $possibleServings = [];
+                foreach ($product->recipes as $recipe) {
+                    if ($recipe->ingredient && (float) $recipe->amount > 0) {
+                        $stock = (float) $recipe->ingredient->stock_quantity;
+                        $possible = (int) floor($stock / (float) $recipe->amount);
+                        $possibleServings[] = max(0, $possible);
+                    }
+                }
+                $product->max_servings = count($possibleServings) > 0 ? min($possibleServings) : 999;
+            } else {
+                $product->max_servings = 999;
+            }
+
+            return $product;
+        });
+
+        return $prods->toArray();
+    }
+
+    private function cachedPayload(bool $isLocal, string $tag, string $key, int $ttl, callable $loader): mixed
+    {
+        if ($isLocal) {
+            return $loader();
+        }
+
+        try {
+            return Cache::tags([$tag])->remember($key, $ttl, $loader);
+        } catch (\Exception $e) {
+            Log::error("Redis connection failed in POSController {$key} loading: ".$e->getMessage());
+
+            return $loader();
+        }
     }
 
     public function sendToKitchen(Request $request)
