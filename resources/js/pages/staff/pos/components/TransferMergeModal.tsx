@@ -78,6 +78,7 @@ export default function TransferMergeModal({
             {
                 source_table_id: selectedTable.id,
                 target_table_id: targetTransferTableId,
+                idempotency_key: `pos_transfer_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
             },
             {
                 onSuccess: () => {
@@ -107,6 +108,7 @@ export default function TransferMergeModal({
             {
                 source_table_id: selectedTable.id,
                 target_table_id: targetMergeTableId,
+                idempotency_key: `pos_merge_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
             },
             {
                 onSuccess: () => {
@@ -136,6 +138,7 @@ export default function TransferMergeModal({
             {
                 source_table_id: selectedTable.id,
                 keep_table_id: keepTableId,
+                idempotency_key: `pos_unmerge_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
             },
             {
                 onSuccess: () => {
