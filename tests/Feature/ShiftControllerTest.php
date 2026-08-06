@@ -65,6 +65,24 @@ test('expected_cash gom coc cash nhan trong ca, khong dem lai coc da applied', f
     expect((float) $response->json('expected_cash'))->toBe(30000.0);
 });
 
+test('expected_cash tru coc cash da hoan trong ca (refunded)', function () {
+    $this->actingAs(posAdmin());
+    $shift = Shift::create(['opened_at' => now()->subMinute(), 'opening_cash' => 0, 'status' => 'open', 'opened_by' => auth()->id()]);
+
+    $item = posMenuItem(['price' => 100000]);
+    $order = posOrder(posTable(), [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']]);
+
+    // Cọc cash nhận trong ca
+    $deposit = App\Models\Deposit::create(['order_id' => $order->id, 'amount' => 30000, 'method' => 'cash', 'status' => 'held']);
+
+    // Khách hủy đặt bàn → hoàn cọc (status refunded, resolved_at = now)
+    $deposit->update(['status' => 'refunded', 'resolved_at' => now()]);
+
+    $response = $this->getJson('/staff/shifts/current')->assertOk();
+    // 0 mở + 0 checkout + 30000 cọc nhận − 30000 hoàn = 0
+    expect((float) $response->json('expected_cash'))->toBe(0.0);
+});
+
 test('expected_cash khong dem lai coc da applied (payment row Tiền cọc)', function () {
     $this->actingAs(posAdmin());
     $shift = Shift::create(['opened_at' => now()->subMinute(), 'opening_cash' => 0, 'status' => 'open', 'opened_by' => auth()->id()]);

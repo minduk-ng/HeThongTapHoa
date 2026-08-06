@@ -27,6 +27,13 @@ final class ShiftService
             ->whereBetween('created_at', [$shift->opened_at, $until])
             ->sum('amount');
 
-        return round((float) $shift->opening_cash + (float) $checkoutCash + (float) $depositCash, 2);
+        // Cọc cash đã HOÀN trong ca: tiền ra khỏi máy → phải trừ đi
+        $refundedCash = Deposit::query()
+            ->where('method', 'cash')
+            ->where('status', 'refunded')
+            ->whereBetween('resolved_at', [$shift->opened_at, $until])
+            ->sum('amount');
+
+        return round((float) $shift->opening_cash + (float) $checkoutCash + (float) $depositCash - (float) $refundedCash, 2);
     }
 }
