@@ -14,10 +14,12 @@ class CheckPermission
             abort(403, 'Unauthorized');
         }
 
-        if (! $request->user()->hasPermission($permission)) {
-            abort(403, 'You do not have permission to access this resource.');
+        foreach (explode('|', $permission) as $perm) {
+            if ($request->user()->hasPermission($perm)) {
+                return $next($request);
+            }
         }
 
-        return $next($request);
+        abort(403, 'You do not have permission to access this resource.');
     }
 }
