@@ -115,7 +115,8 @@ export function usePOSReservation() {
                     ...rest,
                     deposit: deposit_amount > 0
                         ? { amount: deposit_amount, method: payment_method }
-                        : undefined
+                        : undefined,
+                    idempotency_key: `pos_reserve_${data.table_id}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
                 })
             });
             
@@ -151,7 +152,10 @@ export function usePOSReservation() {
                     'X-CSRF-TOKEN': getCsrfTokenFromCookie(),
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ order_id: orderId })
+                body: JSON.stringify({
+                    order_id: orderId,
+                    idempotency_key: `pos_checkin_${orderId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                })
             });
             
             const result = await response.json();
@@ -191,7 +195,8 @@ export function usePOSReservation() {
                 body: JSON.stringify({
                     order_id: orderId,
                     deposit_resolution: resolution === 'none' ? null : resolution,
-                    note
+                    note,
+                    idempotency_key: `pos_cancelres_${orderId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
                 })
             });
             
@@ -232,7 +237,8 @@ export function usePOSReservation() {
                 body: JSON.stringify({
                     order_id: orderId,
                     amount,
-                    method: paymentMethod
+                    method: paymentMethod,
+                    idempotency_key: `pos_deposit_${orderId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
                 })
             });
             

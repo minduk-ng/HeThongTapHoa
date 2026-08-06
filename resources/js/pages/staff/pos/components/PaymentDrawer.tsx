@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Banknote, QrCode, X, Printer, CalendarClock, Tag, Ticket } from 'lucide-react';
 import { POSTableData, CartItem, ReservationDraft } from '../types/pos.types';
-import { cdnAsset } from '../../../../utils/cdn';
+import { useSubmitGuard } from '../../../../hooks/useSubmitGuard';
 
 interface PaymentDrawerProps {
     isOpen: boolean;
@@ -17,8 +17,8 @@ interface PaymentDrawerProps {
     onApplyPromotion?: (code: string, subtotal: number, items: { menu_item_id: number; quantity: number; unit_price: number }[]) => Promise<{ ok: boolean; discount_amount?: number; total?: number; error?: string }>;
     onClearPromotion?: () => void;
     onConfirmPayment: (paymentMethod: 'cash' | 'bank_transfer', amountReceived: number, changeAmount: number, shouldPrint: boolean) => void;
-    onConfirmDeposit?: (amount: number, method: 'cash' | 'bank_transfer') => void;
-    onConfirmReservation?: (deposit: { amount: number; method: 'cash' | 'bank_transfer' } | null) => void;
+    onConfirmDeposit?: (amount: number, method: 'cash' | 'bank_transfer') => Promise<void> | void;
+    onConfirmReservation?: (deposit: { amount: number; method: 'cash' | 'bank_transfer' } | null) => Promise<void> | void;
     submitting: boolean;
 }
 
@@ -45,6 +45,7 @@ export default function PaymentDrawer({
     const [promotionInput, setPromotionInput] = useState('');
     const [promotionError, setPromotionError] = useState<string | null>(null);
     const [promotionLoading, setPromotionLoading] = useState(false);
+    const { isSubmitting, guard } = useSubmitGuard();
 
     const subtotal = cartItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
     // VAT trong giá: thuế nằm trong line, không cộng thêm vào payable (giá đã gồm thuế).
@@ -121,17 +122,23 @@ export default function PaymentDrawer({
         setPromotionLoading(false);
     };
 
-    const handleConfirm = (shouldPrint: boolean) => {
+    const handleConfirm = async (shouldPrint: boolean) => {
         if (mode === 'payment') {
             const finalReceived = paymentMethod === 'bank_transfer' ? payable : amountReceived;
             const finalChange = paymentMethod === 'bank_transfer' ? depositRefund : changeAmount;
             onConfirmPayment(paymentMethod, finalReceived, finalChange, shouldPrint);
         } else if (mode === 'deposit') {
-            if (onConfirmDeposit) onConfirmDeposit(amountReceived, paymentMethod);
+            if (onConfirmDeposit) {
+                await guard(async () => {
+                    await onConfirmDeposit(amountReceived, paymentMethod);
+                });
+            }
         } else if (mode === 'reservation') {
             if (onConfirmReservation) {
                 const depositData = amountReceived > 0 ? { amount: amountReceived, method: paymentMethod } : null;
-                onConfirmReservation(depositData);
+                await guard(async () => {
+                    await onConfirmReservation(depositData);
+                });
             }
         }
     };
@@ -464,7 +471,7 @@ export default function PaymentDrawer({
                         <div className="grid grid-cols-2 gap-3">                            
                             <button
                                 type="button"
-                                disabled={submitting || (paymentMethod === 'cash' && amountReceived < payable)}
+                                disabled={submitting || isSubmitting || (paymentMethod === 'cash' && amountReceived < payable)}
                                 onClick={() => handleConfirm(true)}
                                 className="py-2.5 px-4 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-md disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
                             >
@@ -473,7 +480,7 @@ export default function PaymentDrawer({
                             </button>
                             <button
                                 type="button"
-                                disabled={submitting || (paymentMethod === 'cash' && amountReceived < payable)}
+                                disabled={submitting || isSubmitting || (paymentMethod === 'cash' && amountReceived < payable)}
                                 onClick={() => handleConfirm(false)}
                                 className="py-2.5 px-4 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 rounded-xl shadow-sm disabled:opacity-50 transition-colors"
                             >
@@ -485,7 +492,7 @@ export default function PaymentDrawer({
                     {mode === 'deposit' && (
                         <button
                             type="button"
-                            disabled={submitting || amountReceived <= 0}
+                            disabled={submitting || isSubmitting || amountReceived <= 0}
                             onClick={() => handleConfirm(false)}
                             className="w-full py-3 px-4 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl shadow-md disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
                         >
@@ -497,7 +504,7 @@ export default function PaymentDrawer({
                     {mode === 'reservation' && (
                         <button
                             type="button"
-                            disabled={submitting}
+                            disabled={submitting || isSubmitting}
                             onClick={() => handleConfirm(false)}
                             className="w-full py-3 px-4 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl shadow-md disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
                         >
