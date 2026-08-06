@@ -30,15 +30,14 @@ test('hàng chờ phục vụ chỉ chứa món completed chưa phục vụ củ
     $oldOrder = posOrder($table, [['item' => $item, 'qty' => 1, 'status' => 'completed']]);
     $oldOrder->forceFill(['created_at' => now()->subDay()])->save();
 
-    $response = $this->get('/staff/pos/serving-queue');
-    $response->assertOk();
-
-    $queue = $response->json();
-    expect($queue)->toHaveCount(1);
-    expect($queue[0]['order_id'])->toBe($order->id);
-    expect($queue[0]['table_number'])->toBe('B50');
-    expect($queue[0]['items'])->toHaveCount(1);
-    expect($queue[0]['items'][0]['quantity'])->toBe(1);
+    $response = $this->get('/staff/serving');
+    $response->assertInertia(fn ($page) => $page
+        ->component('staff/serving/ServingDisplay')
+        ->has('servingQueue', 1)
+        ->where('servingQueue.0.order_id', $order->id)
+        ->where('servingQueue.0.table_number', 'B50')
+        ->has('servingQueue.0.items', 1)
+        ->where('servingQueue.0.items.0.quantity', 1));
 });
 
 test('đơn Mang đi trong hàng chờ hiển thị nhãn "Mang về"', function () {
@@ -46,12 +45,11 @@ test('đơn Mang đi trong hàng chờ hiển thị nhãn "Mang về"', function
     $item = posMenuItem();
     posOrder(null, [['item' => $item, 'qty' => 1, 'status' => 'completed']]);
 
-    $response = $this->get('/staff/pos/serving-queue');
-    $response->assertOk();
-
-    $queue = $response->json();
-    expect($queue)->toHaveCount(1);
-    expect($queue[0]['table_number'])->toBe('Mang về');
+    $response = $this->get('/staff/serving');
+    $response->assertInertia(fn ($page) => $page
+        ->component('staff/serving/ServingDisplay')
+        ->has('servingQueue', 1)
+        ->where('servingQueue.0.table_number', 'Mang về'));
 });
 
 test('markServed chỉ đánh dấu các món completed chưa phục vụ', function () {
@@ -64,7 +62,7 @@ test('markServed chỉ đánh dấu các món completed chưa phục vụ', func
     ]);
     [$done, $cooking] = $order->items->all();
 
-    $response = $this->post('/staff/pos/mark-served', [
+    $response = $this->post('/staff/serving/mark-served', [
         'item_ids' => [$done->id, $cooking->id],
     ]);
 
@@ -83,7 +81,7 @@ test('markServed không đánh dấu lặp món đã phục vụ trước đó',
     $originalTime = now()->subMinutes(30);
     $orderItem->forceFill(['served_at' => $originalTime])->save();
 
-    $response = $this->post('/staff/pos/mark-served', [
+    $response = $this->post('/staff/serving/mark-served', [
         'item_ids' => [$orderItem->id],
     ]);
 
@@ -94,9 +92,9 @@ test('markServed không đánh dấu lặp món đã phục vụ trước đó',
 test('markServed yêu cầu danh sách item_ids hợp lệ', function () {
     $this->actingAs(posAdmin());
 
-    $this->post('/staff/pos/mark-served', ['item_ids' => []])
+    $this->post('/staff/serving/mark-served', ['item_ids' => []])
         ->assertSessionHasErrors(['item_ids']);
 
-    $this->post('/staff/pos/mark-served', ['item_ids' => [999999]])
+    $this->post('/staff/serving/mark-served', ['item_ids' => [999999]])
         ->assertSessionHasErrors(['item_ids.0']);
 });
