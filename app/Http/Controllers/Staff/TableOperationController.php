@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Staff\Concerns\DispatchesSafely;
 use App\Models\Order;
 use App\Models\Table;
+use App\Services\IdempotencyGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -21,6 +22,13 @@ class TableOperationController extends Controller
             'source_table_id' => 'required|exists:tables,id',
             'target_table_id' => 'required|exists:tables,id|different:source_table_id',
         ]);
+
+        if (IdempotencyGuard::isDuplicate($request, 'transfer_table', [
+            'source_table_id' => $validated['source_table_id'],
+            'target_table_id' => $validated['target_table_id'],
+        ])) {
+            return back()->with('success', 'Chuyển bàn thành công!');
+        }
 
         try {
             DB::transaction(function () use ($validated) {
@@ -113,6 +121,13 @@ class TableOperationController extends Controller
             'target_table_id' => 'required|exists:tables,id|different:source_table_id',
         ]);
 
+        if (IdempotencyGuard::isDuplicate($request, 'merge_tables', [
+            'source_table_id' => $validated['source_table_id'],
+            'target_table_id' => $validated['target_table_id'],
+        ])) {
+            return back()->with('success', 'Gộp bàn thành công!');
+        }
+
         try {
             DB::transaction(function () use ($validated) {
                 $sourceTable = Table::lockForUpdate()->findOrFail($validated['source_table_id']);
@@ -162,6 +177,13 @@ class TableOperationController extends Controller
             'source_table_id' => 'required|exists:tables,id',
             'keep_table_id' => 'required|exists:tables,id',
         ]);
+
+        if (IdempotencyGuard::isDuplicate($request, 'unmerge_table', [
+            'source_table_id' => $validated['source_table_id'],
+            'keep_table_id' => $validated['keep_table_id'],
+        ])) {
+            return back()->with('success', 'Tách / Hủy gộp bàn thành công!');
+        }
 
         try {
             DB::transaction(function () use ($validated) {

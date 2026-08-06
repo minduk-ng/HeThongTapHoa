@@ -13,6 +13,7 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Table;
+use App\Services\IdempotencyGuard;
 use App\Services\InventoryIngredientService;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\Request;
@@ -179,13 +180,14 @@ class POSController extends Controller
             'idempotency_key' => 'nullable|string|max:100',
         ]);
 
-        if ($request->filled('idempotency_key')) {
-            $lockKey = "idempotency:send_to_kitchen:{$request->input('idempotency_key')}";
-            if (! Cache::add($lockKey, true, 30)) {
-                Log::info("Duplicate sendToKitchen request suppressed: {$request->input('idempotency_key')}");
+        if (IdempotencyGuard::isDuplicate($request, 'send_to_kitchen', [
+            'order_id' => $validated['order_id'] ?? null,
+            'table_id' => $validated['table_id'] ?? null,
+            'items_qty' => collect($validated['items'] ?? [])->sum('quantity'),
+        ])) {
+            Log::info("Duplicate sendToKitchen request suppressed: {$request->input('idempotency_key')}");
 
-                return back()->with('success', 'Đơn hàng đã được gửi xuống Bếp!');
-            }
+            return back()->with('success', 'Đơn hàng đã được gửi xuống Bếp!');
         }
 
         try {
