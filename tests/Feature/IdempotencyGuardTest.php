@@ -38,3 +38,19 @@ test('deposit khac amount tao duoc 2 coc (khong bi chan)', function () {
 
     expect(Deposit::where('order_id', $order->id)->count())->toBe(2);
 });
+
+test('deposit 2 request cung fingerprint nhung khac idempotency_key chi tao 1 coc', function () {
+    $this->actingAs(posAdmin());
+    $order = idemDepositOrder();
+
+    $this->postJson('/staff/pos/deposit', [
+        'order_id' => $order->id, 'amount' => 100000, 'method' => 'cash',
+        'idempotency_key' => 'client_a_'.uniqid(),
+    ])->assertOk();
+    $this->postJson('/staff/pos/deposit', [
+        'order_id' => $order->id, 'amount' => 100000, 'method' => 'cash',
+        'idempotency_key' => 'client_b_'.uniqid(),
+    ])->assertOk();
+
+    expect(Deposit::where('order_id', $order->id)->count())->toBe(1);
+});
