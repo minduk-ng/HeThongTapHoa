@@ -2,7 +2,7 @@
 
 use App\Models\MenuCategory;
 use App\Models\Promotion;
-use App\Http\Controllers\Staff\POSController;
+use App\Http\Controllers\Staff\PaymentController;
 
 function posRejectReasonLines(): \Illuminate\Support\Collection
 {
@@ -21,7 +21,7 @@ test('resolvePromotion tra cac ly do tu choi rieng biet', function (array $attrs
         'discount_value' => 10, 'is_active' => true,
     ], $attrs));
 
-    $controller = resolve(POSController::class);
+    $controller = resolve(PaymentController::class);
     $reflection = new ReflectionMethod($controller, 'resolvePromotion');
     $reflection->setAccessible(true);
 
@@ -38,7 +38,7 @@ test('resolvePromotion tra cac ly do tu choi rieng biet', function (array $attrs
 ]);
 
 test('resolve_promotion khong tim thay ma tra not_found', function () {
-    $controller = app(POSController::class);
+    $controller = app(PaymentController::class);
     $reflection = new ReflectionMethod($controller, 'resolvePromotion');
     $reflection->setAccessible(true);
 
@@ -61,7 +61,7 @@ test('resolve_promotion khong co dong khop target tra no_eligible_line', functio
         'order_item_id' => 1, 'menu_item_id' => null, 'subtotal' => 100000.0, 'category_id' => 99999,
     ]]);
 
-    $controller = app(POSController::class);
+    $controller = app(PaymentController::class);
     $reflection = new ReflectionMethod($controller, 'resolvePromotion');
     $reflection->setAccessible(true);
     $result = $reflection->invoke($controller, $promo->code, $lines, 100000.0, false);
@@ -76,7 +76,7 @@ test('resolve_promotion ok tra status ok, promotion va discount_amount', functio
         'discount_value' => 10, 'is_active' => true,
     ]);
 
-    $controller = app(POSController::class);
+    $controller = app(PaymentController::class);
     $reflection = new ReflectionMethod($controller, 'resolvePromotion');
     $reflection->setAccessible(true);
     $result = $reflection->invoke($controller, $promo->code, posRejectReasonLines(), 100000.0, false);
