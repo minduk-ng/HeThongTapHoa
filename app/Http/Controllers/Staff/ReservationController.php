@@ -314,11 +314,12 @@ class ReservationController extends Controller
             'idempotency_key' => 'nullable|string',
         ]);
 
-        if ($request->filled('idempotency_key')) {
-            $lockKey = "idempotency:deposit:{$request->input('idempotency_key')}";
-            if (! Cache::add($lockKey, true, 30)) {
-                return response()->json(['success' => true]);
-            }
+        if (\App\Services\IdempotencyGuard::isDuplicate($request, 'deposit', [
+            'order_id' => $validated['order_id'],
+            'amount' => $validated['amount'],
+            'method' => $validated['method'],
+        ])) {
+            return response()->json(['success' => true]);
         }
 
         try {
