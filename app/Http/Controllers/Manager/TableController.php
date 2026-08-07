@@ -19,17 +19,6 @@ class TableController extends Controller
 {
     public function index(Request $request): Response
     {
-        // Auto-seed takeaway virtual table if not present
-        if (! Table::where('table_number', 'Mang đi')->exists()) {
-            Table::create([
-                'table_number' => 'Mang đi',
-                'capacity' => 1,
-                'area' => 'Mang đi (Takeaway)',
-                'status' => 'available',
-            ]);
-        }
-        Table::where('table_number', 'like', 'Mang đi %')->delete();
-
         $query = Table::query();
 
         if ($request->filled('search')) {
