@@ -62,7 +62,7 @@ final class DashboardService
 
     public function kpis(Carbon $start, Carbon $end, Carbon $prevStart, Carbon $prevEnd): array
     {
-        return $this->cached('dashboard_kpis_'.$start->toDateString(), 120, function () use ($start, $end, $prevStart, $prevEnd) {
+        return $this->cached('dashboard_kpis_'.$start->toDateString().'_'.$end->toDateString(), 120, function () use ($start, $end, $prevStart, $prevEnd) {
             $revenue = Invoice::whereBetween('issued_at', [$start, $end])->sum('total_amount');
             $prevRevenue = Invoice::whereBetween('issued_at', [$prevStart, $prevEnd])->sum('total_amount');
 
@@ -183,7 +183,7 @@ final class DashboardService
 
     public function topProducts(Carbon $start, Carbon $end): array
     {
-        return $this->cached('dashboard_top_products_'.$start->toDateString(), 300, function () use ($start, $end) {
+        return $this->cached('dashboard_top_products_'.$start->toDateString().'_'.$end->toDateString(), 300, function () use ($start, $end) {
             return DB::table('invoice_lines')
                 ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
                 ->whereBetween('invoices.issued_at', [$start, $end])

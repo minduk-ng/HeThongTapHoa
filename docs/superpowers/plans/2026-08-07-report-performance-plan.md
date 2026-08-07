@@ -18,7 +18,7 @@
 - KHÔNG cache `liveOperations` (real-time KDS/serving/tables).
 - KHÔNG cache 6 report controller.
 - KHÔNG thêm index mới cho invoice_lines/payments/invoice_promotions (đã có từ Task 1).
-- Key cache gồm range + start date (`dashboard_kpis_{start}`...).
+- Key cache gồm range + start date (`dashboard_kpis_{start}_{end}`, `dashboard_top_products_{start}_{end}` — BẮT BUỘC kèm end để tránh collision giữa `last_7_days`/`this_month` khi cùng start mùng 1).
 - Dashboard TTL: kpis 120s, chart 120s, topProducts 300s, lowStock 300s.
 - `Cache::tags(['dashboard'])->flush()` trong CheckoutService::runBulk sau khi ghi invoice.
 - `cached()` helper fallback khi Redis lỗi (chạy thẳng).
@@ -234,7 +234,7 @@ Bọc từng method — đổi body thành `return $this->cached(...)` với log
 ```php
     public function kpis(Carbon $start, Carbon $end, Carbon $prevStart, Carbon $prevEnd): array
     {
-        return $this->cached('dashboard_kpis_'.$start->toDateString(), 120, function () use ($start, $end, $prevStart, $prevEnd) {
+        return $this->cached('dashboard_kpis_'.$start->toDateString().'_'.$end->toDateString(), 120, function () use ($start, $end, $prevStart, $prevEnd) {
             $revenue = Invoice::whereBetween('issued_at', [$start, $end])->sum('total_amount');
             $prevRevenue = Invoice::whereBetween('issued_at', [$prevStart, $prevEnd])->sum('total_amount');
 
@@ -290,7 +290,7 @@ Bọc từng method — đổi body thành `return $this->cached(...)` với log
 ```php
     public function topProducts(Carbon $start, Carbon $end): array
     {
-        return $this->cached('dashboard_top_products_'.$start->toDateString(), 300, function () use ($start, $end) {
+        return $this->cached('dashboard_top_products_'.$start->toDateString().'_'.$end->toDateString(), 300, function () use ($start, $end) {
             return \Illuminate\Support\Facades\DB::table('invoice_lines')
                 ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
                 ->whereBetween('invoices.issued_at', [$start, $end])
