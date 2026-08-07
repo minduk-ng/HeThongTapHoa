@@ -111,6 +111,21 @@ test('checkout refresh subtotal va vat_amount cho order (khong lech sau reduce)'
     expect((float) $fresh->vat_amount)->toBe(5455.0);
 });
 
+test('checkout coc du total ghi payment refund am va expectedCash giam', function () {
+    $this->actingAs(posAdmin());
+    $item = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
+    $order = posOrder(posTable(), [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'completed']);
+    Deposit::create(['order_id' => $order->id, 'amount' => 150000, 'method' => 'cash', 'status' => 'held']);
+
+    $invoice = CheckoutService::run($order, [['method' => 'cash', 'amount' => 0]], [], auth()->id());
+
+    // payment refund row: amount = -(150000 - 100000) = -50000
+    $refund = $invoice->payments()->where('amount', '<', 0)->first();
+    expect($refund)->not->toBeNull();
+    expect((float) $refund->amount)->toBe(-50000.0);
+    expect($refund->note)->toBe('Hoàn tiền cọc thừa');
+});
+
 test('checkout rollback khi promotion khong con hop le', function () {
     $this->actingAs(posAdmin());
     $promo = Promotion::create(['code' => 'EXP', 'name' => 'x', 'discount_type' => 'fixed_amount', 'discount_value' => 10000, 'expires_at' => now()->subDay(), 'is_active' => true]);

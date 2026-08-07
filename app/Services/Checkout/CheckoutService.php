@@ -2,6 +2,7 @@
 
 namespace App\Services\Checkout;
 
+use App\Models\Deposit;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\InvoicePromotion;
@@ -122,12 +123,12 @@ class CheckoutService
 
             // 3. Tính cọc và kiểm tra tiền nhận
             $depositTotal = 0.0;
-            /** @var \App\Models\Deposit[] $heldDeposits */
+            /** @var Deposit[] $heldDeposits */
             $heldDeposits = [];
             /** @var Order $order */
             foreach ($orders as $order) {
                 $held = $order->deposits()->where('status', 'held')->get();
-                /** @var \App\Models\Deposit $d */
+                /** @var Deposit $d */
                 foreach ($held as $d) {
                     $heldDeposits[] = $d;
                     $depositTotal += (float) $d->amount;
@@ -180,6 +181,17 @@ class CheckoutService
                     'resolved_at' => now(),
                     'resolved_by_user_id' => $userId,
                     'payment_id' => $depositPayment->id,
+                ]);
+            }
+
+            // Hoàn tiền cọc thừa (nếu cọc > total) — payment row âm để ledger trừ đúng
+            if ($depositTotal > $total) {
+                Payment::create([
+                    'invoice_id' => $invoice->id,
+                    'method' => 'cash',
+                    'amount' => -(round($depositTotal - $total, 2)),
+                    'note' => 'Hoàn tiền cọc thừa',
+                    'received_by' => $userId,
                 ]);
             }
 
@@ -241,12 +253,17 @@ class CheckoutService
                     'total' => $orderTotal,
                 ]);
 
-                OrderActivityLogger::log($order, 'checkout', $userId, [
+                $meta = [
                     'invoice_code' => $invoiceCode,
                     'total' => $orderTotal,
                     'bulk' => $count > 1,
                     'payment_method' => count($paymentRows) === 1 ? $paymentRows[0]['method'] : 'mixed',
-                ]);
+                ];
+                if ($depositTotal > $total) {
+                    $meta['deposit_refund'] = max(0.0, $depositTotal - $total);
+                }
+
+                OrderActivityLogger::log($order, 'checkout', $userId, $meta);
             }
 
             return $invoice;
