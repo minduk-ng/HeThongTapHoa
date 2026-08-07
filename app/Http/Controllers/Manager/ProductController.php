@@ -5,15 +5,19 @@ namespace App\Http\Controllers\Manager;
 use App\Http\Controllers\Controller;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductController extends Controller
 {
-    public function index(Request $request): \Inertia\Response
+    public function index(Request $request): Response
     {
         $query = MenuItem::with('category');
 
@@ -66,7 +70,7 @@ class ProductController extends Controller
         ]);
     }
 
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:100',
@@ -94,7 +98,7 @@ class ProductController extends Controller
         return back()->with('success', 'Thêm sản phẩm thành công!');
     }
 
-    public function update(Request $request, MenuItem $product): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, MenuItem $product): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:100',
@@ -103,7 +107,7 @@ class ProductController extends Controller
             'vat_rate' => 'nullable|numeric|min:0|max:100',
             'description' => 'nullable|string',
             'is_available' => 'boolean',
-            'image' => 'nullable',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         if ($request->hasFile('image')) {
@@ -137,7 +141,7 @@ class ProductController extends Controller
         return back()->with('success', 'Cập nhật sản phẩm thành công!');
     }
 
-    public function destroy(Request $request, MenuItem $product): \Illuminate\Http\RedirectResponse
+    public function destroy(Request $request, MenuItem $product): RedirectResponse
     {
         $request->validate([
             'password' => 'required|string',
@@ -165,7 +169,7 @@ class ProductController extends Controller
         return back()->with('success', 'Đã xóa sản phẩm thành công!');
     }
 
-    public function export(): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function export(): StreamedResponse
     {
         $items = MenuItem::with('category')->get();
 
@@ -205,7 +209,7 @@ class ProductController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    public function checkImport(Request $request): \Illuminate\Http\JsonResponse
+    public function checkImport(Request $request): JsonResponse
     {
         try {
             $request->validate([
@@ -307,7 +311,7 @@ class ProductController extends Controller
         }
     }
 
-    public function confirmImport(Request $request): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
+    public function confirmImport(Request $request): JsonResponse|RedirectResponse
     {
         $request->validate([
             'temp_id' => 'required|string',
