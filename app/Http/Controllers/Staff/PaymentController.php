@@ -417,21 +417,4 @@ class PaymentController extends Controller
             return back()->withErrors(['error' => 'Thanh toán thất bại: '.$e->getMessage()]);
         }
     }
-
-    public function resolvePromotion(?string $code, $lines, float $orderSubtotal, bool $lockForUpdate = false): ?array
-    {
-        if (! $code) {
-            return null;
-        }
-        $r = PromotionEngine::resolveAll([$code], $lines, $orderSubtotal, $lockForUpdate);
-        if ($r['status'] === 'rejected') {
-            return ['status' => 'rejected', 'reason' => $r['reason']];
-        }
-
-        return [
-            'status' => 'ok',
-            'promotion' => $r['promotions'][0]['promotion'],
-            'discount_amount' => $r['promotions'][0]['amount'],
-        ];
-    }
 }
