@@ -113,17 +113,7 @@ class ProductController extends Controller
         if ($request->hasFile('image')) {
             $disk = config('filesystems.disks.sirv.enabled') ? 'sirv' : 'public';
             // Delete old image file if exists
-            if ($product->image) {
-                if (str_starts_with($product->image, '/storage/')) {
-                    $oldPath = str_replace('/storage/', '', $product->image);
-                    Storage::disk('public')->delete($oldPath);
-                } elseif (str_contains($product->image, 'sirv.com')) {
-                    $oldPath = parse_url($product->image, PHP_URL_PATH);
-                    $baseFolder = (string) config('filesystems.disks.sirv.base_folder', '/TapHoa');
-                    $relativeSirvPath = ltrim(str_replace($baseFolder, '', (string) $oldPath), '/');
-                    Storage::disk('sirv')->delete($relativeSirvPath);
-                }
-            }
+            $this->deleteProductImage($product->image);
 
             $file = $request->file('image');
             $filename = Str::slug($validated['name']).'_'.date('Ymd_His').'.'.$file->getClientOriginalExtension();
@@ -152,21 +142,26 @@ class ProductController extends Controller
         }
 
         // Delete image file if exists
-        if ($product->image) {
-            if (str_starts_with($product->image, '/storage/')) {
-                $oldPath = str_replace('/storage/', '', $product->image);
-                Storage::disk('public')->delete($oldPath);
-            } elseif (str_contains($product->image, 'sirv.com')) {
-                $oldPath = parse_url($product->image, PHP_URL_PATH);
-                $baseFolder = (string) config('filesystems.disks.sirv.base_folder', '/TapHoa');
-                $relativeSirvPath = ltrim(str_replace($baseFolder, '', (string) $oldPath), '/');
-                Storage::disk('sirv')->delete($relativeSirvPath);
-            }
-        }
+        $this->deleteProductImage($product->image);
 
         $product->delete();
 
         return back()->with('success', 'Đã xóa sản phẩm thành công!');
+    }
+
+    private function deleteProductImage(?string $image): void
+    {
+        if (! $image) {
+            return;
+        }
+        if (str_starts_with($image, '/storage/')) {
+            Storage::disk('public')->delete(str_replace('/storage/', '', $image));
+        } elseif (str_contains($image, 'sirv.com')) {
+            $oldPath = parse_url($image, PHP_URL_PATH);
+            $baseFolder = (string) config('filesystems.disks.sirv.base_folder', '/TapHoa');
+            $relativeSirvPath = ltrim(str_replace($baseFolder, '', (string) $oldPath), '/');
+            Storage::disk('sirv')->delete($relativeSirvPath);
+        }
     }
 
     public function export(): StreamedResponse
