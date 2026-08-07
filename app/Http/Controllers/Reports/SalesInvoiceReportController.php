@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Manager\Reports;
+namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;

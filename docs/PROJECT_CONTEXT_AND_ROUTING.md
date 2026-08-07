@@ -75,7 +75,7 @@
 ### 2.5 Màn Hình Báo Cáo (Reports Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
-| `/reports/sales-invoices` | `Manager\Reports\SalesInvoiceReportController` | `resources/js/pages/reports/SalesInvoiceReport.tsx` | Báo cáo hoá đơn bán hàng (doanh thu, số hoá đơn, avg/HĐ, HĐ chuyển khoản, lọc theo khoảng ngày & PTTT, CSV/XLSX export, in báo cáo) |
+| `/reports/sales-invoices` | `Reports\SalesInvoiceReportController` | `resources/js/pages/reports/SalesInvoiceReport.tsx` | Báo cáo hoá đơn bán hàng (doanh thu, số hoá đơn, avg/HĐ, HĐ chuyển khoản, lọc theo khoảng ngày & PTTT, CSV/XLSX export, in báo cáo) |
 | `/reports/invoice-items` | `Reports\InvoiceItemsReportController` | `resources/js/pages/reports/InvoiceItemsReport.tsx` | Báo cáo chi tiết hoá đơn (các dòng món bán ra trong kỳ, số lượng, đơn giá, thành tiền, PTTT) |
 | `/reports/product-details` | `Reports\ProductDetailsReportController` | `resources/js/pages/reports/ProductDetailsReport.tsx` | Báo cáo chi tiết sản phẩm hàng hoá (doanh số, số lượng, giá trung bình gom theo từng món trong khoảng thời gian, lọc theo danh mục) |
 | `/reports/cancelled` | `Reports\CancelledReportController` | `resources/js/pages/reports/CancelledReport.tsx` | Báo cáo hoá đơn huỷ (danh sách đơn huỷ nguyên trạng và món bị huỷ riêng lẻ kèm lý do, người huỷ và thời điểm huỷ) |

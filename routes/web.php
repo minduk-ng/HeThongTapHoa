@@ -16,7 +16,7 @@ use App\Http\Controllers\Manager\OrderListController;
 use App\Http\Controllers\Manager\ProductController;
 use App\Http\Controllers\Manager\PromotionController;
 use App\Http\Controllers\Manager\RecipeController;
-use App\Http\Controllers\Manager\Reports\SalesInvoiceReportController;
+use App\Http\Controllers\Reports\SalesInvoiceReportController;
 use App\Http\Controllers\Reports\InvoiceItemsReportController;
 use App\Http\Controllers\Reports\CancelledReportController;
 use App\Http\Controllers\Reports\PaymentsReportController;
