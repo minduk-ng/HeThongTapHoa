@@ -379,3 +379,16 @@ test('checkout qua endpoint ghi invoice_lines payments va invoice_promotions', f
     expect($invoice->promotions)->toHaveCount(1);
     expect((float) $invoice->total_amount)->toBe(90000.0); // 100k - 10k
 });
+
+test('checkout chap nhan e_wallet va change_amount co the thieu', function () {
+    $this->actingAs(posAdmin());
+    $item = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
+    $order = posOrder(posTable(), [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'completed']);
+
+    $this->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'e_wallet',
+        'amount_received' => 100000,
+        // KHÔNG gửi change_amount — trước đây required → 422
+    ])->assertOk();
+});

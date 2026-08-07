@@ -12,6 +12,8 @@ use App\Models\Table;
 use App\Services\Checkout\CheckoutService;
 use App\Services\IdempotencyGuard;
 use App\Services\Promotions\PromotionEngine;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -94,13 +96,13 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function checkout(Request $request): \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+    public function checkout(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'order_id' => 'required|exists:orders,id',
-            'payment_method' => 'required|in:cash,bank_transfer',
+            'payment_method' => 'required|in:cash,bank_transfer,e_wallet',
             'amount_received' => 'required|numeric|min:0',
-            'change_amount' => 'required|numeric|min:0',
+            'change_amount' => 'nullable|numeric|min:0',
             'promotion_code' => 'nullable|string|max:50',
             'idempotency_key' => 'nullable|string|max:100',
         ]);
@@ -119,7 +121,7 @@ class PaymentController extends Controller
             $totalAmount = 0;
             $result = DB::transaction(function () use ($validated, $request, &$order, &$totalAmount) {
                 $order = Order::with(['items.menuItem'])->lockForUpdate()->findOrFail($validated['order_id']);
-                if (!$order instanceof Order) {
+                if (! $order instanceof Order) {
                     throw new \Exception('Không tìm thấy đơn hàng.');
                 }
 
@@ -209,14 +211,10 @@ class PaymentController extends Controller
                                 'merged_into_table_id' => null,
                             ]);
                         }
-                        $this->safeDispatch(fn () => TableStatusUpdated::dispatch($grpTable, 'checkout', [
-                            'order_code' => $order->order_code,
-                            'total_amount' => $totalAmount,
-                        ]));
                     }
                 }
 
-                return ['table' => $targetTable, 'deposit_total' => $depositTotal, 'deposit_refund' => $depositRefund];
+                return ['table' => $targetTable, 'deposit_total' => $depositTotal, 'deposit_refund' => $depositRefund, 'all_group_tables' => $allGroupTables->values()->all()];
             });
 
             Cache::tags(['pos_tables'])->flush();
@@ -225,9 +223,9 @@ class PaymentController extends Controller
             $depositTotal = $result['deposit_total'];
             $depositRefund = $result['deposit_refund'];
 
-            $this->safeDispatch(function () use ($targetTable, $order, $totalAmount) {
-                if ($targetTable) {
-                    TableStatusUpdated::dispatch($targetTable, 'checkout', [
+            $this->safeDispatch(function () use ($result, $order, $totalAmount) {
+                foreach ($result['all_group_tables'] as $grpTable) {
+                    TableStatusUpdated::dispatch($grpTable, 'checkout', [
                         'order_code' => $order->order_code,
                         'total_amount' => $totalAmount,
                     ]);
@@ -266,7 +264,7 @@ class PaymentController extends Controller
             'table_id' => 'nullable|exists:tables,id',
             'payment_method' => 'required|in:cash,bank_transfer,e_wallet',
             'amount_received' => 'required|numeric|min:0',
-            'change_amount' => 'required|numeric|min:0',
+            'change_amount' => 'nullable|numeric|min:0',
             'promotion_code' => 'nullable|string|max:50',
             'idempotency_key' => 'nullable|string|max:100',
         ]);
