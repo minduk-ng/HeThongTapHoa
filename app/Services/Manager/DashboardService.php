@@ -4,14 +4,28 @@ namespace App\Services\Manager;
 
 use App\Models\Ingredient;
 use App\Models\Invoice;
-use App\Models\InvoiceLine;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Table;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 final class DashboardService
 {
+    private function cached(string $key, int $ttl, callable $loader): mixed
+    {
+        try {
+            return Cache::tags(['dashboard'])->remember($key, $ttl, $loader);
+        } catch (\Exception $e) {
+            Log::warning("Redis failed in dashboard {$key}: ".$e->getMessage());
+
+            return $loader();
+        }
+    }
+
     public function getDateBounds(string $range): array
     {
         $now = Carbon::now();
@@ -48,39 +62,41 @@ final class DashboardService
 
     public function kpis(Carbon $start, Carbon $end, Carbon $prevStart, Carbon $prevEnd): array
     {
-        $revenue = Invoice::whereBetween('issued_at', [$start, $end])->sum('total_amount');
-        $prevRevenue = Invoice::whereBetween('issued_at', [$prevStart, $prevEnd])->sum('total_amount');
+        return $this->cached('dashboard_kpis_'.$start->toDateString(), 120, function () use ($start, $end, $prevStart, $prevEnd) {
+            $revenue = Invoice::whereBetween('issued_at', [$start, $end])->sum('total_amount');
+            $prevRevenue = Invoice::whereBetween('issued_at', [$prevStart, $prevEnd])->sum('total_amount');
 
-        $diffPercentage = 0;
-        if ($prevRevenue > 0) {
-            $diffPercentage = round((($revenue - $prevRevenue) / $prevRevenue) * 100, 1);
-        }
+            $diffPercentage = 0;
+            if ($prevRevenue > 0) {
+                $diffPercentage = round((($revenue - $prevRevenue) / $prevRevenue) * 100, 1);
+            }
 
-        $ordersCount = Order::whereBetween('created_at', [$start, $end])->count();
-        $pendingOrdersCount = Order::whereBetween('created_at', [$start, $end])
-            ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])->count();
+            $ordersCount = Order::whereBetween('created_at', [$start, $end])->count();
+            $pendingOrdersCount = Order::whereBetween('created_at', [$start, $end])
+                ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])->count();
 
-        $totalTables = Table::count();
-        $occupiedTables = Table::where('status', 'occupied')->count();
+            $totalTables = Table::count();
+            $occupiedTables = Table::where('status', 'occupied')->count();
 
-        $lowStockCount = Ingredient::whereColumn('stock_quantity', '<=', 'min_stock_alert')->count();
+            $lowStockCount = Ingredient::whereColumn('stock_quantity', '<=', 'min_stock_alert')->count();
 
-        return [
-            'revenue' => [
-                'value' => (float) $revenue,
-                'comparison_percentage' => $diffPercentage,
-                'trend' => $diffPercentage >= 0 ? 'up' : 'down',
-            ],
-            'orders' => [
-                'value' => $ordersCount,
-                'pending_count' => $pendingOrdersCount,
-            ],
-            'tables' => [
-                'occupied' => $occupiedTables,
-                'total' => $totalTables,
-            ],
-            'inventory_warnings_count' => $lowStockCount,
-        ];
+            return [
+                'revenue' => [
+                    'value' => (float) $revenue,
+                    'comparison_percentage' => $diffPercentage,
+                    'trend' => $diffPercentage >= 0 ? 'up' : 'down',
+                ],
+                'orders' => [
+                    'value' => $ordersCount,
+                    'pending_count' => $pendingOrdersCount,
+                ],
+                'tables' => [
+                    'occupied' => $occupiedTables,
+                    'total' => $totalTables,
+                ],
+                'inventory_warnings_count' => $lowStockCount,
+            ];
+        });
     }
 
     public function liveOperations(string $range): ?array
@@ -103,7 +119,7 @@ final class DashboardService
                 'id' => $item->id,
                 'name' => $item->menuItem->name ?? 'Món ăn',
                 'quantity' => $item->quantity,
-                'time_ago' => $item->created_at->diffForHumans(null, \Carbon\CarbonInterface::DIFF_ABSOLUTE).' trước',
+                'time_ago' => $item->created_at->diffForHumans(null, CarbonInterface::DIFF_ABSOLUTE).' trước',
             ]);
 
         $servingQueueCount = OrderItem::where('status', 'completed')
@@ -128,63 +144,67 @@ final class DashboardService
 
     public function chartData(string $range, Carbon $start, Carbon $end): array
     {
-        $invoices = Invoice::whereBetween('issued_at', [$start, $end])->get();
+        return $this->cached('dashboard_chart_'.$range.'_'.$start->toDateString(), 120, function () use ($range, $start, $end) {
+            $invoices = Invoice::whereBetween('issued_at', [$start, $end])->get();
 
-        if ($range === 'today' || $range === 'yesterday') {
-            $data = $invoices->groupBy(fn ($invoice) => Carbon::parse($invoice->issued_at)->hour)
+            if ($range === 'today' || $range === 'yesterday') {
+                $data = $invoices->groupBy(fn ($invoice) => Carbon::parse($invoice->issued_at)->hour)
+                    ->map(fn ($group) => $group->sum('total_amount'))
+                    ->toArray();
+
+                $chart = [];
+                for ($h = 0; $h <= 23; $h++) {
+                    $chart[] = [
+                        'label' => sprintf('%02d:00', $h),
+                        'revenue' => (float) ($data[$h] ?? 0),
+                    ];
+                }
+
+                return $chart;
+            }
+
+            $data = $invoices->groupBy(fn ($invoice) => Carbon::parse($invoice->issued_at)->toDateString())
                 ->map(fn ($group) => $group->sum('total_amount'))
                 ->toArray();
 
             $chart = [];
-            for ($h = 0; $h <= 23; $h++) {
+            $curr = $start->copy();
+            while ($curr->lte($end)) {
                 $chart[] = [
-                    'label' => sprintf('%02d:00', $h),
-                    'revenue' => (float) ($data[$h] ?? 0),
+                    'label' => $curr->format('d/m'),
+                    'revenue' => (float) ($data[$curr->toDateString()] ?? 0),
                 ];
+                $curr->addDay();
             }
 
             return $chart;
-        }
-
-        $data = $invoices->groupBy(fn ($invoice) => Carbon::parse($invoice->issued_at)->toDateString())
-            ->map(fn ($group) => $group->sum('total_amount'))
-            ->toArray();
-
-        $chart = [];
-        $curr = $start->copy();
-        while ($curr->lte($end)) {
-            $chart[] = [
-                'label' => $curr->format('d/m'),
-                'revenue' => (float) ($data[$curr->toDateString()] ?? 0),
-            ];
-            $curr->addDay();
-        }
-
-        return $chart;
+        });
     }
 
     public function topProducts(Carbon $start, Carbon $end): array
     {
-        return \Illuminate\Support\Facades\DB::table('invoice_lines')
-            ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
-            ->whereBetween('invoices.issued_at', [$start, $end])
-            ->selectRaw('invoice_lines.name_snapshot as name, SUM(invoice_lines.quantity) as sales_count')
-            ->groupBy('invoice_lines.name_snapshot')
-            ->orderByDesc('sales_count')
-            ->limit(5)
-            ->get()
-            ->map(fn (\stdClass $r) => [
-                'name' => $r->name,
-                'sales_count' => (int) $r->sales_count,
-            ])
-            ->all();
+        return $this->cached('dashboard_top_products_'.$start->toDateString(), 300, function () use ($start, $end) {
+            return DB::table('invoice_lines')
+                ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
+                ->whereBetween('invoices.issued_at', [$start, $end])
+                ->selectRaw('invoice_lines.name_snapshot as name, SUM(invoice_lines.quantity) as sales_count')
+                ->groupBy('invoice_lines.name_snapshot')
+                ->orderByDesc('sales_count')
+                ->limit(5)
+                ->get()
+                ->map(fn (\stdClass $r) => [
+                    'name' => $r->name,
+                    'sales_count' => (int) $r->sales_count,
+                ])
+                ->all();
+        });
     }
 
     public function lowStock(): array
     {
-        return Ingredient::whereColumn('stock_quantity', '<=', 'min_stock_alert')
+        return $this->cached('dashboard_low_stock', 300, fn () => Ingredient::whereColumn('stock_quantity', '<=', 'min_stock_alert')
             ->select('code', 'name', 'stock_quantity', 'unit', 'min_stock_alert')
             ->get()
-            ->all();
+            ->all());
     }
 }

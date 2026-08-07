@@ -14,6 +14,7 @@ use App\Models\Table;
 use App\Services\OrderActivityLogger;
 use App\Services\Promotions\PromotionEngine;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -39,7 +40,7 @@ class CheckoutService
      */
     public static function runBulk(Collection $orders, array $paymentRows, array $promotionCodes, ?int $userId, ?string $tableName = null): Invoice
     {
-        return DB::transaction(function () use ($orders, $paymentRows, $promotionCodes, $userId, $tableName) {
+        $invoice = DB::transaction(function () use ($orders, $paymentRows, $promotionCodes, $userId, $tableName) {
             $orders = $orders->values();
 
             // 1. Build lines từ tất cả orders
@@ -268,6 +269,11 @@ class CheckoutService
 
             return $invoice;
         });
+
+        // Dashboard KPI tiền thay đổi sau mỗi checkout → flush cache dashboard
+        Cache::tags(['dashboard'])->flush();
+
+        return $invoice;
     }
 
     private static function tableNameFor(Collection $orders): string
