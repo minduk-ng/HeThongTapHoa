@@ -42,14 +42,17 @@ class CheckoutService
             $orders = $orders->values();
 
             // 1. Build lines từ tất cả orders
+            /** @var array<int, array<string, mixed>> $lineInputs */
             $lineInputs = [];
             $subtotal = 0.0;
             $vatTotal = 0.0;
+            /** @var Order $order */
             foreach ($orders as $order) {
                 $activeItems = $order->items()->where('status', '!=', 'cancelled')->with('menuItem')->get();
+                /** @var OrderItem $item */
                 foreach ($activeItems as $item) {
                     $lineSubtotal = (float) $item->subtotal;
-                    $rate = (float) ($item->menuItem?->vat_rate ?? 0);
+                    $rate = (float) ($item->menuItem->vat_rate ?? 0);
                     $lineVat = OrderTotals::vatInPrice($lineSubtotal, $rate);
                     $subtotal += $lineSubtotal;
                     $vatTotal += $lineVat;
@@ -57,13 +60,13 @@ class CheckoutService
                         'order_id' => $order->id,
                         'order_item_id' => $item->id,
                         'menu_item_id' => $item->menu_item_id,
-                        'name_snapshot' => $item->menuItem?->name ?? 'Món',
+                        'name_snapshot' => $item->menuItem->name ?? 'Món',
                         'quantity' => (int) $item->quantity,
                         'unit_price' => (float) $item->unit_price,
                         'subtotal' => $lineSubtotal,
                         'vat_rate' => $rate,
                         'vat_amount' => $lineVat,
-                        'category_id' => $item->menuItem?->category_id,
+                        'category_id' => $item->menuItem->category_id ?? null,
                         'discount_amount' => 0.0,
                     ];
                 }
@@ -119,9 +122,12 @@ class CheckoutService
 
             // 3. Tính cọc và kiểm tra tiền nhận
             $depositTotal = 0.0;
+            /** @var \App\Models\Deposit[] $heldDeposits */
             $heldDeposits = [];
+            /** @var Order $order */
             foreach ($orders as $order) {
                 $held = $order->deposits()->where('status', 'held')->get();
+                /** @var \App\Models\Deposit $d */
                 foreach ($held as $d) {
                     $heldDeposits[] = $d;
                     $depositTotal += (float) $d->amount;
@@ -138,7 +144,7 @@ class CheckoutService
             $invoiceCode = 'INV-'.date('Ymd').strtoupper(Str::random(4));
             $invoice = Invoice::create([
                 'invoice_code' => $invoiceCode,
-                'table_name' => $tableName ?? static::tableNameFor($orders),
+                'table_name' => $tableName ?? self::tableNameFor($orders),
                 'payment_method' => count($paymentRows) === 1 ? $paymentRows[0]['method'] : 'mixed',
                 'amount_received' => $totalReceived,
                 'change_amount' => round($totalReceived - $payable, 2),
@@ -209,10 +215,11 @@ class CheckoutService
             // 8. Cập nhật orders (1 nguồn duy nhất): phân bổ discount theo tỷ trọng, đơn cuối nhận phần dư
             $count = $orders->count();
             $assignedDiscount = 0.0;
+            /** @var Order $order */
             foreach ($orders as $idx => $order) {
                 $activeItems = $order->items()->where('status', '!=', 'cancelled')->with('menuItem')->get();
                 $orderSubtotal = (float) $activeItems->sum('subtotal');
-                $orderVat = (float) $activeItems->sum(fn ($item) => OrderTotals::vatInPrice((float) $item->subtotal, (float) ($item->menuItem?->vat_rate ?? 0)));
+                $orderVat = (float) $activeItems->sum(fn ($item) => $item instanceof OrderItem ? OrderTotals::vatInPrice((float) $item->subtotal, (float) ($item->menuItem->vat_rate ?? 0)) : 0.0);
                 $orderDiscount = 0.0;
                 if ($totalDiscount > 0 && $subtotal > 0) {
                     if ($idx === $count - 1) {

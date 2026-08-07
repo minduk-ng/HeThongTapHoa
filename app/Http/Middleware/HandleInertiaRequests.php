@@ -52,6 +52,7 @@ class HandleInertiaRequests extends Middleware
                             $allowedPageIds = Page::pluck('id')->toArray();
                         } else {
                             $allowedPageIds = [];
+                            /** @var \App\Models\Role $role */
                             foreach ($user->roles as $role) {
                                 $allowedPageIds = array_merge($allowedPageIds, $role->pages->pluck('id')->toArray());
                             }
@@ -92,6 +93,7 @@ class HandleInertiaRequests extends Middleware
                     $allowedPageIds = Page::pluck('id')->toArray();
                 } else {
                     $allowedPageIds = [];
+                    /** @var \App\Models\Role $role */
                     foreach ($user->roles as $role) {
                         $allowedPageIds = array_merge($allowedPageIds, $role->pages->pluck('id')->toArray());
                     }

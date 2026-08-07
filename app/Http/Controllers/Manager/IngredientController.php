@@ -13,7 +13,7 @@ use Inertia\Inertia;
 
 class IngredientController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): \Inertia\Response
     {
         $query = Ingredient::query();
 
@@ -44,7 +44,7 @@ class IngredientController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:100|unique:ingredients,name',
@@ -66,7 +66,7 @@ class IngredientController extends Controller
         return back()->with('success', 'Thêm nguyên liệu thành công!');
     }
 
-    public function update(Request $request, Ingredient $ingredient)
+    public function update(Request $request, Ingredient $ingredient): \Illuminate\Http\RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:100|unique:ingredients,name,'.$ingredient->id,
@@ -83,7 +83,7 @@ class IngredientController extends Controller
         return back()->with('success', 'Cập nhật nguyên liệu thành công!');
     }
 
-    public function destroy(Request $request, Ingredient $ingredient)
+    public function destroy(Request $request, Ingredient $ingredient): \Illuminate\Http\RedirectResponse
     {
         $request->validate([
             'password' => 'required|string',
@@ -101,7 +101,7 @@ class IngredientController extends Controller
         return back()->with('success', 'Xóa nguyên liệu thành công!');
     }
 
-    public function importStock(Request $request)
+    public function importStock(Request $request): \Illuminate\Http\RedirectResponse
     {
         $validated = $request->validate([
             'ingredient_id' => 'required|exists:ingredients,id',
@@ -112,6 +112,9 @@ class IngredientController extends Controller
 
         DB::transaction(function () use ($validated) {
             $ingredient = Ingredient::lockForUpdate()->findOrFail($validated['ingredient_id']);
+            if (!$ingredient instanceof Ingredient) {
+                return;
+            }
             $currentStock = (float) $ingredient->stock_quantity;
             $currentCost = (float) $ingredient->cost_price;
 

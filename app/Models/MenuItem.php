@@ -7,6 +7,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 use Illuminate\Support\Facades\Cache;
 
+/**
+ * @property int $id
+ * @property int $category_id
+ * @property string $name
+ * @property float $price
+ * @property float $vat_rate
+ * @property string|null $image
+ * @property string|null $description
+ * @property bool $is_available
+ * @property int $max_servings
+ * @property-read \App\Models\MenuCategory|null $category
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductRecipe> $recipes
+ */
 class MenuItem extends Model
 {
     protected $table = 'menu_items';
@@ -42,7 +55,7 @@ class MenuItem extends Model
         return $this->belongsTo(MenuCategory::class, 'category_id');
     }
 
-    public function recipes()
+    public function recipes(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(ProductRecipe::class, 'menu_item_id');
     }

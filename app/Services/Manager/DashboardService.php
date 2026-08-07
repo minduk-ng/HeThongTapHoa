@@ -99,11 +99,11 @@ final class DashboardService
             ->latest()
             ->limit(3)
             ->get()
-            ->map(fn ($item) => [
+            ->map(fn (OrderItem $item) => [
                 'id' => $item->id,
-                'name' => $item->menuItem?->name ?? 'Món ăn',
+                'name' => $item->menuItem->name ?? 'Món ăn',
                 'quantity' => $item->quantity,
-                'time_ago' => $item->created_at->diffForHumans(null, true).' trước',
+                'time_ago' => $item->created_at->diffForHumans(null, \Carbon\CarbonInterface::DIFF_ABSOLUTE).' trước',
             ]);
 
         $servingQueueCount = OrderItem::where('status', 'completed')
@@ -165,7 +165,7 @@ final class DashboardService
 
     public function topProducts(Carbon $start, Carbon $end): array
     {
-        return InvoiceLine::query()
+        return \Illuminate\Support\Facades\DB::table('invoice_lines')
             ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
             ->whereBetween('invoices.issued_at', [$start, $end])
             ->selectRaw('invoice_lines.name_snapshot as name, SUM(invoice_lines.quantity) as sales_count')
@@ -173,9 +173,9 @@ final class DashboardService
             ->orderByDesc('sales_count')
             ->limit(5)
             ->get()
-            ->map(fn ($r) => [
+            ->map(fn (\stdClass $r) => [
                 'name' => $r->name,
-                'sales_count' => $r->sales_count,
+                'sales_count' => (int) $r->sales_count,
             ])
             ->all();
     }

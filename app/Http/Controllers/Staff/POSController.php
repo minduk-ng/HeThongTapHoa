@@ -121,11 +121,11 @@ class POSController extends Controller
     {
         $prods = MenuItem::with(['category', 'recipes.ingredient'])->where('is_available', true)->get();
 
-        $prods->transform(function ($product) {
-            if ($product->recipes && $product->recipes->count() > 0) {
+        $prods->transform(function (MenuItem $product) {
+            if ($product->recipes->count() > 0) {
                 $possibleServings = [];
                 foreach ($product->recipes as $recipe) {
-                    if ($recipe->ingredient && (float) $recipe->amount > 0) {
+                    if ((float) $recipe->amount > 0) {
                         $stock = (float) $recipe->ingredient->stock_quantity;
                         $possible = (int) floor($stock / (float) $recipe->amount);
                         $possibleServings[] = max(0, $possible);
@@ -196,7 +196,7 @@ class POSController extends Controller
                 if (! empty($validated['reduced_items'])) {
                     foreach ($validated['reduced_items'] as $red) {
                         $orderItem = OrderItem::lockForUpdate()->find($red['order_item_id']);
-                        if (! $orderItem || $orderItem->status === 'completed' || in_array($orderItem->order?->status, ['paid', 'cancelled', 'completed'], true)) {
+                        if (! $orderItem || $orderItem->status === 'completed' || in_array($orderItem->order->status, ['paid', 'cancelled', 'completed'], true)) {
                             continue;
                         }
 
@@ -222,21 +222,19 @@ class POSController extends Controller
                         }
 
                         $parentOrder = $orderItem->order;
-                        if ($parentOrder) {
-                            // ponytail: subtotal/vat/total giữ snapshot ban đầu khi pending — preview JIT từ order_items (OrderTotals::preview)
-                            if ($parentOrder->items()->where('status', '!=', 'cancelled')->count() === 0) {
-                                $parentOrder->update(['status' => 'cancelled']);
-                            }
-
-                            // Audit log: item_cancel
-                            OrderActivityLogger::log($parentOrder, 'item_cancel', $request->user()?->id, [
-                                'items' => [[
-                                    'name' => $orderItem->menuItem?->name ?? 'Món',
-                                    'qty_reduced' => $reduceQty,
-                                    'reason' => $reasonStr,
-                                ]],
-                            ]);
+                        // ponytail: subtotal/vat/total giữ snapshot ban đầu khi pending — preview JIT từ order_items (OrderTotals::preview)
+                        if ($parentOrder->items()->where('status', '!=', 'cancelled')->count() === 0) {
+                            $parentOrder->update(['status' => 'cancelled']);
                         }
+
+                        // Audit log: item_cancel
+                        OrderActivityLogger::log($parentOrder, 'item_cancel', $request->user()?->id, [
+                            'items' => [[
+                                'name' => $orderItem->menuItem->name ?? 'Món',
+                                'qty_reduced' => $reduceQty,
+                                'reason' => $reasonStr,
+                            ]],
+                        ]);
                     }
                 }
 
@@ -308,7 +306,7 @@ class POSController extends Controller
                     // Audit log
                     $userId = $request->user()?->id;
                     $itemMeta = collect($validated['items'])->map(fn ($i) => [
-                        'name' => MenuItem::find($i['menu_item_id'])?->name ?? 'Món',
+                        'name' => MenuItem::find($i['menu_item_id'])->name ?? 'Món',
                         'qty' => $i['quantity'],
                         'price' => $i['unit_price'],
                     ])->toArray();
@@ -322,7 +320,7 @@ class POSController extends Controller
                             ]);
                         }
                         OrderActivityLogger::log($createdOrder, 'sent_kitchen', $userId, [
-                            'items' => collect($validated['items'])->map(fn ($i) => ['name' => MenuItem::find($i['menu_item_id'])?->name ?? 'Món', 'qty' => $i['quantity']])->toArray(),
+                            'items' => collect($validated['items'])->map(fn ($i) => ['name' => MenuItem::find($i['menu_item_id'])->name ?? 'Món', 'qty' => $i['quantity']])->toArray(),
                             'is_additional' => false,
                         ]);
                     } else {

@@ -125,7 +125,7 @@ class KitchenController extends Controller
 
                 // Audit log: completed
                 OrderActivityLogger::log($order, 'completed', $request->user()?->id, [
-                    'items' => $completedItems->map(fn ($i) => ['name' => $i->menuItem?->name ?? 'Món', 'qty' => $i->quantity])->toArray(),
+                    'items' => $completedItems->map(fn (OrderItem $i) => ['name' => $i->menuItem->name ?? 'Món', 'qty' => $i->quantity])->toArray(),
                 ]);
             });
 
@@ -204,7 +204,7 @@ class KitchenController extends Controller
 
                 // Audit log: completed (partial)
                 OrderActivityLogger::log($order, 'completed', $request->user()?->id, [
-                    'items' => $completedItems->map(fn ($i) => ['name' => $i->menuItem?->name ?? 'Món', 'qty' => $i->quantity])->toArray(),
+                    'items' => $completedItems->map(fn (OrderItem $i) => ['name' => $i->menuItem->name ?? 'Món', 'qty' => $i->quantity])->toArray(),
                     'partial' => $remainingActive > 0,
                 ]);
             });
@@ -270,10 +270,8 @@ class KitchenController extends Controller
                 }
 
                 $order = $item->order;
-                if ($order) {
-                    $targetOrder = $order;
-                    $targetTable = $order->table ?? Table::find($order->table_id);
-                }
+                $targetOrder = $order;
+                $targetTable = $order->table ?? Table::find($order->table_id);
 
                 $reasonStr = $validated['cancellation_reason'].(! empty($validated['note']) ? ': '.$validated['note'] : '');
 
@@ -298,24 +296,22 @@ class KitchenController extends Controller
                     $this->inventoryIngredientService->restoreIngredients(
                         $item,
                         $request->user()?->id,
-                        $order?->order_code ?? ''
+                        $order->order_code
                     );
                 }
 
-                if ($order) {
-                    $remainingActiveCount = $order->items()->where('status', '!=', 'cancelled')->count();
-                    if ($remainingActiveCount === 0) {
-                        $order->update(['status' => 'cancelled']);
-                        if ($targetTable) {
-                            $hasOtherActiveOrders = Order::where('table_id', $targetTable->id)
-                                ->where('id', '!=', $order->id)
-                                ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
-                                ->whereHas('items', fn ($q) => $q->where('status', '!=', 'cancelled'))
-                                ->exists();
+                $remainingActiveCount = $order->items()->where('status', '!=', 'cancelled')->count();
+                if ($remainingActiveCount === 0) {
+                    $order->update(['status' => 'cancelled']);
+                    if ($targetTable) {
+                        $hasOtherActiveOrders = Order::where('table_id', $targetTable->id)
+                            ->where('id', '!=', $order->id)
+                            ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                            ->whereHas('items', fn ($q) => $q->where('status', '!=', 'cancelled'))
+                            ->exists();
 
-                            if (! $hasOtherActiveOrders) {
-                                $targetTable->update(['status' => 'available', 'merged_into_table_id' => null]);
-                            }
+                        if (! $hasOtherActiveOrders) {
+                            $targetTable->update(['status' => 'available', 'merged_into_table_id' => null]);
                         }
                     }
                 }

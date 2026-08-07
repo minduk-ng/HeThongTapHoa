@@ -20,7 +20,7 @@ return new class extends Migration
                 : null;
 
             if (! $promotion) {
-                $promotion = Promotion::make([
+                $promotion = new Promotion([
                     'target_type' => 'order',
                     'target_value' => null,
                 ]);
@@ -41,9 +41,6 @@ return new class extends Migration
             );
 
             foreach ($alloc as $orderItemId => $discount) {
-                if ($orderItemId === null) {
-                    continue;
-                }
                 DB::table('order_items')
                     ->where('id', $orderItemId)
                     ->update(['discount_amount' => $discount]);

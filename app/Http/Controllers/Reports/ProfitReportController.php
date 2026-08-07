@@ -11,7 +11,7 @@ use Inertia\Inertia;
 
 class ProfitReportController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): \Inertia\Response
     {
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
@@ -24,9 +24,11 @@ class ProfitReportController extends Controller
             ->pluck('cost', 'menu_item_id');
 
         // Món bán trong kỳ kèm ngày phát hành (để dựng daily series).
-        $items = InvoiceLine::settledBetween($startDate, $endDate)
+        $items = \Illuminate\Support\Facades\DB::table('invoice_lines')
+            ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
+            ->whereBetween('invoices.issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
             ->join('menu_items', 'menu_items.id', '=', 'invoice_lines.menu_item_id')
-            ->selectRaw('DATE(invoices.issued_at) as day, invoice_lines.menu_item_id as menu_item_id, invoice_lines.name_snapshot as item_name, SUM(invoice_lines.quantity) as quantity, SUM('.InvoiceLine::REVENUE_SQL.') as revenue')
+            ->selectRaw('DATE(invoices.issued_at) as day, invoice_lines.menu_item_id as menu_item_id, invoice_lines.name_snapshot as item_name, SUM(invoice_lines.quantity) as quantity, SUM(invoice_lines.subtotal - invoice_lines.discount_amount) as revenue')
             ->groupBy('day', 'invoice_lines.menu_item_id', 'invoice_lines.name_snapshot')
             ->get()
             ->values();
@@ -37,15 +39,17 @@ class ProfitReportController extends Controller
         // Gom theo món.
         $rows = $items
             ->groupBy('menu_item_id')
-            ->map(function ($group) use ($recipeCost) {
+            ->map(function (\Illuminate\Support\Collection $group) use ($recipeCost) {
+                /** @var \stdClass $first */
+                $first = $group->first();
                 $qty = (int) $group->sum('quantity');
                 $revenue = (float) $group->sum('revenue');
-                $cost = $qty * (float) ($recipeCost[$group->first()->menu_item_id] ?? 0);
+                $cost = $qty * (float) ($recipeCost[$first->menu_item_id] ?? 0);
                 $profit = $revenue - $cost;
 
                 return [
-                    'menu_item_id' => $group->first()->menu_item_id,
-                    'item_name' => $group->first()->item_name,
+                    'menu_item_id' => $first->menu_item_id,
+                    'item_name' => $first->item_name,
                     'quantity' => $qty,
                     'revenue' => $revenue,
                     'cost' => $cost,
@@ -59,14 +63,14 @@ class ProfitReportController extends Controller
         // Daily series theo ngày.
         $daily = $items
             ->groupBy('day')
-            ->map(function ($group, $day) use ($recipeCost) {
+            ->map(function (\Illuminate\Support\Collection $group, $day) use ($recipeCost) {
                 $revenue = (float) $group->sum('revenue');
                 $cost = (float) $group->sum(
-                    fn ($r) => (int) $r->quantity * (float) ($recipeCost[$r->menu_item_id] ?? 0),
+                    fn (\stdClass $r) => (int) $r->quantity * (float) ($recipeCost[$r->menu_item_id] ?? 0),
                 );
 
                 return [
-                    'label' => Carbon::parse($day)->format('d/m'),
+                    'label' => Carbon::parse((string) $day)->format('d/m'),
                     'sort_key' => $day,
                     'revenue' => $revenue,
                     'profit' => $revenue - $cost,

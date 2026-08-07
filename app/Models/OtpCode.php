@@ -10,8 +10,8 @@ use Illuminate\Support\Carbon;
  * @property string $email
  * @property string $code
  * @property string $type
- * @property Carbon $expires_at
- * @property Carbon|null $created_at
+ * @property \Carbon\CarbonInterface $expires_at
+ * @property \Carbon\CarbonInterface|null $created_at
  */
 class OtpCode extends Model
 {

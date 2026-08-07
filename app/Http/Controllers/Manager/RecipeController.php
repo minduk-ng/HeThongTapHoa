@@ -14,7 +14,7 @@ use Inertia\Inertia;
 
 class RecipeController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): \Inertia\Response
     {
         $query = MenuItem::with(['category', 'recipes.ingredient']);
 
@@ -39,7 +39,7 @@ class RecipeController extends Controller
         ]);
     }
 
-    public function updateRecipe(Request $request, MenuItem $product)
+    public function updateRecipe(Request $request, MenuItem $product): \Illuminate\Http\RedirectResponse
     {
         $request->validate([
             'items' => 'array',

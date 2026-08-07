@@ -10,7 +10,7 @@ use Inertia\Inertia;
 
 class CancelledReportController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): \Inertia\Response
     {
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
@@ -23,7 +23,7 @@ class CancelledReportController extends Controller
             ->orderByDesc('updated_at')
             ->get()
             ->values()
-            ->map(fn ($o) => [
+            ->map(fn (Order $o) => [
                 'id' => $o->id,
                 'order_code' => $o->order_code,
                 'table_name' => $o->table?->table_number,
@@ -33,14 +33,14 @@ class CancelledReportController extends Controller
                 'note' => $o->note,
             ]);
 
-        $cancelledItems = OrderItem::query()
+        $cancelledItems = \Illuminate\Support\Facades\DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->join('menu_items', 'menu_items.id', '=', 'order_items.menu_item_id')
             ->leftJoin('users', 'users.id', '=', 'order_items.cancelled_by_user_id')
             ->where('order_items.status', 'cancelled')
             ->whereBetween('order_items.cancelled_at', $range)
             ->orderByDesc('order_items.cancelled_at')
-            ->get([
+            ->select([
                 'order_items.id',
                 'orders.order_code',
                 'menu_items.name as item_name',
@@ -50,8 +50,9 @@ class CancelledReportController extends Controller
                 'users.name as cancelled_by_name',
                 'order_items.cancelled_at',
             ])
+            ->get()
             ->values()
-            ->map(fn ($r) => [
+            ->map(fn (\stdClass $r) => [
                 'id' => $r->id,
                 'order_code' => $r->order_code,
                 'item_name' => $r->item_name,

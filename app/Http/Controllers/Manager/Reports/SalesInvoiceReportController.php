@@ -9,7 +9,7 @@ use Inertia\Inertia;
 
 class SalesInvoiceReportController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): \Inertia\Response
     {
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
@@ -19,7 +19,7 @@ class SalesInvoiceReportController extends Controller
             ->orderByDesc('issued_at')
             ->get()
             ->values()
-            ->map(fn ($invoice) => [
+            ->map(fn (Invoice $invoice) => [
                 'id' => $invoice->id,
                 'invoice_code' => $invoice->invoice_code,
                 'table_name' => $invoice->table_name,
@@ -30,7 +30,7 @@ class SalesInvoiceReportController extends Controller
                 'discount_amount' => (float) $invoice->discount_amount,
                 'amount_received' => (float) $invoice->amount_received,
                 'change_amount' => (float) $invoice->change_amount,
-                'issued_at' => $invoice->issued_at?->toIso8601String(),
+                'issued_at' => $invoice->issued_at->toIso8601String(),
             ]);
 
         $count = $invoices->count();

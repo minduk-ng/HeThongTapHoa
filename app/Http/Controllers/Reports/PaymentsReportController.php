@@ -22,10 +22,10 @@ class PaymentsReportController extends Controller
             ->orderByDesc('issued_at')
             ->get()
             ->values()
-            ->map(fn ($i) => [
+            ->map(fn (Invoice $i) => [
                 'id' => $i->id,
                 'invoice_code' => $i->invoice_code,
-                'issued_at' => $i->issued_at?->toIso8601String(),
+                'issued_at' => $i->issued_at->toIso8601String(),
                 'payment_method' => $i->payment_method,
                 'table_name' => $i->table_name,
                 'total_amount' => (float) $i->total_amount,

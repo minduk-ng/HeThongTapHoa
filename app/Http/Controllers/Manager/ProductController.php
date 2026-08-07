@@ -13,7 +13,7 @@ use Inertia\Inertia;
 
 class ProductController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): \Inertia\Response
     {
         $query = MenuItem::with('category');
 
@@ -66,7 +66,7 @@ class ProductController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:100',
@@ -94,7 +94,7 @@ class ProductController extends Controller
         return back()->with('success', 'Thêm sản phẩm thành công!');
     }
 
-    public function update(Request $request, MenuItem $product)
+    public function update(Request $request, MenuItem $product): \Illuminate\Http\RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:100',
@@ -137,7 +137,7 @@ class ProductController extends Controller
         return back()->with('success', 'Cập nhật sản phẩm thành công!');
     }
 
-    public function destroy(Request $request, MenuItem $product)
+    public function destroy(Request $request, MenuItem $product): \Illuminate\Http\RedirectResponse
     {
         $request->validate([
             'password' => 'required|string',
@@ -165,7 +165,7 @@ class ProductController extends Controller
         return back()->with('success', 'Đã xóa sản phẩm thành công!');
     }
 
-    public function export()
+    public function export(): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $items = MenuItem::with('category')->get();
 
@@ -179,6 +179,9 @@ class ProductController extends Controller
 
         $callback = function () use ($items) {
             $file = fopen('php://output', 'w');
+            if ($file === false) {
+                return;
+            }
             // UTF-8 BOM for Excel compatibility
             fwrite($file, "\xEF\xBB\xBF");
 
@@ -202,7 +205,7 @@ class ProductController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    public function checkImport(Request $request)
+    public function checkImport(Request $request): \Illuminate\Http\JsonResponse
     {
         try {
             $request->validate([
@@ -224,6 +227,9 @@ class ProductController extends Controller
 
             // Auto-detect delimiter (, or ; or \t)
             $firstLine = strtok($content, "\r\n");
+            if ($firstLine === false) {
+                $firstLine = '';
+            }
             $delimiter = ',';
             if (substr_count($firstLine, ';') > substr_count($firstLine, ',')) {
                 $delimiter = ';';
@@ -301,7 +307,7 @@ class ProductController extends Controller
         }
     }
 
-    public function confirmImport(Request $request)
+    public function confirmImport(Request $request): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
     {
         $request->validate([
             'temp_id' => 'required|string',

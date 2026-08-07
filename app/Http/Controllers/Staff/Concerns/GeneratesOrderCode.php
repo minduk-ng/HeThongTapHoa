@@ -20,7 +20,7 @@ trait GeneratesOrderCode
             ->map(fn ($code) => (int) substr($code, strlen($prefix)))
             ->max() ?? 0;
 
-        $seq = str_pad($maxSeq + 1, 2, '0', STR_PAD_LEFT);
+        $seq = str_pad((string) ($maxSeq + 1), 2, '0', STR_PAD_LEFT);
 
         return $prefix.$seq;
     }

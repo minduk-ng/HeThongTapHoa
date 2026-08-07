@@ -66,6 +66,10 @@ class PromotionController extends Controller
         return back()->with('success', 'Xóa khuyến mãi thành công!');
     }
 
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
     private function normalize(array $data): array
     {
         if (isset($data['code'])) {
@@ -83,12 +87,16 @@ class PromotionController extends Controller
         if ($data['target_type'] === 'order') {
             $data['target_value'] = null;
         }
-        if (isset($data['target_value']) && $data['target_value'] !== null && $data['target_value'] !== '') {
+        if (isset($data['target_value']) && $data['target_value'] !== '') {
             $data['target_value'] = (int) $data['target_value'];
         }
         return $data;
     }
 
+    /**
+     * @param Promotion|null $promotion
+     * @return array<string, mixed>
+     */
     private function rules(?Promotion $promotion = null): array
     {
         return [

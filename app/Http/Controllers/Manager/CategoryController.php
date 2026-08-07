@@ -7,10 +7,12 @@ use App\Models\MenuCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
+use Inertia\Response;
+use Illuminate\Http\RedirectResponse;
 
 class CategoryController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $query = MenuCategory::with(['items' => function ($q) {
             $q->orderBy('name', 'asc');
@@ -29,7 +31,7 @@ class CategoryController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:100|unique:menu_categories,name',
@@ -44,7 +46,7 @@ class CategoryController extends Controller
         return back()->with('success', 'Thêm danh mục thành công!');
     }
 
-    public function update(Request $request, MenuCategory $category)
+    public function update(Request $request, MenuCategory $category): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:100|unique:menu_categories,name,'.$category->id,
@@ -59,7 +61,7 @@ class CategoryController extends Controller
         return back()->with('success', 'Cập nhật danh mục thành công!');
     }
 
-    public function destroy(Request $request, MenuCategory $category)
+    public function destroy(Request $request, MenuCategory $category): RedirectResponse
     {
         $request->validate([
             'password' => 'required|string',

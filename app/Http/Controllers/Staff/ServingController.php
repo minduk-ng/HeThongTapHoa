@@ -58,18 +58,18 @@ class ServingController extends Controller
                 foreach ($orderIds as $orderId) {
                     $order = Order::find($orderId);
                     if ($order) {
-                        $items = $servedItems->where('order_id', $orderId)->map(fn ($i) => [
-                            'name' => $i->menuItem?->name ?? 'Món',
+                        $items = $servedItems->where('order_id', $orderId)->map(fn (OrderItem $i) => [
+                            'name' => $i->menuItem->name ?? 'Món',
                             'qty' => $i->quantity,
                         ])->toArray();
                         OrderActivityLogger::log($order, 'served', $request->user()?->id, ['items' => $items]);
                     }
                 }
 
-                $tableNumber = Order::whereIn('id', $orderIds)
+                $firstOrder = Order::whereIn('id', $orderIds)
                     ->with('table')
-                    ->first()
-                    ?->table?->table_number ?? '';
+                    ->first();
+                $tableNumber = $firstOrder?->table->table_number ?? '';
 
                 try {
                     event(new ItemsServed($validated['item_ids'], $orderIds, $tableNumber, $count));
@@ -107,11 +107,11 @@ class ServingController extends Controller
                     'id' => $orderId.'_'.$order->updated_at?->timestamp,
                     'order_id' => $orderId,
                     'order_code' => $order->order_code,
-                    'table_number' => $order->table?->table_number ?? 'Mang về',
-                    'table_area' => $order->table?->area ?? '',
-                    'items' => $orderItems->map(fn ($i) => [
+                    'table_number' => $order->table->table_number ?? 'Mang về',
+                    'table_area' => $order->table->area ?? '',
+                    'items' => $orderItems->map(fn (OrderItem $i) => [
                         'id' => $i->id,
-                        'name' => $i->menuItem?->name ?? 'Món ăn',
+                        'name' => $i->menuItem->name ?? 'Món ăn',
                         'quantity' => $i->quantity,
                         'note' => $i->note,
                     ])->values()->toArray(),

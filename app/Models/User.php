@@ -76,6 +76,7 @@ class User extends Authenticatable
 
         return Cache::remember("user_permissions:{$this->id}", now()->addMinutes(15), function () {
             $permissions = collect();
+            /** @var Role $role */
             foreach ($this->roles()->with('permissions')->get() as $role) {
                 $permissions = $permissions->merge($role->permissions->pluck('name'));
             }

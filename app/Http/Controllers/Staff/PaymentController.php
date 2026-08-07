@@ -94,7 +94,7 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function checkout(Request $request)
+    public function checkout(Request $request): \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
             'order_id' => 'required|exists:orders,id',
@@ -119,6 +119,9 @@ class PaymentController extends Controller
             $totalAmount = 0;
             $result = DB::transaction(function () use ($validated, $request, &$order, &$totalAmount) {
                 $order = Order::with(['items.menuItem'])->lockForUpdate()->findOrFail($validated['order_id']);
+                if (!$order instanceof Order) {
+                    throw new \Exception('Không tìm thấy đơn hàng.');
+                }
 
                 if (in_array($order->status, ['paid', 'cancelled'])) {
                     throw new \Exception('Đơn hàng này đã được thanh toán hoặc đã hủy.');
@@ -417,7 +420,7 @@ class PaymentController extends Controller
         }
     }
 
-    private function resolvePromotion(?string $code, $lines, float $orderSubtotal, bool $lockForUpdate = false): ?array
+    public function resolvePromotion(?string $code, $lines, float $orderSubtotal, bool $lockForUpdate = false): ?array
     {
         if (! $code) {
             return null;

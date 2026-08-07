@@ -9,7 +9,7 @@ use Inertia\Inertia;
 
 class ShiftReportController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): \Inertia\Response
     {
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
@@ -26,9 +26,9 @@ class ShiftReportController extends Controller
                 return [
                     'id' => $shift->id,
                     'status' => $shift->status,
-                    'opened_at' => $shift->opened_at?->toIso8601String(),
+                    'opened_at' => $shift->opened_at->toIso8601String(),
                     'closed_at' => $shift->closed_at?->toIso8601String(),
-                    'opener_name' => $shift->openedBy?->name,
+                    'opener_name' => $shift->openedBy->name,
                     'closer_name' => $shift->closedBy?->name,
                     'opening_cash' => (float) $shift->opening_cash,
                     'closing_cash' => $closing,

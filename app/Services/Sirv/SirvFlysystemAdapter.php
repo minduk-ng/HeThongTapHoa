@@ -38,9 +38,16 @@ class SirvFlysystemAdapter implements FilesystemAdapter
         return '';
     }
 
+    /**
+     * @return resource
+     */
     public function readStream(string $path)
     {
-        return null;
+        $stream = fopen('php://temp', 'r+');
+        if ($stream === false) {
+            throw new \RuntimeException('Failed to open temporary stream.');
+        }
+        return $stream;
     }
 
     public function delete(string $path): void

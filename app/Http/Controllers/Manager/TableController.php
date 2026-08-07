@@ -11,7 +11,7 @@ use Inertia\Inertia;
 
 class TableController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): \Inertia\Response
     {
         // Auto-seed takeaway virtual table if not present
         if (! Table::where('table_number', 'Mang đi')->exists()) {
@@ -61,11 +61,11 @@ class TableController extends Controller
             ->map(fn ($code) => (int) substr($code, strlen($prefix)))
             ->max() ?? 0;
             
-        $seq = str_pad($maxSeq + 1, 2, '0', STR_PAD_LEFT);
+        $seq = str_pad((string) ($maxSeq + 1), 2, '0', STR_PAD_LEFT);
         return $prefix . $seq;
     }
 
-    public function store(Request $request)
+    public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
         $validated = $request->validate([
             'table_number' => 'required|string|max:50|unique:tables,table_number',
@@ -103,7 +103,7 @@ class TableController extends Controller
         return back()->with('success', 'Thêm bàn mới thành công!');
     }
 
-    public function batchStore(Request $request)
+    public function batchStore(Request $request): \Illuminate\Http\RedirectResponse
     {
         $validated = $request->validate([
             'prefix' => 'nullable|string|max:20',
@@ -137,7 +137,7 @@ class TableController extends Controller
         return back()->with('success', "Đã tạo tự động {$createdCount} bàn mới thành công!");
     }
 
-    public function update(Request $request, Table $table)
+    public function update(Request $request, Table $table): \Illuminate\Http\RedirectResponse
     {
         $validated = $request->validate([
             'table_number' => 'required|string|max:50|unique:tables,table_number,'.$table->id,
@@ -204,7 +204,7 @@ class TableController extends Controller
         return back()->with('success', 'Cập nhật thông tin bàn thành công!');
     }
 
-    public function destroy(Request $request, Table $table)
+    public function destroy(Request $request, Table $table): \Illuminate\Http\RedirectResponse
     {
         $request->validate([
             'password' => 'required|string',

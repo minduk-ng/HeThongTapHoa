@@ -13,7 +13,7 @@ class DashboardController extends Controller
         private DashboardService $service
     ) {}
 
-    public function index(Request $request)
+    public function index(Request $request): \Inertia\Response
     {
         $range = $request->input('date_range', 'today');
         [$startDate, $endDate, $prevStartDate, $prevEndDate] = $this->service->getDateBounds($range);

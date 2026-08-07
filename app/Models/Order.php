@@ -29,6 +29,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property-read \App\Models\Invoice|null $invoice
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderActivity> $activities
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Deposit> $deposits
+ * @property float $deposit_total
  */
 class Order extends Model
 {
@@ -65,27 +66,27 @@ class Order extends Model
         'reservation_time' => 'datetime',
     ];
 
-    public function table()
+    public function table(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Table::class, 'table_id');
     }
 
-    public function items()
+    public function items(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(OrderItem::class, 'order_id');
     }
 
-    public function invoice()
+    public function invoice(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Invoice::class, 'invoice_id');
     }
 
-    public function activities()
+    public function activities(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(OrderActivity::class)->orderBy('created_at');
     }
 
-    public function deposits()
+    public function deposits(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Deposit::class);
     }

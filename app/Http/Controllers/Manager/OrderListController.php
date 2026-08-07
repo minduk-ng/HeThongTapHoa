@@ -9,7 +9,7 @@ use Inertia\Inertia;
 
 class OrderListController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): \Inertia\Response
     {
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
@@ -50,7 +50,7 @@ class OrderListController extends Controller
         ]);
     }
 
-    public function show(Order $order)
+    public function show(Order $order): \Inertia\Response
     {
         $order->load([
             'table',
@@ -77,13 +77,13 @@ class OrderListController extends Controller
                     'method' => $d->method,
                     'status' => $d->status,
                     'note' => $d->note,
-                    'received_by_name' => $d->receivedBy?->name ?? 'Hệ thống',
+                    'received_by_name' => $d->receivedBy->name ?? 'Hệ thống',
                     'created_at' => $d->created_at?->toIso8601String(),
                 ]),
                 'created_at' => $order->created_at?->toIso8601String(),
                 'items' => $order->items->map(fn ($item) => [
                     'id' => $item->id,
-                    'name' => $item->menuItem?->name ?? 'Món',
+                    'name' => $item->menuItem->name ?? 'Món',
                     'quantity' => $item->quantity,
                     'unit_price' => (float) $item->unit_price,
                     'subtotal' => (float) $item->subtotal,
@@ -100,7 +100,7 @@ class OrderListController extends Controller
                     'deposit_amount' => (float) $order->invoice->deposit_amount,
                     'amount_received' => (float) $order->invoice->amount_received,
                     'change_amount' => (float) $order->invoice->change_amount,
-                    'issued_at' => $order->invoice->issued_at?->toIso8601String(),
+                    'issued_at' => $order->invoice->issued_at->toIso8601String(),
                 ] : null,
                 'invoice_sibling_count' => $order->invoice_id
                     ? Order::where('invoice_id', $order->invoice_id)->where('id', '!=', $order->id)->count()
@@ -108,9 +108,9 @@ class OrderListController extends Controller
                 'activities' => $order->activities->map(fn ($a) => [
                     'id' => $a->id,
                     'action' => $a->action,
-                    'user_name' => $a->user?->name ?? 'Hệ thống',
+                    'user_name' => $a->user->name ?? 'Hệ thống',
                     'meta' => $a->meta,
-                    'created_at' => $a->created_at?->toIso8601String(),
+                    'created_at' => $a->created_at->toIso8601String(),
                 ]),
             ],
         ]);
