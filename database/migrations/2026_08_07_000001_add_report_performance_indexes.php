@@ -14,6 +14,7 @@ return new class extends Migration
 
         Schema::table('orders', function (Blueprint $table) {
             $table->index('created_at', 'orders_created_at_index');
+            $table->index('updated_at', 'orders_updated_at_index');
         });
 
         Schema::table('order_items', function (Blueprint $table) {
@@ -32,6 +33,7 @@ return new class extends Migration
         });
         Schema::table('orders', function (Blueprint $table) {
             $table->dropIndex('orders_created_at_index');
+            $table->dropIndex('orders_updated_at_index');
         });
         Schema::table('order_items', function (Blueprint $table) {
             $table->dropIndex('order_items_cancelled_at_index');
