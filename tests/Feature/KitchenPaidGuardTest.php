@@ -39,3 +39,17 @@ test('kitchen completeItems khong resurrect don da cancelled khi het mon', funct
 
     expect($order->fresh()->status)->toBe('cancelled');
 });
+
+test('kitchen cancelItem khong huy don da paid khi het mon', function () {
+    $this->actingAs(posAdmin());
+    $item = posMenuItem(['price' => 30000]);
+    $table = posTable(['status' => 'occupied']);
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 30000, 'status' => 'completed']], ['status' => 'paid']);
+
+    $this->post('/staff/kitchen/cancel-item', [
+        'order_item_id' => $order->items->first()->id,
+        'cancellation_reason' => 'Khach doi y',
+    ])->assertSessionHasNoErrors();
+
+    expect($order->fresh()->status)->toBe('paid'); // không flip về cancelled
+});

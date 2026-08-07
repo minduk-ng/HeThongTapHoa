@@ -303,7 +303,7 @@ class KitchenController extends Controller
                 }
 
                 $remainingActiveCount = $order->items()->where('status', '!=', 'cancelled')->count();
-                if ($remainingActiveCount === 0) {
+                if ($remainingActiveCount === 0 && ! in_array($order->fresh()->status, ['paid', 'cancelled'], true)) {
                     $order->update(['status' => 'cancelled']);
                     if ($targetTable) {
                         $hasOtherActiveOrders = Order::where('table_id', $targetTable->id)
