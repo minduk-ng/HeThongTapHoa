@@ -7,11 +7,11 @@ use App\Events\OrderCompleted;
 use App\Events\OrderSentToKitchen;
 use App\Events\TableStatusUpdated;
 use App\Http\Controllers\Controller;
+use App\Models\Employee;
 use App\Models\Ingredient;
 use App\Models\InventoryTransaction;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Employee;
 use App\Models\ProductRecipe;
 use App\Models\Table;
 use App\Services\InventoryIngredientService;
@@ -26,8 +26,7 @@ class KitchenController extends Controller
 {
     public function __construct(
         private InventoryIngredientService $inventoryIngredientService
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
@@ -91,10 +90,10 @@ class KitchenController extends Controller
             }
         }
 
-        if ($order->status === 'cancelled') {
+        if (in_array($order->status, ['paid', 'cancelled'], true)) {
             return $request->wantsJson()
-                ? response()->json(['error' => 'Đơn đã bị hủy.'], 422)
-                : back()->withErrors(['error' => 'Đơn đã bị hủy.']);
+                ? response()->json(['error' => 'Đơn đã thanh toán hoặc đã hủy.'], 422)
+                : back()->withErrors(['error' => 'Đơn đã thanh toán hoặc đã hủy.']);
         }
 
         try {
@@ -195,7 +194,7 @@ class KitchenController extends Controller
                     ->whereNotIn('status', ['cancelled', 'completed'])
                     ->count();
 
-                if ($remainingActive === 0) {
+                if ($remainingActive === 0 && ! in_array($order->fresh()->status, ['paid', 'cancelled'], true)) {
                     $order->update([
                         'status' => 'completed',
                         'has_additional_items' => false,
