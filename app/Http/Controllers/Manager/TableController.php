@@ -4,14 +4,20 @@ namespace App\Http\Controllers\Manager;
 
 use App\Events\TableStatusUpdated;
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\Table;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class TableController extends Controller
 {
-    public function index(Request $request): \Inertia\Response
+    public function index(Request $request): Response
     {
         // Auto-seed takeaway virtual table if not present
         if (! Table::where('table_number', 'Mang đi')->exists()) {
@@ -51,21 +57,22 @@ class TableController extends Controller
 
     private function generateOrderCode(Table $table): string
     {
-        $normalized = str_replace('-', '', strtoupper(\Illuminate\Support\Str::slug($table->table_number))) ?: 'MD';
+        $normalized = str_replace('-', '', strtoupper(Str::slug($table->table_number))) ?: 'MD';
         $dateStr = date('ymd');
         $prefix = "{$normalized}-{$dateStr}-";
-        
-        $maxSeq = \App\Models\Order::where('order_code', 'like', $prefix.'%')
+
+        $maxSeq = Order::where('order_code', 'like', $prefix.'%')
             ->lockForUpdate()
             ->pluck('order_code')
             ->map(fn ($code) => (int) substr($code, strlen($prefix)))
             ->max() ?? 0;
-            
+
         $seq = str_pad((string) ($maxSeq + 1), 2, '0', STR_PAD_LEFT);
-        return $prefix . $seq;
+
+        return $prefix.$seq;
     }
 
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'table_number' => 'required|string|max:50|unique:tables,table_number',
@@ -78,12 +85,12 @@ class TableController extends Controller
             'reservation_note' => 'nullable|string|max:500',
         ]);
 
-        $table = \Illuminate\Support\Facades\DB::transaction(function () use ($validated) {
+        $table = DB::transaction(function () use ($validated) {
             $table = Table::create($validated);
 
             if ($table->status === 'reserved') {
                 $orderCode = $this->generateOrderCode($table);
-                \App\Models\Order::create([
+                Order::create([
                     'order_code' => $orderCode,
                     'table_id' => $table->id,
                     'status' => 'reserved',
@@ -98,12 +105,12 @@ class TableController extends Controller
         });
 
         TableStatusUpdated::dispatch($table);
-        \Illuminate\Support\Facades\Cache::tags(['pos_tables'])->flush();
+        Cache::tags(['pos_tables'])->flush();
 
         return back()->with('success', 'Thêm bàn mới thành công!');
     }
 
-    public function batchStore(Request $request): \Illuminate\Http\RedirectResponse
+    public function batchStore(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'prefix' => 'nullable|string|max:20',
@@ -137,7 +144,7 @@ class TableController extends Controller
         return back()->with('success', "Đã tạo tự động {$createdCount} bàn mới thành công!");
     }
 
-    public function update(Request $request, Table $table): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, Table $table): RedirectResponse
     {
         $validated = $request->validate([
             'table_number' => 'required|string|max:50|unique:tables,table_number,'.$table->id,
@@ -157,8 +164,8 @@ class TableController extends Controller
             ]);
         }
 
-        $table = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $table) {
-            $reservedOrder = \App\Models\Order::where('table_id', $table->id)
+        $table = DB::transaction(function () use ($validated, $table, $request) {
+            $reservedOrder = Order::where('table_id', $table->id)
                 ->where('status', 'reserved')
                 ->first();
 
@@ -172,7 +179,7 @@ class TableController extends Controller
                     ]);
                 } else {
                     $orderCode = $this->generateOrderCode($table);
-                    \App\Models\Order::create([
+                    Order::create([
                         'order_code' => $orderCode,
                         'table_id' => $table->id,
                         'status' => 'reserved',
@@ -184,6 +191,14 @@ class TableController extends Controller
                 }
             } else {
                 if ($reservedOrder) {
+                    // Giải phóng cọc đang giữ: hoàn tiền (refunded) trước khi hủy đặt bàn
+                    foreach ($reservedOrder->deposits()->where('status', 'held')->get() as $deposit) {
+                        $deposit->update([
+                            'status' => 'refunded',
+                            'resolved_at' => now(),
+                            'resolved_by_user_id' => $request->user()?->id,
+                        ]);
+                    }
                     $reservedOrder->update(['status' => 'cancelled']);
                 }
 
@@ -195,16 +210,17 @@ class TableController extends Controller
             }
 
             $table->update($validated);
+
             return $table;
         });
 
         TableStatusUpdated::dispatch($table);
-        \Illuminate\Support\Facades\Cache::tags(['pos_tables'])->flush();
+        Cache::tags(['pos_tables'])->flush();
 
         return back()->with('success', 'Cập nhật thông tin bàn thành công!');
     }
 
-    public function destroy(Request $request, Table $table): \Illuminate\Http\RedirectResponse
+    public function destroy(Request $request, Table $table): RedirectResponse
     {
         $request->validate([
             'password' => 'required|string',
