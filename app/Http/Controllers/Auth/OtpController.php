@@ -73,6 +73,7 @@ class OtpController extends Controller
             if ($user) {
                 $user->update(['email_verified_at' => now()]);
                 Auth::login($user);
+                $request->session()->regenerate();
             }
 
             $request->session()->forget(['otp_email', 'otp_type']);

@@ -70,10 +70,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings', [ProfileController::class, 'show'])->name('settings');
     Route::post('/profile/update-name', [ProfileController::class, 'updateName']);
     Route::post('/profile/update-email', [ProfileController::class, 'updateEmail']);
-    Route::post('/profile/verify-email-otp', [ProfileController::class, 'verifyEmailOtp']);
+    Route::post('/profile/verify-email-otp', [ProfileController::class, 'verifyEmailOtp'])->middleware(['throttle:10,1']);
     Route::post('/profile/setup-password', [ProfileController::class, 'setupPassword']);
     Route::post('/profile/change-password', [ProfileController::class, 'changePassword']);
-    Route::post('/profile/verify-password-otp', [ProfileController::class, 'verifyPasswordOtp']);
+    Route::post('/profile/verify-password-otp', [ProfileController::class, 'verifyPasswordOtp'])->middleware(['throttle:10,1']);
 
     Route::prefix('admin')->middleware(CheckPageAccess::class)->group(function () {
         // Page Manager
