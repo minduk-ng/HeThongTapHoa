@@ -7,6 +7,7 @@ use App\Events\OrderCompleted;
 use App\Events\OrderSentToKitchen;
 use App\Events\TableStatusUpdated;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Staff\Concerns\DispatchesSafely;
 use App\Models\Employee;
 use App\Models\Ingredient;
 use App\Models\InventoryTransaction;
@@ -24,6 +25,8 @@ use Inertia\Inertia;
 
 class KitchenController extends Controller
 {
+    use DispatchesSafely;
+
     public function __construct(
         private InventoryIngredientService $inventoryIngredientService
     ) {}
@@ -335,15 +338,6 @@ class KitchenController extends Controller
             Log::error('Kitchen cancelItem DB error: '.$e->getMessage());
 
             return back()->withErrors(['error' => 'Hủy món thất bại: '.$e->getMessage()]);
-        }
-    }
-
-    private function safeDispatch(callable $callback): void
-    {
-        try {
-            $callback();
-        } catch (\Throwable $e) {
-            Log::warning('Reverb Broadcast skipped due to socket connection issue: '.$e->getMessage());
         }
     }
 }
