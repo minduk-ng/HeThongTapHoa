@@ -71,7 +71,7 @@ class ReservationController extends Controller
                 if ($table && $table->status === 'reserved') {
                     $hasOtherActiveOrders = $table->orders()
                         ->where('id', '!=', $order->id)
-                        ->whereIn('status', ['draft', 'pending', 'confirmed', 'served', 'completed', 'reserved'])
+                        ->whereIn('status', Order::OPERATIONAL_STATUSES)
                         ->exists();
 
                     if (! $hasOtherActiveOrders) {

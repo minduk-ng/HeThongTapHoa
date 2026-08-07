@@ -183,7 +183,7 @@ class PaymentController extends Controller
 
                 $hasOtherActive = $allGroupTableIds->isNotEmpty()
                     ? Order::whereIn('table_id', $allGroupTableIds)
-                        ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                        ->whereIn('status', Order::ACTIVE_STATUSES)
                         ->exists()
                     : false;
 
@@ -354,7 +354,7 @@ class PaymentController extends Controller
                 $allGroupTableIds = $allGroupTables->pluck('id');
                 if ($allGroupTableIds->isNotEmpty()) {
                     $hasOtherActive = Order::whereIn('table_id', $allGroupTableIds)
-                        ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                        ->whereIn('status', Order::ACTIVE_STATUSES)
                         ->exists();
 
                     if (! $hasOtherActive) {

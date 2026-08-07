@@ -37,7 +37,7 @@ class OrderListController extends Controller
 
         $summary = [
             'total_orders' => $orders->count(),
-            'open_orders' => $orders->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])->count(),
+            'open_orders' => $orders->whereIn('status', Order::ACTIVE_STATUSES)->count(),
             'paid_orders' => $orders->where('status', 'paid')->count(),
             'cancelled_orders' => $orders->where('status', 'cancelled')->count(),
         ];

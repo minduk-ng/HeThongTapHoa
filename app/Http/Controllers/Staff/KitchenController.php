@@ -305,7 +305,7 @@ class KitchenController extends Controller
                     if ($targetTable) {
                         $hasOtherActiveOrders = Order::where('table_id', $targetTable->id)
                             ->where('id', '!=', $order->id)
-                            ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                            ->whereIn('status', Order::ACTIVE_STATUSES)
                             ->whereHas('items', fn ($q) => $q->where('status', '!=', 'cancelled'))
                             ->exists();
 

@@ -65,7 +65,7 @@ class TableOperationController extends Controller
                     // Case 2: Source table is the primary table of a merged group
                     // Move all active orders to target table
                     Order::where('table_id', $sourceTable->id)
-                        ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                        ->whereIn('status', Order::ACTIVE_STATUSES)
                         ->update(['table_id' => $targetTable->id]);
 
                     // Update all sub-tables to point to target table as their new primary table
@@ -87,7 +87,7 @@ class TableOperationController extends Controller
                 } else {
                     // Case 3: Standard independent table transfer
                     Order::where('table_id', $sourceTable->id)
-                        ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                        ->whereIn('status', Order::ACTIVE_STATUSES)
                         ->update(['table_id' => $targetTable->id]);
 
                     $sourceTable->update([
@@ -145,7 +145,7 @@ class TableOperationController extends Controller
                     ->pluck('id');
 
                 Order::whereIn('table_id', $sourceGroupIds)
-                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                    ->whereIn('status', Order::ACTIVE_STATUSES)
                     ->update(['table_id' => $primaryTargetId]);
 
                 // Mark source table and any former sub-tables as merged into primaryTargetId
@@ -197,12 +197,12 @@ class TableOperationController extends Controller
 
                 // Move all active orders in group to keep_table_id
                 Order::whereIn('table_id', $allGroupTableIds)
-                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                    ->whereIn('status', Order::ACTIVE_STATUSES)
                     ->update(['table_id' => $keepTable->id]);
 
                 // Dynamic calculation: set status based on whether keepTable has active uncompleted orders
                 $hasActiveOrders = Order::where('table_id', $keepTable->id)
-                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                    ->whereIn('status', Order::ACTIVE_STATUSES)
                     ->whereHas('items', function ($query) {
                         $query->where('status', '!=', 'cancelled');
                     })

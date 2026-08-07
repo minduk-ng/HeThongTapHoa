@@ -49,7 +49,7 @@ class POSController extends Controller
     private function loadTablesPayload(): array
     {
         $tables = Table::with(['mergedIntoTable', 'orders' => function ($query) {
-            $query->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed', 'reserved'])
+            $query->whereIn('status', Order::OPERATIONAL_STATUSES)
                 ->with(['items' => function ($q) {
                     $q->where('status', '!=', 'cancelled')->with('menuItem');
                 }, 'deposits' => function ($q) {
@@ -65,7 +65,7 @@ class POSController extends Controller
                     $query->where('status', '!=', 'cancelled')->with('menuItem');
                 }, 'deposits' => function ($q) {
                     $q->where('status', 'held');
-                }])->whereIn('table_id', $allGroupTableIds)->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed', 'reserved'])->get();
+                }])->whereIn('table_id', $allGroupTableIds)->whereIn('status', Order::OPERATIONAL_STATUSES)->get();
                 $allGroupOrders->each(function ($order) {
                     $order->deposit_total = (float) $order->deposits->sum('amount');
                 });
@@ -87,7 +87,7 @@ class POSController extends Controller
         }, 'deposits' => function ($q) {
             $q->where('status', 'held');
         }])->whereNull('table_id')
-            ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed', 'reserved'])
+            ->whereIn('status', Order::OPERATIONAL_STATUSES)
             ->get();
         $takeawayOrders->each(function ($order) {
             $order->deposit_total = (float) $order->deposits->sum('amount');
@@ -269,7 +269,7 @@ class POSController extends Controller
                     } else {
                         $hasPreviousOrders = $table
                             ? Order::where('table_id', $table->id)
-                                ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                                ->whereIn('status', Order::ACTIVE_STATUSES)
                                 ->exists()
                             : false;
 
@@ -361,7 +361,7 @@ class POSController extends Controller
                 $allGroupTableIds = $allGroupTables->pluck('id');
 
                 $orders = Order::with('items')->whereIn('table_id', $allGroupTableIds)
-                    ->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])
+                    ->whereIn('status', Order::ACTIVE_STATUSES)
                     ->lockForUpdate()
                     ->get();
 

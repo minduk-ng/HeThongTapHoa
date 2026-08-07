@@ -35,6 +35,12 @@ class Order extends Model
 {
     use HasFactory;
 
+    /** Trạng thái đơn đang hoạt động (chưa paid/cancelled). */
+    public const ACTIVE_STATUSES = ['draft', 'pending', 'confirmed', 'processing', 'completed'];
+
+    /** Trạng thái đơn vận hành (gồm cả đặt bàn chưa check-in). */
+    public const OPERATIONAL_STATUSES = ['draft', 'pending', 'confirmed', 'processing', 'completed', 'reserved'];
+
     public $afterCommit = true;
 
     protected $fillable = [
