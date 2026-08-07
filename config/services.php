@@ -46,4 +46,9 @@ return [
         'secret' => env('RECAPTCHA_SECRET_KEY'),
     ],
 
+    'admin' => [
+        'email' => env('ADMIN_EMAIL', 'admin@admin.com'),
+        'default_password' => env('ADMIN_DEFAULT_PASSWORD', '244466666'),
+    ],
+
 ];

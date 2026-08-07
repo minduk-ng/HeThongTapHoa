@@ -29,6 +29,9 @@ class OrderCompleted implements ShouldBroadcastNow
         return 'OrderCompleted';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function broadcastWith(): array
     {
         return [

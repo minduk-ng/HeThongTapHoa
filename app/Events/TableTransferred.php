@@ -33,6 +33,9 @@ class TableTransferred implements ShouldBroadcastNow
         return 'TableTransferred';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function broadcastWith(): array
     {
         return [

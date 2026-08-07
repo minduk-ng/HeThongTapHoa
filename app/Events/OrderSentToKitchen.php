@@ -33,13 +33,16 @@ class OrderSentToKitchen implements ShouldBroadcastNow
         return 'OrderSentToKitchen';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function broadcastWith(): array
     {
         return [
             'order_id' => $this->order->id,
             'order_code' => $this->order->order_code,
             'table_id' => $this->order->table_id,
-            'table_number' => $this->order->table?->table_number ?? '',
+            'table_number' => $this->order->table->table_number ?? '',
             'has_additional_items' => (bool) $this->order->has_additional_items,
             'action_type' => $this->actionType,
             'log_message' => $this->logMessage,

@@ -5,6 +5,31 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $order_code
+ * @property int|null $table_id
+ * @property int|null $employee_id
+ * @property int|null $customer_id
+ * @property int|null $promotion_id
+ * @property float $subtotal
+ * @property float $vat_amount
+ * @property float $discount_amount
+ * @property float $total
+ * @property string $status
+ * @property int|null $invoice_id
+ * @property bool $has_additional_items
+ * @property string|null $note
+ * @property string|null $reservation_name
+ * @property string|null $reservation_phone
+ * @property \Carbon\Carbon|null $reservation_time
+ * @property string|null $reservation_note
+ * @property-read \App\Models\Table|null $table
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderItem> $items
+ * @property-read \App\Models\Invoice|null $invoice
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderActivity> $activities
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Deposit> $deposits
+ */
 class Order extends Model
 {
     use HasFactory;

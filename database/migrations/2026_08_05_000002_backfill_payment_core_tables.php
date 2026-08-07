@@ -56,7 +56,7 @@ return new class extends Migration
                     ->get();
                 foreach ($ordersWithPromo as $o) {
                     $promo = DB::table('promotions')->find($o->promotion_id);
-                    if ($promo && DB::table('invoice_promotions')->where('invoice_id', $invoiceId)->where('promotion_id', $promo->id)->doesntExist()) {
+                    if ($promo instanceof \stdClass && DB::table('invoice_promotions')->where('invoice_id', $invoiceId)->where('promotion_id', $promo->id)->doesntExist()) {
                         DB::table('invoice_promotions')->insert([
                             'invoice_id' => $invoiceId,
                             'promotion_id' => $promo->id,

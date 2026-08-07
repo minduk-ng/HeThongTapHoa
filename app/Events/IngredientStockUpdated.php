@@ -12,6 +12,9 @@ class IngredientStockUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    /**
+     * @param array<string, mixed> $meta
+     */
     public function __construct(public array $meta = []) {}
 
     public function broadcastOn(): array
@@ -26,6 +29,9 @@ class IngredientStockUpdated implements ShouldBroadcastNow
         return 'IngredientStockUpdated';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function broadcastWith(): array
     {
         return array_merge([

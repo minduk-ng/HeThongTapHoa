@@ -190,9 +190,6 @@ class DefaultMenuAndInventorySeeder extends Seeder
         ];
 
         foreach ($recipesData as $productName => $items) {
-            if (! isset($productModels[$productName])) {
-                continue;
-            }
             $product = $productModels[$productName];
 
             foreach ($items as $rec) {

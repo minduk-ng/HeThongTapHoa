@@ -15,17 +15,17 @@ class UserPermissionController extends Controller
 {
     public function index(Request $request): Response
     {
-        $search = $request->query('search');
-        $roleName = $request->query('role');
+        $search = (string) $request->query('search', '');
+        $roleName = (string) $request->query('role', '');
 
         $users = User::with('roles')
-            ->when($search, function ($query, $search) {
+            ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
                 });
             })
-            ->when($roleName, function ($query, $roleName) {
+            ->when($roleName !== '', function ($query) use ($roleName) {
                 $query->whereHas('roles', function ($q) use ($roleName) {
                     $q->where('name', $roleName);
                 });
@@ -82,11 +82,11 @@ class UserPermissionController extends Controller
         ]);
 
         // Tránh tác động đến tài khoản super admin
-        $userIds = collect($validated['user_ids'])->filter(function ($id) {
+        $userIds = array_filter((array) $validated['user_ids'], function ($id) {
             $user = User::find($id);
 
-            return $user && ! $user->isAdmin();
-        })->toArray();
+            return $user instanceof User && ! $user->isAdmin();
+        });
 
         if (empty($userIds)) {
             return redirect()->back()->with('error', 'Không có người dùng hợp lệ để thực hiện thao tác.');
@@ -107,13 +107,18 @@ class UserPermissionController extends Controller
         } elseif ($validated['action'] === 'assign_role') {
             $roleIds = Role::whereIn('name', $validated['role_names'] ?? [])->pluck('id')->toArray();
             foreach ($userIds as $id) {
-                User::find($id)->roles()->syncWithoutDetaching($roleIds);
+                $user = User::find($id);
+                if ($user instanceof User) {
+                    $user->roles()->syncWithoutDetaching($roleIds);
+                }
             }
         } elseif ($validated['action'] === 'clear_roles') {
             $guestRoleId = Role::where('name', 'guest')->value('id');
             foreach ($userIds as $id) {
                 $user = User::find($id);
-                $user->roles()->sync([$guestRoleId]);
+                if ($user instanceof User) {
+                    $user->roles()->sync([$guestRoleId]);
+                }
             }
         }
 

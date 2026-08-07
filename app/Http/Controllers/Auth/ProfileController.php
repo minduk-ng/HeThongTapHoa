@@ -13,12 +13,12 @@ use Inertia\Inertia;
 
 class ProfileController extends Controller
 {
-    public function show(Request $request)
+    public function show(Request $request): \Inertia\Response
     {
         return Inertia::render('profile/Settings');
     }
 
-    public function updateName(Request $request)
+    public function updateName(Request $request): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -39,7 +39,7 @@ class ProfileController extends Controller
         ]);
     }
 
-    public function updateEmail(Request $request)
+    public function updateEmail(Request $request): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
             'email' => ['required', 'email', 'unique:users,email,'.Auth::id()],
@@ -80,7 +80,7 @@ class ProfileController extends Controller
         return response()->json(['success' => true, 'requires_otp' => true]);
     }
 
-    public function verifyEmailOtp(Request $request)
+    public function verifyEmailOtp(Request $request): \Illuminate\Http\JsonResponse
     {
         $request->validate([
             'code' => ['required', 'string', 'size:6'],
@@ -119,7 +119,7 @@ class ProfileController extends Controller
         ]);
     }
 
-    public function setupPassword(Request $request)
+    public function setupPassword(Request $request): \Illuminate\Http\JsonResponse
     {
         $user = Auth::user();
         if ($user->password !== null) {
@@ -146,7 +146,7 @@ class ProfileController extends Controller
         ]);
     }
 
-    public function changePassword(Request $request)
+    public function changePassword(Request $request): \Illuminate\Http\JsonResponse
     {
         $user = Auth::user();
         if ($user->password === null) {
@@ -197,7 +197,7 @@ class ProfileController extends Controller
         return response()->json(['success' => true, 'requires_otp' => true]);
     }
 
-    public function verifyPasswordOtp(Request $request)
+    public function verifyPasswordOtp(Request $request): \Illuminate\Http\JsonResponse
     {
         $request->validate([
             'code' => ['required', 'string', 'size:6'],

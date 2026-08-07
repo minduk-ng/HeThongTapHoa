@@ -12,6 +12,10 @@ class ItemsServed implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    /**
+     * @param array<int, int> $itemIds
+     * @param array<int, int> $orderIds
+     */
     public function __construct(
         public array $itemIds,
         public array $orderIds,
@@ -31,6 +35,9 @@ class ItemsServed implements ShouldBroadcastNow
         return 'ItemsServed';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function broadcastWith(): array
     {
         return [

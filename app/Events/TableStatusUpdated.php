@@ -14,6 +14,9 @@ class TableStatusUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    /**
+     * @param array<string, mixed>|null $meta
+     */
     public function __construct(
         public Table $table,
         public ?string $action = null,
@@ -32,6 +35,9 @@ class TableStatusUpdated implements ShouldBroadcastNow
         return 'TableStatusUpdated';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function broadcastWith(): array
     {
         return [

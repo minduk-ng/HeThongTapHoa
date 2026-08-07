@@ -26,7 +26,7 @@ class PromotionEngine
                 return ['status' => 'rejected', 'reason' => 'not_found', 'code' => $code];
             }
 
-            $reject = static::validateAgainst($promotion, $subtotal);
+            $reject = self::validateAgainst($promotion, $subtotal);
             if ($reject !== null) {
                 return ['status' => 'rejected', 'reason' => $reject, 'code' => $code];
             }

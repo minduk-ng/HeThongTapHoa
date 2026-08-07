@@ -224,8 +224,8 @@ class AuthorizationSeeder extends Seeder
         DB::table('role_permissions')->insert($rolePermissions);
 
         // 5. Create or find admin user
-        $adminEmail = env('ADMIN_EMAIL', 'admin@admin.com');
-        $adminPassword = env('ADMIN_DEFAULT_PASSWORD', '244466666');
+        $adminEmail = (string) config('services.admin.email', 'admin@admin.com');
+        $adminPassword = (string) config('services.admin.default_password', '244466666');
         $adminUser = DB::table('users')->where('email', $adminEmail)->first();
 
         if (! $adminUser) {

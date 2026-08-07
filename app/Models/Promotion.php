@@ -6,6 +6,23 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 
+/**
+ * @property int $id
+ * @property string $code
+ * @property string $name
+ * @property string|null $description
+ * @property string $discount_type
+ * @property float $discount_value
+ * @property string $target_type
+ * @property int|null $target_value
+ * @property float|null $min_order_amount
+ * @property float|null $max_discount_amount
+ * @property int|null $max_uses
+ * @property int $used_count
+ * @property \Carbon\Carbon|null $starts_at
+ * @property \Carbon\Carbon|null $expires_at
+ * @property bool $is_active
+ */
 class Promotion extends Model
 {
     use SoftDeletes;
