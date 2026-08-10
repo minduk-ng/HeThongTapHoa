@@ -71,19 +71,19 @@ class AuthorizationSeeder extends Seeder
             [
                 'name' => 'Nguyên liệu',
                 'route_path' => '/manager/inventory/ingredients',
-                'group_name' => 'Quản lý',
+                'group_name' => 'Kho',
                 'sort_order' => 25,
             ],
             [
                 'name' => 'Định lượng món',
                 'route_path' => '/manager/inventory/recipes',
-                'group_name' => 'Quản lý',
+                'group_name' => 'Kho',
                 'sort_order' => 26,
             ],
             [
                 'name' => 'Phiếu kho',
                 'route_path' => '/manager/inventory/vouchers',
-                'group_name' => 'Quản lý',
+                'group_name' => 'Kho',
                 'sort_order' => 27,
             ],
             [

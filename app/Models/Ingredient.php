@@ -19,12 +19,15 @@ class Ingredient extends Model
         'min_stock_alert',
         'cost_price',
         'expiry_date',
+        'purchase_unit',
+        'unit_conversion',
     ];
 
     protected $casts = [
         'stock_quantity' => 'float',
         'min_stock_alert' => 'float',
         'cost_price' => 'float',
+        'unit_conversion' => 'float',
     ];
 
     protected static function booted(): void

@@ -50,6 +50,8 @@ class IngredientController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:100|unique:ingredients,name',
             'unit' => 'required|string|max:20',
+            'purchase_unit' => 'nullable|string|max:20',
+            'unit_conversion' => 'nullable|numeric|gt:0',
             'stock_quantity' => 'required|numeric|min:0',
             'min_stock_alert' => 'nullable|numeric|min:0',
             'cost_price' => 'nullable|numeric|min:0',
@@ -59,6 +61,7 @@ class IngredientController extends Controller
         $validated['code'] = $slug;
         $validated['min_stock_alert'] = $validated['min_stock_alert'] ?? 50;
         $validated['cost_price'] = $validated['cost_price'] ?? 0;
+        $validated['unit_conversion'] = $validated['unit_conversion'] ?? 1;
 
         $ingredient = Ingredient::create($validated);
 
@@ -72,10 +75,14 @@ class IngredientController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:100|unique:ingredients,name,'.$ingredient->id,
             'unit' => 'required|string|max:20',
+            'purchase_unit' => 'nullable|string|max:20',
+            'unit_conversion' => 'nullable|numeric|gt:0',
             'stock_quantity' => 'required|numeric|min:0',
             'min_stock_alert' => 'nullable|numeric|min:0',
             'cost_price' => 'nullable|numeric|min:0',
         ]);
+
+        $validated['unit_conversion'] = $validated['unit_conversion'] ?? 1;
 
         $ingredient->update($validated);
 
