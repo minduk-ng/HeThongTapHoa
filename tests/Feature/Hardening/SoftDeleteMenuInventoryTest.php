@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Ingredient;
-use App\Models\InventoryTransaction;
 use App\Models\MenuItem;
 use App\Models\OrderItem;
 
@@ -17,21 +16,17 @@ test('xoá món qua ProductController la soft delete, lich su order con nguyen',
     expect(OrderItem::where('menu_item_id', $item->id)->count())->toBe(1);
 });
 
-test('xoá nguyên liệu qua IngredientController la soft delete, inventory_transactions con nguyen', function () {
+test('xoá nguyên liệu qua IngredientController la soft delete', function () {
     $admin = posAdmin();
     $ing = Ingredient::create([
         'code' => 'test-'.uniqid(), 'name' => 'NL '.uniqid(),
         'stock_quantity' => 100, 'unit' => 'g', 'min_stock_alert' => 10, 'cost_price' => 1000,
-    ]);
-    InventoryTransaction::create([
-        'ingredient_id' => $ing->id, 'type' => 'import', 'quantity' => 100, 'reason' => 'test',
     ]);
 
     $this->actingAs($admin)->delete('/manager/inventory/ingredients/'.$ing->id, ['password' => 'password123']);
 
     expect(Ingredient::withTrashed()->find($ing->id))->not->toBeNull();
     expect(Ingredient::find($ing->id))->toBeNull();
-    expect(InventoryTransaction::where('ingredient_id', $ing->id)->count())->toBe(1);
 });
 
 test('POS index van hoat dong khi recipe tro toi ingredient da xoa mem', function () {

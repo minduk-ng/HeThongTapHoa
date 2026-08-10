@@ -1,8 +1,10 @@
 <?php
 
-use App\Models\Order;
+use App\Models\Deposit;
+use App\Models\Ingredient;
 use App\Models\OrderActivity;
-use App\Models\Table;
+use App\Models\ProductRecipe;
+use Inertia\Testing\AssertableInertia;
 
 /*
 |--------------------------------------------------------------------------
@@ -47,7 +49,7 @@ test('chặn chuyển bàn nếu bàn đích hoặc bàn nguồn đang chứa đ
     ]);
 
     $response->assertSessionHasErrors(['error' => 'Chuyển bàn thất bại: Không thể chuyển bàn đang có đơn đặt trước.']);
-    
+
     // Đảo ngược
     $source2 = posTable(['status' => 'occupied']);
     $target2 = posTable(['status' => 'reserved']);
@@ -150,7 +152,7 @@ test('chặn gộp bàn nếu nhóm nguồn hoặc đích đang chứa đơn đ�
     ]);
 
     $response->assertSessionHasErrors(['error' => 'Gộp bàn thất bại: Không thể gộp bàn đang có đơn đặt trước.']);
-    
+
     // Đảo ngược
     $source2 = posTable(['status' => 'occupied']);
     $target2 = posTable(['status' => 'reserved']);
@@ -231,13 +233,13 @@ test('serializes reserved orders with reservation info and deposit_total in inde
     $staff = posStaff();
     $table = posTable(['status' => 'reserved']);
     $order = posOrder($table, [], ['status' => 'reserved', 'reservation_name' => 'Anh Đức']);
-    \App\Models\Deposit::create(['order_id' => $order->id, 'amount' => 100000, 'method' => 'cash', 'status' => 'held']);
+    Deposit::create(['order_id' => $order->id, 'amount' => 100000, 'method' => 'cash', 'status' => 'held']);
 
     $res = $this->actingAs($staff)->get('/staff/pos');
-    
+
     $res->assertOk();
-    $res->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
-        ->has('tables', fn (\Inertia\Testing\AssertableInertia $tables) => $tables
+    $res->assertInertia(fn (AssertableInertia $page) => $page
+        ->has('tables', fn (AssertableInertia $tables) => $tables
             ->where('1.id', $table->id)
             ->where('1.active_orders.0.status', 'reserved')
             ->where('1.active_orders.0.reservation_name', 'Anh Đức')
@@ -281,17 +283,17 @@ test('hủy toàn bộ đơn của nhóm bàn: món và đơn cancelled kèm lý
     expect(OrderActivity::where('action', 'order_cancelled')->count())->toBe(2);
 });
 
-test('hủy toàn bộ đơn chỉ hoàn kho cho món completed, không hoàn món pending', function () {
+test('hủy toàn bộ đơn không đổi kho', function () {
     $this->actingAs(posAdmin());
 
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem();
-    $ingredient = App\Models\Ingredient::create([
+    $ingredient = Ingredient::create([
         'name' => 'Nguyên liệu hủy POS '.uniqid(),
         'unit' => 'g',
         'stock_quantity' => 940,
     ]);
-    App\Models\ProductRecipe::create([
+    ProductRecipe::create([
         'menu_item_id' => $item->id,
         'ingredient_id' => $ingredient->id,
         'amount' => 20,
@@ -307,8 +309,8 @@ test('hủy toàn bộ đơn chỉ hoàn kho cho món completed, không hoàn m�
         'cancellation_reason' => 'Khách bỏ về',
     ])->assertSessionHasNoErrors();
 
-    expect((float) $ingredient->fresh()->stock_quantity)->toBe(1000.0);
-    expect((float) App\Models\InventoryTransaction::where('ingredient_id', $ingredient->id)->where('type', 'import')->value('quantity'))->toBe(60.0);
+    // Hủy đơn KHÔNG hoàn kho: stock giữ nguyên
+    expect((float) $ingredient->fresh()->stock_quantity)->toBe(940.0);
     expect($order->fresh()->status)->toBe('cancelled');
     expect($order->fresh()->items->pluck('status')->unique()->all())->toBe(['cancelled']);
 });

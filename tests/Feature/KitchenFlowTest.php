@@ -1,23 +1,22 @@
 <?php
 
 use App\Models\Ingredient;
-use App\Models\InventoryTransaction;
 use App\Models\OrderActivity;
 use App\Models\ProductRecipe;
 
 /*
 |--------------------------------------------------------------------------
-| Bếp — Hoàn tất món / trừ kho tự động / hủy món (KitchenController)
+| Bếp — Hoàn tất món / hủy món (KitchenController)
 |--------------------------------------------------------------------------
 | Bao phủ:
-| - completeOrder: toàn bộ món completed, trừ nguyên liệu đúng công thức × số lượng
+| - completeOrder: toàn bộ món completed
 | - completeItems: hoàn tất một phần, đơn chỉ completed khi hết món chờ
-| - Món cancelled/completed không bị trừ kho lặp
+| - Món cancelled/completed không bị đụng lại
 | - cancelItem: hủy món kèm lý do; hủy món cuối → đơn cancelled + nhả bàn
-| - Ghi InventoryTransaction xuất kho cho từng nguyên liệu
+| - Trừ kho KHÔNG còn xảy ra ở bếp: stock chỉ đổi tại checkout (voucher)
 */
 
-test('hoàn tất cả đơn: mọi món completed và nguyên liệu bị trừ đúng công thức nhân số lượng', function () {
+test('hoàn tất cả đơn: mọi món completed và kho không bị trừ ở bếp', function () {
     $this->actingAs(posAdmin());
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem();
@@ -35,16 +34,13 @@ test('hoàn tất cả đơn: mọi món completed và nguyên liệu bị trừ
     expect($order->fresh()->status)->toBe('completed');
     $order->items->each(fn ($orderItem) => expect($orderItem->fresh()->status)->toBe('completed'));
 
-    // Trừ kho: 20g × 3 = 60g cà phê, 100ml × 3 = 300ml sữa
-    expect((float) $coffee->fresh()->stock_quantity)->toBe(940.0);
-    expect((float) $milk->fresh()->stock_quantity)->toBe(1700.0);
-
-    // Có giao dịch xuất kho cho từng nguyên liệu
-    expect(InventoryTransaction::where('type', 'export')->count())->toBe(2);
+    // Hoàn tất ở bếp KHÔNG trừ kho: stock giữ nguyên
+    expect((float) $coffee->fresh()->stock_quantity)->toBe(1000.0);
+    expect((float) $milk->fresh()->stock_quantity)->toBe(2000.0);
     expect(OrderActivity::where('order_id', $order->id)->where('action', 'completed')->exists())->toBeTrue();
 });
 
-test('hoàn tất cả đơn không trừ kho lặp cho món đã completed hoặc đã hủy', function () {
+test('hoàn tất cả đơn: món completed/cancelled không bị đụng lại, kho giữ nguyên', function () {
     $this->actingAs(posAdmin());
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem();
@@ -60,9 +56,8 @@ test('hoàn tất cả đơn không trừ kho lặp cho món đã completed ho�
 
     $this->post("/staff/kitchen/complete/{$order->id}")->assertSessionHasNoErrors();
 
-    // Chỉ trừ cho 1 phần món pending: 10g
-    expect((float) $sugar->fresh()->stock_quantity)->toBe(490.0);
-    expect(InventoryTransaction::count())->toBe(1);
+    // Chỉ món pending được hoàn tất, kho không đổi
+    expect((float) $sugar->fresh()->stock_quantity)->toBe(500.0);
 });
 
 test('hoàn tất một phần món: đơn vẫn ở bếp cho tới khi món cuối cùng xong', function () {
@@ -187,17 +182,17 @@ test('hủy món đã cancelled lần nữa không gây lỗi và không đổi 
     expect($orderItem->fresh()->cancellation_reason)->toBe('Lý do gốc');
 });
 
-test('bếp hủy món đã completed thì hoàn kho đúng công thức và ghi transaction import', function () {
+test('bếp hủy món đã completed thì không hoàn kho', function () {
     $this->actingAs(posAdmin());
 
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem();
-    $coffee = App\Models\Ingredient::create([
+    $coffee = Ingredient::create([
         'name' => 'Cà phê hoàn kho '.uniqid(),
         'unit' => 'g',
         'stock_quantity' => 940,
     ]);
-    App\Models\ProductRecipe::create([
+    ProductRecipe::create([
         'menu_item_id' => $item->id,
         'ingredient_id' => $coffee->id,
         'amount' => 20,
@@ -215,16 +210,8 @@ test('bếp hủy món đã completed thì hoàn kho đúng công thức và ghi
     ])->assertSessionHasNoErrors();
 
     expect($order->items->first()->fresh()->status)->toBe('cancelled');
-    expect((float) $coffee->fresh()->stock_quantity)->toBe(1000.0);
-
-    $tx = App\Models\InventoryTransaction::query()
-        ->where('ingredient_id', $coffee->id)
-        ->where('type', 'import')
-        ->first();
-
-    expect($tx)->not->toBeNull();
-    expect((float) $tx->quantity)->toBe(60.0);
-    expect($tx->reason)->toBe("Hoàn kho do hủy món {$order->order_code}");
+    // Hủy món KHÔNG hoàn kho: stock giữ nguyên
+    expect((float) $coffee->fresh()->stock_quantity)->toBe(940.0);
 });
 
 test('bếp hủy món pending thì không đổi kho và không ghi transaction import', function () {
@@ -232,12 +219,12 @@ test('bếp hủy món pending thì không đổi kho và không ghi transaction
 
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem();
-    $milk = App\Models\Ingredient::create([
+    $milk = Ingredient::create([
         'name' => 'Sữa pending '.uniqid(),
         'unit' => 'ml',
         'stock_quantity' => 500,
     ]);
-    App\Models\ProductRecipe::create([
+    ProductRecipe::create([
         'menu_item_id' => $item->id,
         'ingredient_id' => $milk->id,
         'amount' => 100,
@@ -255,20 +242,19 @@ test('bếp hủy món pending thì không đổi kho và không ghi transaction
     ])->assertSessionHasNoErrors();
 
     expect((float) $milk->fresh()->stock_quantity)->toBe(500.0);
-    expect(App\Models\InventoryTransaction::where('ingredient_id', $milk->id)->where('type', 'import')->count())->toBe(0);
 });
 
-test('bếp hủy món completed lần hai không hoàn kho thêm', function () {
+test('bếp hủy món completed lần hai không đổi kho thêm', function () {
     $this->actingAs(posAdmin());
 
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem();
-    $sugar = App\Models\Ingredient::create([
+    $sugar = Ingredient::create([
         'name' => 'Đường idempotent '.uniqid(),
         'unit' => 'g',
         'stock_quantity' => 90,
     ]);
-    App\Models\ProductRecipe::create([
+    ProductRecipe::create([
         'menu_item_id' => $item->id,
         'ingredient_id' => $sugar->id,
         'amount' => 10,
@@ -287,8 +273,7 @@ test('bếp hủy món completed lần hai không hoàn kho thêm', function () 
     $this->post('/staff/kitchen/cancel-item', $payload)->assertSessionHasNoErrors();
     $this->post('/staff/kitchen/cancel-item', $payload)->assertSessionHasNoErrors();
 
-    expect((float) $sugar->fresh()->stock_quantity)->toBe(100.0);
-    expect(App\Models\InventoryTransaction::where('ingredient_id', $sugar->id)->where('type', 'import')->count())->toBe(1);
+    expect((float) $sugar->fresh()->stock_quantity)->toBe(90.0);
 });
 
 test('hủy món completed vẫn an toàn khi ingredient và recipe đã bị xóa', function () {
@@ -296,12 +281,12 @@ test('hủy món completed vẫn an toàn khi ingredient và recipe đã bị x�
 
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem();
-    $ingredient = App\Models\Ingredient::create([
+    $ingredient = Ingredient::create([
         'name' => 'N.Lieu bi xoa '.uniqid(),
         'unit' => 'g',
         'stock_quantity' => 100,
     ]);
-    App\Models\ProductRecipe::create([
+    ProductRecipe::create([
         'menu_item_id' => $item->id,
         'ingredient_id' => $ingredient->id,
         'amount' => 20,
@@ -320,7 +305,6 @@ test('hủy món completed vẫn an toàn khi ingredient và recipe đã bị x�
     ])->assertSessionHasNoErrors();
 
     expect($order->items->first()->fresh()->status)->toBe('cancelled');
-    expect(App\Models\InventoryTransaction::where('type', 'import')->count())->toBe(0);
 });
 
 test('nhân viên không có quyền kitchen.update bị chặn hoàn tất món (403)', function () {

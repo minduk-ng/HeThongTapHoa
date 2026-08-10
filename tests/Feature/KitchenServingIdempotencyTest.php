@@ -18,7 +18,7 @@ test('complete-items trùng idempotency key chỉ hoàn thành 1 lần', functio
     expect($orderItem->fresh()->status)->toBe('completed');
 });
 
-test('complete-items lần 1 trừ kho, lần 2 cùng key không trừ thêm', function () {
+test('complete-items lần 1 và lần 2 cùng key không đổi kho', function () {
     $this->actingAs(posAdmin());
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem();
@@ -33,7 +33,8 @@ test('complete-items lần 1 trừ kho, lần 2 cùng key không trừ thêm', f
     $this->postJson('/staff/kitchen/complete-items', $payload)->assertOk();
     $this->postJson('/staff/kitchen/complete-items', $payload)->assertOk();
 
-    expect((float) $ingredient->fresh()->stock_quantity)->toBe(8.0); // trừ đúng 1 lần: 2 phần * 1kg
+    // Complete ở bếp không trừ kho, dù gọi 2 lần
+    expect((float) $ingredient->fresh()->stock_quantity)->toBe(10.0);
 });
 
 // Kitchen: complete/{order}

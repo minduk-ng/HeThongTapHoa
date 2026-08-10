@@ -16,15 +16,15 @@ use App\Http\Controllers\Manager\OrderListController;
 use App\Http\Controllers\Manager\ProductController;
 use App\Http\Controllers\Manager\PromotionController;
 use App\Http\Controllers\Manager\RecipeController;
-use App\Http\Controllers\Reports\SalesInvoiceReportController;
-use App\Http\Controllers\Reports\InvoiceItemsReportController;
+use App\Http\Controllers\Manager\TableController;
 use App\Http\Controllers\Reports\CancelledReportController;
+use App\Http\Controllers\Reports\InvoiceItemsReportController;
 use App\Http\Controllers\Reports\PaymentsReportController;
+use App\Http\Controllers\Reports\ProductDetailsReportController;
 use App\Http\Controllers\Reports\ProfitReportController;
 use App\Http\Controllers\Reports\ReservationsReportController;
+use App\Http\Controllers\Reports\SalesInvoiceReportController;
 use App\Http\Controllers\Reports\ShiftReportController;
-use App\Http\Controllers\Reports\ProductDetailsReportController;
-use App\Http\Controllers\Manager\TableController;
 use App\Http\Controllers\Staff\KitchenController;
 use App\Http\Controllers\Staff\PaymentController;
 use App\Http\Controllers\Staff\POSController;
@@ -120,7 +120,6 @@ Route::middleware('auth')->group(function () {
         // Inventory Management
         Route::get('/inventory/ingredients', [IngredientController::class, 'index'])->middleware('permission:ingredients.view');
         Route::post('/inventory/ingredients', [IngredientController::class, 'store'])->middleware('permission:ingredients.create');
-        Route::post('/inventory/ingredients/import', [IngredientController::class, 'importStock'])->middleware('permission:ingredients.import');
         Route::post('/inventory/ingredients/{ingredient}', [IngredientController::class, 'update'])->middleware('permission:ingredients.edit');
         Route::delete('/inventory/ingredients/{ingredient}', [IngredientController::class, 'destroy'])->middleware('permission:ingredients.delete');
 

@@ -8,14 +8,9 @@ use App\Events\OrderSentToKitchen;
 use App\Events\TableStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Staff\Concerns\DispatchesSafely;
-use App\Models\Employee;
-use App\Models\Ingredient;
-use App\Models\InventoryTransaction;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\ProductRecipe;
 use App\Models\Table;
-use App\Services\InventoryIngredientService;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -26,10 +21,6 @@ use Inertia\Inertia;
 class KitchenController extends Controller
 {
     use DispatchesSafely;
-
-    public function __construct(
-        private InventoryIngredientService $inventoryIngredientService
-    ) {}
 
     public function index(Request $request)
     {
@@ -116,8 +107,6 @@ class KitchenController extends Controller
                     'has_additional_items' => false,
                 ]);
 
-                $employeeId = Employee::idForUser($request->user()?->id);
-
                 foreach ($order->items as $it) {
                     if ($it->status === 'cancelled' || $it->status === 'completed') {
                         continue;
@@ -129,7 +118,6 @@ class KitchenController extends Controller
 
                     if ($updated === 1) {
                         $completedItems->push($it);
-                        $this->deductIngredients($it, $employeeId, $order->order_code);
                     }
                 }
 
@@ -151,7 +139,7 @@ class KitchenController extends Controller
                 return response()->json(['success' => true, 'message' => 'Đã xác nhận hoàn thành.']);
             }
 
-            return back()->with('success', 'Đã xác nhận hoàn thành đơn order và tự động trừ nguyên liệu kho thành công!');
+            return back()->with('success', 'Đã xác nhận hoàn thành đơn order!');
         } catch (\Throwable $e) {
             Log::error('Kitchen completeOrder DB error: '.$e->getMessage());
 
@@ -183,12 +171,11 @@ class KitchenController extends Controller
 
         try {
             $order = Order::findOrFail($validated['order_id']);
-            $employeeId = Employee::idForUser($request->user()?->id);
 
             $completedItems = collect();
             $skipped = false;
 
-            DB::transaction(function () use ($validated, $order, $employeeId, $request, &$completedItems, &$skipped) {
+            DB::transaction(function () use ($validated, $order, $request, &$completedItems, &$skipped) {
                 $order = Order::where('id', $order->id)->lockForUpdate()->first();
                 if (! $order || in_array($order->status, ['paid', 'cancelled'], true)) {
                     $skipped = true;
@@ -202,13 +189,9 @@ class KitchenController extends Controller
                     ->get();
 
                 foreach ($completedItems as $del) {
-                    $updated = OrderItem::where('id', $del->id)
+                    OrderItem::where('id', $del->id)
                         ->whereIn('status', ['pending', 'processing'])
                         ->update(['status' => 'completed']);
-
-                    if ($updated === 1) {
-                        $this->deductIngredients($del, $employeeId, $order->order_code);
-                    }
                 }
 
                 $remainingActive = $order->items()
@@ -241,34 +224,13 @@ class KitchenController extends Controller
                 return response()->json(['success' => true, 'message' => 'Đã xác nhận hoàn thành.']);
             }
 
-            return back()->with('success', 'Đã xác nhận hoàn thành các món đã chọn và tự động trừ nguyên liệu kho thành công!');
+            return back()->with('success', 'Đã xác nhận hoàn thành các món đã chọn!');
         } catch (\Throwable $e) {
             Log::error('Kitchen completeItems DB error: '.$e->getMessage());
 
             return $request->wantsJson()
                 ? response()->json(['error' => 'Hoàn thành thất bại: '.$e->getMessage()], 422)
                 : back()->withErrors(['error' => 'Hoàn thành món thất bại: Không thể kết nối hoặc lưu cơ sở dữ liệu. Vui lòng thử lại.']);
-        }
-    }
-
-    private function deductIngredients(OrderItem $item, ?int $employeeId, string $orderCode): void
-    {
-        $recipes = ProductRecipe::where('menu_item_id', $item->menu_item_id)->get();
-        foreach ($recipes as $recipe) {
-            $ingredient = Ingredient::find($recipe->ingredient_id);
-            if ($ingredient) {
-                $deductQuantity = (float) $recipe->amount * (int) $item->quantity;
-                $ingredient->decrement('stock_quantity', $deductQuantity);
-
-                InventoryTransaction::create([
-                    'ingredient_id' => $ingredient->id,
-                    'employee_id' => $employeeId,
-                    'type' => 'export',
-                    'quantity' => $deductQuantity,
-                    'reason' => "Xuất kho tự động cho đơn {$orderCode}",
-                    'transacted_at' => now(),
-                ]);
-            }
         }
     }
 
@@ -297,8 +259,6 @@ class KitchenController extends Controller
 
                 $reasonStr = $validated['cancellation_reason'].(! empty($validated['note']) ? ': '.$validated['note'] : '');
 
-                $wasCompleted = $item->status === 'completed';
-
                 // Atomic transition: chi thang neu chua cancelled
                 $updated = OrderItem::where('id', $item->id)
                     ->where('status', '<>', 'cancelled')
@@ -311,15 +271,6 @@ class KitchenController extends Controller
 
                 if ($updated === 0) {
                     return; // da huy boi nguon khac — khong restore
-                }
-
-                // Chi restore neu item thuc su dang completed truoc khi huy
-                if ($wasCompleted) {
-                    $this->inventoryIngredientService->restoreIngredients(
-                        $item,
-                        $request->user()?->id,
-                        $order->order_code
-                    );
                 }
 
                 $remainingActiveCount = $order->items()->where('status', '!=', 'cancelled')->count();

@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -101,53 +100,5 @@ class IngredientController extends Controller
         IngredientStockUpdated::dispatch(['ingredient_id' => $ingredientId]);
 
         return back()->with('success', 'Xóa nguyên liệu thành công!');
-    }
-
-    public function importStock(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'ingredient_id' => 'required|exists:ingredients,id',
-            'quantity' => 'required|numeric|gt:0',
-            'unit_price' => 'required|numeric|min:0',
-            'note' => 'nullable|string|max:255',
-        ]);
-
-        DB::transaction(function () use ($validated) {
-            $ingredient = Ingredient::lockForUpdate()->findOrFail($validated['ingredient_id']);
-            if (! $ingredient instanceof Ingredient) {
-                return;
-            }
-            $currentStock = (float) $ingredient->stock_quantity;
-            $currentCost = (float) $ingredient->cost_price;
-
-            $importQty = (float) $validated['quantity'];
-            $importPrice = (float) $validated['unit_price'];
-
-            // Calculate weighted average cost price
-            $newStock = $currentStock + $importQty;
-            $newAvgCost = $newStock > 0
-                ? (($currentStock * $currentCost) + ($importQty * $importPrice)) / $newStock
-                : $importPrice;
-
-            $ingredient->update([
-                'stock_quantity' => $newStock,
-                'cost_price' => round($newAvgCost, 2),
-            ]);
-
-            // Log inventory transaction
-            DB::table('inventory_transactions')->insert([
-                'ingredient_id' => $ingredient->id,
-                'type' => 'import',
-                'quantity' => $importQty,
-                'reason' => $validated['note'] ?: "Nhập kho (+{$importQty} {$ingredient->unit})",
-                'transacted_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        });
-
-        IngredientStockUpdated::dispatch(['ingredient_id' => $validated['ingredient_id']]);
-
-        return back()->with('success', 'Nhập kho nguyên liệu thành công!');
     }
 }

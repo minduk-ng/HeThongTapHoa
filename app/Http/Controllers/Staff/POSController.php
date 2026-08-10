@@ -14,7 +14,6 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Table;
 use App\Services\IdempotencyGuard;
-use App\Services\InventoryIngredientService;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -26,10 +25,6 @@ use Inertia\Inertia;
 class POSController extends Controller
 {
     use DispatchesSafely, GeneratesOrderCode;
-
-    public function __construct(
-        private InventoryIngredientService $inventoryIngredientService
-    ) {}
 
     public function index(Request $request)
     {
@@ -375,9 +370,7 @@ class POSController extends Controller
 
                 foreach ($orders as $order) {
                     foreach ($order->items as $item) {
-                        $wasCompleted = $item->status === 'completed';
-
-                        $updated = OrderItem::where('id', $item->id)
+                        OrderItem::where('id', $item->id)
                             ->where('status', '<>', 'cancelled')
                             ->update([
                                 'status' => 'cancelled',
@@ -385,14 +378,6 @@ class POSController extends Controller
                                 'cancelled_by_user_id' => $request->user()->id,
                                 'cancelled_at' => now(),
                             ]);
-
-                        if ($updated === 1 && $wasCompleted) {
-                            $this->inventoryIngredientService->restoreIngredients(
-                                $item,
-                                $request->user()?->id,
-                                $order->order_code ?? ''
-                            );
-                        }
                     }
                     $order->update(['status' => 'cancelled']);
 
