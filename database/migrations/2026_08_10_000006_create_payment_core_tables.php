@@ -53,29 +53,10 @@ return new class extends Migration
 
             $table->index(['invoice_id'], 'idx_invoice_promotions_invoice');
         });
-
-        Schema::table('invoices', function (Blueprint $table) {
-            $table->decimal('subtotal_amount', 15, 2)->default(0)->after('deposit_amount');
-            $table->decimal('vat_amount', 15, 2)->default(0)->after('subtotal_amount');
-            $table->decimal('discount_amount', 15, 2)->default(0)->after('vat_amount');
-            $table->string('external_no')->nullable()->after('discount_amount');
-            $table->string('external_ref')->nullable()->after('external_no');
-        });
-
-        Schema::table('deposits', function (Blueprint $table) {
-            $table->foreignId('payment_id')->nullable()->after('resolved_at')->constrained('payments')->nullOnDelete();
-        });
     }
 
     public function down(): void
     {
-        Schema::table('deposits', function (Blueprint $table) {
-            $table->dropForeign(['payment_id']);
-            $table->dropColumn('payment_id');
-        });
-        Schema::table('invoices', function (Blueprint $table) {
-            $table->dropColumn(['subtotal_amount', 'vat_amount', 'discount_amount', 'external_no', 'external_ref']);
-        });
         Schema::dropIfExists('invoice_promotions');
         Schema::dropIfExists('invoice_lines');
         Schema::dropIfExists('payments');

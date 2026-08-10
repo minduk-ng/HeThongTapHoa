@@ -2,11 +2,18 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
+        // ponytail: schema-only rebuild => on a fresh DB this backfill has nothing to migrate.
+        // Kept at its original path because tests/Feature/BackfillPaymentCoreTest.php requires it.
+        if (! Schema::hasTable('invoices')) {
+            return;
+        }
+
         $invoices = DB::table('invoices')->get();
         foreach ($invoices as $inv) {
             $invoiceId = $inv->id;
@@ -56,7 +63,7 @@ return new class extends Migration
                     ->get();
                 foreach ($ordersWithPromo as $o) {
                     $promo = DB::table('promotions')->find($o->promotion_id);
-                    if ($promo instanceof \stdClass && DB::table('invoice_promotions')->where('invoice_id', $invoiceId)->where('promotion_id', $promo->id)->doesntExist()) {
+                    if ($promo instanceof stdClass && DB::table('invoice_promotions')->where('invoice_id', $invoiceId)->where('promotion_id', $promo->id)->doesntExist()) {
                         DB::table('invoice_promotions')->insert([
                             'invoice_id' => $invoiceId,
                             'promotion_id' => $promo->id,

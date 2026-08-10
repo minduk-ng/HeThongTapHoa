@@ -15,6 +15,8 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->enum('discount_type', ['percentage', 'fixed_amount']);
             $table->decimal('discount_value', 15, 2);
+            $table->string('target_type', 20)->default('order');
+            $table->unsignedBigInteger('target_value')->nullable();
             $table->decimal('min_order_amount', 15, 2)->default(0);
             $table->decimal('max_discount_amount', 15, 2)->nullable();
             $table->integer('max_uses')->nullable();
@@ -23,6 +25,7 @@ return new class extends Migration
             $table->dateTime('expires_at')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

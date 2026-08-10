@@ -43,10 +43,17 @@ return new class extends Migration
             $table->foreignId('role_id')->constrained('roles')->cascadeOnDelete();
             $table->primary(['user_id', 'role_id']);
         });
+
+        Schema::create('role_pages', function (Blueprint $table) {
+            $table->foreignId('role_id')->constrained('roles')->cascadeOnDelete();
+            $table->foreignId('page_id')->constrained('pages')->cascadeOnDelete();
+            $table->primary(['role_id', 'page_id']);
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('role_pages');
         Schema::dropIfExists('user_roles');
         Schema::dropIfExists('role_permissions');
         Schema::dropIfExists('permissions');
