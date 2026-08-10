@@ -29,11 +29,10 @@ class PaymentController extends Controller
             'code' => 'required_without:codes|nullable|string|max:50',
             'codes' => 'nullable|array|min:1',
             'codes.*' => 'string|max:50',
-            'subtotal' => 'required|numeric|min:0',
+            'subtotal' => 'nullable|numeric|min:0',
             'items' => 'nullable|array',
             'items.*.menu_item_id' => 'required_with:items|integer|exists:menu_items,id',
             'items.*.quantity' => 'required_with:items|integer|min:1',
-            'items.*.unit_price' => 'required_with:items|numeric|min:0',
         ]);
 
         $lines = collect($validated['items'] ?? [])->map(function ($it) {
@@ -42,7 +41,7 @@ class PaymentController extends Controller
             return [
                 'order_item_id' => null,
                 'menu_item_id' => (int) $it['menu_item_id'],
-                'subtotal' => (float) $it['quantity'] * (float) $it['unit_price'],
+                'subtotal' => (float) $it['quantity'] * (float) ($mi?->price ?? 0),
                 'category_id' => $mi?->category_id,
             ];
         });
@@ -52,14 +51,15 @@ class PaymentController extends Controller
             $lines = collect([[
                 'order_item_id' => null,
                 'menu_item_id' => null,
-                'subtotal' => (float) $validated['subtotal'],
+                'subtotal' => (float) ($validated['subtotal'] ?? 0),
                 'category_id' => null,
             ]]);
         }
 
         $codes = $validated['codes'] ?? [$validated['code'] ?? null];
 
-        $resolved = PromotionEngine::resolveAll($codes, $lines, (float) $validated['subtotal']);
+        $linesSubtotal = $lines->sum('subtotal');
+        $resolved = PromotionEngine::resolveAll($codes, $lines, (float) $linesSubtotal);
 
         if ($resolved['status'] === 'rejected') {
             $reason = $resolved['reason'] ?? 'not_found';
@@ -90,7 +90,7 @@ class PaymentController extends Controller
         return response()->json([
             'ok' => true,
             'discount_amount' => $resolved['total_discount'],
-            'total' => (float) $validated['subtotal'] - $resolved['total_discount'],
+            'total' => (float) $linesSubtotal - $resolved['total_discount'],
             'promotion' => $promotions[0] ?? null,
             'promotions' => $promotions,
         ]);

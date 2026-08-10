@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\MenuCategory;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Promotion;
 
 test('sendToKitchen tinh gia tu menu_items.price, bo qua unit_price client', function () {
     $staff = posStaff(['pos.view', 'pos.create']);
@@ -42,4 +44,28 @@ test('sendToKitchen moi order moi duoc tao voi gia dung', function () {
     $order = Order::latest()->first();
     expect((float) $order->subtotal)->toBe(90000.0);
     expect(OrderItem::where('order_id', $order->id)->first()->unit_price)->toBe(30000.0);
+});
+
+test('validatePromotion tinh subtotal tu gia menu, bo qua unit_price client', function () {
+    $cat = MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
+    $itemA = posMenuItem(['category_id' => $cat->id, 'price' => 100000]);
+    $itemB = posMenuItem(['category_id' => $cat->id, 'price' => 300000]);
+    $promo = Promotion::create([
+        'code' => 'X'.uniqid(),
+        'name' => 'Promo',
+        'discount_type' => 'percentage',
+        'discount_value' => 10,
+        'target_type' => 'item',
+        'target_value' => $itemA->id,
+        'is_active' => true,
+    ]);
+
+    $this->actingAs(posStaff())->postJson('/staff/pos/validate-promotion', [
+        'code' => $promo->code,
+        'subtotal' => 1,   // client gửi sai
+        'items' => [
+            ['menu_item_id' => $itemA->id, 'quantity' => 1, 'unit_price' => 1],
+            ['menu_item_id' => $itemB->id, 'quantity' => 1, 'unit_price' => 1],
+        ],
+    ])->assertOk()->assertJson(['ok' => true, 'discount_amount' => 10000, 'total' => 390000]);
 });
