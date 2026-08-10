@@ -169,6 +169,7 @@ GET    /inventory/vouchers/{id}      permission:inventory.vouchers.view
 ## Chiến lược kiểm thử
 
 - **Rebuild migrations:** `php artisan migrate:fresh` chạy 15 file OK; full suite (test hiện có dùng schema này) pass. Bảng `inventory_transactions`/`stock_checks`/`reports` không tồn tại.
+  - **Xoá DB thật + migrate lại (verify end-to-end):** sau khi rebuild xong, trên MySQL local — `php artisan migrate:fresh` (xoá sạch toàn bộ bảng rồi tạo lại 15 file) → seed `db:seed` → chạy app (POS, checkout, trang kho) verify hoạt động đúng. Đây là bước bắt buộc trong plan (không chỉ dừng ở test Pest vì Pest dùng DB riêng).
 - **FK restrict:** test xoá hard menu_item/ingredient có lịch sử → DB chặn (exception); soft-delete vẫn OK + lịch sử giữ nguyên.
 - **Phiếu nhập:** `StockVoucherController::store` tạo voucher + items + update stock + WAC đúng; test WAC giữ logic importStock cũ.
 - **Phiếu xuất:** checkout tạo 1 phiếu export với lượng âm aggregate đúng; stock giảm đúng; đơn không recipe → không phiếu.
