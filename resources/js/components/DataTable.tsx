@@ -1,5 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronUp, ChevronDown, Rows3 } from 'lucide-react';
+import {
+    ChevronUp,
+    ChevronDown,
+    Rows3,
+    ChevronLeft,
+    ChevronRight,
+    ChevronsLeft,
+    ChevronsRight,
+} from 'lucide-react';
 
 export interface DataTableColumn<T> {
     key: string;
@@ -45,8 +53,12 @@ export default function DataTable<T>({
     const [isCompact, setIsCompact] = useState(false);
     const [pageSize, setPageSize] = useState<number>(defaultPageSize);
     const [currentPage, setCurrentPage] = useState<number>(1);
-    const [sortField, setSortField] = useState<string | undefined>(defaultSortKey);
-    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(defaultSortDirection);
+    const [sortField, setSortField] = useState<string | undefined>(
+        defaultSortKey,
+    );
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(
+        defaultSortDirection,
+    );
 
     const alignClass = (align?: 'left' | 'center' | 'right') => {
         if (align === 'center') return 'text-center';
@@ -61,7 +73,9 @@ export default function DataTable<T>({
             const valA = getSortValue(a, sortField);
             const valB = getSortValue(b, sortField);
             if (typeof valA === 'string') {
-                const cmp = (valA as string).toLowerCase().localeCompare((valB as string).toLowerCase());
+                const cmp = (valA as string)
+                    .toLowerCase()
+                    .localeCompare((valB as string).toLowerCase());
                 return sortDirection === 'asc' ? cmp : -cmp;
             }
             const numA = Number(valA);
@@ -93,43 +107,60 @@ export default function DataTable<T>({
 
     const renderSortIcon = (field: string) => {
         if (sortField !== field) {
-            return <ChevronUp className="w-3.5 h-3.5 ml-1 text-zinc-300 dark:text-zinc-600 opacity-50 inline" />;
+            return (
+                <ChevronUp className="ml-1 inline h-3.5 w-3.5 text-zinc-300 opacity-50 dark:text-zinc-600" />
+            );
         }
         return sortDirection === 'asc' ? (
-            <ChevronUp className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
+            <ChevronUp className="ml-1 inline h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
         ) : (
-            <ChevronDown className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
+            <ChevronDown className="ml-1 inline h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
         );
     };
 
     return (
-        <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-zinc-900 rounded-2xl shadow-xs">
-            <div className="flex-1 overflow-auto min-h-0">
-                <table className="w-full text-left text-sm relative">
-                    <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-800/90 backdrop-blur-xs text-zinc-600 dark:text-zinc-400 font-medium border-b border-zinc-200 dark:border-zinc-800 select-none">
+        <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-zinc-900">
+            <div className="min-h-0 flex-1 overflow-auto">
+                <table className="relative w-full text-left text-sm">
+                    <thead className="sticky top-0 z-10 border-b border-zinc-200 bg-zinc-50 font-medium text-zinc-600 backdrop-blur-xs select-none dark:border-zinc-800 dark:bg-zinc-800/90 dark:text-zinc-400">
                         <tr>
                             {columns.map((col) => (
                                 <th
                                     key={col.key}
-                                    onClick={col.sortable ? () => handleSort(col.key) : undefined}
+                                    onClick={
+                                        col.sortable
+                                            ? () => handleSort(col.key)
+                                            : undefined
+                                    }
                                     className={`px-4 ${isCompact ? 'py-2 text-xs' : 'py-3.5'} ${alignClass(col.align)} ${col.headerClassName ?? ''} ${col.sortable ? 'cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800' : ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
                                 >
-                                    <div className={`flex items-center ${col.align === 'right' ? 'justify-end' : col.align === 'center' ? 'justify-center' : ''}`}>
+                                    <div
+                                        className={`flex items-center ${col.align === 'right' ? 'justify-end' : col.align === 'center' ? 'justify-center' : ''}`}
+                                    >
                                         <span>{col.header}</span>
-                                        {col.sortable && renderSortIcon(col.key)}
+                                        {col.sortable &&
+                                            renderSortIcon(col.key)}
                                     </div>
                                 </th>
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 text-zinc-800 dark:text-zinc-200">
+                    <tbody className="divide-y divide-zinc-200 text-zinc-800 dark:divide-zinc-800 dark:text-zinc-200">
                         {paginatedRows.length === 0 ? (
                             <tr>
-                                <td colSpan={columns.length} className="py-12 px-6">
-                                    <div className="flex items-start space-x-4 max-w-md">
+                                <td
+                                    colSpan={columns.length}
+                                    className="px-6 py-12"
+                                >
+                                    <div className="flex max-w-md items-start space-x-4">
                                         <div>
-                                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{emptyMessage}</h4>
-                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Không có dữ liệu phù hợp với điều kiện hiện tại.</p>
+                                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                                {emptyMessage}
+                                            </h4>
+                                            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                                Không có dữ liệu phù hợp với
+                                                điều kiện hiện tại.
+                                            </p>
                                         </div>
                                     </div>
                                 </td>
@@ -138,8 +169,12 @@ export default function DataTable<T>({
                             paginatedRows.map((row, index) => (
                                 <tr
                                     key={rowKey(row)}
-                                    onClick={onRowClick ? () => onRowClick(row) : undefined}
-                                    className={`hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors ${onRowClick ? 'cursor-pointer' : ''} ${rowClassName?.(row) ?? ''}`}
+                                    onClick={
+                                        onRowClick
+                                            ? () => onRowClick(row)
+                                            : undefined
+                                    }
+                                    className={`transition-colors hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 ${onRowClick ? 'cursor-pointer' : ''} ${rowClassName?.(row) ?? ''}`}
                                 >
                                     {columns.map((col) => (
                                         <td
@@ -156,61 +191,72 @@ export default function DataTable<T>({
                 </table>
             </div>
 
-            <div className="bg-zinc-50 dark:bg-zinc-800/60 border-t border-zinc-200 dark:border-zinc-800 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div className="flex flex-col items-center justify-between gap-3 border-t border-zinc-200 bg-zinc-50 px-4 py-3 text-xs sm:flex-row dark:border-zinc-800 dark:bg-zinc-800/60">
                 <div className="flex flex-wrap items-center gap-3">
                     {showCompactToggle && (
                         <button
                             type="button"
                             onClick={() => setIsCompact(!isCompact)}
-                            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border font-medium transition-colors ${
+                            className={`flex items-center space-x-1.5 rounded-lg border px-3 py-1.5 font-medium transition-colors ${
                                 isCompact
-                                    ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
-                                    : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700'
+                                    ? 'border-sky-600 bg-sky-600 text-white shadow-xs'
+                                    : 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
                             }`}
                             title="Bật/Tắt chế độ hiển thị thu gọn"
                         >
-                            <Rows3 className="w-4 h-4 stroke-[1.5]" />
-                            <span>{isCompact ? 'Xem đầy đủ' : 'Thu gọn bảng'}</span>
+                            <Rows3 className="h-4 w-4 stroke-[1.5]" />
+                            <span>
+                                {isCompact ? 'Xem đầy đủ' : 'Thu gọn bảng'}
+                            </span>
                         </button>
                     )}
                     {showPageSize && (
-                        <div className="flex items-center space-x-1 border-l border-zinc-200 dark:border-zinc-700 pl-3">
-                            <span className="text-zinc-500 mr-1">Hiển thị:</span>
+                        <div className="flex items-center space-x-1 border-l border-zinc-200 pl-3 dark:border-zinc-700">
+                            <span className="mr-1 text-zinc-500">
+                                Hiển thị:
+                            </span>
                             {[20, 50, 100].map((size) => (
                                 <button
                                     key={size}
                                     type="button"
-                                    onClick={() => { setPageSize(size); setCurrentPage(1); }}
-                                    className={`px-2 py-1 rounded-md font-semibold transition-colors ${
+                                    onClick={() => {
+                                        setPageSize(size);
+                                        setCurrentPage(1);
+                                    }}
+                                    className={`rounded-md px-2 py-1 font-semibold transition-colors ${
                                         pageSize === size
                                             ? 'bg-blue-600 text-white'
-                                            : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                                            : 'text-zinc-600 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:bg-zinc-700'
                                     }`}
                                 >
                                     {size}
                                 </button>
                             ))}
-                            <span className="text-zinc-400 ml-1">dòng/trang</span>
+                            <span className="ml-1 text-zinc-400">
+                                dòng/trang
+                            </span>
                         </div>
                     )}
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1">
                     <button
                         type="button"
                         disabled={safeCurrentPage === 1}
                         onClick={() => setCurrentPage(1)}
-                        className="p-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="rounded-lg border border-zinc-300 bg-white p-1.5 text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                     >
-                        |&#9664;
+                        <ChevronsLeft className="h-4 w-4 stroke-[1.5]" />
                     </button>
                     <button
                         type="button"
                         disabled={safeCurrentPage === 1}
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        className="p-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                        onClick={() =>
+                            setCurrentPage((p) => Math.max(1, p - 1))
+                        }
+                        className="rounded-lg border border-zinc-300 bg-white p-1.5 text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                     >
-                        &#9664;
+                        <ChevronLeft className="h-4 w-4 stroke-[1.5]" />
                     </button>
                     <div className="flex items-center space-x-1.5 text-zinc-600 dark:text-zinc-400">
                         <span>Trang</span>
@@ -221,27 +267,32 @@ export default function DataTable<T>({
                             value={safeCurrentPage}
                             onChange={(e) => {
                                 const val = parseInt(e.target.value, 10);
-                                if (!isNaN(val)) setCurrentPage(Math.min(Math.max(1, val), totalPages));
+                                if (!isNaN(val))
+                                    setCurrentPage(
+                                        Math.min(Math.max(1, val), totalPages),
+                                    );
                             }}
-                            className="w-12 text-center py-1 border rounded-md bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 font-semibold focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                            className="w-12 rounded-md border border-zinc-300 bg-white py-1 text-center font-semibold focus:ring-1 focus:ring-blue-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800"
                         />
                         <span>/ {totalPages}</span>
                     </div>
                     <button
                         type="button"
                         disabled={safeCurrentPage === totalPages}
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        className="p-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                        onClick={() =>
+                            setCurrentPage((p) => Math.min(totalPages, p + 1))
+                        }
+                        className="rounded-lg border border-zinc-300 bg-white p-1.5 text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                     >
-                        &#9654;
+                        <ChevronRight className="h-4 w-4 stroke-[1.5]" />
                     </button>
                     <button
                         type="button"
                         disabled={safeCurrentPage === totalPages}
                         onClick={() => setCurrentPage(totalPages)}
-                        className="p-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="rounded-lg border border-zinc-300 bg-white p-1.5 text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                     >
-                        &#9654;|
+                        <ChevronsRight className="h-4 w-4 stroke-[1.5]" />
                     </button>
                 </div>
             </div>
