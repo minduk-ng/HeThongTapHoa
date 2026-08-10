@@ -51,7 +51,12 @@
 - `database/seeders/AuthorizationSeeder.php` — 2 permissions + 1 page record
 - `app/Http/Controllers/Admin/RoleController.php` — thêm 2 permissions vào allowed list
 - `resources/js/pages/manager/inventory/ingredients/IngredientsManager.tsx`, `IngredientFilterBar.tsx`, `IngredientTable.tsx`
-- Tests cũ dùng `inventory_transactions`: `KitchenFlowTest.php`, `KitchenRaceTest.php`, `POSCancelRaceTest.php`, `POSTableOperationsTest.php`
+- Tests cũ dùng `inventory_transactions`: `KitchenFlowTest.php`, `KitchenServingIdempotencyTest.php`, `KitchenRaceTest.php`, `POSCancelRaceTest.php`, `POSTableOperationsTest.php`, `Hardening/SoftDeleteMenuInventoryTest.php`
+
+**Lưu ý ratified (Task 1 đã thực hiện, plan cập nhật theo thực tế):**
+- Migration = 15 base + 2 compat file (`backfill_payment_core_tables`, `add_report_performance_indexes`) — test `require` theo path cũ.
+- `invoices.payment_method` + `tables.status` là `string` (không enum) — app ghi `'mixed'`/`'empty'`.
+- `order_activities` (file 7) + framework tables `sessions`/`cache_locks`/`job_batches`/`failed_jobs` (file 1) được giữ.
 
 ---
 
@@ -598,7 +603,7 @@ Expected: 15 file migrate OK trên MySQL, seed OK.
 - [ ] **Step 6: Chạy full suite**
 
 Run: `php artisan test`
-Expected: FAIL một số test dùng `inventory_transactions` (KitchenFlowTest, KitchenRaceTest, POSCancelRaceTest, POSTableOperationsTest) — **ghi nhận là expected** (Task 2 sẽ xử lý). Các test còn lại PASS.
+Expected: FAIL các test dùng `inventory_transactions` (KitchenFlowTest, KitchenServingIdempotencyTest, KitchenRaceTest, POSCancelRaceTest, POSTableOperationsTest, Hardening/SoftDeleteMenuInventoryTest) — **ghi nhận là expected** (Task 2 sẽ xử lý). Các test còn lại PASS.
 
 - [ ] **Step 7: Commit**
 
@@ -617,7 +622,7 @@ git commit -m "feat: rebuild 15 migration theo bang + xoa bang inventory_transac
 - Modify: `app/Http/Controllers/Staff/POSController.php` — bỏ restore block + service import/constructor
 - Modify: `app/Http/Controllers/Manager/IngredientController.php` — bỏ importStock
 - Modify: `routes/web.php` — bỏ route `/inventory/ingredients/import`
-- Modify: tests cũ — `KitchenFlowTest.php`, `KitchenRaceTest.php`, `POSCancelRaceTest.php`, `POSTableOperationsTest.php`
+- Modify: tests cũ — `KitchenFlowTest.php`, `KitchenServingIdempotencyTest.php`, `KitchenRaceTest.php`, `POSCancelRaceTest.php`, `POSTableOperationsTest.php`, `Hardening/SoftDeleteMenuInventoryTest.php`
 - Delete: `app/Models/InventoryTransaction.php`
 
 **Interfaces:**
@@ -661,7 +666,7 @@ Delete `app/Services/InventoryIngredientService.php` + `app/Models/InventoryTran
 
 - [ ] **Step 6: Sửa tests cũ**
 
-Cập nhật 4 test file (đọc từng file, sửa theo intent — KHÔNG xoá test, đổi assertion):
+Cập nhật 6 test file (đọc từng file, sửa theo intent — KHÔNG xoá test, đổi assertion):
 
 **`KitchenFlowTest.php`:**
 - Bỏ `use App\Models\InventoryTransaction;`
@@ -690,7 +695,7 @@ Expected: PASS (267+ test hiện có, không còn fail inventory_transactions).
 Run: `vendor/bin/pint app/Http/Controllers/Staff/KitchenController.php app/Http/Controllers/Staff/POSController.php app/Http/Controllers/Manager/IngredientController.php routes/web.php`
 
 ```bash
-git add -A app/Services/InventoryIngredientService.php app/Models/InventoryTransaction.php app/Http/Controllers/Staff/KitchenController.php app/Http/Controllers/Staff/POSController.php app/Http/Controllers/Manager/IngredientController.php routes/web.php tests/Feature/KitchenFlowTest.php tests/Feature/KitchenRaceTest.php tests/Feature/POSCancelRaceTest.php tests/Feature/POSTableOperationsTest.php
+git add -A app/Services/InventoryIngredientService.php app/Models/InventoryTransaction.php app/Http/Controllers/Staff/KitchenController.php app/Http/Controllers/Staff/POSController.php app/Http/Controllers/Manager/IngredientController.php routes/web.php tests/Feature/KitchenFlowTest.php tests/Feature/KitchenServingIdempotencyTest.php tests/Feature/KitchenRaceTest.php tests/Feature/POSCancelRaceTest.php tests/Feature/POSTableOperationsTest.php tests/Feature/Hardening/SoftDeleteMenuInventoryTest.php
 git commit -m "refactor: bo tru kho o bep + inventory_transactions (deduct/restore/importStock)"
 ```
 
