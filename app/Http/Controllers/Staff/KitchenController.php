@@ -101,8 +101,16 @@ class KitchenController extends Controller
 
         try {
             $completedItems = collect();
+            $skipped = false;
 
-            DB::transaction(function () use ($order, $request, &$completedItems) {
+            DB::transaction(function () use ($order, $request, &$completedItems, &$skipped) {
+                $order = Order::where('id', $order->id)->lockForUpdate()->first();
+                if (! $order || in_array($order->status, ['paid', 'cancelled', 'completed'], true)) {
+                    $skipped = true;
+
+                    return;
+                }
+
                 $order->update([
                     'status' => 'completed',
                     'has_additional_items' => false,
@@ -131,10 +139,12 @@ class KitchenController extends Controller
                 ]);
             });
 
-            $this->safeDispatch(fn () => OrderCompleted::dispatch($order));
+            if (! $skipped) {
+                $this->safeDispatch(fn () => OrderCompleted::dispatch($order));
 
-            if ($completedItems->isNotEmpty()) {
-                $this->safeDispatch(fn () => ItemsReadyToServe::dispatch($order, $completedItems));
+                if ($completedItems->isNotEmpty()) {
+                    $this->safeDispatch(fn () => ItemsReadyToServe::dispatch($order, $completedItems));
+                }
             }
 
             if ($request->wantsJson()) {
@@ -176,8 +186,16 @@ class KitchenController extends Controller
             $employeeId = Employee::idForUser($request->user()?->id);
 
             $completedItems = collect();
+            $skipped = false;
 
-            DB::transaction(function () use ($validated, $order, $employeeId, $request, &$completedItems) {
+            DB::transaction(function () use ($validated, $order, $employeeId, $request, &$completedItems, &$skipped) {
+                $order = Order::where('id', $order->id)->lockForUpdate()->first();
+                if (! $order || in_array($order->status, ['paid', 'cancelled'], true)) {
+                    $skipped = true;
+
+                    return;
+                }
+
                 $completedItems = OrderItem::whereIn('id', $validated['item_ids'])
                     ->where('order_id', $order->id)
                     ->whereIn('status', ['pending', 'processing'])
@@ -197,7 +215,7 @@ class KitchenController extends Controller
                     ->whereNotIn('status', ['cancelled', 'completed'])
                     ->count();
 
-                if ($remainingActive === 0 && ! in_array($order->fresh()->status, ['paid', 'cancelled'], true)) {
+                if ($remainingActive === 0 && ! in_array($order->status, ['paid', 'cancelled'], true)) {
                     $order->update([
                         'status' => 'completed',
                         'has_additional_items' => false,
@@ -211,10 +229,12 @@ class KitchenController extends Controller
                 ]);
             });
 
-            $this->safeDispatch(fn () => OrderCompleted::dispatch($order));
+            if (! $skipped) {
+                $this->safeDispatch(fn () => OrderCompleted::dispatch($order));
 
-            if ($completedItems->isNotEmpty()) {
-                $this->safeDispatch(fn () => ItemsReadyToServe::dispatch($order, $completedItems));
+                if ($completedItems->isNotEmpty()) {
+                    $this->safeDispatch(fn () => ItemsReadyToServe::dispatch($order, $completedItems));
+                }
             }
 
             if ($request->wantsJson()) {
