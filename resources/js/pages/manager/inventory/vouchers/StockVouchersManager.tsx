@@ -4,6 +4,7 @@ import { Box, ArrowDownToLine, ArrowUpFromLine, Plus } from 'lucide-react';
 import DashboardLayout from '../../../../layouts/DashboardLayout';
 import ManagerPageLayout from '../../../../components/ManagerPageLayout';
 import StockImportModal from '../ingredients/components/StockImportModal';
+import DataTable, { DataTableColumn } from '../../../../components/DataTable';
 
 interface VoucherData {
     id: number;
@@ -14,29 +15,33 @@ interface VoucherData {
     employee_name: string | null;
 }
 
-interface VoucherDetailItem {
-    ingredient_id: number;
-    name: string;
-    unit: string;
-    code: string | null;
-    quantity: number;
-    unit_price: number | null;
-    total: number;
-}
-
-interface VoucherDetail {
-    voucher: VoucherData;
-    items: VoucherDetailItem[];
-}
-
 interface StockVouchersManagerProps {
     vouchers: VoucherData[];
     filters: { type?: string; from?: string; to?: string; search?: string };
-    detail?: VoucherDetail | null;
     ingredients?: any[]; // optional, cho modal nhập từ trang này
 }
 
-export default function StockVouchersManager({ vouchers, filters, detail, ingredients = [] }: StockVouchersManagerProps) {
+const columns: DataTableColumn<VoucherData>[] = [
+    { key: 'voucher_code', header: 'Mã phiếu', sortable: true, className: 'font-mono text-xs font-medium text-sky-600 dark:text-sky-400', render: (v) => v.voucher_code },
+    {
+        key: 'type',
+        header: 'Loại',
+        sortable: true,
+        render: (v) => (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                v.type === 'import' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+            }`}>
+                {v.type === 'import' ? <ArrowDownToLine className="w-3 h-3" /> : <ArrowUpFromLine className="w-3 h-3" />}
+                {v.type === 'import' ? 'Nhập' : 'Xuất'}
+            </span>
+        ),
+    },
+    { key: 'transacted_at', header: 'Thời điểm', sortable: true, render: (v) => <span className="text-xs">{v.transacted_at}</span> },
+    { key: 'note', header: 'Ghi chú', render: (v) => <span className="text-xs text-zinc-500">{v.note || '—'}</span> },
+    { key: 'employee_name', header: 'Người tạo', render: (v) => <span className="text-xs">{v.employee_name || '—'}</span> },
+];
+
+export default function StockVouchersManager({ vouchers, filters, ingredients = [] }: StockVouchersManagerProps) {
     const [typeFilter, setTypeFilter] = useState(filters.type || 'all');
     const [from, setFrom] = useState(filters.from || '');
     const [to, setTo] = useState(filters.to || '');
@@ -101,87 +106,17 @@ export default function StockVouchersManager({ vouchers, filters, detail, ingred
                     </div>
                 }
             >
-                <div className="space-y-4">
-                    {/* Detail (pivot bảng ngang) */}
-                    {detail && (
-                        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs p-4">
-                            <div className="flex justify-between items-center mb-3">
-                                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                                    {detail.voucher.voucher_code}
-                                    <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
-                                        detail.voucher.type === 'import' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                                    }`}>
-                                        {detail.voucher.type === 'import' ? 'Phiếu nhập' : 'Phiếu xuất'}
-                                    </span>
-                                </h3>
-                                <span className="text-xs text-zinc-500">{detail.voucher.transacted_at}</span>
-                            </div>
-                            {/* Chi tiết phiếu: từng dòng là 1 nguyên liệu (quantity âm = xuất) */}
-                            <div className="overflow-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead>
-                                        <tr className="bg-zinc-50 dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-400">
-                                            <th className="px-3 py-2">Mã NVL</th>
-                                            <th className="px-3 py-2">Nguyên liệu</th>
-                                            <th className="px-3 py-2 text-right">Số lượng</th>
-                                            <th className="px-3 py-2 text-right">Đơn giá</th>
-                                            <th className="px-3 py-2 text-right">Thành tiền</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {detail.items.map((it) => (
-                                            <tr key={it.ingredient_id} className="border-t border-zinc-100 dark:border-zinc-800">
-                                                <td className="px-3 py-2 font-mono text-xs">{it.code || `NVL${String(it.ingredient_id).padStart(5, '0')}`}</td>
-                                                <td className="px-3 py-2">{it.name}</td>
-                                                <td className={`px-3 py-2 text-right font-bold tabular-nums ${it.quantity < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                                                    {it.quantity > 0 ? '+' : ''}{it.quantity.toLocaleString('vi-VN')} {it.unit}
-                                                </td>
-                                                <td className="px-3 py-2 text-right">{it.unit_price != null ? it.unit_price.toLocaleString('vi-VN') : '—'}</td>
-                                                <td className="px-3 py-2 text-right">{it.total.toLocaleString('vi-VN')} đ</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* List */}
-                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-zinc-50 dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-400 text-xs border-b border-zinc-200 dark:border-zinc-800">
-                                <tr>
-                                    <th className="px-4 py-3">Mã phiếu</th>
-                                    <th className="px-4 py-3">Loại</th>
-                                    <th className="px-4 py-3">Thời điểm</th>
-                                    <th className="px-4 py-3">Ghi chú</th>
-                                    <th className="px-4 py-3">Người tạo</th>
-                                    <th className="px-4 py-3 text-center">Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                                {vouchers.length === 0 ? (
-                                    <tr><td colSpan={6} className="py-12 px-6 text-center text-zinc-500">Chưa có phiếu nào</td></tr>
-                                ) : vouchers.map((v) => (
-                                    <tr key={v.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 cursor-pointer" onClick={() => router.get(`/manager/inventory/vouchers/${v.id}`, {}, { preserveState: true })}>
-                                        <td className="px-4 py-3 font-mono text-xs font-medium text-sky-600 dark:text-sky-400">{v.voucher_code}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                v.type === 'import' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                                            }`}>
-                                                {v.type === 'import' ? <ArrowDownToLine className="w-3 h-3" /> : <ArrowUpFromLine className="w-3 h-3" />}
-                                                {v.type === 'import' ? 'Nhập' : 'Xuất'}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-xs">{v.transacted_at}</td>
-                                        <td className="px-4 py-3 text-xs text-zinc-500">{v.note || '—'}</td>
-                                        <td className="px-4 py-3 text-xs">{v.employee_name || '—'}</td>
-                                        <td className="px-4 py-3 text-center text-xs text-blue-600">Xem chi tiết</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                <div className="flex flex-col min-h-0 h-full space-y-4">
+                    <DataTable
+                        columns={columns}
+                        rows={vouchers}
+                        rowKey={(v) => v.id}
+                        defaultSortKey="transacted_at"
+                        defaultSortDirection="desc"
+                        getSortValue={(v, key) => (v as any)[key] ?? ''}
+                        onRowClick={(v) => router.get(`/manager/inventory/vouchers/${v.id}`)}
+                        emptyMessage="Chưa có phiếu nào"
+                    />
                 </div>
             </ManagerPageLayout>
 

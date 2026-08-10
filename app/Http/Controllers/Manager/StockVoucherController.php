@@ -120,38 +120,31 @@ class StockVoucherController extends Controller
         $voucher = StockVoucher::with(['items.ingredient', 'employee', 'creator'])
             ->findOrFail($id);
 
-        $pivotRows = $voucher->items->map(fn ($item) => [
+        $items = $voucher->items->map(fn ($item) => [
             'ingredient_id' => $item->ingredient_id,
+            'code' => $item->ingredient?->code,
             'name' => $item->ingredient->name ?? 'Nguyên liệu',
             'unit' => $item->ingredient->unit ?? '',
-            'code' => $item->ingredient?->code,
             'quantity' => (float) $item->quantity,
             'unit_price' => $item->unit_price,
             'total' => (float) $item->quantity * (float) ($item->unit_price ?? 0),
         ]);
 
-        return Inertia::render('manager/inventory/vouchers/StockVouchersManager', [
-            'vouchers' => StockVoucher::with('employee')->orderByDesc('transacted_at')->get()->map(fn ($v) => [
-                'id' => $v->id,
-                'voucher_code' => $v->voucher_code,
-                'type' => $v->type,
-                'transacted_at' => $v->transacted_at?->format('d/m/Y H:i'),
-                'note' => $v->note,
-                'employee_name' => $v->employee?->full_name,
-            ]),
-            'filters' => [],
-            'ingredients' => Ingredient::orderBy('name')->get(['id', 'code', 'name', 'unit', 'purchase_unit', 'unit_conversion', 'stock_quantity', 'min_stock_alert', 'cost_price']),
-            'detail' => [
-                'voucher' => [
-                    'id' => $voucher->id,
-                    'voucher_code' => $voucher->voucher_code,
-                    'type' => $voucher->type,
-                    'transacted_at' => $voucher->transacted_at?->format('d/m/Y H:i'),
-                    'note' => $voucher->note,
-                    'employee_name' => $voucher->employee?->full_name,
-                ],
-                'items' => $pivotRows,
+        $total = $voucher->type === 'import'
+            ? $items->sum('total')
+            : null;
+
+        return Inertia::render('manager/inventory/vouchers/StockVoucherDetail', [
+            'voucher' => [
+                'id' => $voucher->id,
+                'voucher_code' => $voucher->voucher_code,
+                'type' => $voucher->type,
+                'transacted_at' => $voucher->transacted_at?->format('d/m/Y H:i'),
+                'note' => $voucher->note,
+                'employee_name' => $voucher->employee?->full_name,
             ],
+            'items' => $items,
+            'total' => $total,
         ]);
     }
 }
