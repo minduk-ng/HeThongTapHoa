@@ -60,3 +60,17 @@ test('index tra ve danh sach phieu', function () {
 
     $this->actingAs($admin)->get('/manager/inventory/vouchers')->assertOk();
 });
+
+test('show van hoat dong khi ingredient cua phieu da bi xoa mem', function () {
+    $admin = posAdmin();
+    $ing = Ingredient::create(['code' => 'cafe', 'name' => 'Cà phê '.uniqid(), 'unit' => 'g', 'stock_quantity' => 0, 'cost_price' => 0]);
+
+    $this->actingAs($admin)->post('/manager/inventory/vouchers', [
+        'items' => [['ingredient_id' => $ing->id, 'quantity' => 10, 'unit_price' => 5000]],
+    ]);
+
+    $voucher = StockVoucher::where('type', 'import')->first();
+    $ing->delete(); // soft delete ingredient
+
+    $this->actingAs($admin)->get('/manager/inventory/vouchers/'.$voucher->id)->assertOk();
+});

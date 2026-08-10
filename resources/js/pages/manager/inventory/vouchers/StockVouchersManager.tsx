@@ -116,7 +116,7 @@ export default function StockVouchersManager({ vouchers, filters, detail, ingred
                                 </h3>
                                 <span className="text-xs text-zinc-500">{detail.voucher.transacted_at}</span>
                             </div>
-                            {/* Pivot: cột = nguyên liệu, 1 dòng giá trị */}
+                            {/* Chi tiết phiếu: từng dòng là 1 nguyên liệu (quantity âm = xuất) */}
                             <div className="overflow-auto">
                                 <table className="w-full text-left text-sm">
                                     <thead>

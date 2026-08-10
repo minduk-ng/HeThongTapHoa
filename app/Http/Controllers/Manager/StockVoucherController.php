@@ -124,7 +124,7 @@ class StockVoucherController extends Controller
             'ingredient_id' => $item->ingredient_id,
             'name' => $item->ingredient->name ?? 'Nguyên liệu',
             'unit' => $item->ingredient->unit ?? '',
-            'code' => $item->ingredient->code,
+            'code' => $item->ingredient?->code,
             'quantity' => (float) $item->quantity,
             'unit_price' => $item->unit_price,
             'total' => (float) $item->quantity * (float) ($item->unit_price ?? 0),
