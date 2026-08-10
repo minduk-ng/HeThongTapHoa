@@ -217,7 +217,7 @@ class PaymentController extends Controller
                 return ['table' => $targetTable, 'deposit_total' => $depositTotal, 'deposit_refund' => $depositRefund, 'all_group_tables' => $allGroupTables->values()->all()];
             });
 
-            Cache::tags(['pos_tables'])->flush();
+            $this->safeDispatch(fn () => Cache::tags(['pos_tables'])->flush());
 
             $targetTable = $result['table'];
             $depositTotal = $result['deposit_total'];
@@ -381,7 +381,7 @@ class PaymentController extends Controller
                 return ['table' => $targetTable, 'deposit_total' => $depositTotal, 'deposit_refund' => $depositRefund];
             });
 
-            Cache::tags(['pos_tables'])->flush();
+            $this->safeDispatch(fn () => Cache::tags(['pos_tables'])->flush());
 
             $targetTable = $result['table'];
             $depositTotal = $result['deposit_total'];
