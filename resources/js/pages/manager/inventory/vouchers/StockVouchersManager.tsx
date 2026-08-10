@@ -118,7 +118,7 @@ export default function StockVouchersManager({ vouchers, filters, ingredients = 
                             if (key === 'transacted_at') return v.sort_key ?? '';
                             return (v as any)[key] ?? '';
                         }}
-                        onRowClick={(v) => router.get(`/manager/inventory/vouchers/${v.id}`)}
+                        onRowClick={(v) => router.get(`/manager/inventory/vouchers/${v.id}`, {}, { preserveState: true })}
                         emptyMessage="Chưa có phiếu nào"
                     />
                 </div>

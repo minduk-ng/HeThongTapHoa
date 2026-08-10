@@ -53,7 +53,7 @@ export default function IngredientFormDrawer({
         const payload = {
             name,
             unit,
-            purchase_unit: purchaseUnit || null,
+            purchase_unit: purchaseUnit.trim() || null,
             unit_conversion: Number(unitConversion) || 1,
             stock_quantity: Number(stockQuantity) || 0,
             min_stock_alert: Number(minStockAlert) || 0,
@@ -163,6 +163,19 @@ export default function IngredientFormDrawer({
                                 <p className="text-[11px] text-zinc-400 mt-1">1 đơn vị mua = N đơn vị tính</p>
                             </div>
                         </div>
+
+                        {(() => {
+                            const trimmed = purchaseUnit.trim();
+                            const conversionNum = Number(unitConversion) || 1;
+                            if (trimmed && trimmed !== unit && conversionNum === 1) {
+                                return (
+                                    <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+                                        Cảnh báo: đơn vị mua "{trimmed}" khác đơn vị tính "{unit}" nhưng hệ số quy đổi vẫn là 1. Nếu 1 {trimmed} = nhiều {unit}, hãy nhập hệ số đúng (vd kg → g là 1000).
+                                    </p>
+                                );
+                            }
+                            return null;
+                        })()}
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
