@@ -15,6 +15,8 @@ export default function IngredientFormDrawer({
 }: IngredientFormDrawerProps) {
     const [name, setName] = useState('');
     const [unit, setUnit] = useState('g');
+    const [purchaseUnit, setPurchaseUnit] = useState('');
+    const [unitConversion, setUnitConversion] = useState<string>('1');
     const [stockQuantity, setStockQuantity] = useState<string>('0');
     const [minStockAlert, setMinStockAlert] = useState<string>('50');
     const [costPrice, setCostPrice] = useState<string>('0');
@@ -25,12 +27,16 @@ export default function IngredientFormDrawer({
         if (ingredientToEdit) {
             setName(ingredientToEdit.name || '');
             setUnit(ingredientToEdit.unit || 'g');
+            setPurchaseUnit(ingredientToEdit.purchase_unit || '');
+            setUnitConversion(String(ingredientToEdit.unit_conversion ?? 1));
             setStockQuantity(String(ingredientToEdit.stock_quantity ?? 0));
             setMinStockAlert(String(ingredientToEdit.min_stock_alert ?? 50));
             setCostPrice(String(ingredientToEdit.cost_price ?? 0));
         } else {
             setName('');
             setUnit('g');
+            setPurchaseUnit('');
+            setUnitConversion('1');
             setStockQuantity('0');
             setMinStockAlert('50');
             setCostPrice('0');
@@ -47,6 +53,8 @@ export default function IngredientFormDrawer({
         const payload = {
             name,
             unit,
+            purchase_unit: purchaseUnit || null,
+            unit_conversion: Number(unitConversion) || 1,
             stock_quantity: Number(stockQuantity) || 0,
             min_stock_alert: Number(minStockAlert) || 0,
             cost_price: Number(costPrice) || 0,
@@ -124,6 +132,36 @@ export default function IngredientFormDrawer({
                                 className="w-full px-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                             />
                             {errors.unit && <p className="text-xs text-red-500 mt-1">{errors.unit}</p>}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                                    Đơn vị mua
+                                </label>
+                                <input
+                                    type="text"
+                                    value={purchaseUnit}
+                                    onChange={(e) => setPurchaseUnit(e.target.value)}
+                                    placeholder="kg, l, gói, hộp..."
+                                    className="w-full px-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                                />
+                                <p className="text-[11px] text-zinc-400 mt-1">Để trống = dùng đơn vị tính</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                                    Hệ số quy đổi
+                                </label>
+                                <input
+                                    type="number"
+                                    step="any"
+                                    value={unitConversion}
+                                    onChange={(e) => setUnitConversion(e.target.value)}
+                                    placeholder="1"
+                                    className="w-full px-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                                />
+                                <p className="text-[11px] text-zinc-400 mt-1">1 đơn vị mua = N đơn vị tính</p>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
