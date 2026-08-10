@@ -31,6 +31,22 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
     const addLine = () => setLines((prev) => [...prev, { ingredient_id: '', quantity: '', unit_price: '' }]);
     const removeLine = (idx: number) => setLines((prev) => prev.filter((_, i) => i !== idx));
 
+    const displayUnit = (ingId: string): string => {
+        const ing = ingredients.find((i) => String(i.id) === ingId);
+        return ing?.purchase_unit || ing?.unit || '';
+    };
+
+    const toBaseQuantity = (line: ImportLine): number => {
+        const ing = ingredients.find((i) => String(i.id) === line.ingredient_id);
+        const conversion = ing?.unit_conversion ?? 1;
+        return Number(line.quantity) * conversion;
+    };
+    const toBasePrice = (line: ImportLine): number => {
+        const ing = ingredients.find((i) => String(i.id) === line.ingredient_id);
+        const conversion = ing?.unit_conversion ?? 1;
+        return Number(line.unit_price || 0) / conversion;
+    };
+
     const validLines = lines.filter((l) => l.ingredient_id && Number(l.quantity) > 0);
     const totalCost = validLines.reduce((sum, l) => sum + Number(l.quantity) * Number(l.unit_price || 0), 0);
 
@@ -48,8 +64,8 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
             {
                 items: validLines.map((l) => ({
                     ingredient_id: Number(l.ingredient_id),
-                    quantity: Number(l.quantity),
-                    unit_price: Number(l.unit_price || 0),
+                    quantity: toBaseQuantity(l),
+                    unit_price: toBasePrice(l),
                 })),
                 note,
             },
@@ -99,17 +115,20 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
                                     step="any"
                                     value={line.quantity}
                                     onChange={(e) => updateLine(idx, 'quantity', e.target.value)}
-                                    placeholder="SL"
+                                    placeholder={displayUnit(line.ingredient_id) ? `SL (${displayUnit(line.ingredient_id)})` : 'SL'}
                                     className="w-24 px-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                                 />
-                                <input
-                                    type="number"
-                                    step="any"
-                                    value={line.unit_price}
-                                    onChange={(e) => updateLine(idx, 'unit_price', e.target.value)}
-                                    placeholder="Đơn giá"
-                                    className="w-28 px-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        value={line.unit_price}
+                                        onChange={(e) => updateLine(idx, 'unit_price', e.target.value)}
+                                        placeholder={displayUnit(line.ingredient_id) ? `đ/${displayUnit(line.ingredient_id)}` : 'đ/đơn vị'}
+                                        className="w-32 px-3 py-2 pr-7 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-zinc-400">đ</span>
+                                </div>
                                 <button type="button" onClick={() => removeLine(idx)} className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950 rounded-lg">
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -126,9 +145,10 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
                         </button>
                     </div>
 
-                    {totalCost > 0 && (
+                    {totalCost > 0 && validLines[0] && (
                         <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                            Tổng giá trị phiếu: <strong className="text-emerald-600">{totalCost.toLocaleString('vi-VN')} đ</strong>
+                            {validLines.length} nguyên liệu · Tổng giá trị phiếu:{' '}
+                            <strong className="text-emerald-600">{totalCost.toLocaleString('vi-VN')} đ</strong>
                         </p>
                     )}
 

@@ -49,7 +49,7 @@ class StockVoucherController extends Controller
         return Inertia::render('manager/inventory/vouchers/StockVouchersManager', [
             'vouchers' => $vouchers,
             'filters' => $request->only(['type', 'from', 'to', 'search']),
-            'ingredients' => Ingredient::orderBy('name')->get(['id', 'code', 'name', 'unit', 'stock_quantity', 'min_stock_alert', 'cost_price']),
+            'ingredients' => Ingredient::orderBy('name')->get(['id', 'code', 'name', 'unit', 'purchase_unit', 'unit_conversion', 'stock_quantity', 'min_stock_alert', 'cost_price']),
         ]);
     }
 
@@ -140,7 +140,7 @@ class StockVoucherController extends Controller
                 'employee_name' => $v->employee?->full_name,
             ]),
             'filters' => [],
-            'ingredients' => Ingredient::orderBy('name')->get(['id', 'code', 'name', 'unit', 'stock_quantity', 'min_stock_alert', 'cost_price']),
+            'ingredients' => Ingredient::orderBy('name')->get(['id', 'code', 'name', 'unit', 'purchase_unit', 'unit_conversion', 'stock_quantity', 'min_stock_alert', 'cost_price']),
             'detail' => [
                 'voucher' => [
                     'id' => $voucher->id,
