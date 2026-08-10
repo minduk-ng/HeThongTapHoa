@@ -635,12 +635,16 @@ Refactor sang DataTable: chỉ bỏ khung xương (isCompact/pageSize/sort/pagin
 | key | Header | sortable | Ghi chú |
 |---|---|---|---|
 | `image` | Ảnh | no | `hideWhenCompact` |
-| `name` | Món | yes | font-medium |
+| `name` | Món | yes | font-medium (subtitle = số công thức) |
 | `category` | Danh mục | yes | text |
-| `ingredient_count` | Số nguyên liệu | yes | align center, badge count |
+| `price` | Giá bán | yes | align right, formatCurrency |
+| `cogs` | Giá vốn | yes | align right, formatCurrency |
+| `margin` | Lợi nhuận | yes | align right, formatCurrency |
 | `actions` | Thao tác | no | align center, Edit |
 
-`getSortValue`: `name`→name, `category`→category_name, `ingredient_count`→count. `defaultSortKey="name"`.
+**RATIFIED (user quyết định):** GIỮ price/COGS/margin — bảng định lượng cần xem giá vốn/lợi nhuận. Bỏ STT (đã bỏ).
+
+`getSortValue`: `name`→name, `category`→category?.name, `price`→price, `cogs`→cogs, `margin`→margin. `defaultSortKey="name"`.
 
 - [ ] **Step 6: Refactor TableListTable**
 
