@@ -3,13 +3,17 @@
 namespace App\Services\Checkout;
 
 use App\Models\Deposit;
+use App\Models\Employee;
+use App\Models\Ingredient;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\InvoicePromotion;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
+use App\Models\ProductRecipe;
 use App\Models\Promotion;
+use App\Models\StockVoucher;
 use App\Models\Table;
 use App\Services\OrderActivityLogger;
 use App\Services\Promotions\PromotionEngine;
@@ -267,6 +271,8 @@ class CheckoutService
                 OrderActivityLogger::log($order, 'checkout', $userId, $meta);
             }
 
+            self::createStockExportVoucher($orders, $userId);
+
             return $invoice;
         });
 
@@ -289,5 +295,70 @@ class CheckoutService
         $primary = $all->firstWhere('id', $primaryId);
 
         return $sub ? "{$primary->table_number} (Gộp {$sub})" : $primary->table_number;
+    }
+
+    private static function createStockExportVoucher(Collection $orders, ?int $userId): void
+    {
+        $employeeId = Employee::idForUser($userId);
+
+        // Aggregate: menu_item_id → tổng quantity (chỉ items không cancelled)
+        $menuQuantities = collect();
+        foreach ($orders as $order) {
+            $activeItems = $order->items()->where('status', '!=', 'cancelled')->get();
+            foreach ($activeItems as $item) {
+                $menuQuantities->put((int) $item->menu_item_id, (int) $menuQuantities->get((int) $item->menu_item_id, 0) + (int) $item->quantity);
+            }
+        }
+        if ($menuQuantities->isEmpty()) {
+            return;
+        }
+
+        // Recipes → ingredient total used
+        $recipes = ProductRecipe::whereIn('menu_item_id', $menuQuantities->keys())->get();
+        if ($recipes->isEmpty()) {
+            return;
+        }
+
+        $ingredientTotals = [];
+        foreach ($recipes as $recipe) {
+            $used = (float) $recipe->amount * (int) $menuQuantities->get((int) $recipe->menu_item_id, 0);
+            $ingredientTotals[(int) $recipe->ingredient_id] = ($ingredientTotals[(int) $recipe->ingredient_id] ?? 0) + $used;
+        }
+        if (empty($ingredientTotals)) {
+            return;
+        }
+
+        $dateStr = now()->format('Ymd');
+        $prefix = "PX-{$dateStr}-";
+        $maxSeq = StockVoucher::where('voucher_code', 'like', $prefix.'%')
+            ->lockForUpdate()
+            ->pluck('voucher_code')
+            ->map(fn ($code) => (int) substr($code, strlen($prefix)))
+            ->max() ?? 0;
+        $voucherCode = $prefix.str_pad((string) ($maxSeq + 1), 3, '0', STR_PAD_LEFT);
+
+        $invoiceCodes = $orders->map(fn ($o) => $o->invoice?->invoice_code ?? $o->order_code)->unique()->implode(', ');
+
+        $voucher = StockVoucher::create([
+            'voucher_code' => $voucherCode,
+            'type' => 'export',
+            'employee_id' => $employeeId,
+            'transacted_at' => now(),
+            'note' => 'Xuất kho tự động cho Hoá đơn '.$invoiceCodes,
+            'created_by' => $userId,
+        ]);
+
+        foreach ($ingredientTotals as $ingredientId => $totalUsed) {
+            $ingredient = Ingredient::lockForUpdate()->find($ingredientId);
+            if (! $ingredient) {
+                continue;
+            }
+            $ingredient->decrement('stock_quantity', $totalUsed);
+            $voucher->items()->create([
+                'ingredient_id' => $ingredientId,
+                'quantity' => -$totalUsed,
+                'unit_price' => null,
+            ]);
+        }
     }
 }
