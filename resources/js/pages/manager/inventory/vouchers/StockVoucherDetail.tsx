@@ -29,7 +29,7 @@ interface VoucherDetailProps {
 const formatCurrency = (val: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
-export default function StockVoucherDetail({ voucher, items }: VoucherDetailProps) {
+export default function StockVoucherDetail({ voucher, items, total }: VoucherDetailProps) {
     const isImport = voucher.type === 'import';
 
     return (
@@ -122,6 +122,16 @@ export default function StockVoucherDetail({ voucher, items }: VoucherDetailProp
                                                 </td>
                                             </tr>
                                         ))}
+                                        {isImport && total != null && (
+                                            <tr className="bg-zinc-50 dark:bg-zinc-800/40">
+                                                <td colSpan={4} className="px-3 py-2.5 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                                                    Tổng giá trị
+                                                </td>
+                                                <td className="px-3 py-2.5 text-right text-sm font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                                                    {formatCurrency(total)}
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

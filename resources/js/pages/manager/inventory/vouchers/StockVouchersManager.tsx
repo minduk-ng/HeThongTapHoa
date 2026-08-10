@@ -11,6 +11,7 @@ interface VoucherData {
     voucher_code: string;
     type: 'import' | 'export';
     transacted_at: string;
+    sort_key?: string;
     note: string | null;
     employee_name: string | null;
 }
@@ -113,7 +114,10 @@ export default function StockVouchersManager({ vouchers, filters, ingredients = 
                         rowKey={(v) => v.id}
                         defaultSortKey="transacted_at"
                         defaultSortDirection="desc"
-                        getSortValue={(v, key) => (v as any)[key] ?? ''}
+                        getSortValue={(v, key) => {
+                            if (key === 'transacted_at') return v.sort_key ?? '';
+                            return (v as any)[key] ?? '';
+                        }}
                         onRowClick={(v) => router.get(`/manager/inventory/vouchers/${v.id}`)}
                         emptyMessage="Chưa có phiếu nào"
                     />

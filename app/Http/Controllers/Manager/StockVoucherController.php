@@ -42,6 +42,7 @@ class StockVoucherController extends Controller
             'voucher_code' => $v->voucher_code,
             'type' => $v->type,
             'transacted_at' => $v->transacted_at?->format('d/m/Y H:i'),
+            'sort_key' => $v->transacted_at?->toDateTimeString() ?? '',
             'note' => $v->note,
             'employee_name' => $v->employee?->full_name,
         ]);
