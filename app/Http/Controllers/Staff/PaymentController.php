@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class PaymentController extends Controller
 {
@@ -31,7 +32,7 @@ class PaymentController extends Controller
             'codes.*' => 'string|max:50',
             'subtotal' => 'nullable|numeric|min:0',
             'items' => 'nullable|array',
-            'items.*.menu_item_id' => 'required_with:items|integer|exists:menu_items,id',
+            'items.*.menu_item_id' => ['required_with:items', 'integer', Rule::exists('menu_items', 'id')->whereNull('deleted_at')],
             'items.*.quantity' => 'required_with:items|integer|min:1',
         ]);
 

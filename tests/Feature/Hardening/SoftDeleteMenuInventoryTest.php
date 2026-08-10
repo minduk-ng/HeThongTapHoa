@@ -34,6 +34,20 @@ test('xoá nguyên liệu qua IngredientController la soft delete, inventory_tra
     expect(InventoryTransaction::where('ingredient_id', $ing->id)->count())->toBe(1);
 });
 
+test('POS index van hoat dong khi recipe tro toi ingredient da xoa mem', function () {
+    $ing = Ingredient::create([
+        'code' => 'test-'.uniqid(), 'name' => 'NL '.uniqid(),
+        'stock_quantity' => 100, 'unit' => 'g', 'min_stock_alert' => 10, 'cost_price' => 1000,
+    ]);
+    $item = posMenuItem();
+    $item->recipes()->create(['ingredient_id' => $ing->id, 'amount' => 1, 'unit' => 'g']);
+    $ing->delete(); // soft delete → recipe now points to trashed ingredient
+
+    $this->actingAs(posStaff(['pos.view']))
+        ->get('/staff/pos')
+        ->assertOk();
+});
+
 test('seed sau khi soft-delete khong vi pham unique name', function () {
     $item = posMenuItem(['name' => 'Cà phê đen']);
     $item->delete(); // soft delete

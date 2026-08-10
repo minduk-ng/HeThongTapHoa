@@ -46,6 +46,19 @@ test('sendToKitchen moi order moi duoc tao voi gia dung', function () {
     expect(OrderItem::where('order_id', $order->id)->first()->unit_price)->toBe(30000.0);
 });
 
+test('sendToKitchen tu choi menu_item_id da bi xoa mem', function () {
+    $staff = posStaff(['pos.view', 'pos.create']);
+    $item = posMenuItem();
+    $item->delete(); // soft delete
+
+    $this->actingAs($staff)->post('/staff/pos/send-to-kitchen', [
+        'table_id' => posTable()->id,
+        'items' => [['menu_item_id' => $item->id, 'quantity' => 1]],
+    ])->assertSessionHasErrors('items.0.menu_item_id');
+
+    expect(OrderItem::count())->toBe(0);
+});
+
 test('validatePromotion tinh subtotal tu gia menu, bo qua unit_price client', function () {
     $cat = MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
     $itemA = posMenuItem(['category_id' => $cat->id, 'price' => 100000]);

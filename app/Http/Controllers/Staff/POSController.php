@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class POSController extends Controller
@@ -126,7 +127,7 @@ class POSController extends Controller
                 $possibleServings = [];
                 foreach ($product->recipes as $recipe) {
                     if ((float) $recipe->amount > 0) {
-                        $stock = (float) $recipe->ingredient->stock_quantity;
+                        $stock = (float) ($recipe->ingredient?->stock_quantity ?? 0);
                         $possible = (int) floor($stock / (float) $recipe->amount);
                         $possibleServings[] = max(0, $possible);
                     }
@@ -163,7 +164,7 @@ class POSController extends Controller
             'table_id' => 'nullable|exists:tables,id',
             'order_id' => 'nullable|exists:orders,id',
             'items' => 'nullable|array',
-            'items.*.menu_item_id' => 'required_with:items|exists:menu_items,id',
+            'items.*.menu_item_id' => ['required_with:items', Rule::exists('menu_items', 'id')->whereNull('deleted_at')],
             'items.*.quantity' => 'required_with:items|integer|min:1',
             'items.*.note' => 'nullable|string|max:255',
             'reduced_items' => 'nullable|array',
