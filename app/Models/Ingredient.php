@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 class Ingredient extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'code',
@@ -28,10 +30,10 @@ class Ingredient extends Model
     protected static function booted(): void
     {
         static::saved(function () {
-            \Illuminate\Support\Facades\Cache::forget('pos_products');
+            Cache::forget('pos_products');
         });
         static::deleted(function () {
-            \Illuminate\Support\Facades\Cache::forget('pos_products');
+            Cache::forget('pos_products');
         });
     }
 

@@ -51,7 +51,7 @@ class DefaultMenuAndInventorySeeder extends Seeder
 
         $ingredientModels = [];
         foreach ($ingredientsData as $ingData) {
-            $ing = Ingredient::updateOrCreate(['code' => $ingData['code']], $ingData);
+            $ing = Ingredient::withTrashed()->updateOrCreate(['code' => $ingData['code']], $ingData);
             $ingredientModels[$ingData['code']] = $ing;
         }
 
@@ -85,7 +85,7 @@ class DefaultMenuAndInventorySeeder extends Seeder
 
         $productModels = [];
         foreach ($productsData as $pData) {
-            $p = MenuItem::updateOrCreate(
+            $p = MenuItem::withTrashed()->updateOrCreate(
                 ['name' => $pData['name']],
                 [
                     'price' => $pData['price'],

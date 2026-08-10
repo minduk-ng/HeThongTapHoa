@@ -5,15 +5,17 @@ namespace App\Http\Controllers\Manager;
 use App\Events\IngredientStockUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class IngredientController extends Controller
 {
-    public function index(Request $request): \Inertia\Response
+    public function index(Request $request): Response
     {
         $query = Ingredient::query();
 
@@ -44,7 +46,7 @@ class IngredientController extends Controller
         ]);
     }
 
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:100|unique:ingredients,name',
@@ -66,7 +68,7 @@ class IngredientController extends Controller
         return back()->with('success', 'Thêm nguyên liệu thành công!');
     }
 
-    public function update(Request $request, Ingredient $ingredient): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, Ingredient $ingredient): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:100|unique:ingredients,name,'.$ingredient->id,
@@ -83,7 +85,7 @@ class IngredientController extends Controller
         return back()->with('success', 'Cập nhật nguyên liệu thành công!');
     }
 
-    public function destroy(Request $request, Ingredient $ingredient): \Illuminate\Http\RedirectResponse
+    public function destroy(Request $request, Ingredient $ingredient): RedirectResponse
     {
         $request->validate([
             'password' => 'required|string',
@@ -101,7 +103,7 @@ class IngredientController extends Controller
         return back()->with('success', 'Xóa nguyên liệu thành công!');
     }
 
-    public function importStock(Request $request): \Illuminate\Http\RedirectResponse
+    public function importStock(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'ingredient_id' => 'required|exists:ingredients,id',
@@ -112,7 +114,7 @@ class IngredientController extends Controller
 
         DB::transaction(function () use ($validated) {
             $ingredient = Ingredient::lockForUpdate()->findOrFail($validated['ingredient_id']);
-            if (!$ingredient instanceof Ingredient) {
+            if (! $ingredient instanceof Ingredient) {
                 return;
             }
             $currentStock = (float) $ingredient->stock_quantity;

@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -17,11 +19,13 @@ use Illuminate\Support\Facades\Cache;
  * @property string|null $description
  * @property bool $is_available
  * @property int $max_servings
- * @property-read \App\Models\MenuCategory|null $category
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductRecipe> $recipes
+ * @property-read MenuCategory|null $category
+ * @property-read Collection<int, ProductRecipe> $recipes
  */
 class MenuItem extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'menu_items';
 
     protected $fillable = [
@@ -55,7 +59,7 @@ class MenuItem extends Model
         return $this->belongsTo(MenuCategory::class, 'category_id');
     }
 
-    public function recipes(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function recipes(): HasMany
     {
         return $this->hasMany(ProductRecipe::class, 'menu_item_id');
     }
