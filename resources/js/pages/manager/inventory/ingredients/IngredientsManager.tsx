@@ -30,7 +30,7 @@ export default function IngredientsManager({
     // Modals and Drawer States
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [ingredientToEdit, setIngredientToEdit] = useState<IngredientData | null>(null);
-    const [importIngredient, setImportIngredient] = useState<IngredientData | null>(null);
+    const [isImportOpen, setIsImportOpen] = useState(false);
 
     // Delete confirmation state
     const [deletingIngredient, setDeletingIngredient] = useState<IngredientData | null>(null);
@@ -148,15 +148,23 @@ export default function IngredientsManager({
                             </p>
                         </div>
 
-                        {/* Primary Fixed Action Button */}
-                        <div>
+                        {/* Primary Fixed Action Buttons */}
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsImportOpen(true)}
+                                className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl transition-colors duration-150 shadow-xs"
+                            >
+                                <Plus className="w-4 h-4 stroke-[2]" />
+                                <span>Nhập kho</span>
+                            </button>
                             <button
                                 type="button"
                                 onClick={handleOpenAddDrawer}
                                 className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors duration-150 shadow-xs"
                             >
                                 <Plus className="w-4 h-4 stroke-[2]" />
-                                <span>Thêm nguyên liệu mới</span>
+                                <span>Thêm mới</span>
                             </button>
                         </div>
 
@@ -247,7 +255,6 @@ export default function IngredientsManager({
                     ingredients={filteredIngredients}
                     onEdit={handleEditIngredient}
                     onDelete={handleDeleteIngredient}
-                    onImportStock={(item) => setImportIngredient(item)}
                 />
             </ManagerPageLayout>
 
@@ -260,8 +267,9 @@ export default function IngredientsManager({
 
             {/* Stock Import Modal */}
             <StockImportModal
-                ingredient={importIngredient}
-                onClose={() => setImportIngredient(null)}
+                ingredients={ingredients}
+                isOpen={isImportOpen}
+                onClose={() => setIsImportOpen(false)}
             />
 
             {/* Delete Password Confirmation Modal */}

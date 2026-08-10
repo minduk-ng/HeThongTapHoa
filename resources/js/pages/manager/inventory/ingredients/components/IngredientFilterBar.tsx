@@ -9,6 +9,7 @@ interface IngredientFilterBarProps {
     onAlertChange: (alert: string) => void;
     units: string[];
     onOpenAddDrawer: () => void;
+    onOpenImport: () => void;
 }
 
 export default function IngredientFilterBar({
@@ -20,6 +21,7 @@ export default function IngredientFilterBar({
     onAlertChange,
     units,
     onOpenAddDrawer,
+    onOpenImport,
 }: IngredientFilterBarProps) {
     return (
         <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl shadow-xs">
@@ -72,6 +74,16 @@ export default function IngredientFilterBar({
 
             {/* Action Buttons */}
             <div className="flex items-center space-x-2">
+                <button
+                    type="button"
+                    onClick={onOpenImport}
+                    className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs flex items-center space-x-1.5 shrink-0"
+                >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Nhập kho</span>
+                </button>
                 <button
                     type="button"
                     onClick={onOpenAddDrawer}

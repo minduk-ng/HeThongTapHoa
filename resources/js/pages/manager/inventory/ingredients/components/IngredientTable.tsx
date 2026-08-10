@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Package, ChevronUp, ChevronDown, Plus, Edit3, Trash2, Rows3 } from 'lucide-react';
+import { Package, ChevronUp, ChevronDown, Edit3, Trash2, Rows3 } from 'lucide-react';
 
 export interface IngredientData {
     id: number;
@@ -15,7 +15,6 @@ interface IngredientTableProps {
     ingredients: IngredientData[];
     onEdit: (ingredient: IngredientData) => void;
     onDelete: (ingredient: IngredientData) => void;
-    onImportStock: (ingredient: IngredientData) => void;
 }
 
 type SortField = 'id' | 'code' | 'name' | 'unit' | 'stock_quantity' | 'cost_price';
@@ -25,7 +24,6 @@ export default function IngredientTable({
     ingredients,
     onEdit,
     onDelete,
-    onImportStock,
 }: IngredientTableProps) {
     const [isCompact, setIsCompact] = useState(false);
     const [pageSize, setPageSize] = useState<number>(20);
@@ -209,15 +207,6 @@ export default function IngredientTable({
                                         </td>
                                         <td className={`px-4 text-center ${isCompact ? 'py-1.5' : 'py-3'}`}>
                                             <div className="flex items-center justify-center space-x-1">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => onImportStock(item)}
-                                                    className="px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900 flex items-center space-x-1 transition-colors"
-                                                    title="Nhập kho bổ sung"
-                                                >
-                                                    <Plus className="w-3.5 h-3.5 stroke-[1.5]" />
-                                                    <span>Nhập kho</span>
-                                                </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => onEdit(item)}
