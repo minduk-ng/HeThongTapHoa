@@ -165,16 +165,12 @@ class POSController extends Controller
             'items' => 'nullable|array',
             'items.*.menu_item_id' => 'required_with:items|exists:menu_items,id',
             'items.*.quantity' => 'required_with:items|integer|min:1',
-            'items.*.unit_price' => 'required_with:items|numeric|min:0',
             'items.*.note' => 'nullable|string|max:255',
             'reduced_items' => 'nullable|array',
             'reduced_items.*.order_item_id' => 'required_with:reduced_items|exists:order_items,id',
             'reduced_items.*.reduce_quantity' => 'required_with:reduced_items|integer|min:1',
             'reduced_items.*.cancellation_reason' => 'required_with:reduced_items|string|max:255',
             'reduced_items.*.note' => 'nullable|string|max:255',
-            'subtotal' => 'required|numeric|min:0',
-            'vat_amount' => 'required|numeric|min:0',
-            'total' => 'required|numeric|min:0',
             'idempotency_key' => 'nullable|string|max:100',
         ]);
 
@@ -191,6 +187,11 @@ class POSController extends Controller
         try {
             $primaryOrder = DB::transaction(function () use ($validated, $request) {
                 $table = ! empty($validated['table_id']) ? Table::findOrFail($validated['table_id']) : null;
+
+                $menuPrices = MenuItem::whereIn('id', collect($validated['items'] ?? [])->pluck('menu_item_id'))->pluck('price', 'id');
+                $computedSubtotal = collect($validated['items'] ?? [])->sum(
+                    fn ($i) => (float) $i['quantity'] * (float) ($menuPrices[$i['menu_item_id']] ?? 0)
+                );
 
                 // 1. Handle staged reductions
                 if (! empty($validated['reduced_items'])) {
@@ -252,16 +253,16 @@ class POSController extends Controller
                         if ($wasDraft) {
                             $createdOrder->items()->delete();
                             $createdOrder->update([
-                                'subtotal' => $validated['subtotal'],
-                                'vat_amount' => $validated['vat_amount'],
-                                'total' => $validated['subtotal'],
+                                'subtotal' => $computedSubtotal,
+                                'vat_amount' => 0,
+                                'total' => $computedSubtotal,
                                 'status' => 'pending',
                             ]);
                         } else {
                             $createdOrder->update([
-                                'subtotal' => $createdOrder->subtotal + $validated['subtotal'],
-                                'vat_amount' => $createdOrder->vat_amount + $validated['vat_amount'],
-                                'total' => $createdOrder->subtotal + $validated['subtotal'],
+                                'subtotal' => $createdOrder->subtotal + $computedSubtotal,
+                                'vat_amount' => $createdOrder->vat_amount,
+                                'total' => $createdOrder->subtotal + $computedSubtotal,
                                 'status' => 'pending',
                                 'has_additional_items' => true,
                             ]);
@@ -280,9 +281,9 @@ class POSController extends Controller
                             'order_code' => $orderCode,
                             'table_id' => $table?->id,
                             'employee_id' => $employeeId,
-                            'subtotal' => $validated['subtotal'],
-                            'vat_amount' => $validated['vat_amount'],
-                            'total' => $validated['subtotal'],
+                            'subtotal' => $computedSubtotal,
+                            'vat_amount' => 0,
+                            'total' => $computedSubtotal,
                             'status' => 'pending',
                             'has_additional_items' => $hasPreviousOrders,
                         ]);
@@ -297,8 +298,8 @@ class POSController extends Controller
                             'order_id' => $createdOrder->id,
                             'menu_item_id' => $item['menu_item_id'],
                             'quantity' => $item['quantity'],
-                            'unit_price' => $item['unit_price'],
-                            'subtotal' => $item['quantity'] * $item['unit_price'],
+                            'unit_price' => $menuPrices[$item['menu_item_id']] ?? 0,
+                            'subtotal' => $item['quantity'] * ($menuPrices[$item['menu_item_id']] ?? 0),
                             'note' => $item['note'] ?? null,
                         ]);
                     }
@@ -308,14 +309,14 @@ class POSController extends Controller
                     $itemMeta = collect($validated['items'])->map(fn ($i) => [
                         'name' => MenuItem::find($i['menu_item_id'])->name ?? 'Món',
                         'qty' => $i['quantity'],
-                        'price' => $i['unit_price'],
+                        'price' => $menuPrices[$i['menu_item_id']] ?? 0,
                     ])->toArray();
 
                     if (empty($validated['order_id']) || $wasDraft) {
                         if (empty($validated['order_id'])) {
                             OrderActivityLogger::log($createdOrder, 'created', $userId, [
                                 'items' => $itemMeta,
-                                'total' => $validated['total'],
+                                'total' => $computedSubtotal,
                                 'item_count' => count($validated['items']),
                             ]);
                         }
@@ -326,7 +327,7 @@ class POSController extends Controller
                     } else {
                         OrderActivityLogger::log($createdOrder, 'additional', $userId, [
                             'items' => $itemMeta,
-                            'total_added' => $validated['total'],
+                            'total_added' => $computedSubtotal,
                         ]);
                     }
                 }

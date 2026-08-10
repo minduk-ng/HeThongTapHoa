@@ -3,6 +3,7 @@
 use App\Models\Order;
 use App\Models\OrderActivity;
 use App\Models\OrderItem;
+use App\Services\Checkout\OrderTotals;
 
 /*
 |--------------------------------------------------------------------------
@@ -176,7 +177,7 @@ test('giảm một phần số lượng món đã gửi bếp giữ snapshot ord
     // preview JIT (OrderTotals::preview) là nguồn đúng.
     expect((float) $order->subtotal)->toBe(60000.0);
     expect((float) $order->total)->toBe(60000.0);
-    expect(\App\Services\Checkout\OrderTotals::preview($order->items()->where('status', '!=', 'cancelled')->get())['subtotal'])->toBe(40000.0);
+    expect(OrderTotals::preview($order->items()->where('status', '!=', 'cancelled')->get())['subtotal'])->toBe(40000.0);
     expect($order->status)->not->toBe('cancelled');
 
     expect(OrderActivity::where('order_id', $order->id)->where('action', 'item_cancel')->exists())->toBeTrue();
@@ -267,12 +268,16 @@ test('gửi bếp thiếu dữ liệu bắt buộc bị từ chối bởi valida
     $this->actingAs(posAdmin());
     $table = posTable();
 
+    // subtotal/vat/total không còn bắt buộc — giá tính từ DB.
+    // Dữ liệu bắt buộc giờ là từng món: thiếu menu_item_id → bị từ chối.
     $response = $this->post('/staff/pos/send-to-kitchen', [
         'table_id' => $table->id,
-        // thiếu subtotal / vat_amount / total
+        'items' => [
+            ['quantity' => 1],
+        ],
     ]);
 
-    $response->assertSessionHasErrors(['subtotal', 'vat_amount', 'total']);
+    $response->assertSessionHasErrors(['items.0.menu_item_id']);
     expect(Order::count())->toBe(0);
 });
 
