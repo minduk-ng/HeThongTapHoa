@@ -24,6 +24,7 @@ class RoleController extends Controller
             'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
             'promotions.view', 'promotions.create', 'promotions.edit', 'promotions.delete',
             'ingredients.view', 'ingredients.create', 'ingredients.edit', 'ingredients.delete', 'ingredients.import',
+            'inventory.vouchers.view', 'inventory.vouchers.create',
             'recipes.view', 'recipes.edit',
             'tables.view', 'tables.create', 'tables.edit', 'tables.delete',
             'pos.view', 'pos.create', 'pos.bypass_kitchen_lock', 'pos.cancel_item',
@@ -77,8 +78,9 @@ class RoleController extends Controller
 
         Cache::forget('system_page_roles');
         try {
-            \Illuminate\Support\Facades\Cache::tags(['user_inertia'])->flush();
-        } catch (\Exception $e) {}
+            Cache::tags(['user_inertia'])->flush();
+        } catch (\Exception $e) {
+        }
 
         return redirect()->back()->with('success', 'Tạo nhóm quyền thành công.');
     }
@@ -118,8 +120,9 @@ class RoleController extends Controller
 
         Cache::forget('system_page_roles');
         try {
-            \Illuminate\Support\Facades\Cache::tags(['user_inertia'])->flush();
-        } catch (\Exception $e) {}
+            Cache::tags(['user_inertia'])->flush();
+        } catch (\Exception $e) {
+        }
 
         $userIds = \DB::table('user_roles')->where('role_id', $role->id)->pluck('user_id');
         foreach ($userIds as $id) {

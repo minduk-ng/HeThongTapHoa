@@ -16,6 +16,7 @@ use App\Http\Controllers\Manager\OrderListController;
 use App\Http\Controllers\Manager\ProductController;
 use App\Http\Controllers\Manager\PromotionController;
 use App\Http\Controllers\Manager\RecipeController;
+use App\Http\Controllers\Manager\StockVoucherController;
 use App\Http\Controllers\Manager\TableController;
 use App\Http\Controllers\Reports\CancelledReportController;
 use App\Http\Controllers\Reports\InvoiceItemsReportController;
@@ -122,6 +123,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/inventory/ingredients', [IngredientController::class, 'store'])->middleware('permission:ingredients.create');
         Route::post('/inventory/ingredients/{ingredient}', [IngredientController::class, 'update'])->middleware('permission:ingredients.edit');
         Route::delete('/inventory/ingredients/{ingredient}', [IngredientController::class, 'destroy'])->middleware('permission:ingredients.delete');
+
+        // Stock Vouchers
+        Route::get('/inventory/vouchers', [StockVoucherController::class, 'index'])->middleware('permission:inventory.vouchers.view');
+        Route::post('/inventory/vouchers', [StockVoucherController::class, 'store'])->middleware('permission:inventory.vouchers.create');
+        Route::get('/inventory/vouchers/{id}', [StockVoucherController::class, 'show'])->middleware('permission:inventory.vouchers.view');
 
         // Recipes Management
         Route::get('/inventory/recipes', [RecipeController::class, 'index'])->middleware('permission:recipes.view');
