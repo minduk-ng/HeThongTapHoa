@@ -60,7 +60,7 @@ class PaymentController extends Controller
         $codes = $validated['codes'] ?? [$validated['code'] ?? null];
 
         $linesSubtotal = $lines->sum('subtotal');
-        $resolved = PromotionEngine::resolveAll($codes, $lines, (float) $linesSubtotal);
+        $resolved = PromotionEngine::resolveAll($codes, $lines, (float) $linesSubtotal, false);
 
         if ($resolved['status'] === 'rejected') {
             $reason = $resolved['reason'] ?? 'not_found';
@@ -70,8 +70,8 @@ class PaymentController extends Controller
                 'not_started' => 'Mã khuyến mãi chưa tới hạn áp dụng.',
                 'expired' => 'Mã khuyến mãi đã hết hạn.',
                 'out_of_uses' => 'Mã khuyến mãi đã hết lượt sử dụng.',
-                'below_min' => 'Đơn hàng chưa đạt giá trị tối thiểu.',
-                'no_eligible_line' => 'Không có món trong đơn thuộc đối tượng áp dụng.',
+                'condition_not_met' => 'Đơn hàng chưa đáp ứng điều kiện khuyến mãi.',
+                'exclusive_conflict' => 'Mã khuyến mãi xung đột với khuyến mãi khác.',
             ];
 
             return response()->json([

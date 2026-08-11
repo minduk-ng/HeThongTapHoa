@@ -1,16 +1,18 @@
 <?php
 
-use App\Models\Promotion;
 use App\Services\Promotions\PromotionEngine;
+use Illuminate\Support\Collection;
 
-function engineLines(float $subtotal = 100000): \Illuminate\Support\Collection
+function engineLines(float $subtotal = 100000): Collection
 {
-    return collect([['order_item_id' => null, 'menu_item_id' => null, 'subtotal' => $subtotal, 'category_id' => null]]);
+    return collect([['order_item_id' => null, 'menu_item_id' => null, 'quantity' => 1, 'subtotal' => $subtotal, 'category_id' => null]]);
 }
 
 test('resolveAll stack 2 ma: ma sau tinh tren phan con lai', function () {
-    $p1 = Promotion::create(['code' => 'STK1'.substr(uniqid(),-4), 'name' => '10%', 'discount_type' => 'percentage', 'discount_value' => 10, 'is_active' => true]);
-    $p2 = Promotion::create(['code' => 'STK2'.substr(uniqid(),-4), 'name' => '20k', 'discount_type' => 'fixed_amount', 'discount_value' => 20000, 'is_active' => true]);
+    $p1 = promoV2(['type' => 'coupon', 'code' => 'STK1'.substr(uniqid(), -4)]);
+    addAction($p1, 'discount_percent', 10);
+    $p2 = promoV2(['type' => 'coupon', 'code' => 'STK2'.substr(uniqid(), -4)]);
+    addAction($p2, 'discount_amount', 20000);
 
     $r = PromotionEngine::resolveAll([$p1->code, $p2->code], engineLines(100000), 100000);
 
@@ -23,8 +25,10 @@ test('resolveAll stack 2 ma: ma sau tinh tren phan con lai', function () {
 });
 
 test('resolveAll cap tong discount khong vuot subtotal', function () {
-    $p1 = Promotion::create(['code' => 'STK3'.substr(uniqid(),-4), 'name' => '90%', 'discount_type' => 'percentage', 'discount_value' => 90, 'is_active' => true]);
-    $p2 = Promotion::create(['code' => 'STK4'.substr(uniqid(),-4), 'name' => '50k', 'discount_type' => 'fixed_amount', 'discount_value' => 50000, 'is_active' => true]);
+    $p1 = promoV2(['type' => 'coupon', 'code' => 'STK3'.substr(uniqid(), -4)]);
+    addAction($p1, 'discount_percent', 90);
+    $p2 = promoV2(['type' => 'coupon', 'code' => 'STK4'.substr(uniqid(), -4)]);
+    addAction($p2, 'discount_amount', 50000);
 
     $r = PromotionEngine::resolveAll([$p1->code, $p2->code], engineLines(100000), 100000);
     expect($r['status'])->toBe('ok');
@@ -32,7 +36,8 @@ test('resolveAll cap tong discount khong vuot subtotal', function () {
 });
 
 test('resolveAll ma reject tra rejected, khong pha stack', function () {
-    $p1 = Promotion::create(['code' => 'STK5'.substr(uniqid(),-4), 'name' => 'x', 'discount_type' => 'percentage', 'discount_value' => 10, 'is_active' => true, 'max_uses' => 1, 'used_count' => 1]);
+    $p1 = promoV2(['type' => 'coupon', 'max_usage' => 1, 'used_count' => 1]);
+    addAction($p1, 'discount_percent', 10);
 
     $r = PromotionEngine::resolveAll([$p1->code], engineLines(100000), 100000);
     expect($r['status'])->toBe('rejected');
@@ -41,14 +46,26 @@ test('resolveAll ma reject tra rejected, khong pha stack', function () {
 });
 
 test('resolveAll ma khong ton tai', function () {
-    $r = PromotionEngine::resolveAll(['NOEXIST'.substr(uniqid(),-4)], engineLines(), 100000);
+    $r = PromotionEngine::resolveAll(['NOEXIST'.substr(uniqid(), -4)], engineLines(), 100000);
     expect($r['status'])->toBe('rejected');
     expect($r['reason'])->toBe('not_found');
 });
 
 test('resolveAll 1 ma dung (compat voi prom single)', function () {
-    $p = Promotion::create(['code' => 'STK6'.substr(uniqid(),-4), 'name' => '10%', 'discount_type' => 'percentage', 'discount_value' => 10, 'is_active' => true]);
+    $p = promoV2(['type' => 'coupon']);
+    addAction($p, 'discount_percent', 10);
+
     $r = PromotionEngine::resolveAll([$p->code], engineLines(100000), 100000);
     expect($r['status'])->toBe('ok');
     expect($r['total_discount'])->toBe(10000.0);
+});
+
+test('resolveAll dieu kien khong tho tra condition_not_met', function () {
+    $p = promoV2(['type' => 'coupon']);
+    addCond($p, 'min_order_value', '200000');
+    addAction($p, 'discount_percent', 10);
+
+    $r = PromotionEngine::resolveAll([$p->code], engineLines(100000), 100000);
+    expect($r['status'])->toBe('rejected');
+    expect($r['reason'])->toBe('condition_not_met');
 });

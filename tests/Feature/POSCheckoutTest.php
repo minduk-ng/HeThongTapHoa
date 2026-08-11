@@ -1,8 +1,9 @@
 <?php
 
 use App\Models\Invoice;
-use App\Models\Order;
+use App\Models\MenuCategory;
 use App\Models\OrderActivity;
+use App\Models\OrderPromotion;
 
 /*
 |--------------------------------------------------------------------------
@@ -220,14 +221,8 @@ test('idempotency key chặn thanh toán lặp không tạo hóa đơn trùng', 
 
 test('checkout áp mã khuyến mãi trừ discount và tăng used_count', function () {
     $this->actingAs(posAdmin());
-    $promo = App\Models\Promotion::create([
-        'code' => 'CK10',
-        'name' => 'Checkout 10%',
-        'discount_type' => 'percentage',
-        'discount_value' => 10,
-        'max_uses' => 100,
-        'used_count' => 0,
-    ]);
+    $promo = promoV2(['type' => 'coupon', 'code' => 'CK10']);
+    addAction($promo, 'discount_percent', 10);
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem();
     $order = posOrder($table, [['item' => $item, 'qty' => 2, 'price' => 30000, 'status' => 'completed']], ['status' => 'completed']);
@@ -241,22 +236,17 @@ test('checkout áp mã khuyến mãi trừ discount và tăng used_count', funct
     ])->assertSessionHasNoErrors();
 
     $order->refresh();
-    expect($order->promotion_id)->toBe($promo->id);
+    expect(OrderPromotion::where('order_id', $order->id)->where('promotion_id', $promo->id)->exists())->toBeTrue();
     expect((float) $order->discount_amount)->toBe(6000.0);
     expect((float) $order->total)->toBe(54000.0);
-    expect((float) App\Models\Invoice::firstOrFail()->total_amount)->toBe(54000.0);
+    expect((float) Invoice::firstOrFail()->total_amount)->toBe(54000.0);
     expect($promo->fresh()->used_count)->toBe(1);
 });
 
 test('checkout từ chối mã không còn hợp lệ và rollback', function () {
     $this->actingAs(posAdmin());
-    $promo = App\Models\Promotion::create([
-        'code' => 'EXPIRE',
-        'name' => 'Hết hạn',
-        'discount_type' => 'fixed_amount',
-        'discount_value' => 10000,
-        'expires_at' => now()->subDay(),
-    ]);
+    $promo = promoV2(['type' => 'coupon', 'code' => 'EXPIRE', 'end_date' => now()->subDay()]);
+    addAction($promo, 'discount_amount', 10000);
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem();
     $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 20000, 'status' => 'completed']], ['status' => 'completed']);
@@ -270,7 +260,7 @@ test('checkout từ chối mã không còn hợp lệ và rollback', function ()
     ])->assertSessionHasErrors(['error']);
 
     expect($order->fresh()->status)->toBe('completed');
-    expect(App\Models\Invoice::count())->toBe(0);
+    expect(Invoice::count())->toBe(0);
 });
 
 test('tổng tiền hóa đơn không tính món đã hủy', function () {
@@ -295,15 +285,14 @@ test('tổng tiền hóa đơn không tính món đã hủy', function () {
     expect((float) Invoice::firstOrFail()->total_amount)->toBe(60000.0);
 });
 
-test('checkout item scope ghi discount vao dung dong va cac dong khac bang 0', function () {
+test('checkout specific_product: discount ap khi mon co mat, phan bo theo ty trong', function () {
     $this->actingAs(posAdmin());
-    $cat = \App\Models\MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
+    $cat = MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
     $itemA = posMenuItem(['category_id' => $cat->id, 'price' => 100000]);
     $itemB = posMenuItem(['category_id' => $cat->id, 'price' => 300000]);
-    $promo = \App\Models\Promotion::create([
-        'code' => 'ITEM10', 'name' => 'Mon 10%', 'discount_type' => 'percentage',
-        'discount_value' => 10, 'target_type' => 'item', 'target_value' => $itemA->id,
-    ]);
+    $promo = promoV2(['type' => 'coupon', 'code' => 'ITEM10']);
+    addCond($promo, 'specific_product', (string) $itemA->id);
+    addAction($promo, 'discount_percent', 10);
     $table = posTable(['status' => 'occupied']);
     $order = posOrder($table, [
         ['item' => $itemA, 'qty' => 1, 'price' => 100000, 'status' => 'completed'],
@@ -313,28 +302,27 @@ test('checkout item scope ghi discount vao dung dong va cac dong khac bang 0', f
     $this->post('/staff/pos/checkout', [
         'order_id' => $order->id,
         'payment_method' => 'cash',
-        'amount_received' => 390000,
+        'amount_received' => 360000,
         'change_amount' => 0,
         'promotion_code' => $promo->code,
     ])->assertSessionHasNoErrors();
 
     $order->refresh();
-    expect((float) $order->discount_amount)->toBe(10000.0);
+    // v2: % áp trên tổng subtotal 400k, phân bổ theo tỷ trọng từng dòng
+    expect((float) $order->discount_amount)->toBe(40000.0);
 
     $items = $order->items->keyBy('menu_item_id');
     expect((float) $items[$itemA->id]->discount_amount)->toBe(10000.0);
-    expect((float) $items[$itemB->id]->discount_amount)->toBe(0.0);
+    expect((float) $items[$itemB->id]->discount_amount)->toBe(30000.0);
 });
 
 test('checkout order scope phan bo discount xuong cac dong theo ty trong, dong cuoi nhan phan du', function () {
     $this->actingAs(posAdmin());
-    $cat = \App\Models\MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
+    $cat = MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
     $itemA = posMenuItem(['category_id' => $cat->id, 'price' => 100000]);
     $itemB = posMenuItem(['category_id' => $cat->id, 'price' => 300000]);
-    $promo = \App\Models\Promotion::create([
-        'code' => 'ORD10', 'name' => 'Toan don 10%', 'discount_type' => 'percentage',
-        'discount_value' => 10, 'target_type' => 'order',
-    ]);
+    $promo = promoV2(['type' => 'coupon', 'code' => 'ORD10']);
+    addAction($promo, 'discount_percent', 10);
     $table = posTable(['status' => 'occupied']);
     $order = posOrder($table, [
         ['item' => $itemA, 'qty' => 1, 'price' => 100000, 'status' => 'completed'],
@@ -359,7 +347,8 @@ test('checkout order scope phan bo discount xuong cac dong theo ty trong, dong c
 
 test('checkout qua endpoint ghi invoice_lines payments va invoice_promotions', function () {
     $this->actingAs(posAdmin());
-    $promo = \App\Models\Promotion::create(['code' => 'EP10', 'name' => '10%', 'discount_type' => 'percentage', 'discount_value' => 10, 'is_active' => true]);
+    $promo = promoV2(['type' => 'coupon', 'code' => 'EP10']);
+    addAction($promo, 'discount_percent', 10);
     $item = posMenuItem(['name' => 'Cf ep', 'price' => 50000, 'vat_rate' => 10]);
     $order = posOrder(posTable(['table_number' => 'B77']), [['item' => $item, 'qty' => 2, 'price' => 50000, 'status' => 'completed']], ['status' => 'completed']);
 
@@ -371,7 +360,7 @@ test('checkout qua endpoint ghi invoice_lines payments va invoice_promotions', f
         'promotion_code' => $promo->code,
     ])->assertSessionHasNoErrors();
 
-    $invoice = \App\Models\Invoice::firstOrFail();
+    $invoice = Invoice::firstOrFail();
     expect($invoice->lines)->toHaveCount(1);
     expect($invoice->lines->first()->name_snapshot)->toBe('Cf ep');
     expect($invoice->payments)->toHaveCount(1);

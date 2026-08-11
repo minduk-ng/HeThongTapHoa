@@ -3,7 +3,6 @@
 use App\Models\Deposit;
 use App\Models\Invoice;
 use App\Models\MenuCategory;
-use App\Models\Promotion;
 use App\Services\Checkout\CheckoutService;
 
 test('checkout 1 don: invoice + payments + lines + promotion snapshot, dung VAT trong gia', function () {
@@ -11,7 +10,8 @@ test('checkout 1 don: invoice + payments + lines + promotion snapshot, dung VAT 
     $cat = MenuCategory::firstOrCreate(['name' => 'Cat CS', 'sort_order' => 1]);
     $itemA = posMenuItem(['category_id' => $cat->id, 'name' => 'Cf den', 'price' => 50000, 'vat_rate' => 10]);
     $itemB = posMenuItem(['category_id' => $cat->id, 'name' => 'Tra', 'price' => 20000, 'vat_rate' => 0]);
-    $promo = Promotion::create(['code' => 'CS10', 'name' => '10%', 'discount_type' => 'percentage', 'discount_value' => 10, 'is_active' => true]);
+    $promo = promoV2(['type' => 'coupon', 'code' => 'CS10']);
+    addAction($promo, 'discount_percent', 10);
 
     $table = posTable(['table_number' => 'B50']);
     $order = posOrder($table, [
@@ -128,7 +128,8 @@ test('checkout coc du total ghi payment refund am va expectedCash giam', functio
 
 test('checkout rollback khi promotion khong con hop le', function () {
     $this->actingAs(posAdmin());
-    $promo = Promotion::create(['code' => 'EXP', 'name' => 'x', 'discount_type' => 'fixed_amount', 'discount_value' => 10000, 'expires_at' => now()->subDay(), 'is_active' => true]);
+    $promo = promoV2(['type' => 'coupon', 'code' => 'EXP', 'end_date' => now()->subDay()]);
+    addAction($promo, 'discount_amount', 10000);
     $item = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
     $order = posOrder(posTable(), [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'completed']);
 

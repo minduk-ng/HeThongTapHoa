@@ -2,45 +2,7 @@
 
 use App\Models\InvoiceLine;
 use App\Models\OrderPromotion;
-use App\Models\Promotion;
-use App\Models\PromotionAction;
-use App\Models\PromotionCondition;
 use App\Services\Promotions\PromotionEngine;
-use Illuminate\Support\Collection;
-
-function promoV2(array $attrs = []): Promotion
-{
-    return Promotion::create(array_merge([
-        'name' => 'Promo '.uniqid(),
-        'type' => 'promotion',
-        'code' => null,
-        'status' => true,
-        'max_usage' => null,
-        'used_count' => 0,
-        'exclusive' => false,
-        'stackable' => true,
-    ], $attrs));
-}
-
-function addCond(Promotion $p, string $type, string $value): PromotionCondition
-{
-    return $p->conditions()->create(['cond_type' => $type, 'cond_value' => $value]);
-}
-
-function addAction(Promotion $p, string $type, float $value, ?float $max = null): PromotionAction
-{
-    return $p->actions()->create([
-        'action_type' => $type, 'action_value' => $value, 'max_discount_amount' => $max,
-    ]);
-}
-
-function linesV2(): Collection
-{
-    return collect([
-        ['order_item_id' => 1, 'menu_item_id' => 10, 'quantity' => 2, 'subtotal' => 100000, 'category_id' => 3],
-        ['order_item_id' => 2, 'menu_item_id' => 11, 'quantity' => 1, 'subtotal' => 50000, 'category_id' => 4],
-    ]);
-}
 
 test('condition min_order_value: khong tho dieu kien thi khong ap dung', function () {
     $p = promoV2();

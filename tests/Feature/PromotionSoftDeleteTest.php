@@ -4,9 +4,8 @@ use App\Models\Promotion;
 
 test('delete qua destroy la soft delete, ban ghi con trong DB', function () {
     $admin = posAdmin();
-    $promo = Promotion::create([
-        'code' => 'SD'.uniqid(), 'name' => 'Soft', 'discount_type' => 'fixed_amount', 'discount_value' => 1000,
-    ]);
+    $promo = promoV2(['type' => 'coupon', 'code' => 'SD'.substr(uniqid(), -6)]);
+    addAction($promo, 'discount_amount', 1000);
 
     $this->actingAs($admin)->delete("/manager/promotions/{$promo->id}", ['password' => 'password123'])
         ->assertSessionHasNoErrors();
@@ -16,10 +15,8 @@ test('delete qua destroy la soft delete, ban ghi con trong DB', function () {
 });
 
 test('resolvePromotion khong tra ve promotion da soft delete', function () {
-    $promo = Promotion::create([
-        'code' => 'GONE'.uniqid(), 'name' => 'Xoa', 'discount_type' => 'percentage',
-        'discount_value' => 10, 'is_active' => true,
-    ]);
+    $promo = promoV2(['type' => 'coupon', 'code' => 'GONE'.substr(uniqid(), -6)]);
+    addAction($promo, 'discount_percent', 10);
     $promo->delete();
 
     $this->actingAs(posStaff())

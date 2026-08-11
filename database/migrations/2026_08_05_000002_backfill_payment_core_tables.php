@@ -57,27 +57,8 @@ return new class extends Migration
                 }
 
                 // invoice_promotions từ orders.promotion_id (1 dòng/đơn)
-                $ordersWithPromo = DB::table('orders')
-                    ->where('invoice_id', $invoiceId)
-                    ->whereNotNull('promotion_id')
-                    ->get();
-                foreach ($ordersWithPromo as $o) {
-                    $promo = DB::table('promotions')->find($o->promotion_id);
-                    if ($promo instanceof stdClass && DB::table('invoice_promotions')->where('invoice_id', $invoiceId)->where('promotion_id', $promo->id)->doesntExist()) {
-                        DB::table('invoice_promotions')->insert([
-                            'invoice_id' => $invoiceId,
-                            'promotion_id' => $promo->id,
-                            'code' => $promo->code,
-                            'name' => $promo->name,
-                            'discount_type' => $promo->discount_type,
-                            'discount_value' => $promo->discount_value,
-                            'stack_order' => 0,
-                            'amount' => (float) $o->discount_amount,
-                            'created_at' => $inv->created_at,
-                            'updated_at' => $inv->created_at,
-                        ]);
-                    }
-                }
+                // ponytail: removed — orders.promotion_id dropped in promotion v2 migration
+                // (2026_08_10_000014); v2 ghi order_promotions thay cho snapshot cũ.
             }
 
             // điền subtotal/vat/discount tổng cho invoice cũ

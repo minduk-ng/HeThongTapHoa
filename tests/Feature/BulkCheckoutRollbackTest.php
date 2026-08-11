@@ -2,11 +2,11 @@
 
 use App\Models\Deposit;
 use App\Models\Invoice;
-use App\Models\Promotion;
 
 test('bulk-checkout loi thi toan bo rollback: khong hoa don, khong order paid, used_count khong tang', function () {
     $this->actingAs(posAdmin());
-    $promo = Promotion::create(['code' => 'BR'.uniqid(), 'name' => 'BR', 'discount_type' => 'percentage', 'discount_value' => 10, 'is_active' => true, 'max_uses' => 100, 'used_count' => 0]);
+    $promo = promoV2(['type' => 'coupon', 'code' => 'BR'.substr(uniqid(), -6)]);
+    addAction($promo, 'discount_percent', 10);
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem();
     // mot order da paid -> hop le khong du huan

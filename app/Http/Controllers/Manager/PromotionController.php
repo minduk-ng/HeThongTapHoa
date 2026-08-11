@@ -8,7 +8,7 @@ use App\Models\MenuItem;
 use App\Models\Promotion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -28,7 +28,7 @@ class PromotionController extends Controller
         }
 
         return Inertia::render('manager/promotions/PromotionsManager', [
-            'promotions' => $query->latest('id')->get(),
+            'promotions' => $query->with(['conditions', 'actions'])->latest('id')->get(),
             'filters' => $request->only(['search']),
             'menu_items' => MenuItem::orderBy('name')->get(['id', 'name']),
             'menu_categories' => MenuCategory::orderBy('name')->get(['id', 'name']),
@@ -37,18 +37,67 @@ class PromotionController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $request->merge($this->normalize($request->all()));
+        $validated = $request->validate($this->rules());
 
-        Promotion::create($request->validate($this->rules()));
+        DB::transaction(function () use ($validated) {
+            $promotion = Promotion::create([
+                'name' => $validated['name'],
+                'type' => $validated['type'],
+                'code' => $validated['type'] === 'promotion' ? null : mb_strtoupper(trim($validated['code'] ?? '')),
+                'start_date' => $validated['start_date'] ?? null,
+                'end_date' => $validated['end_date'] ?? null,
+                'status' => $validated['status'] ?? true,
+                'max_usage' => $validated['max_usage'] ?? null,
+                'exclusive' => $validated['exclusive'] ?? false,
+                'stackable' => $validated['stackable'] ?? true,
+            ]);
+
+            foreach ($validated['conditions'] ?? [] as $cond) {
+                $promotion->conditions()->create($cond);
+            }
+            foreach ($validated['actions'] as $action) {
+                $promotion->actions()->create([
+                    'action_type' => $action['action_type'],
+                    'action_value' => $action['action_value'],
+                    'max_discount_amount' => $action['max_discount_amount'] ?? null,
+                ]);
+            }
+        });
 
         return back()->with('success', 'Thêm khuyến mãi thành công!');
     }
 
     public function update(Request $request, Promotion $promotion): RedirectResponse
     {
-        $request->merge($this->normalize($request->all()));
+        $validated = $request->validate($this->rules());
 
-        $promotion->update($request->validate($this->rules($promotion)));
+        DB::transaction(function () use ($validated, $promotion) {
+            $promotion->update([
+                'name' => $validated['name'],
+                'type' => $validated['type'],
+                'code' => $validated['type'] === 'promotion' ? null : mb_strtoupper(trim($validated['code'] ?? '')),
+                'start_date' => $validated['start_date'] ?? null,
+                'end_date' => $validated['end_date'] ?? null,
+                'status' => $validated['status'] ?? true,
+                'max_usage' => $validated['max_usage'] ?? null,
+                'exclusive' => $validated['exclusive'] ?? false,
+                'stackable' => $validated['stackable'] ?? true,
+            ]);
+
+            // Xoá conditions/actions cũ rồi tạo lại (update đơn giản, ít data)
+            $promotion->conditions()->delete();
+            $promotion->actions()->delete();
+            foreach ($validated['conditions'] ?? [] as $cond) {
+                $promotion->conditions()->create($cond);
+            }
+            foreach ($validated['actions'] as $action) {
+                $promotion->actions()->create([
+                    'action_type' => $action['action_type'],
+                    'action_value' => $action['action_value'],
+                    'max_discount_amount' => $action['max_discount_amount'] ?? null,
+                ]);
+            }
+        });
 
         return back()->with('success', 'Cập nhật khuyến mãi thành công!');
     }
@@ -67,63 +116,27 @@ class PromotionController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $data
      * @return array<string, mixed>
      */
-    private function normalize(array $data): array
-    {
-        if (isset($data['code'])) {
-            $data['code'] = mb_strtoupper(trim((string) $data['code']));
-        }
-        if (! empty($data['starts_at']) && strtotime((string) $data['starts_at']) !== false) {
-            $data['starts_at'] = Carbon::parse($data['starts_at'])->startOfDay()->format('Y-m-d H:i:s');
-        }
-        if (! empty($data['expires_at']) && strtotime((string) $data['expires_at']) !== false) {
-            $data['expires_at'] = Carbon::parse($data['expires_at'])->endOfDay()->format('Y-m-d H:i:s');
-        }
-        if (empty($data['target_type'])) {
-            $data['target_type'] = 'order';
-        }
-        if ($data['target_type'] === 'order') {
-            $data['target_value'] = null;
-        }
-        if (isset($data['target_value']) && $data['target_value'] !== '') {
-            $data['target_value'] = (int) $data['target_value'];
-        }
-        return $data;
-    }
-
-    /**
-     * @param Promotion|null $promotion
-     * @return array<string, mixed>
-     */
-    private function rules(?Promotion $promotion = null): array
+    private function rules(): array
     {
         return [
-            'code' => ['required', 'string', 'max:50', Rule::unique('promotions', 'code')->ignore($promotion?->id)],
             'name' => ['required', 'string', 'max:100'],
-            'description' => ['nullable', 'string'],
-            'discount_type' => ['required', Rule::in(['percentage', 'fixed_amount'])],
-            'discount_value' => ['required', 'numeric', 'min:0'],
-            'target_type' => ['sometimes', 'string', Rule::in(['order', 'item', 'category'])],
-            'target_value' => [Rule::requiredIf(fn () => in_array((string) request('target_type'), ['item', 'category'], true)), 'nullable', 'integer', 'min:1', function ($attribute, $value, $fail) {
-                $type = request('target_type');
-                if (in_array($type, ['item', 'category'], true) && ($value === null || $value === '')) {
-                    $fail('Vui lòng chọn đối tượng áp dụng.');
-                }
-                if ($type === 'item' && $value !== null && ! MenuItem::whereKey($value)->exists()) {
-                    $fail('Món được chọn không tồn tại.');
-                }
-                if ($type === 'category' && $value !== null && ! MenuCategory::whereKey($value)->exists()) {
-                    $fail('Danh mục được chọn không tồn tại.');
-                }
-            }],
-            'min_order_amount' => ['nullable', 'numeric', 'min:0'],
-            'max_discount_amount' => ['nullable', 'numeric', 'min:0'],
-            'max_uses' => ['nullable', 'integer', 'min:1'],
-            'starts_at' => ['nullable', 'date'],
-            'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
-            'is_active' => ['sometimes', 'boolean'],
+            'type' => ['required', Rule::in(['promotion', 'coupon', 'voucher'])],
+            'code' => ['nullable', 'string', 'max:50'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'status' => ['sometimes', 'boolean'],
+            'max_usage' => ['nullable', 'integer', 'min:1'],
+            'exclusive' => ['sometimes', 'boolean'],
+            'stackable' => ['sometimes', 'boolean'],
+            'conditions' => ['nullable', 'array'],
+            'conditions.*.cond_type' => ['required', Rule::in(['min_order_value', 'min_quantity', 'specific_product'])],
+            'conditions.*.cond_value' => ['required', 'string'],
+            'actions' => ['required', 'array', 'min:1'],
+            'actions.*.action_type' => ['required', Rule::in(['discount_percent', 'discount_amount', 'free_product'])],
+            'actions.*.action_value' => ['required', 'numeric', 'min:0'],
+            'actions.*.max_discount_amount' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 }

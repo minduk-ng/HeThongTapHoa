@@ -2,11 +2,11 @@
 
 use App\Models\Deposit;
 use App\Models\Invoice;
-use App\Models\Promotion;
 
 test('checkout w/ promotion + deposit held → total net, payable tru deposit', function () {
     $this->actingAs(posAdmin());
-    $promo = Promotion::create(['code' => 'PD'.uniqid(), 'name' => 'PD', 'discount_type' => 'percentage', 'discount_value' => 10, 'is_active' => true]);
+    $promo = promoV2(['type' => 'coupon', 'code' => 'PD'.substr(uniqid(), -6)]);
+    addAction($promo, 'discount_percent', 10);
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem(['price' => 60000]);
     $order = posOrder($table, [['item' => $item, 'qty' => 2, 'price' => 60000, 'status' => 'completed']], ['status' => 'completed']);

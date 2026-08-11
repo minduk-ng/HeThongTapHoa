@@ -1,112 +1,60 @@
 <?php
 
-use App\Models\Promotion;
+use App\Models\InvoiceLine;
+use App\Services\Promotions\PromotionEngine;
+use Illuminate\Support\Collection;
 
-function promoLine(int $orderItemId, int $menuItemId, float $subtotal, ?int $categoryId = null): array
+function promoAllocLines(): Collection
 {
-    return [
-        'order_item_id' => $orderItemId,
-        'menu_item_id' => $menuItemId,
-        'subtotal' => $subtotal,
-        'category_id' => $categoryId,
-    ];
+    return collect([
+        ['order_item_id' => 1, 'menu_item_id' => 101, 'quantity' => 1, 'subtotal' => 100000.0, 'category_id' => 1],
+        ['order_item_id' => 2, 'menu_item_id' => 102, 'quantity' => 1, 'subtotal' => 300000.0, 'category_id' => 1],
+    ]);
 }
 
-test('order scope phan bo theo ty trong, mon cuoi nhan phan du, tong khop 100%', function () {
-    $promo = Promotion::create([
-        'code' => 'ORD', 'name' => 'Toan don', 'discount_type' => 'percentage',
-        'discount_value' => 10, 'target_type' => 'order',
-    ]);
-    $lines = collect([
-        promoLine(1, 101, 100000, 1),
-        promoLine(2, 102, 300000, 1),
-    ]);
-    $alloc = Promotion::allocateLineDiscounts($promo, $lines, 40000);
+test('order scope tinh tong discount theo ty trong subtotal', function () {
+    $promo = promoV2();
+    addAction($promo, 'discount_percent', 10);
 
-    expect($alloc[1])->toBe(10000.0);
-    expect($alloc[2])->toBe(30000.0);
-    expect(array_sum($alloc))->toBe(40000.0);
+    $r = PromotionEngine::resolveAll([], promoAllocLines(), 400000.0);
+
+    expect($r['status'])->toBe('ok');
+    expect($r['total_discount'])->toBe(40000.0);
 });
 
-test('order scope lam tron truoc, mon cuoi nhan phan du de tong khop', function () {
-    $promo = Promotion::create([
-        'code' => 'ORD2', 'name' => 'Toan don 2', 'discount_type' => 'fixed_amount',
-        'discount_value' => 100, 'target_type' => 'order',
-    ]);
-    $lines = collect([
-        promoLine(1, 101, 100000, 1),
-        promoLine(2, 102, 100000, 1),
-        promoLine(3, 103, 100000, 1),
-    ]);
-    $alloc = Promotion::allocateLineDiscounts($promo, $lines, 50000);
+test('checkout phan bo discount xuong line theo ty trong, tong khop', function () {
+    $admin = posAdmin();
+    $promo = promoV2();
+    addAction($promo, 'discount_percent', 10);
+    $itemA = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
+    $itemB = posMenuItem(['price' => 300000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [
+        ['item' => $itemA, 'qty' => 1, 'price' => 100000, 'status' => 'completed'],
+        ['item' => $itemB, 'qty' => 1, 'price' => 300000, 'status' => 'completed'],
+    ], ['status' => 'pending']);
 
-    expect(array_sum($alloc))->toBe(50000.0);
-    expect($alloc[1])->toBe(16666.0);
-    expect($alloc[2])->toBe(16666.0);
-    expect($alloc[3])->toBe((float) (50000 - 16666 - 16666));
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 360000,
+    ])->assertOk();
+
+    // 10% của 400000 = 40000, phân bổ 10000/30000, tổng khop
+    $lines = InvoiceLine::orderBy('id')->get();
+    expect($lines)->toHaveCount(2);
+    expect((float) $lines[0]->discount_amount)->toBe(10000.0);
+    expect((float) $lines[1]->discount_amount)->toBe(30000.0);
+    expect((float) $lines->sum('discount_amount'))->toBe(40000.0);
+    expect((float) $order->fresh()->discount_amount)->toBe(40000.0);
 });
 
-test('item scope do het discount vao dong khop, cap theo subtotal', function () {
-    $promo = Promotion::create([
-        'code' => 'ITEM', 'name' => '1 mon', 'discount_type' => 'fixed_amount',
-        'discount_value' => 20000, 'target_type' => 'item', 'target_value' => 102,
-    ]);
-    $lines = collect([
-        promoLine(1, 101, 100000, 1),
-        promoLine(2, 102, 30000, 1),
-    ]);
-    $alloc = Promotion::allocateLineDiscounts($promo, $lines, 20000);
+test('fixed amount vuot subtotal thi cap tong discount o subtotal', function () {
+    $promo = promoV2();
+    addAction($promo, 'discount_amount', 500000);
 
-    expect($alloc[1])->toBe(0.0);
-    expect($alloc[2])->toBe(20000.0);
-});
+    $r = PromotionEngine::resolveAll([], promoAllocLines(), 400000.0);
 
-test('item scope khong co dong khop thi khong ai nhan', function () {
-    $promo = Promotion::create([
-        'code' => 'ITEM2', 'name' => '1 mon xa', 'discount_type' => 'percentage',
-        'discount_value' => 10, 'target_type' => 'item', 'target_value' => 999,
-    ]);
-    $lines = collect([promoLine(1, 101, 100000, 1)]);
-    $alloc = Promotion::allocateLineDiscounts($promo, $lines, 10000);
-
-    expect($alloc[1])->toBe(0.0);
-});
-
-test('category scope chi phan bo cho cac dong thuoc category, phan du roi vao dong cuoi', function () {
-    $promo = Promotion::create([
-        'code' => 'CAT', 'name' => 'Danh muc', 'discount_type' => 'fixed_amount',
-        'discount_value' => 100, 'target_type' => 'category', 'target_value' => 1,
-    ]);
-    $lines = collect([
-        promoLine(1, 101, 100000, 1),
-        promoLine(2, 102, 300000, 1),
-        promoLine(3, 103, 500000, 2),
-    ]);
-    $alloc = Promotion::allocateLineDiscounts($promo, $lines, 40000);
-
-    expect($alloc[1])->toBe(10000.0);
-    expect($alloc[2])->toBe(30000.0);
-    expect($alloc[3])->toBe(0.0);
-    expect(array_sum($alloc))->toBe(40000.0);
-});
-
-test('discount_amount bang 0 tra ve toan 0', function () {
-    $promo = Promotion::create([
-        'code' => 'ZERO', 'name' => 'Khong giam', 'discount_type' => 'percentage',
-        'discount_value' => 0, 'target_type' => 'order',
-    ]);
-    $alloc = Promotion::allocateLineDiscounts($promo, collect([promoLine(1, 101, 100000, 1)]), 0);
-    expect($alloc[1])->toBe(0.0);
-});
-
-test('target_subtotal tinh dung theo scope', function () {
-    $orderPromo = Promotion::create(['code' => 'TSO', 'name' => 'T', 'discount_type' => 'percentage', 'discount_value' => 10, 'target_type' => 'order']);
-    $catPromo = Promotion::create(['code' => 'TSC', 'name' => 'T', 'discount_type' => 'percentage', 'discount_value' => 10, 'target_type' => 'category', 'target_value' => 2]);
-    $lines = collect([
-        promoLine(1, 101, 100000, 1),
-        promoLine(2, 102, 300000, 2),
-    ]);
-
-    expect(Promotion::targetSubtotal($orderPromo, $lines))->toBe(400000.0);
-    expect(Promotion::targetSubtotal($catPromo, $lines))->toBe(300000.0);
+    expect($r['status'])->toBe('ok');
+    expect($r['total_discount'])->toBe(400000.0);
 });

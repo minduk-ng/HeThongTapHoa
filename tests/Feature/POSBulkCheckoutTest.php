@@ -202,12 +202,8 @@ test('idempotency key chặn thanh toán gộp lặp không tạo hóa đơn tr�
 
 test('bulk checkout áp một mã và phân bổ discount đúng tổng, đơn cuối nhận phần dư', function () {
     $this->actingAs(posAdmin());
-    $promo = App\Models\Promotion::create([
-        'code' => 'BULKFIX',
-        'name' => 'Bulk fixed',
-        'discount_type' => 'fixed_amount',
-        'discount_value' => 10001,
-    ]);
+    $promo = promoV2(['type' => 'coupon', 'code' => 'BULKFIX']);
+    addAction($promo, 'discount_amount', 10001);
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem();
     $order1 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 30000, 'status' => 'completed']], ['status' => 'completed']);
@@ -227,7 +223,7 @@ test('bulk checkout áp một mã và phân bổ discount đúng tổng, đơn c
     expect((float) $o1->discount_amount)->toBe(5000.0);
     expect((float) $o2->discount_amount)->toBe(5001.0);
     expect((float) $o1->discount_amount + (float) $o2->discount_amount)->toBe(10001.0);
-    expect((float) App\Models\Invoice::firstOrFail()->total_amount)->toBe(49999.0);
+    expect((float) Invoice::firstOrFail()->total_amount)->toBe(49999.0);
     expect($promo->fresh()->used_count)->toBe(1);
 });
 
@@ -246,10 +242,8 @@ test('thanh toán gộp yêu cầu order_ids không rỗng', function () {
 
 test('bulk checkout ghi discount xuong tung dong trong moi order', function () {
     $this->actingAs(posAdmin());
-    $promo = App\Models\Promotion::create([
-        'code' => 'BULK10', 'name' => 'Bulk 10%', 'discount_type' => 'percentage',
-        'discount_value' => 10, 'target_type' => 'order',
-    ]);
+    $promo = promoV2(['type' => 'coupon', 'code' => 'BULK10']);
+    addAction($promo, 'discount_percent', 10);
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem(['price' => 50000]);
     $o1 = posOrder($table, [['item' => $item, 'qty' => 2, 'price' => 50000, 'status' => 'completed']], ['status' => 'completed']);
@@ -271,7 +265,8 @@ test('bulk checkout ghi discount xuong tung dong trong moi order', function () {
         }
     }
     // Tổng discount order = tổng discount item trên mỗi đơn
-    $o1->refresh(); $o2->refresh();
+    $o1->refresh();
+    $o2->refresh();
     expect((float) $o1->items->sum('discount_amount'))->toBe((float) $o1->discount_amount);
     expect((float) $o2->items->sum('discount_amount'))->toBe((float) $o2->discount_amount);
     expect((float) $o1->discount_amount + (float) $o2->discount_amount)->toBe(15000.0);
@@ -292,7 +287,7 @@ test('bulk checkout ghi lines cho moi don va tong payments', function () {
         'change_amount' => 0,
     ])->assertSessionHasNoErrors();
 
-    $invoice = \App\Models\Invoice::firstOrFail();
+    $invoice = Invoice::firstOrFail();
     expect($invoice->lines)->toHaveCount(2);
     expect((float) $invoice->subtotal_amount)->toBe(100000.0);
     expect((float) $invoice->total_amount)->toBe(100000.0);

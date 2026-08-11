@@ -3,7 +3,6 @@
 use App\Models\MenuCategory;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Promotion;
 
 test('sendToKitchen tinh gia tu menu_items.price, bo qua unit_price client', function () {
     $staff = posStaff(['pos.view', 'pos.create']);
@@ -63,15 +62,9 @@ test('validatePromotion tinh subtotal tu gia menu, bo qua unit_price client', fu
     $cat = MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
     $itemA = posMenuItem(['category_id' => $cat->id, 'price' => 100000]);
     $itemB = posMenuItem(['category_id' => $cat->id, 'price' => 300000]);
-    $promo = Promotion::create([
-        'code' => 'X'.uniqid(),
-        'name' => 'Promo',
-        'discount_type' => 'percentage',
-        'discount_value' => 10,
-        'target_type' => 'item',
-        'target_value' => $itemA->id,
-        'is_active' => true,
-    ]);
+    $promo = promoV2(['type' => 'coupon', 'code' => 'X'.substr(uniqid(), -6)]);
+    addCond($promo, 'specific_product', (string) $itemA->id);
+    addAction($promo, 'discount_percent', 10);
 
     $this->actingAs(posStaff())->postJson('/staff/pos/validate-promotion', [
         'code' => $promo->code,
@@ -80,5 +73,5 @@ test('validatePromotion tinh subtotal tu gia menu, bo qua unit_price client', fu
             ['menu_item_id' => $itemA->id, 'quantity' => 1, 'unit_price' => 1],
             ['menu_item_id' => $itemB->id, 'quantity' => 1, 'unit_price' => 1],
         ],
-    ])->assertOk()->assertJson(['ok' => true, 'discount_amount' => 10000, 'total' => 390000]);
+    ])->assertOk()->assertJson(['ok' => true, 'discount_amount' => 40000, 'total' => 360000]);
 });
