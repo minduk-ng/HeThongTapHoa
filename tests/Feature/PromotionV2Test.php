@@ -90,6 +90,17 @@ test('coupon nhap ma: validate + exclusive', function () {
     expect($res['promotions'][0]['promotion']->id)->toBe($coupon->id);
 });
 
+test('resolveAll: code trung lap chi ap dung 1 lan', function () {
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'DD10']);
+    addAction($coupon, 'discount_amount', 10000);
+
+    $res = PromotionEngine::resolveAll(['DD10', 'dd10', '  DD10 '], linesV2(), 150000);
+
+    expect($res['status'])->toBe('ok');
+    expect(count($res['promotions']))->toBe(1);
+    expect($res['total_discount'])->toBe(10000.0);  // không bị nhân đôi
+});
+
 test('exclusive=true bo het promotion khac', function () {
     $ex = promoV2(['type' => 'coupon', 'code' => 'EXCL', 'exclusive' => true]);
     addAction($ex, 'discount_amount', 30000);

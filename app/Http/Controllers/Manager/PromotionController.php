@@ -8,6 +8,7 @@ use App\Models\MenuItem;
 use App\Models\Promotion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -44,8 +45,8 @@ class PromotionController extends Controller
                 'name' => $validated['name'],
                 'type' => $validated['type'],
                 'code' => $validated['type'] === 'promotion' ? null : (mb_strtoupper(trim($validated['code'] ?? '')) ?: null),
-                'start_date' => $validated['start_date'] ?? null,
-                'end_date' => $validated['end_date'] ?? null,
+                'start_date' => ($validated['start_date'] ?? null) ? Carbon::parse($validated['start_date'])->startOfDay() : null,
+                'end_date' => ($validated['end_date'] ?? null) ? Carbon::parse($validated['end_date'])->endOfDay() : null,
                 'status' => $validated['status'] ?? true,
                 'max_usage' => $validated['max_usage'] ?? null,
                 'exclusive' => $validated['exclusive'] ?? false,
@@ -69,15 +70,15 @@ class PromotionController extends Controller
 
     public function update(Request $request, Promotion $promotion): RedirectResponse
     {
-        $validated = $request->validate($this->rules());
+        $validated = $request->validate($this->rules($promotion));
 
         DB::transaction(function () use ($validated, $promotion) {
             $promotion->update([
                 'name' => $validated['name'],
                 'type' => $validated['type'],
                 'code' => $validated['type'] === 'promotion' ? null : (mb_strtoupper(trim($validated['code'] ?? '')) ?: null),
-                'start_date' => $validated['start_date'] ?? null,
-                'end_date' => $validated['end_date'] ?? null,
+                'start_date' => ($validated['start_date'] ?? null) ? Carbon::parse($validated['start_date'])->startOfDay() : null,
+                'end_date' => ($validated['end_date'] ?? null) ? Carbon::parse($validated['end_date'])->endOfDay() : null,
                 'status' => $validated['status'] ?? true,
                 'max_usage' => $validated['max_usage'] ?? null,
                 'exclusive' => $validated['exclusive'] ?? false,
@@ -118,12 +119,12 @@ class PromotionController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function rules(): array
+    private function rules(?Promotion $promotion = null): array
     {
         return [
             'name' => ['required', 'string', 'max:100'],
             'type' => ['required', Rule::in(['promotion', 'coupon', 'voucher'])],
-            'code' => ['nullable', 'string', 'max:50'],
+            'code' => ['nullable', 'string', 'max:50', Rule::requiredIf(fn () => in_array((string) request('type'), ['coupon', 'voucher'], true)), Rule::unique('promotions', 'code')->ignore($promotion?->id)],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'status' => ['sometimes', 'boolean'],

@@ -12,6 +12,9 @@ class PromotionEngine
     {
         $lines = collect($lines)->values();
 
+        // 0. Dedupe mã (đã chuẩn hoá hoa + trim) — tránh apply 2 lần cùng 1 code
+        $codes = array_values(array_unique(array_map(fn ($c) => mb_strtoupper(trim((string) $c)), $codes)));
+
         // 1. COUPON/VOUCHER từ mã nhập
         $codePromotions = [];
         foreach (array_values($codes) as $code) {

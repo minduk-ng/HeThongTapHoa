@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Promotion;
+use App\Services\Promotions\PromotionEngine;
+use Illuminate\Support\Carbon;
 
 test('index trả danh sách khuyến mãi cho người có quyền', function () {
     $p = promoV2(['type' => 'coupon', 'code' => 'IDX'.substr(uniqid(), -4)]);
@@ -43,6 +45,7 @@ test('store tạo promotion + conditions + actions và chuẩn hoá code hoa', f
     expect($promo->max_usage)->toBe(100);
     expect($promo->stackable)->toBeTrue();
     expect($promo->start_date->toDateTimeString())->toBe('2026-08-01 00:00:00');
+    expect($promo->end_date->toDateTimeString())->toBe('2026-08-03 23:59:59');
 
     expect($promo->conditions)->toHaveCount(1);
     expect($promo->conditions[0]->cond_type)->toBe('min_order_value');
@@ -121,4 +124,67 @@ test('store tra loi loi validation khi ngay hoac action khong hop le', function 
         'name' => 'Action sai',
         'actions' => [['action_type' => 'buy1get1', 'action_value' => 10]],
     ])->assertSessionHasErrors(['actions.0.action_type']);
+});
+
+test('store coupon/voucher khong code thi loi validation', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'type' => 'coupon',
+        'name' => 'Coupon khong code',
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
+    ])->assertSessionHasErrors(['code']);
+
+    $this->post('/manager/promotions', [
+        'type' => 'voucher',
+        'name' => 'Voucher khong code',
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
+    ])->assertSessionHasErrors(['code']);
+
+    // type=promotion không cần code
+    $this->post('/manager/promotions', [
+        'type' => 'promotion',
+        'name' => 'Promotion khong code',
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
+    ])->assertSessionHasNoErrors();
+});
+
+test('store code trung lap bi tu choi 422/redirect (khong phai 500)', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'type' => 'coupon',
+        'name' => 'Dup 1',
+        'code' => 'DUPX',
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
+    ])->assertSessionHasNoErrors();
+
+    $this->post('/manager/promotions', [
+        'type' => 'coupon',
+        'name' => 'Dup 2',
+        'code' => 'DUPX',
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
+    ])->assertSessionHasErrors(['code']);
+    expect(Promotion::where('code', 'DUPX')->count())->toBe(1);
+});
+
+test('end_date chuan hoa cuoi ngay: coupon con ap dung trong ngay cuoi', function () {
+    Carbon::setTestNow('2026-08-03 12:00:00');
+    try {
+        $this->actingAs(posAdmin())->post('/manager/promotions', [
+            'type' => 'coupon',
+            'name' => 'Het ngay 3/8',
+            'code' => 'EOD'.substr(uniqid(), -4),
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-03',
+            'actions' => [['action_type' => 'discount_amount', 'action_value' => 10000]],
+        ])->assertSessionHasNoErrors();
+
+        $promo = Promotion::where('name', 'Het ngay 3/8')->first();
+        expect($promo->start_date->toDateTimeString())->toBe('2026-08-01 00:00:00');
+        expect($promo->end_date->toDateTimeString())->toBe('2026-08-03 23:59:59');
+
+        // 12h trưa 03/08: end_date=23:59:59 nên promo vẫn còn hiệu lực
+        $res = PromotionEngine::resolveAll([$promo->code], linesV2(), 150000);
+        expect($res['status'])->toBe('ok');
+        expect($res['total_discount'])->toBe(10000.0);
+    } finally {
+        Carbon::setTestNow();
+    }
 });
