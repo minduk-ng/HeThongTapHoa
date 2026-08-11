@@ -95,6 +95,11 @@ class PromotionEngine
             $amount = round(min(max(0.0, $discount), $remaining), 2);
             $totalDiscount += $amount;
 
+            // Quota: increment trong lock (chỉ khi checkout/thanh toán thật)
+            if ($lockForUpdate) {
+                $p->increment('used_count');
+            }
+
             $applied[] = [
                 'promotion' => $p,
                 'amount' => $amount,
@@ -129,6 +134,7 @@ class PromotionEngine
         if (! self::matchesConditions($p, $lines, $subtotal)) {
             return 'condition_not_met';
         }
+
         return null;
     }
 
@@ -150,6 +156,7 @@ class PromotionEngine
                 return false;
             }
         }
+
         return true;
     }
 
@@ -167,6 +174,7 @@ class PromotionEngine
                 $total += (float) $action->action_value;
             }
         }
+
         return $total;
     }
 }

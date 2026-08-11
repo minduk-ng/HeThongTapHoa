@@ -8,8 +8,10 @@ use App\Models\Ingredient;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\InvoicePromotion;
+use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderPromotion;
 use App\Models\Payment;
 use App\Models\ProductRecipe;
 use App\Models\Promotion;
@@ -88,39 +90,29 @@ class CheckoutService
 
             $promotionRows = [];
             $totalDiscount = 0.0;
-            if (! empty($promotionCodes)) {
+            $freeItems = [];
+            $appliedPromotions = [];
+
+            if (! empty($promotionCodes) || Promotion::query()->where('type', 'promotion')->where('status', true)->exists()) {
                 $resolved = PromotionEngine::resolveAll($promotionCodes, $engineLines, $subtotal, true);
                 if ($resolved['status'] === 'rejected') {
-                    throw new \Exception('Mã khuyến mãi '.$resolved['code'].' không hợp lệ hoặc đã hết hạn.', 422);
+                    throw new \Exception('Mã khuyến mãi '.($resolved['code'] ?? '').' không hợp lệ hoặc đã hết hạn.', 422);
                 }
                 $totalDiscount = $resolved['total_discount'];
-                foreach ($resolved['promotions'] as $pr) {
+                $freeItems = $resolved['free_items'] ?? [];
+                $appliedPromotions = $resolved['promotions'] ?? [];
+
+                foreach ($appliedPromotions as $pr) {
                     $p = $pr['promotion'];
                     $promotionRows[] = [
                         'promotion_id' => $p->id,
-                        'code' => $p->code,
+                        'code' => $p->code ?? 'AUTO-'.$p->id,
                         'name' => $p->name,
-                        'discount_type' => $p->discount_type,
-                        'discount_value' => (float) $p->discount_value,
-                        'stack_order' => $pr['stack_order'],
+                        'discount_type' => $pr['actions_applied'][0]['type'] ?? $p->type,
+                        'discount_value' => (float) ($pr['actions_applied'][0]['value'] ?? 0),
+                        'stack_order' => 0,
                         'amount' => $pr['amount'],
                     ];
-                }
-
-                // Phân bổ discount theo từng mã (giữ đúng item/category scope), cộng dồn xuống lines
-                if ($totalDiscount > 0) {
-                    foreach ($resolved['promotions'] as $pr) {
-                        $alloc = Promotion::allocateLineDiscounts($pr['promotion'], $engineLines, (float) $pr['amount']);
-                        foreach ($lineInputs as $idx => $li) {
-                            $lineInputs[$idx]['discount_amount'] = round(
-                                max(0.0, min(
-                                    (float) $lineInputs[$idx]['discount_amount'] + (float) ($alloc[(int) $li['order_item_id']] ?? 0.0),
-                                    (float) $li['subtotal']
-                                )),
-                                2
-                            );
-                        }
-                    }
                 }
             }
 
@@ -216,6 +208,25 @@ class CheckoutService
                 ]);
             }
 
+            // 6b. FREE_PRODUCT: thêm line 0đ
+            foreach ($freeItems as $free) {
+                $mi = MenuItem::find($free['menu_item_id']);
+                if (! $mi) {
+                    continue;
+                }
+                InvoiceLine::create([
+                    'invoice_id' => $invoice->id,
+                    'menu_item_id' => $mi->id,
+                    'name_snapshot' => $mi->name ?? 'Món tặng',
+                    'quantity' => 1,
+                    'unit_price' => 0,
+                    'subtotal' => 0,
+                    'vat_rate' => 0,
+                    'vat_amount' => 0,
+                    'discount_amount' => 0,
+                ]);
+            }
+
             // Đồng bộ discount xuống order_items (giữ tương thích hành vi endpoint cũ)
             foreach ($lineInputs as $li) {
                 if ($li['order_item_id']) {
@@ -223,10 +234,23 @@ class CheckoutService
                 }
             }
 
-            // 7. Ghi invoice_promotions + tăng used_count
+            // 7. Ghi invoice_promotions (snapshot)
             foreach ($promotionRows as $pr) {
                 InvoicePromotion::create(array_merge($pr, ['invoice_id' => $invoice->id]));
-                Promotion::where('id', $pr['promotion_id'])->increment('used_count');
+            }
+
+            // 7b. Ghi order_promotions (fact) + increment used_count (đã lock trong engine)
+            foreach ($appliedPromotions as $pr) {
+                $promo = $pr['promotion'];
+                foreach ($orders as $order) {
+                    OrderPromotion::create([
+                        'invoice_id' => $invoice->id,
+                        'order_id' => $order->id,
+                        'promotion_id' => $promo->id,
+                        'code_used' => $pr['code'],
+                        'discount_applied' => $pr['amount'],
+                    ]);
+                }
             }
 
             // 8. Cập nhật orders (1 nguồn duy nhất): phân bổ discount theo tỷ trọng, đơn cuối nhận phần dư
@@ -251,7 +275,6 @@ class CheckoutService
                 $order->update([
                     'status' => 'paid',
                     'invoice_id' => $invoice->id,
-                    'promotion_id' => $promotionRows[0]['promotion_id'] ?? null,
                     'subtotal' => $orderSubtotal,
                     'vat_amount' => $orderVat,
                     'discount_amount' => $orderDiscount,

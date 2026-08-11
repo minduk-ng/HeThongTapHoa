@@ -1,9 +1,12 @@
 <?php
 
+use App\Models\InvoiceLine;
+use App\Models\OrderPromotion;
 use App\Models\Promotion;
 use App\Models\PromotionAction;
 use App\Models\PromotionCondition;
 use App\Services\Promotions\PromotionEngine;
+use Illuminate\Support\Collection;
 
 function promoV2(array $attrs = []): Promotion
 {
@@ -31,7 +34,7 @@ function addAction(Promotion $p, string $type, float $value, ?float $max = null)
     ]);
 }
 
-function linesV2(): \Illuminate\Support\Collection
+function linesV2(): Collection
 {
     return collect([
         ['order_item_id' => 1, 'menu_item_id' => 10, 'quantity' => 2, 'subtotal' => 100000, 'category_id' => 3],
@@ -85,9 +88,12 @@ test('condition min_quantity + specific_product: AND', function () {
 });
 
 test('promotion tu dong chon 1 tot nhat', function () {
-    $p1 = promoV2(); addAction($p1, 'discount_amount', 5000);
-    $p2 = promoV2(); addAction($p2, 'discount_amount', 20000);
-    $p3 = promoV2(); addAction($p3, 'discount_amount', 10000);
+    $p1 = promoV2();
+    addAction($p1, 'discount_amount', 5000);
+    $p2 = promoV2();
+    addAction($p2, 'discount_amount', 20000);
+    $p3 = promoV2();
+    addAction($p3, 'discount_amount', 10000);
 
     $res = PromotionEngine::resolveAll([], linesV2(), 150000);
 
@@ -146,3 +152,70 @@ test('free_product: tra ve free_items', function () {
     expect($res['free_items'])->toContain(['menu_item_id' => $mi->id, 'name' => $mi->name]);
 });
 
+test('checkout: coupon ghi order_promotions + cap dung', function () {
+    $admin = posAdmin();
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'CHECKOUT10']);
+    addAction($coupon, 'discount_percent', 10, 20000);
+    $item = posMenuItem(['price' => 50000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 50000, 'status' => 'completed']], ['status' => 'pending']);
+
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 50000,
+        'promotion_code' => 'CHECKOUT10',
+    ])->assertOk()->assertJson(['success' => true]);
+
+    // 10% của 50000 = 5000, cap 20000 → 5000
+    $op = OrderPromotion::first();
+    expect($op)->not->toBeNull();
+    expect($op->promotion_id)->toBe($coupon->id);
+    expect((float) $op->discount_applied)->toBe(5000.0);
+    expect($coupon->fresh()->used_count)->toBe(1);
+});
+
+test('checkout: free_product them line 0d', function () {
+    $admin = posAdmin();
+    $free = posMenuItem(['price' => 15000, 'vat_rate' => 0]);
+    $p = promoV2(['type' => 'promotion']);
+    addAction($p, 'free_product', $free->id);
+    $item = posMenuItem(['price' => 30000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 30000, 'status' => 'completed']], ['status' => 'pending']);
+
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 30000,
+    ])->assertOk();
+
+    $freeLine = InvoiceLine::where('menu_item_id', $free->id)->first();
+    expect($freeLine)->not->toBeNull();
+    expect((float) $freeLine->subtotal)->toBe(0.0);
+    expect((float) $freeLine->unit_price)->toBe(0.0);
+});
+
+test('race: 2 checkout dong thoi khong vuot max_usage', function () {
+    $admin = posAdmin();
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'RACE1', 'max_usage' => 1]);
+    addAction($coupon, 'discount_amount', 5000);
+    $item = posMenuItem(['price' => 20000, 'vat_rate' => 0]);
+    $table = posTable();
+    $o1 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 20000, 'status' => 'completed']], ['status' => 'pending']);
+    $o2 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 20000, 'status' => 'completed']], ['status' => 'pending']);
+
+    // Chạy 2 checkout tuần tự: request 1 dùng lock + increment (0→1), request 2 thấy used_count=1=max_usage → reject
+    $r1 = $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $o1->id, 'payment_method' => 'cash', 'amount_received' => 20000, 'promotion_code' => 'RACE1',
+    ]);
+    $r2 = $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $o2->id, 'payment_method' => 'cash', 'amount_received' => 20000, 'promotion_code' => 'RACE1',
+    ]);
+
+    // 1 thành công + 1 bị từ chối (hết quota) — quota không bao giờ vượt
+    $r1->assertOk();
+    $r2->assertStatus(422);
+    expect($coupon->fresh()->used_count)->toBeLessThanOrEqual(1);
+    expect(OrderPromotion::count())->toBeLessThanOrEqual(1);
+});
