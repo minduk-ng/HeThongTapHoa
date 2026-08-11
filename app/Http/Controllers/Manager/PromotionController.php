@@ -19,18 +19,56 @@ class PromotionController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = Promotion::query();
+        $query = Promotion::with(['conditions', 'actions']);
 
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
             $query->where(fn ($q) => $q
-                ->where('code', 'like', "%{$search}%")
-                ->orWhere('name', 'like', "%{$search}%"));
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('code', 'like', "%{$search}%"));
         }
 
+        $statusFilter = $request->input('status', 'all');
+        $now = now();
+        if ($statusFilter === 'running') {
+            $query->where('status', true)
+                ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $now));
+        } elseif ($statusFilter === 'ended') {
+            $query->where(fn ($q) => $q->whereNotNull('end_date')->where('end_date', '<', $now));
+        }
+
+        $promotions = $query->latest('id')->get()->map(fn ($p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'type' => $p->type,
+            'code' => $p->code,
+            'start_date' => $p->start_date?->format('d/m/Y'),
+            'end_date' => $p->end_date?->format('d/m/Y'),
+            'status' => $p->status,
+            'used_count' => $p->used_count,
+            'max_usage' => $p->max_usage,
+            'exclusive' => $p->exclusive,
+            'stackable' => $p->stackable,
+            'conditions' => $p->conditions->map(fn ($c) => [
+                'cond_type' => $c->cond_type, 'cond_value' => $c->cond_value,
+            ])->values(),
+            'actions' => $p->actions->map(fn ($a) => [
+                'action_type' => $a->action_type,
+                'action_value' => (float) $a->action_value,
+                'max_discount_amount' => $a->max_discount_amount,
+            ])->values(),
+        ]);
+
+        $stats = [
+            'total_campaigns' => Promotion::count(),
+            'total_orders' => 0, 'total_revenue' => 0,
+            'total_discount' => 0, 'avg_discount' => 0, 'roi' => 0,
+        ];
+
         return Inertia::render('manager/promotions/PromotionsManager', [
-            'promotions' => $query->with(['conditions', 'actions'])->latest('id')->get(),
-            'filters' => $request->only(['search']),
+            'promotions' => $promotions,
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'status']),
             'menu_items' => MenuItem::orderBy('name')->get(['id', 'name']),
             'menu_categories' => MenuCategory::orderBy('name')->get(['id', 'name']),
         ]);
