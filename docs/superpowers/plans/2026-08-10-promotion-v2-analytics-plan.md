@@ -1,41 +1,41 @@
-# Promotion v2 — Analytics & Daily Stats Implementation Plan
+﻿# Promotion v2 â€” Analytics & Daily Stats Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Bảng tổng hợp `daily_promotion_stats` + command cron + API analytics + frontend chart — tránh quét `orders`/`invoice_lines` trực tiếp.
+**Goal:** Báº£ng tá»•ng há»£p `daily_promotion_stats` + command cron + API analytics + frontend chart â€” trÃ¡nh quÃ©t `orders`/`invoice_lines` trá»±c tiáº¿p.
 
-**Architecture:** Upsert realtime trong CheckoutService (Cách A) + command rebuild đêm (Cách B). `analytics()` đọc từ `daily_promotion_stats` JOIN promotions. Frontend PromotionsManager (spec 2) nối analytics + recharts line/pie.
+**Architecture:** Upsert realtime trong CheckoutService (CÃ¡ch A) + command rebuild Ä‘Ãªm (CÃ¡ch B). `analytics()` Ä‘á»c tá»« `daily_promotion_stats` JOIN promotions. Frontend PromotionsManager (spec 2) ná»‘i analytics + recharts line/pie.
 
-**Tech Stack:** Laravel 13 + PHP + Pest + recharts (đã có).
+**Tech Stack:** Laravel 13 + PHP + Pest + recharts (Ä‘Ã£ cÃ³).
 
 **Spec:** `docs/superpowers/specs/2026-08-10-promotion-v2-analytics-design.md`
 
 ## Global Constraints
 
-- PowerShell Windows: KHÔNG dùng `&&`.
-- ROI = (Σ revenue − Σ discount_total) / Σ discount_total; discount_total = 0 → "—".
-- "Doanh thu mang lại" = Σ invoices.total_amount của hoá đơn áp mã (KHÔNG phải tiền giảm).
-- Upsert realtime TRONG transaction checkout (không lệch nếu rollback).
-- Command cron rebuild ngày hôm qua từ order_promotions + invoices (nguồn sạch).
+- PowerShell Windows: KHÃ”NG dÃ¹ng `&&`.
+- ROI = (Î£ revenue âˆ’ Î£ discount_total) / Î£ discount_total; discount_total = 0 â†’ "â€”".
+- "Doanh thu mang láº¡i" = Î£ invoices.total_amount cá»§a hoÃ¡ Ä‘Æ¡n Ã¡p mÃ£ (KHÃ”NG pháº£i tiá»n giáº£m).
+- Upsert realtime TRONG transaction checkout (khÃ´ng lá»‡ch náº¿u rollback).
+- Command cron rebuild ngÃ y hÃ´m qua tá»« order_promotions + invoices (nguá»“n sáº¡ch).
 - `php artisan test` + `npm run types:check` + `npm run build` pass.
 
 ---
 
 ## File Structure
 
-**Migration:** `database/migrations/2026_08_10_000013_create_daily_promotion_stats_table.php`
+**Migration:** `database/migrations/2026_08_10_000015_create_daily_promotion_stats_table.php`
 
 **Backend:**
 - `app/Console/Commands/AggregateDailyPromotionStats.php`
-- `app/Http/Controllers/Manager/PromotionController.php` (thêm `analytics`)
+- `app/Http/Controllers/Manager/PromotionController.php` (thÃªm `analytics`)
 - `routes/web.php` (route analytics)
 - `app/Services/Checkout/CheckoutService.php` (upsert stats)
 - `routes/console.php` (schedule)
 
 **Frontend:**
-- `PromotionsManager.tsx` (nối analytics props)
+- `PromotionsManager.tsx` (ná»‘i analytics props)
 - `PromotionAnalyticsCharts.tsx` (line + pie recharts)
-- `PromotionStatsCards.tsx` (nhận số thật)
+- `PromotionStatsCards.tsx` (nháº­n sá»‘ tháº­t)
 
 **Tests:** `PromotionAnalyticsTest.php`
 
@@ -44,16 +44,16 @@
 ## Task 1: Migration + upsert realtime trong checkout
 
 **Files:**
-- Create: `database/migrations/2026_08_10_000013_create_daily_promotion_stats_table.php`
+- Create: `database/migrations/2026_08_10_000015_create_daily_promotion_stats_table.php`
 - Modify: `app/Services/Checkout/CheckoutService.php`
-- Test: `tests/Feature/PromotionAnalyticsTest.php` (phần realtime)
+- Test: `tests/Feature/PromotionAnalyticsTest.php` (pháº§n realtime)
 
 **Interfaces:**
-- Produces: bảng stats + mỗi checkout upsert stats. Task 2 (analytics API) đọc bảng này.
+- Produces: báº£ng stats + má»—i checkout upsert stats. Task 2 (analytics API) Ä‘á»c báº£ng nÃ y.
 
-- [ ] **Step 1: Viết test fail**
+- [ ] **Step 1: Viáº¿t test fail**
 
-Tạo `tests/Feature/PromotionAnalyticsTest.php`:
+Táº¡o `tests/Feature/PromotionAnalyticsTest.php`:
 
 ```php
 <?php
@@ -89,19 +89,19 @@ test('checkout upsert daily_promotion_stats', function () {
     $stat = DailyPromotionStat::where('promotion_id', $coupon->id)->where('stat_date', now()->toDateString())->first();
     expect($stat)->not->toBeNull();
     expect($stat->order_count)->toBe(1);
-    expect((float) $stat->revenue)->toBe(50000.0);      // tổng tiền hoá đơn (KHÔNG phải tiền giảm)
-    expect((float) $stat->discount_total)->toBe(10000.0); // tiền giảm thực tế
+    expect((float) $stat->revenue)->toBe(50000.0);      // tá»•ng tiá»n hoÃ¡ Ä‘Æ¡n (KHÃ”NG pháº£i tiá»n giáº£m)
+    expect((float) $stat->discount_total)->toBe(10000.0); // tiá»n giáº£m thá»±c táº¿
 });
 ```
 
-- [ ] **Step 2: Chạy test fail**
+- [ ] **Step 2: Cháº¡y test fail**
 
 Run: `php artisan test tests\Feature\PromotionAnalyticsTest.php`
-Expected: FAIL — chưa có bảng/model/upsert.
+Expected: FAIL â€” chÆ°a cÃ³ báº£ng/model/upsert.
 
 - [ ] **Step 3: Migration**
 
-`database/migrations/2026_08_10_000013_create_daily_promotion_stats_table.php`:
+`database/migrations/2026_08_10_000015_create_daily_promotion_stats_table.php`:
 
 ```php
 <?php
@@ -166,7 +166,7 @@ class DailyPromotionStat extends Model
 
 - [ ] **Step 5: Upsert trong CheckoutService**
 
-`app/Services/Checkout/CheckoutService.php` — trong transaction, SAU khi ghi order_promotions (spec 1 Task 4), thêm:
+`app/Services/Checkout/CheckoutService.php` â€” trong transaction, SAU khi ghi order_promotions (spec 1 Task 4), thÃªm:
 
 ```php
             // 7d. Upsert daily_promotion_stats (realtime)
@@ -186,7 +186,7 @@ class DailyPromotionStat extends Model
             }
 ```
 
-**Lưu ý:** `$total` = `invoices.total_amount` (biến `$total` trong closure — kiểm tra tên biến thực; spec 1 dùng `$total` cho subtotal-discount). `DB::raw` cần `use Illuminate\Support\Facades\DB;` (đã có). Model `DailyPromotionStat` cần thêm relation `dailyStats()` trên `Promotion` model (hasMany). **Hoặc** dùng `DB::table('daily_promotion_stats')->updateOrInsert(...)` trực tiếp (tránh thêm relation). **Quyết định:** dùng `DB::table(...)->updateOrInsert` trực tiếp trong CheckoutService — đơn giản, không đụng model relation.
+**LÆ°u Ã½:** `$total` = `invoices.total_amount` (biáº¿n `$total` trong closure â€” kiá»ƒm tra tÃªn biáº¿n thá»±c; spec 1 dÃ¹ng `$total` cho subtotal-discount). `DB::raw` cáº§n `use Illuminate\Support\Facades\DB;` (Ä‘Ã£ cÃ³). Model `DailyPromotionStat` cáº§n thÃªm relation `dailyStats()` trÃªn `Promotion` model (hasMany). **Hoáº·c** dÃ¹ng `DB::table('daily_promotion_stats')->updateOrInsert(...)` trá»±c tiáº¿p (trÃ¡nh thÃªm relation). **Quyáº¿t Ä‘á»‹nh:** dÃ¹ng `DB::table(...)->updateOrInsert` trá»±c tiáº¿p trong CheckoutService â€” Ä‘Æ¡n giáº£n, khÃ´ng Ä‘á»¥ng model relation.
 
 ```php
             foreach ($appliedPromotions as $pr) {
@@ -205,33 +205,33 @@ class DailyPromotionStat extends Model
                     );
             }
 ```
-(`$invoiceTotal` = `(float) $invoice->total_amount` — dùng `$invoice` đã tạo trong closure.)
+(`$invoiceTotal` = `(float) $invoice->total_amount` â€” dÃ¹ng `$invoice` Ä‘Ã£ táº¡o trong closure.)
 
 - [ ] **Step 6: Test pass + full suite**
 
-Run: `php artisan test tests\Feature\PromotionAnalyticsTest.php` — PASS.
-Run: `php artisan test` — PASS (spec 1 xanh + test mới).
+Run: `php artisan test tests\Feature\PromotionAnalyticsTest.php` â€” PASS.
+Run: `php artisan test` â€” PASS (spec 1 xanh + test má»›i).
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add database/migrations/2026_08_10_000013_create_daily_promotion_stats_table.php app/Models/DailyPromotionStat.php app/Services/Checkout/CheckoutService.php tests/Feature/PromotionAnalyticsTest.php
+git add database/migrations/2026_08_10_000015_create_daily_promotion_stats_table.php app/Models/DailyPromotionStat.php app/Services/Checkout/CheckoutService.php tests/Feature/PromotionAnalyticsTest.php
 git commit -m "feat: daily_promotion_stats + upsert realtime khi checkout"
 ```
 
 ---
 
-## Task 2: Command cron rebuild đêm
+## Task 2: Command cron rebuild Ä‘Ãªm
 
 **Files:**
 - Create: `app/Console/Commands/AggregateDailyPromotionStats.php`
 - Modify: `routes/console.php`
 
 **Interfaces:**
-- Consumes: bảng stats + order_promotions + invoices (Task 1).
-- Produces: `php artisan promotions:aggregate-daily` rebuild stats ngày hôm qua.
+- Consumes: báº£ng stats + order_promotions + invoices (Task 1).
+- Produces: `php artisan promotions:aggregate-daily` rebuild stats ngÃ y hÃ´m qua.
 
-- [ ] **Step 1: Tạo command**
+- [ ] **Step 1: Táº¡o command**
 
 `app/Console/Commands/AggregateDailyPromotionStats.php`:
 
@@ -247,7 +247,7 @@ class AggregateDailyPromotionStats extends Command
 {
     protected $signature = 'promotions:aggregate-daily';
 
-    protected $description = 'Rebuild daily_promotion_stats cho ngày hôm qua từ order_promotions + invoices';
+    protected $description = 'Rebuild daily_promotion_stats cho ngÃ y hÃ´m qua tá»« order_promotions + invoices';
 
     public function handle(): int
     {
@@ -281,7 +281,7 @@ class AggregateDailyPromotionStats extends Command
                 ]);
             });
 
-        $this->info("Đã rebuild daily_promotion_stats cho {$yesterday}");
+        $this->info("ÄÃ£ rebuild daily_promotion_stats cho {$yesterday}");
 
         return self::SUCCESS;
     }
@@ -290,19 +290,19 @@ class AggregateDailyPromotionStats extends Command
 
 - [ ] **Step 2: Schedule**
 
-`routes/console.php` — thêm:
+`routes/console.php` â€” thÃªm:
 ```php
 Schedule::command('promotions:aggregate-daily')->dailyAt('03:00');
 ```
-(kiểm tra `Schedule::command` import `Illuminate\Support\Facades\Schedule` đã có chưa — file này thường có sẵn.)
+(kiá»ƒm tra `Schedule::command` import `Illuminate\Support\Facades\Schedule` Ä‘Ã£ cÃ³ chÆ°a â€” file nÃ y thÆ°á»ng cÃ³ sáºµn.)
 
 - [ ] **Step 3: Test command**
 
-Thêm vào `tests/Feature/PromotionAnalyticsTest.php`:
+ThÃªm vÃ o `tests/Feature/PromotionAnalyticsTest.php`:
 
 ```php
 test('command rebuild daily stats cho hom qua', function () {
-    // Tạo order_promotions cho hôm qua (dùng created_at hôm qua)
+    // Táº¡o order_promotions cho hÃ´m qua (dÃ¹ng created_at hÃ´m qua)
     $admin = posAdmin();
     $coupon = promoStat();
     $coupon->actions()->create(['action_type' => 'discount_amount', 'action_value' => 5000, 'max_discount_amount' => null]);
@@ -310,7 +310,7 @@ test('command rebuild daily stats cho hom qua', function () {
     $table = posTable();
     $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 40000, 'status' => 'completed']], ['status' => 'pending']);
 
-    // Checkout nhưng giả lập created_at hôm qua
+    // Checkout nhÆ°ng giáº£ láº­p created_at hÃ´m qua
     $this->actingAs($admin)->postJson('/staff/pos/checkout', [
         'order_id' => $order->id, 'payment_method' => 'cash',
         'amount_received' => 40000, 'promotion_code' => $coupon->code,
@@ -330,7 +330,7 @@ test('command rebuild daily stats cho hom qua', function () {
 
 - [ ] **Step 4: Test pass**
 
-Run: `php artisan test tests\Feature\PromotionAnalyticsTest.php` — PASS.
+Run: `php artisan test tests\Feature\PromotionAnalyticsTest.php` â€” PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -344,16 +344,16 @@ git commit -m "feat: command promotions:aggregate-daily rebuild stats dem + sche
 ## Task 3: Analytics API
 
 **Files:**
-- Modify: `app/Http/Controllers/Manager/PromotionController.php` (thêm `analytics`)
+- Modify: `app/Http/Controllers/Manager/PromotionController.php` (thÃªm `analytics`)
 - Modify: `routes/web.php`
 
 **Interfaces:**
-- Consumes: bảng stats (Task 1).
-- Produces: `GET /manager/promotions/analytics` trả kpis/daily_chart/type_breakdown/campaigns. Task 4 (frontend) tiêu thụ.
+- Consumes: báº£ng stats (Task 1).
+- Produces: `GET /manager/promotions/analytics` tráº£ kpis/daily_chart/type_breakdown/campaigns. Task 4 (frontend) tiÃªu thá»¥.
 
-- [ ] **Step 1: Thêm analytics()**
+- [ ] **Step 1: ThÃªm analytics()**
 
-`app/Http/Controllers/Manager/PromotionController.php` — thêm method:
+`app/Http/Controllers/Manager/PromotionController.php` â€” thÃªm method:
 
 ```php
     public function analytics(Request $request): \Illuminate\Http\JsonResponse
@@ -426,19 +426,19 @@ git commit -m "feat: command promotions:aggregate-daily rebuild stats dem + sche
     }
 ```
 
-**Lưu ý:** thêm `use Illuminate\Support\Facades\DB;` nếu chưa có. KPI `total_campaigns` không ở đây (index đã có).
+**LÆ°u Ã½:** thÃªm `use Illuminate\Support\Facades\DB;` náº¿u chÆ°a cÃ³. KPI `total_campaigns` khÃ´ng á»Ÿ Ä‘Ã¢y (index Ä‘Ã£ cÃ³).
 
 - [ ] **Step 2: Route**
 
-`routes/web.php` — group `/manager`, sau route promotions:
+`routes/web.php` â€” group `/manager`, sau route promotions:
 ```php
 Route::get('/promotions/analytics', [PromotionController::class, 'analytics'])->middleware('permission:promotions.view');
 ```
-**Lưu ý:** route này phải đặt TRƯỚC `Route::get('/promotions', ...)`? Không — `/promotions/analytics` khác `/promotions`, không conflict. Nhưng đặt TRƯỚC `POST /promotions/{promotion}` để tránh `{promotion}` match 'analytics'. Xác nhận: `GET /promotions/analytics` vs `POST /promotions/{promotion}` — method khác (GET vs POST) nên không conflict. Đặt sau index là được.
+**LÆ°u Ã½:** route nÃ y pháº£i Ä‘áº·t TRÆ¯á»šC `Route::get('/promotions', ...)`? KhÃ´ng â€” `/promotions/analytics` khÃ¡c `/promotions`, khÃ´ng conflict. NhÆ°ng Ä‘áº·t TRÆ¯á»šC `POST /promotions/{promotion}` Ä‘á»ƒ trÃ¡nh `{promotion}` match 'analytics'. XÃ¡c nháº­n: `GET /promotions/analytics` vs `POST /promotions/{promotion}` â€” method khÃ¡c (GET vs POST) nÃªn khÃ´ng conflict. Äáº·t sau index lÃ  Ä‘Æ°á»£c.
 
 - [ ] **Step 3: Test API**
 
-Thêm vào `tests/Feature/PromotionAnalyticsTest.php`:
+ThÃªm vÃ o `tests/Feature/PromotionAnalyticsTest.php`:
 
 ```php
 test('analytics api tra kpis va campaigns', function () {
@@ -464,8 +464,8 @@ test('analytics api tra kpis va campaigns', function () {
 
 - [ ] **Step 4: Test pass + full suite**
 
-Run: `php artisan test tests\Feature\PromotionAnalyticsTest.php` — PASS.
-Run: `php artisan test` — PASS.
+Run: `php artisan test tests\Feature\PromotionAnalyticsTest.php` â€” PASS.
+Run: `php artisan test` â€” PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -476,7 +476,7 @@ git commit -m "feat: analytics API promotion (kpis/daily/type/campaigns) tu dail
 
 ---
 
-## Task 4: Frontend charts + nối analytics
+## Task 4: Frontend charts + ná»‘i analytics
 
 **Files:**
 - Create: `resources/js/pages/manager/promotions/components/PromotionAnalyticsCharts.tsx`
@@ -485,9 +485,9 @@ git commit -m "feat: analytics API promotion (kpis/daily/type/campaigns) tu dail
 
 **Interfaces:**
 - Consumes: `analytics()` API (Task 3), PromotionsManager (spec 2).
-- Produces: KPI cards số thật + line chart + pie chart.
+- Produces: KPI cards sá»‘ tháº­t + line chart + pie chart.
 
-- [ ] **Step 1: Tạo PromotionAnalyticsCharts**
+- [ ] **Step 1: Táº¡o PromotionAnalyticsCharts**
 
 `resources/js/pages/manager/promotions/components/PromotionAnalyticsCharts.tsx`:
 
@@ -505,7 +505,7 @@ export default function PromotionAnalyticsCharts({ daily, types }: { daily: Dail
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-8 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5">
-                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Doanh thu &amp; Số lượt dùng theo ngày</h3>
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Doanh thu &amp; Sá»‘ lÆ°á»£t dÃ¹ng theo ngÃ y</h3>
                 <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={daily}>
@@ -514,13 +514,13 @@ export default function PromotionAnalyticsCharts({ daily, types }: { daily: Dail
                             <YAxis tick={{ fontSize: 11 }} />
                             <Tooltip />
                             <Area type="monotone" dataKey="revenue" name="Doanh thu" stroke="#0059bb" fill="#0059bb" fillOpacity={0.15} />
-                            <Area type="monotone" dataKey="usage_count" name="Lượt dùng" stroke="#008730" fill="#008730" fillOpacity={0.15} />
+                            <Area type="monotone" dataKey="usage_count" name="LÆ°á»£t dÃ¹ng" stroke="#008730" fill="#008730" fillOpacity={0.15} />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
             </div>
             <div className="lg:col-span-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5">
-                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Tỷ lệ sử dụng</h3>
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Tá»· lá»‡ sá»­ dá»¥ng</h3>
                 <div className="h-64 flex items-center justify-center">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -538,9 +538,9 @@ export default function PromotionAnalyticsCharts({ daily, types }: { daily: Dail
 }
 ```
 
-- [ ] **Step 2: Nối analytics vào PromotionsManager**
+- [ ] **Step 2: Ná»‘i analytics vÃ o PromotionsManager**
 
-`PromotionsManager.tsx` — thêm: import `useEffect`, `PromotionAnalyticsCharts`; thêm state analytics; fetch khi mount; truyền số thật vào StatsCards; render charts giữa stats cards và campaign list:
+`PromotionsManager.tsx` â€” thÃªm: import `useEffect`, `PromotionAnalyticsCharts`; thÃªm state analytics; fetch khi mount; truyá»n sá»‘ tháº­t vÃ o StatsCards; render charts giá»¯a stats cards vÃ  campaign list:
 
 ```tsx
 import { useEffect, useState } from 'react';
@@ -562,58 +562,58 @@ Render:
 <div className="space-y-4">
     <PromotionStatsCards stats={analytics?.kpis ?? stats} />
     {analytics && <PromotionAnalyticsCharts daily={analytics.daily_chart} types={analytics.type_breakdown} />}
-    {/* ...campaign list (spec 2) — có thể thêm revenue/discount/roi cột từ analytics.campaigns nếu muốn */}
+    {/* ...campaign list (spec 2) â€” cÃ³ thá»ƒ thÃªm revenue/discount/roi cá»™t tá»« analytics.campaigns náº¿u muá»‘n */}
 </div>
 ```
 
-**Lưu ý:** `PromotionStatsCards` props hiện là `stats` shape spec 2 — `analytics.kpis` có `total_revenue/total_orders/total_discount/avg_discount/roi` (thiếu `total_campaigns`) — component spec 2 đọc `stats.total_campaigns` → dùng fallback `stats?.total_campaigns ?? 0`. Kiểm tra build.
+**LÆ°u Ã½:** `PromotionStatsCards` props hiá»‡n lÃ  `stats` shape spec 2 â€” `analytics.kpis` cÃ³ `total_revenue/total_orders/total_discount/avg_discount/roi` (thiáº¿u `total_campaigns`) â€” component spec 2 Ä‘á»c `stats.total_campaigns` â†’ dÃ¹ng fallback `stats?.total_campaigns ?? 0`. Kiá»ƒm tra build.
 
-**Lưu ý auth:** fetch `/manager/promotions/analytics` — route có middleware `permission:promotions.view` + auth. Browser fetch sẽ gửi session cookie (Inertia axios). Dùng `axios` (đã có trong dự án) thay `fetch` để bắt CSRF header? GET không cần CSRF. `fetch` GET OK với cookie same-origin. Giữ `fetch`.
+**LÆ°u Ã½ auth:** fetch `/manager/promotions/analytics` â€” route cÃ³ middleware `permission:promotions.view` + auth. Browser fetch sáº½ gá»­i session cookie (Inertia axios). DÃ¹ng `axios` (Ä‘Ã£ cÃ³ trong dá»± Ã¡n) thay `fetch` Ä‘á»ƒ báº¯t CSRF header? GET khÃ´ng cáº§n CSRF. `fetch` GET OK vá»›i cookie same-origin. Giá»¯ `fetch`.
 
 - [ ] **Step 3: Types + build**
 
-Run: `npm run types:check` + `npm run build` — PASS.
+Run: `npm run types:check` + `npm run build` â€” PASS.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add resources/js/pages/manager/promotions/
-git commit -m "feat: analytics charts (line/pie) + nối daily_promotion_stats vao trang tong quan"
+git commit -m "feat: analytics charts (line/pie) + ná»‘i daily_promotion_stats vao trang tong quan"
 ```
 
 ---
 
 ## Task 5: Final verification
 
-**Files:** không code — verify.
+**Files:** khÃ´ng code â€” verify.
 
 - [ ] **Step 1: Full suite**
 
-Run: `php artisan test` — PASS.
+Run: `php artisan test` â€” PASS.
 
 - [ ] **Step 2: Pint**
 
-Run: `vendor/bin/pint --dirty --test` — sạch.
+Run: `vendor/bin/pint --dirty --test` â€” sáº¡ch.
 
 - [ ] **Step 3: Frontend**
 
-Run: `npm run types:check` + `npm run build` — PASS.
+Run: `npm run types:check` + `npm run build` â€” PASS.
 
 - [ ] **Step 4: Smoke**
 
-- Checkout 1 đơn có mã → `daily_promotion_stats` có dòng (tinker).
-- `/manager/promotions/analytics` trả kpis đúng.
-- Mở `/manager/promotions` → KPI số thật + line/pie chart render.
-- Chạy `php artisan promotions:aggregate-daily` → stats hôm qua đúng.
+- Checkout 1 Ä‘Æ¡n cÃ³ mÃ£ â†’ `daily_promotion_stats` cÃ³ dÃ²ng (tinker).
+- `/manager/promotions/analytics` tráº£ kpis Ä‘Ãºng.
+- Má»Ÿ `/manager/promotions` â†’ KPI sá»‘ tháº­t + line/pie chart render.
+- Cháº¡y `php artisan promotions:aggregate-daily` â†’ stats hÃ´m qua Ä‘Ãºng.
 
-- [ ] **Step 5: Fix phát sinh + commit nếu cần**
+- [ ] **Step 5: Fix phÃ¡t sinh + commit náº¿u cáº§n**
 
 ---
 
 ## Final verification checklist
 
-- [ ] `php artisan test` — pass
-- [ ] `vendor/bin/pint --dirty --test` — sạch
-- [ ] `npm run types:check` + `npm run build` — pass
-- [ ] Smoke: checkout → stats → analytics API → charts
-- [ ] `git status` — tree sạch
+- [ ] `php artisan test` â€” pass
+- [ ] `vendor/bin/pint --dirty --test` â€” sáº¡ch
+- [ ] `npm run types:check` + `npm run build` â€” pass
+- [ ] Smoke: checkout â†’ stats â†’ analytics API â†’ charts
+- [ ] `git status` â€” tree sáº¡ch
