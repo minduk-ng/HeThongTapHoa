@@ -254,15 +254,32 @@ class CheckoutService
             }
 
             // 7b. Ghi order_promotions (fact) + increment used_count (đã lock trong engine)
+            // Phân bổ discount của từng promotion theo tỷ trọng subtotal giữa các order
+            // (SUM(discount_applied) per invoice phải = tổng giảm thực tế; không ghi full amount per order)
+            $orderSubtotals = $orders->map(fn ($o) => (float) $o->items()
+                ->where('status', '!=', 'cancelled')
+                ->sum('subtotal'))->values();
+            $totalSubtotal = (float) $orderSubtotals->sum();
+
             foreach ($appliedPromotions as $pr) {
                 $promo = $pr['promotion'];
-                foreach ($orders as $order) {
+                $promoAmount = (float) $pr['amount'];
+                $assigned = 0.0;
+                $orderCount = $orders->count();
+                foreach ($orders as $idx => $order) {
+                    $sub = (float) ($orderSubtotals[$idx] ?? 0);
+                    $allocated = ($idx === $orderCount - 1)
+                        ? round($promoAmount - $assigned, 2)
+                        : ($totalSubtotal > 0 ? floor($promoAmount * $sub / $totalSubtotal) : 0);
+                    $allocated = round(max(0.0, min($allocated, $sub)), 2);
+                    $assigned += $allocated;
+
                     OrderPromotion::create([
                         'invoice_id' => $invoice->id,
                         'order_id' => $order->id,
                         'promotion_id' => $promo->id,
                         'code_used' => $pr['code'],
-                        'discount_applied' => $pr['amount'],
+                        'discount_applied' => $allocated,
                     ]);
                 }
             }

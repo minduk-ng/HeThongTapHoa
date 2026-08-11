@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\OrderPromotion;
 use App\Services\Promotions\PromotionEngine;
@@ -237,4 +238,39 @@ test('race: 2 checkout dong thoi khong vuot max_usage', function () {
     $r2->assertStatus(422);
     expect($coupon->fresh()->used_count)->toBeLessThanOrEqual(1);
     expect(OrderPromotion::count())->toBeLessThanOrEqual(1);
+});
+
+test('bulk checkout: SUM(order_promotions.discount_applied) = tổng giảm hóa đơn (không ghi full amount per order)', function () {
+    $this->actingAs(posAdmin());
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'BULKSUM'.substr(uniqid(), -4)]);
+    addAction($coupon, 'discount_amount', 40000);
+    $item = posMenuItem(['price' => 50000, 'vat_rate' => 0]);
+    $table = posTable(['status' => 'occupied']);
+    $order1 = posOrder($table, [['item' => $item, 'qty' => 2, 'price' => 50000, 'status' => 'completed']], ['status' => 'completed']); // 100000
+    $order2 = posOrder($table, [['item' => $item, 'qty' => 6, 'price' => 50000, 'status' => 'completed']], ['status' => 'completed']); // 300000
+
+    $this->post('/staff/pos/bulk-checkout', [
+        'order_ids' => [$order1->id, $order2->id],
+        'table_id' => $table->id,
+        'payment_method' => 'cash',
+        'amount_received' => 360000,
+        'change_amount' => 0,
+        'promotion_code' => $coupon->code,
+    ])->assertSessionHasNoErrors();
+
+    $invoice = Invoice::firstOrFail();
+    $ops = OrderPromotion::where('invoice_id', $invoice->id)->get();
+
+    // SUM fact = tổng giảm thực tế, không phải N × amount
+    expect((float) $ops->sum('discount_applied'))->toBe(40000.0);
+
+    // Phân bổ theo tỷ trọng subtotal (100000 : 300000), đơn cuối nhận phần dư
+    $byOrder = $ops->pluck('discount_applied', 'order_id');
+    expect((float) $byOrder[$order1->id])->toBe(10000.0);
+    expect((float) $byOrder[$order2->id])->toBe(30000.0);
+
+    // Nhất quán với order + invoice discount
+    expect((float) $order1->fresh()->discount_amount)->toBe(10000.0);
+    expect((float) $order2->fresh()->discount_amount)->toBe(30000.0);
+    expect((float) $invoice->discount_amount)->toBe(40000.0);
 });
