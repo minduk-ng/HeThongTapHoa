@@ -1,137 +1,165 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Plus, Search, Ticket } from 'lucide-react';
+import { Plus, Search, SlidersHorizontal, Ticket } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import ManagerPageLayout from '../../../components/ManagerPageLayout';
-import DeleteConfirmModal from '../../../components/DeleteConfirmModal';
+import PromotionStatsCards from './components/PromotionStatsCards';
 import PromotionFormDrawer from './components/PromotionFormDrawer';
-import PromotionTable, { PromotionData } from './components/PromotionTable';
+
+export interface PromotionData {
+    id: number;
+    name: string;
+    type: 'promotion' | 'coupon' | 'voucher';
+    code: string | null;
+    start_date: string | null;
+    end_date: string | null;
+    status: boolean;
+    used_count: number;
+    max_usage: number | null;
+    exclusive: boolean;
+    stackable: boolean;
+    conditions: { cond_type: string; cond_value: string }[];
+    actions: { action_type: string; action_value: number; max_discount_amount: number | null }[];
+}
 
 interface Props {
     promotions: PromotionData[];
-    filters: { search?: string };
-    menu_items?: { id: number; name: string }[];
-    menu_categories?: { id: number; name: string }[];
+    stats: { total_campaigns: number; total_orders: number; total_revenue: number; total_discount: number; avg_discount: number; roi: number };
+    filters: { search?: string; status?: string };
+    menu_items: { id: number; name: string }[];
+    menu_categories: { id: number; name: string }[];
 }
-export default function PromotionsManager({
-    promotions,
-    filters,
-    menu_items,
-    menu_categories,
-}: Props) {
+
+const TYPE_LABEL: Record<string, string> = { promotion: 'Promotion', coupon: 'Coupon', voucher: 'Voucher' };
+const TYPE_CLASS: Record<string, string> = {
+    promotion: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
+    coupon: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+    voucher: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+};
+
+export default function PromotionsManager({ promotions, stats, filters, menu_items, menu_categories }: Props) {
     const [search, setSearch] = useState(filters.search || '');
+    const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editing, setEditing] = useState<PromotionData | null>(null);
-    const [deleting, setDeleting] = useState<PromotionData | null>(null);
-    const [password, setPassword] = useState('');
-    const [deleteError, setDeleteError] = useState<string | null>(null);
-    const [processing, setProcessing] = useState(false);
-    const filtered = useMemo(
-        () =>
-            promotions.filter((promotion) =>
-                `${promotion.code} ${promotion.name}`
-                    .toLowerCase()
-                    .includes(search.trim().toLowerCase()),
-            ),
-        [promotions, search],
-    );
-    const confirmDelete = (event: React.FormEvent) => {
-        event.preventDefault();
-        if (!deleting || processing) return;
-        setProcessing(true);
-        router.delete(`/manager/promotions/${deleting.id}`, {
-            data: { password },
-            onSuccess: () => {
-                setDeleting(null);
-                setPassword('');
-                setDeleteError(null);
-            },
-            onError: (errors) =>
-                setDeleteError(errors.password || 'Không thể xóa khuyến mãi.'),
-            onFinish: () => setProcessing(false),
-        });
+
+    const applyFilters = () => {
+        router.get('/manager/promotions', {
+            search: search || undefined,
+            status: statusFilter === 'all' ? undefined : statusFilter,
+        }, { preserveState: true });
     };
+
     return (
-        <DashboardLayout fullWidth>
-            <Head title="Quản lý khuyến mãi" />
+        <DashboardLayout fullWidth={true}>
+            <Head title="Khuyến mãi" />
             <ManagerPageLayout
                 sidebar={
                     <>
                         <div>
-                            <div className="mb-1 flex items-center gap-2 text-sky-600 dark:text-sky-400">
-                                <Ticket className="h-5 w-5 stroke-[1.5]" />
-                                <span className="text-xs font-semibold tracking-wider uppercase">
-                                    Phân hệ Quản lý
-                                </span>
+                            <div className="flex items-center space-x-2 text-sky-600 dark:text-sky-400 mb-1">
+                                <Ticket className="w-5 h-5 stroke-[1.5]" />
+                                <span className="text-xs font-semibold uppercase tracking-wider">Phân hệ Quản lý</span>
                             </div>
-                            <h1 className="font-display text-xl text-zinc-900 dark:text-zinc-100">
-                                Khuyến mãi
-                            </h1>
-                            <p className="mt-1 text-xs text-zinc-500">
-                                Quản lý mã giảm giá cho thanh toán POS
-                            </p>
+                            <h1 className="font-display text-xl font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">Khuyến mãi</h1>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Quản lý chiến dịch ưu đãi cho thanh toán POS</p>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setEditing(null);
-                                setDrawerOpen(true);
-                            }}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-sky-700"
-                        >
-                            <Plus className="h-4 w-4 stroke-[1.5]" />
-                            Thêm khuyến mãi mới
+                        <button type="button" onClick={() => { setEditing(null); setDrawerOpen(true); }}
+                            className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl">
+                            <Plus className="w-4 h-4" /><span>Chiến dịch mới</span>
                         </button>
-                        <label className="relative block">
-                            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-                            <input
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Tìm mã hoặc tên…"
-                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-2 pr-3 pl-9 text-xs outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800"
-                            />
-                        </label>
-                        <div className="mt-auto rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-800/50">
-                            <div className="text-xs text-zinc-500">
-                                Tổng khuyến mãi
+                        <div className="space-y-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
+                            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                                <SlidersHorizontal className="w-3.5 h-3.5" /><span>Bộ lọc</span>
+                            </label>
+                            <div className="relative">
+                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm chiến dịch..."
+                                    className="w-full pl-9 pr-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500" />
                             </div>
-                            <div className="mt-1 font-display text-2xl tabular-nums">
-                                {promotions.length}
+                            <div>
+                                <label className="text-[11px] text-zinc-500 block mb-1">Trạng thái</label>
+                                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+                                    className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700">
+                                    <option value="all">Tất cả</option>
+                                    <option value="running">Đang chạy</option>
+                                    <option value="ended">Đã kết thúc</option>
+                                </select>
+                            </div>
+                            <button type="button" onClick={applyFilters}
+                                className="w-full px-3 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl">Lọc</button>
+                        </div>
+                        <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 mt-auto">
+                            <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-800 rounded-xl">
+                                <div className="text-[11px] text-zinc-500">Tổng chiến dịch</div>
+                                <div className="font-display text-2xl font-normal text-zinc-900 dark:text-zinc-100">{stats?.total_campaigns ?? 0}</div>
                             </div>
                         </div>
                     </>
                 }
             >
-                <PromotionTable
-                    promotions={filtered}
-                    onEdit={(promotion) => {
-                        setEditing(promotion);
-                        setDrawerOpen(true);
-                    }}
-                    onDelete={(promotion) => {
-                        setDeleting(promotion);
-                        setPassword('');
-                        setDeleteError(null);
-                    }}
-                />
+                <div className="space-y-4">
+                    <PromotionStatsCards stats={stats} />
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
+                        <div className="p-5 border-b border-zinc-100 dark:border-zinc-800">
+                            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Campaign Performance</h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-zinc-50 dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-400 text-xs uppercase tracking-wider">
+                                    <tr>
+                                        <th className="px-4 py-3">Mã / Tên chiến dịch</th>
+                                        <th className="px-4 py-3">Loại</th>
+                                        <th className="px-4 py-3 text-right">Số đơn</th>
+                                        <th className="px-4 py-3 text-right">Hiệu suất</th>
+                                        <th className="px-4 py-3 text-center">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                                    {promotions.length === 0 ? (
+                                        <tr><td colSpan={5} className="py-12 px-6 text-center text-zinc-500">Chưa có chiến dịch nào</td></tr>
+                                    ) : promotions.map((p) => {
+                                        const perf = p.max_usage ? Math.min(100, Math.round((p.used_count / p.max_usage) * 100)) : null;
+                                        return (
+                                            <tr key={p.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 cursor-pointer"
+                                                onClick={() => { setEditing(p); setDrawerOpen(true); }}>
+                                                <td className="px-4 py-3">
+                                                    <div className="font-medium text-zinc-900 dark:text-zinc-100">{p.code || `KM_${p.id}`}</div>
+                                                    <div className="text-xs text-zinc-500">{p.name}</div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2.5 py-1 rounded text-xs font-medium ${TYPE_CLASS[p.type]}`}>{TYPE_LABEL[p.type]}</span>
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-medium tabular-nums">{p.used_count}</td>
+                                                <td className="px-4 py-3">
+                                                    {perf === null ? (
+                                                        <span className="text-xs text-zinc-400">—</span>
+                                                    ) : (
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
+                                                                <div className="bg-sky-600 h-full rounded-full" style={{ width: `${perf}%` }} />
+                                                            </div>
+                                                            <span className="text-xs font-medium text-sky-600 w-8 text-right">{perf}%</span>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-center text-xs text-blue-600">Sửa</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </ManagerPageLayout>
+
             <PromotionFormDrawer
                 isOpen={drawerOpen}
                 onClose={() => setDrawerOpen(false)}
                 promotionToEdit={editing}
                 menuItems={menu_items}
                 menuCategories={menu_categories}
-            />
-            <DeleteConfirmModal
-                isOpen={!!deleting}
-                title="Xác nhận xóa khuyến mãi"
-                description={`Xóa mã ${deleting?.code || ''}?`}
-                passwordValue={password}
-                onPasswordChange={setPassword}
-                onClose={() => setDeleting(null)}
-                onConfirm={confirmDelete}
-                processing={processing}
-                errorMsg={deleteError}
             />
         </DashboardLayout>
     );
