@@ -44,13 +44,16 @@ class PromotionEngine
         $auto = null;
         $hasNonStackable = collect($codePromotions)->contains(fn ($p) => ! $p->stackable);
         if (! $hasNonStackable) {
-            $candidates = Promotion::query()
+            $candidatesQuery = Promotion::query()
                 ->where('type', 'promotion')
                 ->where('status', true)
                 ->where(fn ($q) => $q->whereNull('start_date')->orWhere('start_date', '<=', now()))
                 ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()))
-                ->with(['conditions', 'actions'])
-                ->get()
+                ->with(['conditions', 'actions']);
+            if ($lockForUpdate) {
+                $candidatesQuery->lockForUpdate();
+            }
+            $candidates = $candidatesQuery->get()
                 ->filter(fn ($p) => self::matchesConditions($p, $lines, $subtotal) && self::quotaOk($p));
 
             $auto = $candidates

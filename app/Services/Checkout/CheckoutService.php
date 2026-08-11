@@ -116,6 +116,19 @@ class CheckoutService
                 }
             }
 
+            // 2b. Phân bổ discount xuống từng line (cho báo cáo line-level) theo tỷ trọng subtotal
+            if ($totalDiscount > 0 && $subtotal > 0) {
+                $assigned = 0.0;
+                $count = count($lineInputs);
+                foreach ($lineInputs as $idx => $li) {
+                    $lineDiscount = ($idx === $count - 1)
+                        ? round($totalDiscount - $assigned, 2)
+                        : floor($totalDiscount * (float) $li['subtotal'] / $subtotal);
+                    $assigned += $lineDiscount;
+                    $lineInputs[$idx]['discount_amount'] = round(max(0, min($lineDiscount, (float) $li['subtotal'])), 2);
+                }
+            }
+
             $total = max(0.0, $subtotal - $totalDiscount);
 
             // 3. Tính cọc và kiểm tra tiền nhận
