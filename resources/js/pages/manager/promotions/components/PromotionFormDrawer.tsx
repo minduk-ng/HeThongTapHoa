@@ -1,389 +1,200 @@
 import { useEffect, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { X } from 'lucide-react';
+import { X, Shuffle } from 'lucide-react';
 import DatePicker from '../../../../components/DatePicker';
-import SearchableSelect from '../../../../components/SearchableSelect';
-import type { SelectOption } from '../../../../components/SearchableSelect';
-import { PromotionData } from './PromotionTable';
+import PromotionActionsEditor, { ActionRow } from './PromotionActionsEditor';
+import PromotionConditionsEditor, { ConditionRow } from './PromotionConditionsEditor';
+import PromotionPreview from './PromotionPreview';
+import { PromotionData } from '../PromotionsManager';
 
 interface Props {
     isOpen: boolean;
     onClose: () => void;
     promotionToEdit: PromotionData | null;
-    menuItems?: SelectOption[];
-    menuCategories?: SelectOption[];
+    menuItems: { id: number; name: string }[];
+    menuCategories: { id: number; name: string }[];
 }
-type FormState = {
-    code: string;
-    name: string;
-    description: string;
-    discount_type: 'percentage' | 'fixed_amount';
-    discount_value: string;
-    target_type: 'order' | 'item' | 'category';
-    target_value: string;
-    min_order_amount: string;
-    max_discount_amount: string;
-    max_uses: string;
-    starts_at: string;
-    expires_at: string;
-    is_active: boolean;
-};
-const empty: FormState = {
-    code: '',
-    name: '',
-    description: '',
-    discount_type: 'percentage',
-    discount_value: '',
-    target_type: 'order',
-    target_value: '',
-    min_order_amount: '0',
-    max_discount_amount: '',
-    max_uses: '',
-    starts_at: '',
-    expires_at: '',
-    is_active: true,
-};
-const localDate = (value: string | null) =>
-    value ? new Date(value).toISOString().slice(0, 16) : '';
 
-export default function PromotionFormDrawer({
-    isOpen,
-    onClose,
-    promotionToEdit,
-    menuItems,
-    menuCategories,
-}: Props) {
-    const [form, setForm] = useState<FormState>(empty);
+const randomCode = () => Array.from({ length: 8 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+
+export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, menuItems }: Props) {
+    const [name, setName] = useState('');
+    const [type, setType] = useState<'promotion' | 'coupon' | 'voucher'>('promotion');
+    const [code, setCode] = useState('');
+    const [startDate, setStartDate] = useState<string | null>(null);
+    const [endDate, setEndDate] = useState<string | null>(null);
+    const [status, setStatus] = useState(true);
+    const [maxUsage, setMaxUsage] = useState('');
+    const [exclusive, setExclusive] = useState(false);
+    const [stackable, setStackable] = useState(true);
+    const [actions, setActions] = useState<ActionRow[]>([{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]);
+    const [conditions, setConditions] = useState<ConditionRow[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         setErrors({});
-        setForm(
-            promotionToEdit
-                ? {
-                      code: promotionToEdit.code,
-                      name: promotionToEdit.name,
-                      description: promotionToEdit.description || '',
-                      discount_type: promotionToEdit.discount_type,
-                      discount_value: String(promotionToEdit.discount_value),
-                      target_type: promotionToEdit.target_type ?? 'order',
-                      target_value:
-                          promotionToEdit.target_value === null ||
-                          promotionToEdit.target_value === undefined
-                              ? ''
-                              : String(promotionToEdit.target_value),
-                      min_order_amount: String(
-                          promotionToEdit.min_order_amount ?? 0,
-                      ),
-                      max_discount_amount:
-                          promotionToEdit.max_discount_amount === null
-                              ? ''
-                              : String(promotionToEdit.max_discount_amount),
-                      max_uses:
-                          promotionToEdit.max_uses === null
-                              ? ''
-                              : String(promotionToEdit.max_uses),
-                      starts_at: localDate(promotionToEdit.starts_at),
-                      expires_at: localDate(promotionToEdit.expires_at),
-                      is_active: promotionToEdit.is_active,
-                  }
-                : empty,
-        );
+        if (promotionToEdit) {
+            setName(promotionToEdit.name); setType(promotionToEdit.type); setCode(promotionToEdit.code || '');
+            setStartDate(promotionToEdit.start_date || null); setEndDate(promotionToEdit.end_date || null);
+            setStatus(promotionToEdit.status);
+            setMaxUsage(promotionToEdit.max_usage === null ? '' : String(promotionToEdit.max_usage));
+            setExclusive(promotionToEdit.exclusive); setStackable(promotionToEdit.stackable);
+            setActions(promotionToEdit.actions.length ? promotionToEdit.actions.map((a) => ({
+                action_type: a.action_type, action_value: String(a.action_value),
+                max_discount_amount: a.max_discount_amount === null ? '' : String(a.max_discount_amount),
+            })) : [{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]);
+            setConditions(promotionToEdit.conditions.map((c) => ({ cond_type: c.cond_type, cond_value: c.cond_value })));
+        } else {
+            setName(''); setType('promotion'); setCode(''); setStartDate(null); setEndDate(null);
+            setStatus(true); setMaxUsage(''); setExclusive(false); setStackable(true);
+            setActions([{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]);
+            setConditions([]);
+        }
     }, [promotionToEdit, isOpen]);
 
     if (!isOpen) return null;
-    const set = (key: keyof FormState, value: string | boolean) =>
-        setForm((current) => ({ ...current, [key]: value }));
-    const submit = (event: React.FormEvent) => {
-        event.preventDefault();
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
         if (submitting) return;
         setSubmitting(true);
         const payload = {
-            ...form,
-            discount_value: Number(form.discount_value),
-            target_value:
-                form.target_type === 'order' || form.target_value === ''
-                    ? null
-                    : Number(form.target_value),
-            min_order_amount:
-                form.min_order_amount === ''
-                    ? null
-                    : Number(form.min_order_amount),
-            max_discount_amount:
-                form.max_discount_amount === ''
-                    ? null
-                    : Number(form.max_discount_amount),
-            max_uses: form.max_uses === '' ? null : Number(form.max_uses),
-            starts_at: form.starts_at || null,
-            expires_at: form.expires_at || null,
+            name, type,
+            code: type === 'promotion' ? null : (code.toUpperCase() || null),
+            start_date: startDate || null, end_date: endDate || null,
+            status, max_usage: maxUsage === '' ? null : Number(maxUsage),
+            exclusive, stackable,
+            conditions: conditions.map((c) => ({ cond_type: c.cond_type, cond_value: c.cond_value })),
+            actions: actions.map((a) => ({
+                action_type: a.action_type,
+                action_value: Number(a.action_value) || 0,
+                max_discount_amount: a.action_type === 'discount_percent' && a.max_discount_amount !== '' ? Number(a.max_discount_amount) : null,
+            })),
         };
-        router.post(
-            promotionToEdit
-                ? `/manager/promotions/${promotionToEdit.id}`
-                : '/manager/promotions',
-            payload,
-            {
-                onSuccess: onClose,
-                onError: (value) => setErrors(value as Record<string, string>),
-                onFinish: () => setSubmitting(false),
-            },
-        );
+        router.post(promotionToEdit ? `/manager/promotions/${promotionToEdit.id}` : '/manager/promotions', payload, {
+            onSuccess: onClose,
+            onError: (v) => setErrors(v as Record<string, string>),
+            onFinish: () => setSubmitting(false),
+        });
     };
-    const fields: {
-        key: keyof FormState;
-        label: string;
-        type?: string;
-        required?: boolean;
-    }[] = [
-        { key: 'code', label: 'Mã khuyến mãi', required: true },
-        { key: 'name', label: 'Tên khuyến mãi', required: true },
-        {
-            key: 'min_order_amount',
-            label: 'Đơn hàng tối thiểu',
-            type: 'number',
-        },
-        { key: 'max_uses', label: 'Số lượt dùng tối đa', type: 'number' },
-    ];
+
+    const inputCls = 'w-full px-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500';
+
     return (
-        <div className="fixed inset-0 z-[100]">
-            <div
-                className="absolute inset-0 bg-black/40 backdrop-blur-xs"
-                onClick={onClose}
-            />
-            <div className="absolute inset-y-0 right-0 flex w-full max-w-lg flex-col border-l border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="flex items-center justify-between border-b border-zinc-200 p-5 dark:border-zinc-800">
-                    <h2 className="font-display text-xl text-zinc-900 dark:text-zinc-100">
-                        {promotionToEdit
-                            ? 'Cập nhật khuyến mãi'
-                            : 'Thêm khuyến mãi mới'}
-                    </h2>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                    >
-                        <X className="h-5 w-5 stroke-[1.5]" />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-auto p-6">
+                <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3 mb-5">
+                    <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                        {promotionToEdit ? 'Cập nhật khuyến mãi' : 'Thêm mới chương trình khuyến mãi'}
+                    </h3>
+                    <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-600 p-1 rounded-lg">
+                        <X className="w-5 h-5" />
                     </button>
                 </div>
-                <form
-                    id="promotion-form"
-                    onSubmit={submit}
-                    className="flex-1 space-y-4 overflow-y-auto p-5"
-                >
-                    <div className="grid grid-cols-2 gap-4">
-                        {fields.map((field) => (
-                            <label
-                                key={field.key}
-                                className={
-                                    field.key === 'name' || field.key === 'code'
-                                        ? 'col-span-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300'
-                                        : 'text-xs font-semibold text-zinc-700 dark:text-zinc-300'
-                                }
-                            >
-                                {field.label}
-                                {field.required && (
-                                    <span className="text-rose-500"> *</span>
-                                )}
-                                <input
-                                    type={field.type || 'text'}
-                                    value={String(form[field.key])}
-                                    onChange={(e) =>
-                                        set(
-                                            field.key,
-                                            field.key === 'code'
-                                                ? e.target.value.toUpperCase()
-                                                : e.target.value,
-                                        )
-                                    }
-                                    className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-                                />
-                                {errors[field.key] && (
-                                    <span className="mt-1 block text-xs text-rose-500">
-                                        {errors[field.key]}
-                                    </span>
-                                )}
-                            </label>
-                        ))}
-                        <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                            Giá trị giảm<span className="text-rose-500"> *</span>
-                            <span className="mt-1.5 flex overflow-hidden rounded-xl border border-zinc-300 bg-zinc-50 focus-within:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800">
-                                <input
-                                    type="number"
-                                    value={form.discount_value}
-                                    onChange={(e) =>
-                                        set('discount_value', e.target.value)
-                                    }
-                                    className="w-full min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-zinc-900 outline-none dark:text-zinc-100"
-                                />
-                                <span className="border-l border-zinc-300 dark:border-zinc-700" />
-                                <select
-                                    value={form.discount_type}
-                                    onChange={(e) =>
-                                        set('discount_type', e.target.value)
-                                    }
-                                    className="shrink-0 bg-transparent px-1.5 py-2.5 text-xs font-medium text-zinc-700 outline-none dark:text-zinc-300"
-                                >
-                                    <option value="percentage">%</option>
-                                    <option value="fixed_amount">VND</option>
-                                </select>
-                            </span>
-                            {errors.discount_value && (
-                                <span className="mt-1 block text-xs text-rose-500">
-                                    {errors.discount_value}
-                                </span>
-                            )}
-                        </label>
-                        <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                            Mức giảm tối đa
-                            <input
-                                type="number"
-                                disabled={form.discount_type !== 'percentage'}
-                                value={form.max_discount_amount}
-                                onChange={(e) =>
-                                    set('max_discount_amount', e.target.value)
-                                }
-                                className={`mt-1.5 w-full rounded-xl border px-3 py-2.5 text-sm outline-none dark:text-zinc-100 ${
-                                    form.discount_type === 'percentage'
-                                        ? 'border-zinc-300 bg-zinc-50 text-zinc-900 focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800'
-                                        : 'cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500'
-                                }`}
-                            />
-                            {errors.max_discount_amount && (
-                                <span className="mt-1 block text-xs text-rose-500">
-                                    {errors.max_discount_amount}
-                                </span>
-                            )}
-                        </label>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2 space-y-2">
-                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                                Phạm vi áp dụng
-                            </span>
-                            <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3.5 dark:border-zinc-800/80 dark:bg-zinc-900/50 space-y-3">
-                                <span className="flex overflow-hidden rounded-xl border border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800">
-                                    {(
-                                        [
-                                            ['order', 'Toàn đơn'],
-                                            ['item', 'Theo món'],
-                                            ['category', 'Theo danh mục'],
-                                        ] as const
-                                    ).map(([type, label]) => (
-                                        <button
-                                            key={type}
-                                            type="button"
-                                            onClick={() =>
-                                                set('target_type', type)
-                                            }
-                                            className={`flex-1 px-3 py-2.5 text-xs font-semibold transition-colors ${
-                                                form.target_type === type
-                                                    ? 'bg-sky-600 text-white shadow-sm'
-                                                    : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                                            }`}
-                                        >
-                                            {label}
-                                        </button>
-                                    ))}
-                                </span>
-                                {form.target_type !== 'order' && (
-                                    <div className="animate-in fade-in slide-in-from-top-1 duration-150">
-                                        <SearchableSelect
-                                            options={
-                                                form.target_type === 'item'
-                                                    ? menuItems ?? []
-                                                    : menuCategories ?? []
-                                            }
-                                            value={
-                                                form.target_value === ''
-                                                    ? null
-                                                    : Number(form.target_value)
-                                            }
-                                            onChange={(id) =>
-                                                set(
-                                                    'target_value',
-                                                    id === null ? '' : String(id),
-                                                )
-                                            }
-                                            placeholder={
-                                                form.target_type === 'item'
-                                                    ? 'Chọn món...'
-                                                    : 'Chọn danh mục...'
-                                            }
-                                        />
+
+                <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    {/* Left: form fields */}
+                    <div className="lg:col-span-8 space-y-5">
+                        {/* Thông tin chung */}
+                        <section className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-5">
+                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4 border-b border-zinc-100 dark:border-zinc-800 pb-2">Thông tin chung</h4>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tên chương trình <span className="text-rose-500">*</span></label>
+                                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ví dụ: Khai xuân đón lộc" className={inputCls} />
+                                    {errors.name && <p className="text-xs text-rose-500 mt-1">{errors.name}</p>}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Loại hình <span className="text-rose-500">*</span></label>
+                                        <select value={type} onChange={(e) => setType(e.target.value as any)} className={inputCls}>
+                                            <option value="promotion">Khuyến mãi tự động (Promotion)</option>
+                                            <option value="coupon">Mã giảm giá (Coupon)</option>
+                                            <option value="voucher">Mã quà tặng (Voucher)</option>
+                                        </select>
                                     </div>
-                                )}
+                                    {type !== 'promotion' && (
+                                        <div>
+                                            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Mã Code <span className="text-rose-500">*</span></label>
+                                            <div className="flex gap-2">
+                                                <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Nhập mã hoặc tạo ngẫu nhiên" className={inputCls} />
+                                                <button type="button" onClick={() => setCode(randomCode())} title="Tạo mã ngẫu nhiên"
+                                                    className="px-3 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                                                    <Shuffle className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                            {errors.code && <p className="text-xs text-rose-500 mt-1">{errors.code}</p>}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Từ ngày</label>
+                                        <DatePicker mode="single" className="w-full justify-start" value={startDate ? startDate.slice(0, 10) : null} onChange={(v) => setStartDate(v ?? '')} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Đến ngày</label>
+                                        <DatePicker mode="single" className="w-full justify-start" value={endDate ? endDate.slice(0, 10) : null} onChange={(v) => setEndDate(v ?? '')} />
+                                    </div>
+                                </div>
                             </div>
-                            {errors.target_value && (
-                                <span className="mt-1 block text-xs text-rose-500">
-                                    {errors.target_value}
-                                </span>
-                            )}
+                        </section>
+
+                        {/* Cấu hình giảm giá */}
+                        <section className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-5">
+                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4 border-b border-zinc-100 dark:border-zinc-800 pb-2">Cấu hình giảm giá</h4>
+                            <PromotionActionsEditor actions={actions} onChange={setActions} menuItems={menuItems} />
+                            {errors.actions && <p className="text-xs text-rose-500 mt-1">{errors.actions}</p>}
+                        </section>
+
+                        {/* Điều kiện & Giới hạn */}
+                        <section className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-5">
+                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4 border-b border-zinc-100 dark:border-zinc-800 pb-2">Điều kiện &amp; Giới hạn</h4>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tổng số lượt sử dụng tối đa</label>
+                                    <input type="number" value={maxUsage} onChange={(e) => setMaxUsage(e.target.value)} placeholder="Không giới hạn" className={inputCls} />
+                                </div>
+                                <PromotionConditionsEditor conditions={conditions} onChange={setConditions} menuItems={menuItems} />
+                            </div>
+                        </section>
+
+                        {/* Toggles */}
+                        <section className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 space-y-3">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-zinc-900 dark:text-zinc-100 mb-1">Độc quyền</label>
+                                    <p className="text-xs text-zinc-500">Không áp dụng chung với bất kỳ chương trình hoặc mã giảm giá nào khác.</p>
+                                </div>
+                                <input type="checkbox" checked={exclusive} onChange={(e) => setExclusive(e.target.checked)} className="h-4 w-4 accent-sky-600" />
+                            </div>
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-zinc-900 dark:text-zinc-100 mb-1">Áp dụng đồng thời</label>
+                                    <p className="text-xs text-zinc-500">Cho phép áp dụng đè lên các chương trình giảm giá tự động.</p>
+                                </div>
+                                <input type="checkbox" checked={stackable} onChange={(e) => setStackable(e.target.checked)} className="h-4 w-4 accent-sky-600" />
+                            </div>
+                        </section>
+                    </div>
+
+                    {/* Right: preview */}
+                    <div className="lg:col-span-4 lg:sticky lg:top-4 space-y-4">
+                        <section className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-5">
+                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4 border-b border-zinc-100 dark:border-zinc-800 pb-2">Xem trước (Preview)</h4>
+                            <PromotionPreview name={name} type={type} actions={actions} conditions={conditions} endDate={endDate || ''} status={status} />
+                        </section>
+                        <div className="flex justify-end gap-3">
+                            <button type="button" onClick={onClose}
+                                className="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700">Hủy bỏ</button>
+                            <button type="submit" disabled={submitting}
+                                className="px-5 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50">
+                                {submitting ? 'Đang lưu...' : 'Lưu & Kích hoạt'}
+                            </button>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <label className="flex flex-col gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                            Ngày bắt đầu
-                            <DatePicker
-                                mode="single"
-                                className="w-full justify-start"
-                                value={
-                                    form.starts_at
-                                        ? form.starts_at.slice(0, 10)
-                                        : null
-                                }
-                                onChange={(v) => set('starts_at', v ?? '')}
-                            />
-                        </label>
-                        <label className="flex flex-col gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                            Ngày kết thúc
-                            <DatePicker
-                                mode="single"
-                                className="w-full justify-start"
-                                value={
-                                    form.expires_at
-                                        ? form.expires_at.slice(0, 10)
-                                        : null
-                                }
-                                onChange={(v) => set('expires_at', v ?? '')}
-                            />
-                        </label>
-                    </div>
-                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                        Mô tả
-                        <textarea
-                            rows={3}
-                            value={form.description}
-                            onChange={(e) => set('description', e.target.value)}
-                            className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                        />
-                    </label>
-                    <label className="flex items-center gap-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                        <input
-                            type="checkbox"
-                            checked={form.is_active}
-                            onChange={(e) => set('is_active', e.target.checked)}
-                            className="h-4 w-4 accent-sky-600"
-                        />
-                        Đang hoạt động
-                    </label>
                 </form>
-                <div className="flex justify-end gap-3 border-t border-zinc-200 p-4 dark:border-zinc-800">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="rounded-xl border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-700"
-                    >
-                        Hủy
-                    </button>
-                    <button
-                        form="promotion-form"
-                        disabled={submitting}
-                        className="rounded-xl bg-sky-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                    >
-                        {submitting ? 'Đang lưu…' : 'Lưu khuyến mãi'}
-                    </button>
-                </div>
             </div>
         </div>
     );
