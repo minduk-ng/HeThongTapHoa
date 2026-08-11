@@ -1,10 +1,10 @@
-# Promotion v2 — DB + Engine Implementation Plan
+﻿# Promotion v2 â€” DB + Engine Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Tách schema promotions 1 bảng thành 4 bảng (promotions v2 + promotion_conditions + promotion_actions + order_promotions), viết lại engine hỗ trợ 3 loại (PROMOTION/COUPON/VOUCHER), nhiều điều kiện AND, nhiều hành động đồng thời, FREE_PRODUCT, race-condition-safe quota. KHÔNG mất dữ liệu (đã xác minh: promotions bảng rỗng, orders.promotion_id toàn null, invoice_promotions rỗng).
+**Goal:** TÃ¡ch schema promotions 1 báº£ng thÃ nh 4 báº£ng (promotions v2 + promotion_conditions + promotion_actions + order_promotions), viáº¿t láº¡i engine há»— trá»£ 3 loáº¡i (PROMOTION/COUPON/VOUCHER), nhiá»u Ä‘iá»u kiá»‡n AND, nhiá»u hÃ nh Ä‘á»™ng Ä‘á»“ng thá»i, FREE_PRODUCT, race-condition-safe quota. KHÃ”NG máº¥t dá»¯ liá»‡u (Ä‘Ã£ xÃ¡c minh: promotions báº£ng rá»—ng, orders.promotion_id toÃ n null, invoice_promotions rá»—ng).
 
-**Architecture:** Migration rename `promotions`→`legacy_promotions`, tạo 4 bảng mới, drop FK `orders.promotion_id`, drop legacy. Model Promotion giữ tên (bảng mới cùng tên). Engine viết lại theo conditions/actions. CheckoutService gọi engine mới + lockForUpdate quota + ghi order_promotions + FREE_PRODUCT line 0đ.
+**Architecture:** Migration rename `promotions`â†’`legacy_promotions`, táº¡o 4 báº£ng má»›i, drop FK `orders.promotion_id`, drop legacy. Model Promotion giá»¯ tÃªn (báº£ng má»›i cÃ¹ng tÃªn). Engine viáº¿t láº¡i theo conditions/actions. CheckoutService gá»i engine má»›i + lockForUpdate quota + ghi order_promotions + FREE_PRODUCT line 0Ä‘.
 
 **Tech Stack:** Laravel 13, PHP, Pest, MySQL (dev) / SQLite (test).
 
@@ -12,45 +12,45 @@
 
 ## Global Constraints
 
-- PowerShell Windows: KHÔNG dùng `&&`; chạy `php artisan test ...` như lệnh đơn.
-- **KHÔNG mất dữ liệu:** migration phải rename-before-create (không drop bảng có FK orders trỏ tới). Verify: orders.promotion_id toàn null hiện tại → drop column an toàn.
-- Mỗi task TDD: test fail → sửa → pass → commit.
-- Engine mới: 3 loại promotion; conditions AND; actions đồng thời; FREE_PRODUCT thêm line 0đ; exclusive/stackable; race quota lockForUpdate.
-- `order_promotions.discount_applied` ghi TỔNG discount per mã (không line-level). Ghi per-order (bulk checkout nhiều order → nhiều dòng).
-- `invoice_promotions` snapshot giữ nguyên shape cũ (code/name/discount_type/discount_value/amount).
-- Bỏ khỏi Promotion model: `target_type`/`target_value`/`min_order_amount`/`max_discount_amount` cột + `eligibleLines`/`targetSubtotal`/`allocateLineDiscounts`.
-- Reason strings mới: `not_found`/`inactive`/`not_started`/`expired`/`out_of_uses`/`condition_not_met`/`exclusive_conflict`.
-- Không đổi UI (spec 2), không làm analytics (spec 3).
-- Route CRUD promotions giữ nguyên tên.
+- PowerShell Windows: KHÃ”NG dÃ¹ng `&&`; cháº¡y `php artisan test ...` nhÆ° lá»‡nh Ä‘Æ¡n.
+- **KHÃ”NG máº¥t dá»¯ liá»‡u:** migration pháº£i rename-before-create (khÃ´ng drop báº£ng cÃ³ FK orders trá» tá»›i). Verify: orders.promotion_id toÃ n null hiá»‡n táº¡i â†’ drop column an toÃ n.
+- Má»—i task TDD: test fail â†’ sá»­a â†’ pass â†’ commit.
+- Engine má»›i: 3 loáº¡i promotion; conditions AND; actions Ä‘á»“ng thá»i; FREE_PRODUCT thÃªm line 0Ä‘; exclusive/stackable; race quota lockForUpdate.
+- `order_promotions.discount_applied` ghi Tá»”NG discount per mÃ£ (khÃ´ng line-level). Ghi per-order (bulk checkout nhiá»u order â†’ nhiá»u dÃ²ng).
+- `invoice_promotions` snapshot giá»¯ nguyÃªn shape cÅ© (code/name/discount_type/discount_value/amount).
+- Bá» khá»i Promotion model: `target_type`/`target_value`/`min_order_amount`/`max_discount_amount` cá»™t + `eligibleLines`/`targetSubtotal`/`allocateLineDiscounts`.
+- Reason strings má»›i: `not_found`/`inactive`/`not_started`/`expired`/`out_of_uses`/`condition_not_met`/`exclusive_conflict`.
+- KhÃ´ng Ä‘á»•i UI (spec 2), khÃ´ng lÃ m analytics (spec 3).
+- Route CRUD promotions giá»¯ nguyÃªn tÃªn.
 
 ---
 
 ## File Structure
 
-**Migration:** `database/migrations/2026_08_10_000001_create_promotion_v2_tables.php`
+**Migration:** `database/migrations/2026_08_10_000014_create_promotion_v2_tables.php`
 
-**Models:** `Promotion` (sửa), `PromotionCondition` (mới), `PromotionAction` (mới), `OrderPromotion` (mới).
+**Models:** `Promotion` (sá»­a), `PromotionCondition` (má»›i), `PromotionAction` (má»›i), `OrderPromotion` (má»›i).
 
-**Services:** `PromotionEngine` (viết lại), `CheckoutService` (sửa).
+**Services:** `PromotionEngine` (viáº¿t láº¡i), `CheckoutService` (sá»­a).
 
-**Controllers:** `PromotionController` (store/update), `PaymentController::validatePromotion` (sửa call engine).
+**Controllers:** `PromotionController` (store/update), `PaymentController::validatePromotion` (sá»­a call engine).
 
-**Tests:** `PromotionV2Test.php` (mới — conditions/actions/types/race) + `MigrationRebuildTest` (thêm assert bảng mới) + chuyển đổi 8 test cũ.
+**Tests:** `PromotionV2Test.php` (má»›i â€” conditions/actions/types/race) + `MigrationRebuildTest` (thÃªm assert báº£ng má»›i) + chuyá»ƒn Ä‘á»•i 8 test cÅ©.
 
 ---
 
-## Task 1: Migration 4 bảng mới + drop legacy
+## Task 1: Migration 4 báº£ng má»›i + drop legacy
 
 **Files:**
-- Create: `database/migrations/2026_08_10_000001_create_promotion_v2_tables.php`
-- Modify: `tests/Feature/MigrationRebuildTest.php` (thêm assert)
+- Create: `database/migrations/2026_08_10_000014_create_promotion_v2_tables.php`
+- Modify: `tests/Feature/MigrationRebuildTest.php` (thÃªm assert)
 
 **Interfaces:**
-- Produces: bảng `promotions` v2 + `promotion_conditions` + `promotion_actions` + `order_promotions`; `legacy_promotions` + `orders.promotion_id` biến mất. Các task sau phụ thuộc schema này.
+- Produces: báº£ng `promotions` v2 + `promotion_conditions` + `promotion_actions` + `order_promotions`; `legacy_promotions` + `orders.promotion_id` biáº¿n máº¥t. CÃ¡c task sau phá»¥ thuá»™c schema nÃ y.
 
-- [ ] **Step 1: Viết test fail**
+- [ ] **Step 1: Viáº¿t test fail**
 
-Thêm vào `tests/Feature/MigrationRebuildTest.php`:
+ThÃªm vÃ o `tests/Feature/MigrationRebuildTest.php`:
 
 ```php
 test('promotion v2: 4 bang moi ton tai, legacy da xoa', function () {
@@ -72,14 +72,14 @@ test('promotion v2: schema cac bang dung', function () {
 });
 ```
 
-- [ ] **Step 2: Chạy test fail**
+- [ ] **Step 2: Cháº¡y test fail**
 
 Run: `php artisan test tests\Feature\MigrationRebuildTest.php`
-Expected: FAIL — các bảng mới chưa tồn tại, orders.promotion_id vẫn còn.
+Expected: FAIL â€” cÃ¡c báº£ng má»›i chÆ°a tá»“n táº¡i, orders.promotion_id váº«n cÃ²n.
 
-- [ ] **Step 3: Tạo migration**
+- [ ] **Step 3: Táº¡o migration**
 
-Tạo `database/migrations/2026_08_10_000001_create_promotion_v2_tables.php`:
+Táº¡o `database/migrations/2026_08_10_000014_create_promotion_v2_tables.php`:
 
 ```php
 <?php
@@ -92,10 +92,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // 1. Rename promotions cũ -> legacy (giữ FK orders nguyên vẹn tạm thời)
+        // 1. Rename promotions cÅ© -> legacy (giá»¯ FK orders nguyÃªn váº¹n táº¡m thá»i)
         Schema::rename('promotions', 'legacy_promotions');
 
-        // 2. Tạo promotions v2
+        // 2. Táº¡o promotions v2
         Schema::create('promotions', function (Blueprint $table) {
             $table->id();
             $table->string('name');
@@ -112,7 +112,7 @@ return new class extends Migration
             $table->softDeletes();
         });
 
-        // 3. Tạo promotion_conditions
+        // 3. Táº¡o promotion_conditions
         Schema::create('promotion_conditions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('promotion_id')->constrained('promotions')->cascadeOnDelete();
@@ -121,7 +121,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // 4. Tạo promotion_actions
+        // 4. Táº¡o promotion_actions
         Schema::create('promotion_actions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('promotion_id')->constrained('promotions')->cascadeOnDelete();
@@ -131,7 +131,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // 5. Tạo order_promotions
+        // 5. Táº¡o order_promotions
         Schema::create('order_promotions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('invoice_id')->constrained('invoices')->cascadeOnDelete();
@@ -142,7 +142,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // 6. Drop FK + column orders.promotion_id (an toàn: toàn null)
+        // 6. Drop FK + column orders.promotion_id (an toÃ n: toÃ n null)
         Schema::table('orders', function (Blueprint $table) {
             $table->dropForeign(['promotion_id']);
             $table->dropColumn('promotion_id');
@@ -186,9 +186,9 @@ return new class extends Migration
 };
 ```
 
-**Lưu ý:** `orders.promotion_id` hiện tại là FK `constrained('promotions')` nullOnDelete (từ migration cũ). `dropForeign(['promotion_id'])` — Laravel tự tìm tên FK theo convention. Nếu tên khác, dùng tên FK thực (kiểm tra `SHOW CREATE TABLE orders` hoặc thử chạy). Migration này là migration MỚI (không sửa file cũ) — chạy sau khi DB đã migrate tới `2026_08_10_000012_create_otp_codes_table`.
+**LÆ°u Ã½:** `orders.promotion_id` hiá»‡n táº¡i lÃ  FK `constrained('promotions')` nullOnDelete (tá»« migration cÅ©). `dropForeign(['promotion_id'])` â€” Laravel tá»± tÃ¬m tÃªn FK theo convention. Náº¿u tÃªn khÃ¡c, dÃ¹ng tÃªn FK thá»±c (kiá»ƒm tra `SHOW CREATE TABLE orders` hoáº·c thá»­ cháº¡y). Migration nÃ y lÃ  migration Má»šI (khÃ´ng sá»­a file cÅ©) â€” cháº¡y sau khi DB Ä‘Ã£ migrate tá»›i `2026_08_10_000012_create_otp_codes_table`.
 
-- [ ] **Step 4: Chạy migrate + test pass**
+- [ ] **Step 4: Cháº¡y migrate + test pass**
 
 Run: `php artisan migrate`
 Run: `php artisan test tests\Feature\MigrationRebuildTest.php`
@@ -196,25 +196,25 @@ Expected: PASS.
 
 - [ ] **Step 5: Verify MySQL + data integrity**
 
-Run: `php artisan migrate:fresh` (MySQL HeThongTapHoa) — 16 migrations OK.
-Verify: `orders` vẫn 16 dòng (không mất data); `promotions` bảng mới rỗng; `legacy_promotions` không tồn tại.
-Chạy script kiểm tra: đếm orders trước/sau migrate:fresh — phải bằng nhau.
+Run: `php artisan migrate:fresh` (MySQL HeThongTapHoa) â€” 16 migrations OK.
+Verify: `orders` váº«n 16 dÃ²ng (khÃ´ng máº¥t data); `promotions` báº£ng má»›i rá»—ng; `legacy_promotions` khÃ´ng tá»“n táº¡i.
+Cháº¡y script kiá»ƒm tra: Ä‘áº¿m orders trÆ°á»›c/sau migrate:fresh â€” pháº£i báº±ng nhau.
 
 - [ ] **Step 6: Full suite**
 
 Run: `php artisan test`
-Expected: FAIL các test promotion cũ (PromotionControllerTest, PromotionApplyTest, POSPromotionRejectMessagesTest, v.v.) — dùng cột cũ. **Ghi nhận là expected** (Task 3-5 sẽ xử lý).
+Expected: FAIL cÃ¡c test promotion cÅ© (PromotionControllerTest, PromotionApplyTest, POSPromotionRejectMessagesTest, v.v.) â€” dÃ¹ng cá»™t cÅ©. **Ghi nháº­n lÃ  expected** (Task 3-5 sáº½ xá»­ lÃ½).
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add database/migrations/2026_08_10_000001_create_promotion_v2_tables.php tests/Feature/MigrationRebuildTest.php
+git add database/migrations/2026_08_10_000014_create_promotion_v2_tables.php tests/Feature/MigrationRebuildTest.php
 git commit -m "feat: promotion v2 - 4 bang moi (promotions/conditions/actions/order_promotions) + drop legacy"
 ```
 
 ---
 
-## Task 2: Models mới + sửa Promotion model
+## Task 2: Models má»›i + sá»­a Promotion model
 
 **Files:**
 - Create: `app/Models/PromotionCondition.php`, `app/Models/PromotionAction.php`, `app/Models/OrderPromotion.php`
@@ -222,9 +222,9 @@ git commit -m "feat: promotion v2 - 4 bang moi (promotions/conditions/actions/or
 
 **Interfaces:**
 - Consumes: schema Task 1.
-- Produces: 4 models với relations; `Promotion` bỏ cột cũ. Task 3 (engine) dùng `$promotion->conditions`/`$promotion->actions`.
+- Produces: 4 models vá»›i relations; `Promotion` bá» cá»™t cÅ©. Task 3 (engine) dÃ¹ng `$promotion->conditions`/`$promotion->actions`.
 
-- [ ] **Step 1: Tạo 3 model mới**
+- [ ] **Step 1: Táº¡o 3 model má»›i**
 
 `app/Models/PromotionCondition.php`:
 ```php
@@ -305,9 +305,9 @@ class OrderPromotion extends Model
 }
 ```
 
-- [ ] **Step 2: Sửa Promotion model**
+- [ ] **Step 2: Sá»­a Promotion model**
 
-`app/Models/Promotion.php` — đổi `$fillable` + casts + bỏ methods cũ + thêm relations:
+`app/Models/Promotion.php` â€” Ä‘á»•i `$fillable` + casts + bá» methods cÅ© + thÃªm relations:
 
 ```php
 <?php
@@ -362,12 +362,12 @@ class Promotion extends Model
 }
 ```
 
-**Xoá:** `eligibleLines`, `targetSubtotal`, `allocateLineDiscounts` (static methods cũ).
+**XoÃ¡:** `eligibleLines`, `targetSubtotal`, `allocateLineDiscounts` (static methods cÅ©).
 
-- [ ] **Step 3: Types/build không áp dụng (backend). Full suite ghi nhận fail promotion cũ**
+- [ ] **Step 3: Types/build khÃ´ng Ã¡p dá»¥ng (backend). Full suite ghi nháº­n fail promotion cÅ©**
 
 Run: `php artisan test`
-Expected: vẫn fail các test promotion cũ (Task 3-5 xử lý). Không có fail mới do model (các model mới chưa được gọi).
+Expected: váº«n fail cÃ¡c test promotion cÅ© (Task 3-5 xá»­ lÃ½). KhÃ´ng cÃ³ fail má»›i do model (cÃ¡c model má»›i chÆ°a Ä‘Æ°á»£c gá»i).
 
 - [ ] **Step 4: Commit**
 
@@ -378,19 +378,19 @@ git commit -m "feat: models promotion v2 (condition/action/order_promotion) + bo
 
 ---
 
-## Task 3: Engine mới (PromotionEngine viết lại)
+## Task 3: Engine má»›i (PromotionEngine viáº¿t láº¡i)
 
 **Files:**
 - Modify: `app/Services/Promotions/PromotionEngine.php`
-- Test: `tests/Feature/PromotionV2Test.php` (mới — phần conditions/actions/types)
+- Test: `tests/Feature/PromotionV2Test.php` (má»›i â€” pháº§n conditions/actions/types)
 
 **Interfaces:**
 - Consumes: models Task 2 (`$promotion->conditions`/`->actions`).
-- Produces: `PromotionEngine::resolveAll(array $codes, iterable $lines, float $subtotal, bool $lockForUpdate = false): array` trả `{status, promotions?, total_discount?, free_items?, reason?, code?}`. Task 4 (checkout) gọi.
+- Produces: `PromotionEngine::resolveAll(array $codes, iterable $lines, float $subtotal, bool $lockForUpdate = false): array` tráº£ `{status, promotions?, total_discount?, free_items?, reason?, code?}`. Task 4 (checkout) gá»i.
 
-- [ ] **Step 1: Viết test fail**
+- [ ] **Step 1: Viáº¿t test fail**
 
-Tạo `tests/Feature/PromotionV2Test.php` (phần 1 — conditions/actions/type/stack):
+Táº¡o `tests/Feature/PromotionV2Test.php` (pháº§n 1 â€” conditions/actions/type/stack):
 
 ```php
 <?php
@@ -458,12 +458,12 @@ test('condition min_quantity + specific_product: AND', function () {
     addCond($p, 'specific_product', '10');
     addAction($p, 'discount_amount', 20000);
 
-    // Đủ 3 món + có món 10 → OK
+    // Äá»§ 3 mÃ³n + cÃ³ mÃ³n 10 â†’ OK
     $res = PromotionEngine::resolveAll([], $lines(), 150000);
     expect($res['status'])->toBe('ok');
     expect($res['total_discount'])->toBe(20000.0);
 
-    // Thiếu món 10 → reject
+    // Thiáº¿u mÃ³n 10 â†’ reject
     $p2 = promoV2();
     addCond($p2, 'min_quantity', '3');
     addCond($p2, 'specific_product', '999');
@@ -481,7 +481,7 @@ test('promotion tu dong chon 1 tot nhat', function () {
     $res = PromotionEngine::resolveAll([], $lines(), 150000);
 
     expect($res['status'])->toBe('ok');
-    expect(count($res['promotions']))->toBe(1);  // chỉ 1 promotion tốt nhất
+    expect(count($res['promotions']))->toBe(1);  // chá»‰ 1 promotion tá»‘t nháº¥t
     expect($res['promotions'][0]['promotion']->id)->toBe($p2->id);
     expect($res['total_discount'])->toBe(20000.0);
 });
@@ -502,7 +502,7 @@ test('coupon nhap ma: validate + exclusive', function () {
     $auto = promoV2();
     addAction($auto, 'discount_amount', 5000);
 
-    // Nhập mã SAVE10 → chỉ mã, KHÔNG promotion tự động (mặc định auto không stack khi có mã?)
+    // Nháº­p mÃ£ SAVE10 â†’ chá»‰ mÃ£, KHÃ”NG promotion tá»± Ä‘á»™ng (máº·c Ä‘á»‹nh auto khÃ´ng stack khi cÃ³ mÃ£?)
     $res = PromotionEngine::resolveAll(['SAVE10'], $lines(), 150000);
 
     expect($res['status'])->toBe('ok');
@@ -534,16 +534,16 @@ test('free_product: tra ve free_items', function () {
 });
 ```
 
-**Lưu ý:** các test này dùng `Promotion::create` với fillable mới (Task 2). Kiểm tra logic "auto không stack khi có mã" — spec nói PROMOTION tự động bị loại nếu có COUPON stackable=false; test trên giả định mặc định. **Đọc spec Phần 3 Bước 2 trước khi viết** — nếu auto vẫn chạy khi có mã stackable=true thì điều chỉnh test (vd coupon stackable=false để chặn auto). Giữ test đúng ý spec.
+**LÆ°u Ã½:** cÃ¡c test nÃ y dÃ¹ng `Promotion::create` vá»›i fillable má»›i (Task 2). Kiá»ƒm tra logic "auto khÃ´ng stack khi cÃ³ mÃ£" â€” spec nÃ³i PROMOTION tá»± Ä‘á»™ng bá»‹ loáº¡i náº¿u cÃ³ COUPON stackable=false; test trÃªn giáº£ Ä‘á»‹nh máº·c Ä‘á»‹nh. **Äá»c spec Pháº§n 3 BÆ°á»›c 2 trÆ°á»›c khi viáº¿t** â€” náº¿u auto váº«n cháº¡y khi cÃ³ mÃ£ stackable=true thÃ¬ Ä‘iá»u chá»‰nh test (vd coupon stackable=false Ä‘á»ƒ cháº·n auto). Giá»¯ test Ä‘Ãºng Ã½ spec.
 
-- [ ] **Step 2: Chạy test fail**
+- [ ] **Step 2: Cháº¡y test fail**
 
 Run: `php artisan test tests\Feature\PromotionV2Test.php`
-Expected: FAIL — engine cũ chưa hỗ trợ conditions/actions.
+Expected: FAIL â€” engine cÅ© chÆ°a há»— trá»£ conditions/actions.
 
-- [ ] **Step 3: Viết lại PromotionEngine**
+- [ ] **Step 3: Viáº¿t láº¡i PromotionEngine**
 
-`app/Services/Promotions/PromotionEngine.php` (thay toàn bộ):
+`app/Services/Promotions/PromotionEngine.php` (thay toÃ n bá»™):
 
 ```php
 <?php
@@ -560,7 +560,7 @@ class PromotionEngine
     {
         $lines = collect($lines)->values();
 
-        // 1. COUPON/VOUCHER từ mã nhập
+        // 1. COUPON/VOUCHER tá»« mÃ£ nháº­p
         $codePromotions = [];
         foreach (array_values($codes) as $code) {
             $promotion = Promotion::query()
@@ -580,7 +580,7 @@ class PromotionEngine
             $codePromotions[] = $p;
         }
 
-        // 2. exclusive: 1 mã exclusive → bỏ hết khác
+        // 2. exclusive: 1 mÃ£ exclusive â†’ bá» háº¿t khÃ¡c
         if (count($codePromotions) > 1) {
             $exclusive = collect($codePromotions)->first(fn ($p) => $p->exclusive);
             if ($exclusive) {
@@ -588,7 +588,7 @@ class PromotionEngine
             }
         }
 
-        // 3. PROMOTION tự động: quét, lọc thoả điều kiện, chọn tốt nhất
+        // 3. PROMOTION tá»± Ä‘á»™ng: quÃ©t, lá»c thoáº£ Ä‘iá»u kiá»‡n, chá»n tá»‘t nháº¥t
         $auto = null;
         $hasNonStackable = collect($codePromotions)->contains(fn ($p) => ! $p->stackable);
         if (! $hasNonStackable) {
@@ -606,13 +606,13 @@ class PromotionEngine
                 ->first();
         }
 
-        // 4. Gộp pool: mã trước, auto sau
+        // 4. Gá»™p pool: mÃ£ trÆ°á»›c, auto sau
         $pool = $codePromotions;
         if ($auto && collect($codePromotions)->doesntContain(fn ($p) => $p->exclusive)) {
             $pool[] = $auto;
         }
 
-        // 5. Áp dụng hành động
+        // 5. Ãp dá»¥ng hÃ nh Ä‘á»™ng
         $applied = [];
         $totalDiscount = 0.0;
         $freeItems = [];
@@ -720,9 +720,9 @@ class PromotionEngine
 }
 ```
 
-**Lưu ý:** `free_product` action_value lưu decimal — khi cast `(int)` để tìm MenuItem. Kiểm tra `MenuItem` import. `estimateDiscount` không tính free_product (không biết giá trị) — chỉ cho việc chọn auto tốt nhất theo discount tiền.
+**LÆ°u Ã½:** `free_product` action_value lÆ°u decimal â€” khi cast `(int)` Ä‘á»ƒ tÃ¬m MenuItem. Kiá»ƒm tra `MenuItem` import. `estimateDiscount` khÃ´ng tÃ­nh free_product (khÃ´ng biáº¿t giÃ¡ trá»‹) â€” chá»‰ cho viá»‡c chá»n auto tá»‘t nháº¥t theo discount tiá»n.
 
-- [ ] **Step 4: Chạy test pass**
+- [ ] **Step 4: Cháº¡y test pass**
 
 Run: `php artisan test tests\Feature\PromotionV2Test.php`
 Expected: PASS.
@@ -736,19 +736,19 @@ git commit -m "feat: PromotionEngine v2 (conditions AND, actions dong thoi, auto
 
 ---
 
-## Task 4: CheckoutService — engine mới + race quota + FREE_PRODUCT + order_promotions
+## Task 4: CheckoutService â€” engine má»›i + race quota + FREE_PRODUCT + order_promotions
 
 **Files:**
 - Modify: `app/Services/Checkout/CheckoutService.php`
-- Test: `tests/Feature/PromotionV2Test.php` (thêm phần checkout integration)
+- Test: `tests/Feature/PromotionV2Test.php` (thÃªm pháº§n checkout integration)
 
 **Interfaces:**
 - Consumes: engine Task 3 (`resolveAll`), models Task 2 (`OrderPromotion`, `PromotionAction`).
-- Produces: checkout gọi engine mới; race quota lock; FREE_PRODUCT line 0đ; ghi order_promotions.
+- Produces: checkout gá»i engine má»›i; race quota lock; FREE_PRODUCT line 0Ä‘; ghi order_promotions.
 
-- [ ] **Step 1: Viết test fail (checkout integration)**
+- [ ] **Step 1: Viáº¿t test fail (checkout integration)**
 
-Thêm vào `tests/Feature/PromotionV2Test.php`:
+ThÃªm vÃ o `tests/Feature/PromotionV2Test.php`:
 
 ```php
 test('checkout: coupon ghi order_promotions + cap dung', function () {
@@ -766,7 +766,7 @@ test('checkout: coupon ghi order_promotions + cap dung', function () {
         'promotion_code' => 'CHECKOUT10',
     ])->assertOk()->assertJson(['success' => true]);
 
-    // 10% của 50000 = 5000, cap 20000 → 5000
+    // 10% cá»§a 50000 = 5000, cap 20000 â†’ 5000
     $op = \App\Models\OrderPromotion::first();
     expect($op)->not->toBeNull();
     expect($op->promotion_id)->toBe($coupon->id);
@@ -804,7 +804,7 @@ test('race: 2 checkout dong thoi khong vuot max_usage', function () {
     $o1 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 20000, 'status' => 'completed']], ['status' => 'pending']);
     $o2 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 20000, 'status' => 'completed']], ['status' => 'pending']);
 
-    // Chạy 2 checkout song song (Pest concurrent hoặc 2 request tuần tự với lock)
+    // Cháº¡y 2 checkout song song (Pest concurrent hoáº·c 2 request tuáº§n tá»± vá»›i lock)
     $r1 = $this->actingAs($admin)->postJson('/staff/pos/checkout', [
         'order_id' => $o1->id, 'payment_method' => 'cash', 'amount_received' => 20000, 'promotion_code' => 'RACE1',
     ]);
@@ -812,29 +812,29 @@ test('race: 2 checkout dong thoi khong vuot max_usage', function () {
         'order_id' => $o2->id, 'payment_method' => 'cash', 'amount_received' => 20000, 'promotion_code' => 'RACE1',
     ]);
 
-    // 1 thành công + 1 bị từ chối (hết quota) — hoặc 1 success + 1 lỗi 422
+    // 1 thÃ nh cÃ´ng + 1 bá»‹ tá»« chá»‘i (háº¿t quota) â€” hoáº·c 1 success + 1 lá»—i 422
     expect($coupon->fresh()->used_count)->toBeLessThanOrEqual(1);
     expect(\App\Models\OrderPromotion::count())->toBeLessThanOrEqual(1);
 });
 ```
 
-**Lưu ý race test:** Pest không chạy thật song song 2 request. Cách khả thi: gọi 2 checkout tuần tự — request 1 dùng lock + increment (used_count 0→1), request 2 thấy used_count=1 = max_usage → bị reject (422 hoặc success nhưng không áp mã). Assert cuối: `used_count <= 1` + `OrderPromotion::count() <= 1`. Đây là kiểm tra logic quota đúng theo thứ tự, không phải đua thật (đua thật khó test đơn luồng — chấp nhận, logic lock đã đúng pattern). Nếu request 2 trả 422, assert response status phù hợp.
+**LÆ°u Ã½ race test:** Pest khÃ´ng cháº¡y tháº­t song song 2 request. CÃ¡ch kháº£ thi: gá»i 2 checkout tuáº§n tá»± â€” request 1 dÃ¹ng lock + increment (used_count 0â†’1), request 2 tháº¥y used_count=1 = max_usage â†’ bá»‹ reject (422 hoáº·c success nhÆ°ng khÃ´ng Ã¡p mÃ£). Assert cuá»‘i: `used_count <= 1` + `OrderPromotion::count() <= 1`. ÄÃ¢y lÃ  kiá»ƒm tra logic quota Ä‘Ãºng theo thá»© tá»±, khÃ´ng pháº£i Ä‘ua tháº­t (Ä‘ua tháº­t khÃ³ test Ä‘Æ¡n luá»“ng â€” cháº¥p nháº­n, logic lock Ä‘Ã£ Ä‘Ãºng pattern). Náº¿u request 2 tráº£ 422, assert response status phÃ¹ há»£p.
 
-- [ ] **Step 2: Chạy test fail**
+- [ ] **Step 2: Cháº¡y test fail**
 
 Run: `php artisan test tests\Feature\PromotionV2Test.php`
-Expected: FAIL — CheckoutService vẫn dùng engine cũ + chưa ghi order_promotions/free_product.
+Expected: FAIL â€” CheckoutService váº«n dÃ¹ng engine cÅ© + chÆ°a ghi order_promotions/free_product.
 
-- [ ] **Step 3: Sửa CheckoutService**
+- [ ] **Step 3: Sá»­a CheckoutService**
 
 `app/Services/Checkout/CheckoutService.php`:
-- Thêm imports: `use App\Models\OrderPromotion;` (Promotion đã có, PromotionEngine đã có, MenuItem đã có).
-- **Bỏ** `use App\Models\Promotion;` nếu không còn dùng trực tiếp (kiểm tra — `Promotion::allocateLineDiscounts` đang dùng ở `:113` → sẽ xoá).
+- ThÃªm imports: `use App\Models\OrderPromotion;` (Promotion Ä‘Ã£ cÃ³, PromotionEngine Ä‘Ã£ cÃ³, MenuItem Ä‘Ã£ cÃ³).
+- **Bá»** `use App\Models\Promotion;` náº¿u khÃ´ng cÃ²n dÃ¹ng trá»±c tiáº¿p (kiá»ƒm tra â€” `Promotion::allocateLineDiscounts` Ä‘ang dÃ¹ng á»Ÿ `:113` â†’ sáº½ xoÃ¡).
 
-Thay block `:81-125` (resolve promotions cũ):
+Thay block `:81-125` (resolve promotions cÅ©):
 
 ```php
-            // 2. Resolve promotions (engine v2) trên lines shape engine
+            // 2. Resolve promotions (engine v2) trÃªn lines shape engine
             $engineLines = collect($lineInputs)->map(fn ($l) => [
                 'order_item_id' => $l['order_item_id'],
                 'menu_item_id' => $l['menu_item_id'],
@@ -850,7 +850,7 @@ Thay block `:81-125` (resolve promotions cũ):
             if (! empty($promotionCodes) || Promotion::query()->where('type', 'promotion')->where('status', true)->exists()) {
                 $resolved = PromotionEngine::resolveAll($promotionCodes, $engineLines, $subtotal, true);
                 if ($resolved['status'] === 'rejected') {
-                    throw new \Exception('Mã khuyến mãi '.($resolved['code'] ?? '').' không hợp lệ hoặc đã hết hạn.', 422);
+                    throw new \Exception('MÃ£ khuyáº¿n mÃ£i '.($resolved['code'] ?? '').' khÃ´ng há»£p lá»‡ hoáº·c Ä‘Ã£ háº¿t háº¡n.', 422);
                 }
                 $totalDiscount = $resolved['total_discount'];
                 $freeItems = $resolved['free_items'] ?? [];
@@ -871,7 +871,7 @@ Thay block `:81-125` (resolve promotions cũ):
             }
 ```
 
-**Lưu ý:** `invoice_promotions` snapshot giờ lấy `discount_type`/`discount_value` từ action đầu tiên (engine không còn discount_type cột). Nếu 1 promotion có nhiều action, snapshot chỉ ghi action đầu — chấp nhận (snapshot hiển thị). Kiểm tra `invoice_promotions` có index required gì không (`discount_type` string, `discount_value` decimal — đã có từ migration payment_core).
+**LÆ°u Ã½:** `invoice_promotions` snapshot giá» láº¥y `discount_type`/`discount_value` tá»« action Ä‘áº§u tiÃªn (engine khÃ´ng cÃ²n discount_type cá»™t). Náº¿u 1 promotion cÃ³ nhiá»u action, snapshot chá»‰ ghi action Ä‘áº§u â€” cháº¥p nháº­n (snapshot hiá»ƒn thá»‹). Kiá»ƒm tra `invoice_promotions` cÃ³ index required gÃ¬ khÃ´ng (`discount_type` string, `discount_value` decimal â€” Ä‘Ã£ cÃ³ tá»« migration payment_core).
 
 Thay block `:226-230` (ghi invoice_promotions + increment):
 
@@ -881,7 +881,7 @@ Thay block `:226-230` (ghi invoice_promotions + increment):
                 InvoicePromotion::create(array_merge($pr, ['invoice_id' => $invoice->id]));
             }
 
-            // 7b. Ghi order_promotions (fact) + increment used_count (đã lock trong engine)
+            // 7b. Ghi order_promotions (fact) + increment used_count (Ä‘Ã£ lock trong engine)
             foreach ($appliedPromotions as $pr) {
                 $promo = $pr['promotion'];
                 foreach ($orders as $order) {
@@ -896,24 +896,24 @@ Thay block `:226-230` (ghi invoice_promotions + increment):
             }
 ```
 
-**Lưu ý:** `Promotion::increment('used_count')` cũ (`:229`) — engine đã increment trong lock (Task 3 Step 3 dùng `lockForUpdate` nhưng CHƯA increment — **cần thêm increment trong engine** ở Task 3 hoặc ở đây). **Quyết định:** thêm increment trong engine `resolveAll` khi `$lockForUpdate=true` (sau khi resolve thành công, trước return). Sửa Task 3 engine: trong vòng lặp pool, sau khi tính amount, `$p->increment('used_count')` (chỉ khi lockForUpdate). Thêm vào code engine.
+**LÆ°u Ã½:** `Promotion::increment('used_count')` cÅ© (`:229`) â€” engine Ä‘Ã£ increment trong lock (Task 3 Step 3 dÃ¹ng `lockForUpdate` nhÆ°ng CHÆ¯A increment â€” **cáº§n thÃªm increment trong engine** á»Ÿ Task 3 hoáº·c á»Ÿ Ä‘Ã¢y). **Quyáº¿t Ä‘á»‹nh:** thÃªm increment trong engine `resolveAll` khi `$lockForUpdate=true` (sau khi resolve thÃ nh cÃ´ng, trÆ°á»›c return). Sá»­a Task 3 engine: trong vÃ²ng láº·p pool, sau khi tÃ­nh amount, `$p->increment('used_count')` (chá»‰ khi lockForUpdate). ThÃªm vÃ o code engine.
 
-- [ ] **Step 4: Sửa increment trong engine (Task 3 bổ sung)**
+- [ ] **Step 4: Sá»­a increment trong engine (Task 3 bá»• sung)**
 
-Trong `PromotionEngine::resolveAll`, vòng lặp áp dụng hành động, sau khi tính `$amount`, thêm:
+Trong `PromotionEngine::resolveAll`, vÃ²ng láº·p Ã¡p dá»¥ng hÃ nh Ä‘á»™ng, sau khi tÃ­nh `$amount`, thÃªm:
 ```php
             if ($lockForUpdate) {
                 $p->increment('used_count');
             }
 ```
-(Với auto promotion cũng increment nếu lockForUpdate — vì auto áp dụng thì cũng dùng quota.)
+(Vá»›i auto promotion cÅ©ng increment náº¿u lockForUpdate â€” vÃ¬ auto Ã¡p dá»¥ng thÃ¬ cÅ©ng dÃ¹ng quota.)
 
-- [ ] **Step 5: Sửa FREE_PRODUCT trong CheckoutService**
+- [ ] **Step 5: Sá»­a FREE_PRODUCT trong CheckoutService**
 
-Trong transaction, sau khi tạo invoice_lines từ order_items (tìm chỗ tạo InvoiceLine — khoảng sau `:218`), thêm:
+Trong transaction, sau khi táº¡o invoice_lines tá»« order_items (tÃ¬m chá»— táº¡o InvoiceLine â€” khoáº£ng sau `:218`), thÃªm:
 
 ```php
-            // 7c. FREE_PRODUCT: thêm line 0đ
+            // 7c. FREE_PRODUCT: thÃªm line 0Ä‘
             foreach ($freeItems as $free) {
                 $mi = MenuItem::find($free['menu_item_id']);
                 if (! $mi) {
@@ -922,7 +922,7 @@ Trong transaction, sau khi tạo invoice_lines từ order_items (tìm chỗ tạ
                 InvoiceLine::create([
                     'invoice_id' => $invoice->id,
                     'menu_item_id' => $mi->id,
-                    'name_snapshot' => $mi->name ?? 'Món tặng',
+                    'name_snapshot' => $mi->name ?? 'MÃ³n táº·ng',
                     'quantity' => 1,
                     'unit_price' => 0,
                     'subtotal' => 0,
@@ -933,12 +933,12 @@ Trong transaction, sau khi tạo invoice_lines từ order_items (tìm chỗ tạ
             }
 ```
 
-**Lưu ý:** đọc CheckoutService để tìm vị trí chính xác tạo InvoiceLine (khoảng `:190-220`), chèn sau đó. Kiểm tra InvoiceLine fillable có `menu_item_id` nullable (migration payment_core:28 nullable).
+**LÆ°u Ã½:** Ä‘á»c CheckoutService Ä‘á»ƒ tÃ¬m vá»‹ trÃ­ chÃ­nh xÃ¡c táº¡o InvoiceLine (khoáº£ng `:190-220`), chÃ¨n sau Ä‘Ã³. Kiá»ƒm tra InvoiceLine fillable cÃ³ `menu_item_id` nullable (migration payment_core:28 nullable).
 
-- [ ] **Step 6: Chạy test pass + regression**
+- [ ] **Step 6: Cháº¡y test pass + regression**
 
-Run: `php artisan test tests\Feature\PromotionV2Test.php` — PASS.
-Run: `php artisan test tests\Feature\POSCheckoutTest.php tests\Feature\POSBulkCheckoutTest.php tests\Feature\BulkCheckoutRollbackTest.php tests\Feature\PromotionDepositCheckoutTest.php` — chuyển đổi các test promotion cũ (Task 5) hoặc ghi nhận fail tạm.
+Run: `php artisan test tests\Feature\PromotionV2Test.php` â€” PASS.
+Run: `php artisan test tests\Feature\POSCheckoutTest.php tests\Feature\POSBulkCheckoutTest.php tests\Feature\BulkCheckoutRollbackTest.php tests\Feature\PromotionDepositCheckoutTest.php` â€” chuyá»ƒn Ä‘á»•i cÃ¡c test promotion cÅ© (Task 5) hoáº·c ghi nháº­n fail táº¡m.
 
 - [ ] **Step 7: Commit**
 
@@ -949,20 +949,20 @@ git commit -m "feat: checkout dung engine v2 + order_promotions + free_product +
 
 ---
 
-## Task 5: PromotionController + validatePromotion — shape mới
+## Task 5: PromotionController + validatePromotion â€” shape má»›i
 
 **Files:**
 - Modify: `app/Http/Controllers/Manager/PromotionController.php`
 - Modify: `app/Http/Controllers/Staff/PaymentController.php` (validatePromotion)
-- Test: chuyển đổi 8 test promotion cũ
+- Test: chuyá»ƒn Ä‘á»•i 8 test promotion cÅ©
 
 **Interfaces:**
 - Consumes: engine Task 3, models Task 2.
-- Produces: store/update ghi 3 bảng; validatePromotion gọi engine mới; test cũ chuyển đổi.
+- Produces: store/update ghi 3 báº£ng; validatePromotion gá»i engine má»›i; test cÅ© chuyá»ƒn Ä‘á»•i.
 
-- [ ] **Step 1: Sửa PromotionController store/update**
+- [ ] **Step 1: Sá»­a PromotionController store/update**
 
-`app/Http/Controllers/Manager/PromotionController.php` — thay `normalize`/`rules` bằng shape mới:
+`app/Http/Controllers/Manager/PromotionController.php` â€” thay `normalize`/`rules` báº±ng shape má»›i:
 
 ```php
     public function store(Request $request): RedirectResponse
@@ -994,7 +994,7 @@ git commit -m "feat: checkout dung engine v2 + order_promotions + free_product +
             }
         });
 
-        return back()->with('success', 'Thêm khuyến mãi thành công!');
+        return back()->with('success', 'ThÃªm khuyáº¿n mÃ£i thÃ nh cÃ´ng!');
     }
 
     public function update(Request $request, Promotion $promotion): RedirectResponse
@@ -1014,7 +1014,7 @@ git commit -m "feat: checkout dung engine v2 + order_promotions + free_product +
                 'stackable' => $validated['stackable'] ?? true,
             ]);
 
-            // Xoá conditions/actions cũ rồi tạo lại (update đơn giản, ít data)
+            // XoÃ¡ conditions/actions cÅ© rá»“i táº¡o láº¡i (update Ä‘Æ¡n giáº£n, Ã­t data)
             $promotion->conditions()->delete();
             $promotion->actions()->delete();
             foreach ($validated['conditions'] ?? [] as $cond) {
@@ -1029,7 +1029,7 @@ git commit -m "feat: checkout dung engine v2 + order_promotions + free_product +
             }
         });
 
-        return back()->with('success', 'Cập nhật khuyến mãi thành công!');
+        return back()->with('success', 'Cáº­p nháº­t khuyáº¿n mÃ£i thÃ nh cÃ´ng!');
     }
 
     private function rules(): array
@@ -1055,34 +1055,34 @@ git commit -m "feat: checkout dung engine v2 + order_promotions + free_product +
     }
 ```
 
-**Lưu ý:** thêm `use Illuminate\Support\Facades\DB;`. `index` vẫn trả `promotions` — giờ nên eager-load conditions/actions: `$query->with(['conditions', 'actions'])->latest('id')->get()`. `destroy` giữ nguyên.
+**LÆ°u Ã½:** thÃªm `use Illuminate\Support\Facades\DB;`. `index` váº«n tráº£ `promotions` â€” giá» nÃªn eager-load conditions/actions: `$query->with(['conditions', 'actions'])->latest('id')->get()`. `destroy` giá»¯ nguyÃªn.
 
-- [ ] **Step 2: Sửa validatePromotion**
+- [ ] **Step 2: Sá»­a validatePromotion**
 
-`app/Http/Controllers/Staff/PaymentController.php::validatePromotion` — hiện dùng `PromotionEngine::resolveAll` + `$linesSubtotal`. Đổi:
+`app/Http/Controllers/Staff/PaymentController.php::validatePromotion` â€” hiá»‡n dÃ¹ng `PromotionEngine::resolveAll` + `$linesSubtotal`. Äá»•i:
 
 ```php
         $resolved = PromotionEngine::resolveAll($codes, $lines, (float) $linesSubtotal, false);
 ```
-(với `$lines` đã là shape engine mới: `{order_item_id, menu_item_id, subtotal, category_id}` — xác nhận `$lines` hiện tại đã đúng shape). Response shape giữ nguyên (`ok/discount_amount/total/promotion/promotions`).
+(vá»›i `$lines` Ä‘Ã£ lÃ  shape engine má»›i: `{order_item_id, menu_item_id, subtotal, category_id}` â€” xÃ¡c nháº­n `$lines` hiá»‡n táº¡i Ä‘Ã£ Ä‘Ãºng shape). Response shape giá»¯ nguyÃªn (`ok/discount_amount/total/promotion/promotions`).
 
-**Lưu ý:** đọc `validatePromotion` hiện tại (line 26-97 trong bản trước) — nó build `$lines` từ items, dùng `$linesSubtotal`. Engine mới chấp nhận shape này. Kiểm tra `$resolved['status'] === 'rejected'` → map reason strings mới (`condition_not_met` thay `below_min`/`no_eligible_line`).
+**LÆ°u Ã½:** Ä‘á»c `validatePromotion` hiá»‡n táº¡i (line 26-97 trong báº£n trÆ°á»›c) â€” nÃ³ build `$lines` tá»« items, dÃ¹ng `$linesSubtotal`. Engine má»›i cháº¥p nháº­n shape nÃ y. Kiá»ƒm tra `$resolved['status'] === 'rejected'` â†’ map reason strings má»›i (`condition_not_met` thay `below_min`/`no_eligible_line`).
 
-- [ ] **Step 3: Chuyển đổi 8 test promotion cũ**
+- [ ] **Step 3: Chuyá»ƒn Ä‘á»•i 8 test promotion cÅ©**
 
-Cập nhật các test file (đọc từng file, đổi theo shape mới):
-- `PromotionControllerTest` — store/update gửi `{type, name, actions:[...]}` thay `{code, discount_type, discount_value, target_type}`.
-- `PromotionApplyTest` / `POSPromotionRejectMessagesTest` / `POSPromotionRejectReasonTest` — tạo promotion qua `promoV2()` helper (conditions/actions), assertion reason mới (`below_min` → `condition_not_met`, `no_eligible_line` → `condition_not_met`).
-- `PromotionAllocationTest` — allocation line-level không còn → test chuyển thành assert tổng `total_discount` (hoặc xoá nếu chỉ test allocation cũ).
-- `PromotionDepositCheckoutTest` / `PromotionSoftDeleteTest` — cập nhật tạo promotion + assert.
-- `PromotionTest` — model test (eligibleLines/targetSubtotal/allocateLineDiscounts) → xoá/chuyển thành test relations.
+Cáº­p nháº­t cÃ¡c test file (Ä‘á»c tá»«ng file, Ä‘á»•i theo shape má»›i):
+- `PromotionControllerTest` â€” store/update gá»­i `{type, name, actions:[...]}` thay `{code, discount_type, discount_value, target_type}`.
+- `PromotionApplyTest` / `POSPromotionRejectMessagesTest` / `POSPromotionRejectReasonTest` â€” táº¡o promotion qua `promoV2()` helper (conditions/actions), assertion reason má»›i (`below_min` â†’ `condition_not_met`, `no_eligible_line` â†’ `condition_not_met`).
+- `PromotionAllocationTest` â€” allocation line-level khÃ´ng cÃ²n â†’ test chuyá»ƒn thÃ nh assert tá»•ng `total_discount` (hoáº·c xoÃ¡ náº¿u chá»‰ test allocation cÅ©).
+- `PromotionDepositCheckoutTest` / `PromotionSoftDeleteTest` â€” cáº­p nháº­t táº¡o promotion + assert.
+- `PromotionTest` â€” model test (eligibleLines/targetSubtotal/allocateLineDiscounts) â†’ xoÃ¡/chuyá»ƒn thÃ nh test relations.
 
-**Lưu ý:** `makePromotion` helper trong `PromotionApplyTest` file-scoped — chuyển thành `promoV2()` global trong Pest.php hoặc mỗi test file. Thêm `promoV2`/`addCond`/`addAction` vào `tests/Pest.php` (global functions) để dùng chung.
+**LÆ°u Ã½:** `makePromotion` helper trong `PromotionApplyTest` file-scoped â€” chuyá»ƒn thÃ nh `promoV2()` global trong Pest.php hoáº·c má»—i test file. ThÃªm `promoV2`/`addCond`/`addAction` vÃ o `tests/Pest.php` (global functions) Ä‘á»ƒ dÃ¹ng chung.
 
-- [ ] **Step 4: Chạy full suite pass**
+- [ ] **Step 4: Cháº¡y full suite pass**
 
 Run: `php artisan test`
-Expected: PASS (8 test cũ chuyển đổi + PromotionV2Test + 288+ test khác).
+Expected: PASS (8 test cÅ© chuyá»ƒn Ä‘á»•i + PromotionV2Test + 288+ test khÃ¡c).
 
 - [ ] **Step 5: Pint + commit**
 
@@ -1097,38 +1097,38 @@ git commit -m "feat: PromotionController + validatePromotion shape v2, chuyen do
 
 ## Task 6: Final verification + migrate:fresh MySQL + regression
 
-**Files:** không code — verify.
+**Files:** khÃ´ng code â€” verify.
 
 - [ ] **Step 1: Full suite**
 
-Run: `php artisan test` — PASS toàn bộ.
+Run: `php artisan test` â€” PASS toÃ n bá»™.
 
 - [ ] **Step 2: Pint**
 
-Run: `vendor/bin/pint --dirty --test` — sạch.
+Run: `vendor/bin/pint --dirty --test` â€” sáº¡ch.
 
 - [ ] **Step 3: Frontend build**
 
-Run: `npm run types:check` + `npm run build` — PASS (không đụng frontend, nhưng verify không vỡ do controller props đổi).
+Run: `npm run types:check` + `npm run build` â€” PASS (khÃ´ng Ä‘á»¥ng frontend, nhÆ°ng verify khÃ´ng vá»¡ do controller props Ä‘á»•i).
 
-**Lưu ý:** `PromotionController::index` giờ trả promotions + conditions/actions — frontend `PromotionsManager` hiện đang render theo shape cũ (code/name/discount_type...). UI sẽ hơi lệch nhưng KHÔNG vỡ (spec 2 sẽ làm lại UI). Ghi nhận là expected.
+**LÆ°u Ã½:** `PromotionController::index` giá» tráº£ promotions + conditions/actions â€” frontend `PromotionsManager` hiá»‡n Ä‘ang render theo shape cÅ© (code/name/discount_type...). UI sáº½ hÆ¡i lá»‡ch nhÆ°ng KHÃ”NG vá»¡ (spec 2 sáº½ lÃ m láº¡i UI). Ghi nháº­n lÃ  expected.
 
 - [ ] **Step 4: migrate:fresh MySQL + smoke**
 
-Run: `php artisan migrate:fresh` + `php artisan db:seed` (MySQL) — OK.
-Smoke: tạo promotion mới (qua tinker hoặc curl POST) với conditions/actions → checkout áp dụng → order_promotions ghi → used_count tăng.
+Run: `php artisan migrate:fresh` + `php artisan db:seed` (MySQL) â€” OK.
+Smoke: táº¡o promotion má»›i (qua tinker hoáº·c curl POST) vá»›i conditions/actions â†’ checkout Ã¡p dá»¥ng â†’ order_promotions ghi â†’ used_count tÄƒng.
 
-- [ ] **Step 5: Fix phát sinh + commit nếu cần**
+- [ ] **Step 5: Fix phÃ¡t sinh + commit náº¿u cáº§n**
 
-Nếu smoke phát hiện bug → fix + commit riêng.
+Náº¿u smoke phÃ¡t hiá»‡n bug â†’ fix + commit riÃªng.
 
 ---
 
 ## Final verification checklist
 
-- [ ] `php artisan test` — pass (288+ + PromotionV2Test, 8 test cũ chuyển đổi)
-- [ ] `vendor/bin/pint --dirty --test` — sạch
-- [ ] `npm run types:check` + `npm run build` — pass
-- [ ] `php artisan migrate:fresh` + `db:seed` MySQL — OK, orders không mất data
-- [ ] Smoke: tạo promotion → checkout → order_promotions + used_count
-- [ ] `git status` — tree sạch
+- [ ] `php artisan test` â€” pass (288+ + PromotionV2Test, 8 test cÅ© chuyá»ƒn Ä‘á»•i)
+- [ ] `vendor/bin/pint --dirty --test` â€” sáº¡ch
+- [ ] `npm run types:check` + `npm run build` â€” pass
+- [ ] `php artisan migrate:fresh` + `db:seed` MySQL â€” OK, orders khÃ´ng máº¥t data
+- [ ] Smoke: táº¡o promotion â†’ checkout â†’ order_promotions + used_count
+- [ ] `git status` â€” tree sáº¡ch
