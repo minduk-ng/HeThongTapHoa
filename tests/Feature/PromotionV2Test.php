@@ -173,6 +173,11 @@ test('checkout: coupon ghi order_promotions + cap dung', function () {
     expect($op->promotion_id)->toBe($coupon->id);
     expect((float) $op->discount_applied)->toBe(5000.0);
     expect($coupon->fresh()->used_count)->toBe(1);
+
+    // Discount phân bổ xuống line + order_item (cho báo cáo line-level)
+    $line = InvoiceLine::first();
+    expect((float) $line->discount_amount)->toBe(5000.0);
+    expect((float) $order->items()->first()->fresh()->discount_amount)->toBe(5000.0);
 });
 
 test('checkout: free_product them line 0d', function () {
