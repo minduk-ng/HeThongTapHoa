@@ -34,9 +34,15 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
 
     useEffect(() => {
         setErrors({});
+        const toYmd = (v: string | null) => {
+            if (!v) return null;
+            const parts = v.split('/');  // d/m/Y from controller
+            if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            return v;
+        };
         if (promotionToEdit) {
             setName(promotionToEdit.name); setType(promotionToEdit.type); setCode(promotionToEdit.code || '');
-            setStartDate(promotionToEdit.start_date || null); setEndDate(promotionToEdit.end_date || null);
+            setStartDate(toYmd(promotionToEdit.start_date || null)); setEndDate(toYmd(promotionToEdit.end_date || null));
             setStatus(promotionToEdit.status);
             setMaxUsage(promotionToEdit.max_usage === null ? '' : String(promotionToEdit.max_usage));
             setExclusive(promotionToEdit.exclusive); setStackable(promotionToEdit.stackable);
