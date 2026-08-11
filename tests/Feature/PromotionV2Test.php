@@ -114,6 +114,47 @@ test('free_product: tra ve free_items', function () {
     expect($res['free_items'])->toContain(['menu_item_id' => $mi->id, 'name' => $mi->name]);
 });
 
+test('validate-promotion: condition min_quantity tinh tu quantity cua line', function () {
+    $item = posMenuItem(['price' => 30000, 'vat_rate' => 0]);
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'VQ2'.substr(uniqid(), -4)]);
+    addCond($coupon, 'min_quantity', '2');
+    addAction($coupon, 'discount_amount', 10000);
+
+    $this->actingAs(posStaff())->postJson('/staff/pos/validate-promotion', [
+        'code' => $coupon->code,
+        'items' => [
+            ['menu_item_id' => $item->id, 'quantity' => 2, 'unit_price' => 30000],
+        ],
+    ])->assertOk()->assertJson(['ok' => true, 'discount_amount' => 10000]);
+});
+
+test('checkout: condition min_quantity ap dung khi du so luong line', function () {
+    $admin = posAdmin();
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'MINQTY2']);
+    addCond($coupon, 'min_quantity', '2');
+    addAction($coupon, 'discount_amount', 10000);
+    $item = posMenuItem(['price' => 50000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [
+        ['item' => $item, 'qty' => 1, 'price' => 50000, 'status' => 'completed'],
+        ['item' => $item, 'qty' => 1, 'price' => 50000, 'status' => 'completed'],
+    ], ['status' => 'pending']);
+
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 90000,
+        'promotion_code' => 'MINQTY2',
+    ])->assertOk()->assertJson(['success' => true]);
+
+    // subtotal 100000, discount 10000 → total 90000
+    $op = OrderPromotion::first();
+    expect($op)->not->toBeNull();
+    expect($op->promotion_id)->toBe($coupon->id);
+    expect((float) $op->discount_applied)->toBe(10000.0);
+    expect($coupon->fresh()->used_count)->toBe(1);
+});
+
 test('checkout: coupon ghi order_promotions + cap dung', function () {
     $admin = posAdmin();
     $coupon = promoV2(['type' => 'coupon', 'code' => 'CHECKOUT10']);

@@ -84,6 +84,7 @@ class CheckoutService
             $engineLines = collect($lineInputs)->map(fn ($l) => [
                 'order_item_id' => $l['order_item_id'],
                 'menu_item_id' => $l['menu_item_id'],
+                'quantity' => (int) ($l['quantity'] ?? 0),
                 'subtotal' => $l['subtotal'],
                 'category_id' => $l['category_id'],
             ]);

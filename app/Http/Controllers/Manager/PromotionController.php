@@ -43,7 +43,7 @@ class PromotionController extends Controller
             $promotion = Promotion::create([
                 'name' => $validated['name'],
                 'type' => $validated['type'],
-                'code' => $validated['type'] === 'promotion' ? null : mb_strtoupper(trim($validated['code'] ?? '')),
+                'code' => $validated['type'] === 'promotion' ? null : (mb_strtoupper(trim($validated['code'] ?? '')) ?: null),
                 'start_date' => $validated['start_date'] ?? null,
                 'end_date' => $validated['end_date'] ?? null,
                 'status' => $validated['status'] ?? true,
@@ -75,7 +75,7 @@ class PromotionController extends Controller
             $promotion->update([
                 'name' => $validated['name'],
                 'type' => $validated['type'],
-                'code' => $validated['type'] === 'promotion' ? null : mb_strtoupper(trim($validated['code'] ?? '')),
+                'code' => $validated['type'] === 'promotion' ? null : (mb_strtoupper(trim($validated['code'] ?? '')) ?: null),
                 'start_date' => $validated['start_date'] ?? null,
                 'end_date' => $validated['end_date'] ?? null,
                 'status' => $validated['status'] ?? true,

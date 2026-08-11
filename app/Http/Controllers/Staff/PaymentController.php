@@ -42,6 +42,7 @@ class PaymentController extends Controller
             return [
                 'order_item_id' => null,
                 'menu_item_id' => (int) $it['menu_item_id'],
+                'quantity' => (int) ($it['quantity'] ?? 0),
                 'subtotal' => (float) $it['quantity'] * (float) ($mi?->price ?? 0),
                 'category_id' => $mi?->category_id,
             ];
@@ -52,6 +53,7 @@ class PaymentController extends Controller
             $lines = collect([[
                 'order_item_id' => null,
                 'menu_item_id' => null,
+                'quantity' => 0,
                 'subtotal' => (float) ($validated['subtotal'] ?? 0),
                 'category_id' => null,
             ]]);
