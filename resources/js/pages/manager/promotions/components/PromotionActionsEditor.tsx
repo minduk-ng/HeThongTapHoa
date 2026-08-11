@@ -26,11 +26,14 @@ export default function PromotionActionsEditor({ actions, onChange, menuItems }:
                         {TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
                     {a.action_type === 'free_product' ? (
-                        <select value={a.action_value} onChange={(e) => update(i, 'action_value', e.target.value)}
-                            className="flex-1 min-w-[180px] px-3 py-2 text-xs border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700">
-                            <option value="">Chọn món tặng...</option>
-                            {menuItems.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                        </select>
+                        <div className="flex-1 min-w-[180px]">
+                            <select value={a.action_value} onChange={(e) => update(i, 'action_value', e.target.value)}
+                                className="w-full px-3 py-2 text-xs border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700">
+                                <option value="">Chọn món tặng...</option>
+                                {menuItems.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                            </select>
+                            {!a.action_value && <p className="text-xs text-amber-600 mt-1">Bắt buộc chọn món tặng.</p>}
+                        </div>
                     ) : (
                         <div className="relative">
                             <input type="number" value={a.action_value} onChange={(e) => update(i, 'action_value', e.target.value)}

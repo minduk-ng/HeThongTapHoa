@@ -64,6 +64,14 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         if (submitting) return;
+
+        // free_product bắt buộc chọn món — không cho lưu nếu blank
+        const blankFreeProduct = actions.some((a) => a.action_type === 'free_product' && !a.action_value);
+        if (blankFreeProduct) {
+            setErrors((prev) => ({ ...prev, actions: 'Món tặng (free_product) phải chọn món cụ thể.' }));
+            return;
+        }
+
         setSubmitting(true);
         const payload = {
             name, type,
