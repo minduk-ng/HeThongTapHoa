@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, UtensilsCrossed } from 'lucide-react';
 import { CategoryData, POSProductData, CartItem } from '../types/pos.types';
+import { cdnAsset } from '../../../../utils/cdn';
 
 interface POSMenuTabProps {
     products: POSProductData[];
@@ -118,7 +119,7 @@ export default function POSMenuTab({
                                 <div className="relative mb-1.5 aspect-[4/3] w-full overflow-hidden rounded-lg border border-zinc-100 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800">
                                     {product.image ? (
                                         <img
-                                            src={product.image}
+                                            src={cdnAsset(product.image, { w: 400, format: 'webp' })}
                                             alt={product.name}
                                             className="h-full w-full object-cover"
                                         />

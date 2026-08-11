@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image as ImageIcon, Edit3, Trash2 } from 'lucide-react';
 import DataTable, { DataTableColumn } from '../../../../components/DataTable';
+import { cdnAsset } from '../../../../utils/cdn';
 
 interface Category {
     id: number;
@@ -43,7 +44,7 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
             render: (item) => (
                 <div className="w-10 h-10 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
                     {item.image ? (
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        <img src={cdnAsset(item.image, { w: 96, format: 'webp' })} alt={item.name} className="w-full h-full object-cover" />
                     ) : (
                         <ImageIcon className="w-5 h-5 text-zinc-400 stroke-[1.5]" />
                     )}
