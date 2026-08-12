@@ -69,6 +69,28 @@ test('store type promotion luu code null', function () {
     expect($promo->code)->toBeNull();
 });
 
+test('store luu target_usage cho promotion', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'type' => 'promotion',
+        'name' => 'KM co muc tieu',
+        'target_usage' => 100,
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
+    ])->assertSessionHasNoErrors();
+
+    $promo = Promotion::where('name', 'KM co muc tieu')->first();
+    expect($promo->target_usage)->toBe(100);
+});
+
+test('index tra target_usage trong campaign payload', function () {
+    $this->actingAs(posAdmin());
+    $promo = promoV2(['type' => 'promotion', 'target_usage' => 50]);
+    addAction($promo, 'discount_amount', 5000);
+
+    $this->get('/manager/promotions')->assertInertia(fn ($page) => $page->component('manager/promotions/PromotionsManager')
+        ->where('promotions.0.id', $promo->id)
+        ->where('promotions.0.target_usage', 50));
+});
+
 test('update chỉnh sửa và tạo lại conditions/actions', function () {
     $admin = posAdmin();
     $promo = promoV2(['type' => 'coupon', 'code' => 'UP'.substr(uniqid(), -4), 'name' => 'Cũ']);

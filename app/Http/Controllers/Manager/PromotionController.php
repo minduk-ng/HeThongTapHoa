@@ -51,6 +51,7 @@ class PromotionController extends Controller
             'status' => $p->status,
             'used_count' => $p->used_count,
             'max_usage' => $p->max_usage,
+            'target_usage' => $p->target_usage,
             'exclusive' => $p->exclusive,
             'stackable' => $p->stackable,
             'conditions' => $p->conditions->map(fn ($c) => [
@@ -228,6 +229,7 @@ class PromotionController extends Controller
                 'end_date' => ($validated['end_date'] ?? null) ? Carbon::parse($validated['end_date'])->endOfDay() : null,
                 'status' => $validated['status'] ?? true,
                 'max_usage' => $validated['max_usage'] ?? null,
+                'target_usage' => $validated['target_usage'] ?? null,
                 'exclusive' => $validated['exclusive'] ?? false,
                 'stackable' => $validated['stackable'] ?? true,
             ]);
@@ -262,6 +264,7 @@ class PromotionController extends Controller
                 'end_date' => ($validated['end_date'] ?? null) ? Carbon::parse($validated['end_date'])->endOfDay() : null,
                 'status' => $validated['status'] ?? true,
                 'max_usage' => $validated['max_usage'] ?? null,
+                'target_usage' => $validated['target_usage'] ?? null,
                 'exclusive' => $validated['exclusive'] ?? false,
                 'stackable' => $validated['stackable'] ?? true,
             ]);
@@ -314,6 +317,7 @@ class PromotionController extends Controller
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'status' => ['sometimes', 'boolean'],
             'max_usage' => ['nullable', 'integer', 'min:1'],
+            'target_usage' => ['nullable', 'integer', 'min:1'],
             'exclusive' => ['sometimes', 'boolean'],
             'stackable' => ['sometimes', 'boolean'],
             'conditions' => ['nullable', 'array'],

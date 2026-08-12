@@ -25,6 +25,7 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
     const [endDate, setEndDate] = useState<string | null>(null);
     const [status, setStatus] = useState(true);
     const [maxUsage, setMaxUsage] = useState('');
+    const [targetUsage, setTargetUsage] = useState('');
     const [exclusive, setExclusive] = useState(false);
     const [stackable, setStackable] = useState(true);
     const [actions, setActions] = useState<ActionRow[]>([{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]);
@@ -45,6 +46,7 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
             setStartDate(toYmd(promotionToEdit.start_date || null)); setEndDate(toYmd(promotionToEdit.end_date || null));
             setStatus(promotionToEdit.status);
             setMaxUsage(promotionToEdit.max_usage === null ? '' : String(promotionToEdit.max_usage));
+            setTargetUsage(promotionToEdit.target_usage === null ? '' : String(promotionToEdit.target_usage));
             setExclusive(promotionToEdit.exclusive); setStackable(promotionToEdit.stackable);
             setActions(promotionToEdit.actions.length ? promotionToEdit.actions.map((a) => ({
                 action_type: a.action_type, action_value: String(a.action_value),
@@ -53,7 +55,7 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
             setConditions(promotionToEdit.conditions.map((c) => ({ cond_type: c.cond_type, cond_value: c.cond_value })));
         } else {
             setName(''); setType('promotion'); setCode(''); setStartDate(null); setEndDate(null);
-            setStatus(true); setMaxUsage(''); setExclusive(false); setStackable(true);
+            setStatus(true); setMaxUsage(''); setTargetUsage(''); setExclusive(false); setStackable(true);
             setActions([{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]);
             setConditions([]);
         }
@@ -78,6 +80,7 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
             code: type === 'promotion' ? null : (code.toUpperCase() || null),
             start_date: startDate || null, end_date: endDate || null,
             status, max_usage: maxUsage === '' ? null : Number(maxUsage),
+            target_usage: targetUsage === '' ? null : Number(targetUsage),
             exclusive, stackable,
             conditions: conditions.map((c) => ({ cond_type: c.cond_type, cond_value: c.cond_value })),
             actions: actions.map((a) => ({
@@ -166,9 +169,17 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                         <section className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-5">
                             <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4 border-b border-zinc-100 dark:border-zinc-800 pb-2">Điều kiện &amp; Giới hạn</h4>
                             <div className="space-y-3">
-                                <div>
-                                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tổng số lượt sử dụng tối đa</label>
-                                    <input type="number" value={maxUsage} onChange={(e) => setMaxUsage(e.target.value)} placeholder="Không giới hạn" className={inputCls} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tổng số lượt sử dụng tối đa</label>
+                                        <input type="number" value={maxUsage} onChange={(e) => setMaxUsage(e.target.value)} placeholder="Không giới hạn" className={inputCls} />
+                                    </div>
+                                    {type === 'promotion' && (
+                                        <div>
+                                            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Mục tiêu (số lượt dùng)</label>
+                                            <input type="number" value={targetUsage} onChange={(e) => setTargetUsage(e.target.value)} placeholder="Để tính hiệu suất" className={inputCls} />
+                                        </div>
+                                    )}
                                 </div>
                                 <PromotionConditionsEditor conditions={conditions} onChange={setConditions} menuItems={menuItems} menuCategories={menuCategories} />
                             </div>
