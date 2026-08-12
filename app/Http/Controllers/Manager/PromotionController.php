@@ -64,18 +64,29 @@ class PromotionController extends Controller
             ])->values(),
         ]);
 
-        $revenueAgg = DB::table('daily_promotion_stats')
-            ->select('promotion_id',
-                DB::raw('SUM(revenue) as revenue'),
-                DB::raw('SUM(discount_total) as discount_total'))
+        // Doanh thu campaign = full doanh thu hoá đơn distinct có dùng mã đó (không phân bổ theo discount,
+        // dù 1 hoá đơn dùng nhiều mã vẫn gán full cho mỗi mã — overlap có chủ đích để xem theo từng campaign).
+        // discount_total vẫn lấy từ daily_promotion_stats (tổng giảm thật của mã).
+        $revenueAgg = DB::table(DB::raw('(SELECT DISTINCT ip.promotion_id, ip.invoice_id, invoices.total_amount
+                FROM invoice_promotions ip
+                JOIN invoices ON invoices.id = ip.invoice_id
+                WHERE ip.promotion_id IS NOT NULL) as t'))
+            ->select('promotion_id', DB::raw('SUM(total_amount) as revenue'))
             ->groupBy('promotion_id')
             ->get()
             ->keyBy('promotion_id');
 
-        $promotions = $promotions->map(function ($p) use ($revenueAgg) {
-            $agg = $revenueAgg->get($p['id']);
-            $p['revenue'] = $agg ? (float) $agg->revenue : 0.0;
-            $p['discount_total'] = $agg ? (float) $agg->discount_total : 0.0;
+        $discountAgg = DB::table('daily_promotion_stats')
+            ->select('promotion_id', DB::raw('SUM(discount_total) as discount_total'))
+            ->groupBy('promotion_id')
+            ->get()
+            ->keyBy('promotion_id');
+
+        $promotions = $promotions->map(function ($p) use ($revenueAgg, $discountAgg) {
+            $rev = $revenueAgg->get($p['id']);
+            $disc = $discountAgg->get($p['id']);
+            $p['revenue'] = $rev ? (float) $rev->revenue : 0.0;
+            $p['discount_total'] = $disc ? (float) $disc->discount_total : 0.0;
             return $p;
         });
 
@@ -130,10 +141,10 @@ class PromotionController extends Controller
         });
 
         $kpis = [
-            // Doanh thu / lượt dùng = tổng theo HOÁ ĐƠN DISTINCT có dùng ít nhất 1 KM
-            // (1 hoá đơn áp dụng nhiều promotion/coupon/voucher vẫn chỉ tính 1 lần)
+            // Doanh thu = tổng HOÁ ĐƠN DISTINCT có dùng ít nhất 1 KM (1 hoá đơn nhiều mã vẫn tính 1 lần).
+            // Lượt dùng = tổng lượt áp dụng KM (mỗi mã trên 1 hoá đơn tính 1 lượt) — khớp biểu đồ daily/pie.
             'total_revenue' => $this->distinctInvoiceRevenue($from, $to),
-            'total_orders' => $this->distinctInvoiceCount($from, $to),
+            'total_orders' => (int) $campaigns->sum('order_count'),
             'total_discount' => (float) $campaigns->sum('discount_total'),
             'avg_discount' => $campaigns->sum('order_count') > 0
                 ? round($campaigns->sum('discount_total') / $campaigns->sum('order_count'), 2) : 0,
@@ -190,14 +201,6 @@ class PromotionController extends Controller
         }
 
         return (float) DB::table('invoices')->whereIn('id', $ids)->sum('total_amount');
-    }
-
-    /**
-     * Số HOÁ ĐƠN distinct có dùng ít nhất 1 promotion/coupon/voucher.
-     */
-    private function distinctInvoiceCount(?string $from, ?string $to): int
-    {
-        return $this->distinctInvoiceIds($from, $to)->count();
     }
 
     /**

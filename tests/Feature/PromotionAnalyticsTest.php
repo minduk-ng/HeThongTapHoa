@@ -147,8 +147,36 @@ test('revenue daily_promotion_stats khong double-count khi 1 hoa don dung nhieu 
     expect(round((float) $couponRow->revenue, 2))->toBe(round(85000 * 5000 / 15000, 2));
 
     // KPI total_revenue tính theo HOÁ ĐƠN distinct: 1 invoice dùng 2 KM → vẫn chỉ 1 lần (85000)
+    // total_orders = tổng lượt áp dụng KM: 2 mã trên 1 hoá đơn = 2 lượt
     $this->actingAs($admin)->getJson('/manager/promotions/analytics')
         ->assertOk()
         ->assertJsonPath('kpis.total_revenue', 85000)
-        ->assertJsonPath('kpis.total_orders', 1);
+        ->assertJsonPath('kpis.total_orders', 2);
+});
+
+test('campaign revenue trong index la full doanh thu hoa don distinct (khong phan bo theo discount)', function () {
+    $this->actingAs(posAdmin());
+    $auto = promoV2(['type' => 'promotion']);
+    addAction($auto, 'discount_percent', 10);          // giảm 10% = 10000
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'CF'.substr(uniqid(), -5)]);
+    addAction($coupon, 'discount_amount', 5000);
+
+    $item = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'pending']);
+
+    // checkout với mã coupon; auto 10% cũng áp → 1 invoice 85000 dùng cả 2 mã
+    $this->actingAs(posAdmin())->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 85000,
+        'promotion_code' => $coupon->code,
+    ])->assertOk();
+
+    // Cả 2 campaign đều hiển thị full doanh thu 85000 (dù trùng) — không chia đôi theo discount
+    $this->get('/manager/promotions')->assertInertia(fn ($page) => $page->component('manager/promotions/PromotionsManager')
+        ->where('promotions.0.id', $coupon->id)
+        ->where('promotions.0.revenue', 85000)
+        ->where('promotions.1.id', $auto->id)
+        ->where('promotions.1.revenue', 85000));
 });
