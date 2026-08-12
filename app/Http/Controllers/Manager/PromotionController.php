@@ -109,6 +109,11 @@ class PromotionController extends Controller
     {
         $from = $request->input('from');
         $to = $request->input('to');
+        $search = $request->input('search');
+        $status = $request->input('status', 'all');
+
+        // Lọc cùng tập campaign như bảng Campaign Performance (search + status)
+        $promotionIds = $this->filteredPromotionIds($search, $status);
 
         $statsQuery = DB::table('daily_promotion_stats')
             ->join('promotions', 'promotions.id', '=', 'daily_promotion_stats.promotion_id')
@@ -117,7 +122,9 @@ class PromotionController extends Controller
                 DB::raw('SUM(daily_promotion_stats.order_count) as order_count'),
                 DB::raw('SUM(daily_promotion_stats.revenue) as revenue'),
                 DB::raw('SUM(daily_promotion_stats.discount_total) as discount_total'),
-            );
+            )
+            ->whereNull('promotions.deleted_at')
+            ->whereIn('daily_promotion_stats.promotion_id', $promotionIds);
         if ($from) {
             $statsQuery->where('daily_promotion_stats.stat_date', '>=', $from);
         }
@@ -143,16 +150,16 @@ class PromotionController extends Controller
         $kpis = [
             // Doanh thu = tổng HOÁ ĐƠN DISTINCT có dùng ít nhất 1 KM (1 hoá đơn nhiều mã vẫn tính 1 lần).
             // Lượt dùng = tổng lượt áp dụng KM (mỗi mã trên 1 hoá đơn tính 1 lượt) — khớp biểu đồ daily/pie.
-            'total_revenue' => $this->distinctInvoiceRevenue($from, $to),
+            'total_revenue' => $this->distinctInvoiceRevenue($from, $to, $promotionIds),
             'total_orders' => (int) $campaigns->sum('order_count'),
             'total_discount' => (float) $campaigns->sum('discount_total'),
             'avg_discount' => $campaigns->sum('order_count') > 0
                 ? round($campaigns->sum('discount_total') / $campaigns->sum('order_count'), 2) : 0,
             'roi' => (float) $campaigns->sum('discount_total') > 0
-                ? round(($this->distinctInvoiceRevenue($from, $to) - $campaigns->sum('discount_total')) / $campaigns->sum('discount_total'), 2) : 0,
+                ? round(($this->distinctInvoiceRevenue($from, $to, $promotionIds) - $campaigns->sum('discount_total')) / $campaigns->sum('discount_total'), 2) : 0,
         ];
 
-        $dailyQuery = DB::table('daily_promotion_stats');
+        $dailyQuery = DB::table('daily_promotion_stats')->whereIn('promotion_id', $promotionIds);
         if ($from) $dailyQuery->where('stat_date', '>=', $from);
         if ($to) $dailyQuery->where('stat_date', '<=', $to);
         $daily = $dailyQuery->select('stat_date',
@@ -176,6 +183,33 @@ class PromotionController extends Controller
         ]);
     }
 
+    /**
+     * Danh sách promotion id khớp bộ lọc search + status — cùng logic như index().
+     *
+     * @return array<int>
+     */
+    private function filteredPromotionIds(?string $search, ?string $status): array
+    {
+        $query = Promotion::query();
+
+        if ($search) {
+            $s = trim($search);
+            $query->where(fn ($q) => $q
+                ->where('name', 'like', "%{$s}%")
+                ->orWhere('code', 'like', "%{$s}%"));
+        }
+
+        $now = now();
+        if ($status === 'running') {
+            $query->where('status', true)
+                ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $now));
+        } elseif ($status === 'ended') {
+            $query->where(fn ($q) => $q->whereNotNull('end_date')->where('end_date', '<', $now));
+        }
+
+        return $query->pluck('id')->all();
+    }
+
     public function invoices(Promotion $promotion): JsonResponse
     {
         $invoices = InvoicePromotion::query()
@@ -192,10 +226,12 @@ class PromotionController extends Controller
     /**
      * Tổng giá trị các HOÁ ĐƠN distinct có dùng ít nhất 1 promotion/coupon/voucher.
      * 1 hoá đơn áp dụng nhiều KM vẫn chỉ tính 1 lần (invoice_promotions distinct theo invoice_id).
+     *
+     * @param  array<int>|null  $promotionIds  lọc theo tập campaign (null = tất cả)
      */
-    private function distinctInvoiceRevenue(?string $from, ?string $to): float
+    private function distinctInvoiceRevenue(?string $from, ?string $to, ?array $promotionIds = null): float
     {
-        $ids = $this->distinctInvoiceIds($from, $to);
+        $ids = $this->distinctInvoiceIds($from, $to, $promotionIds);
         if ($ids->isEmpty()) {
             return 0.0;
         }
@@ -204,11 +240,15 @@ class PromotionController extends Controller
     }
 
     /**
+     * @param  array<int>|null  $promotionIds
      * @return \Illuminate\Support\Collection<int, int>
      */
-    private function distinctInvoiceIds(?string $from, ?string $to)
+    private function distinctInvoiceIds(?string $from, ?string $to, ?array $promotionIds = null)
     {
         $query = DB::table('invoice_promotions')->whereNotNull('promotion_id');
+        if ($promotionIds !== null) {
+            $query->whereIn('promotion_id', $promotionIds);
+        }
         if ($from) {
             $query->whereDate('invoice_promotions.created_at', '>=', $from);
         }

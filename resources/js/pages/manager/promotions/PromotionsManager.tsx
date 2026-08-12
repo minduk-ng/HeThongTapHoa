@@ -66,11 +66,14 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
     const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
 
     useEffect(() => {
-        fetch('/manager/promotions/analytics', { headers: { Accept: 'application/json' } })
+        const params = new URLSearchParams();
+        if (statusFilter !== 'all') params.set('status', statusFilter);
+        if (search) params.set('search', search);
+        fetch(`/manager/promotions/analytics?${params.toString()}`, { headers: { Accept: 'application/json' } })
             .then((r) => r.json())
             .then((data) => setAnalytics(data))
             .catch(() => {});
-    }, []);
+    }, [statusFilter, search]);
 
     const applyFilters = () => {
         router.get('/manager/promotions', {

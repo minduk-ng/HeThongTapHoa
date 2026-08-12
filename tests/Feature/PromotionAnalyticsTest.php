@@ -83,6 +83,43 @@ test('analytics api tra kpis va campaigns', function () {
         ->assertJsonPath('kpis.roi', (40000 - 10000) / 10000);
 });
 
+test('analytics loc theo status: chi tinh campaigns trong filter', function () {
+    $admin = posAdmin();
+    // campaign đang chạy (không end_date)
+    $running = promoStat(['type' => 'promotion']);
+    $running->actions()->create(['action_type' => 'discount_amount', 'action_value' => 5000, 'max_discount_amount' => null]);
+    // campaign đã kết thúc
+    $ended = promoStat(['type' => 'promotion']);
+    $ended->actions()->create(['action_type' => 'discount_amount', 'action_value' => 20000, 'max_discount_amount' => null]);
+    $ended->update(['end_date' => now()->subDay()]);
+
+    $item = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
+    $table = posTable();
+    $o1 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'pending']);
+    $o2 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'pending']);
+
+    // running auto tự áp cho o1, ended KHÔNG áp (đã hết hạn) → chỉ running có stats
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $o1->id, 'payment_method' => 'cash', 'amount_received' => 95000,
+    ])->assertOk();
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $o2->id, 'payment_method' => 'cash', 'amount_received' => 100000,
+    ])->assertOk();
+
+    // filter running → chỉ campaign running (2 đơn đều bị running auto áp)
+    $this->actingAs($admin)->getJson('/manager/promotions/analytics?status=running')
+        ->assertOk()
+        ->assertJsonPath('kpis.total_orders', 2)
+        ->assertJsonPath('campaigns.0.id', $running->id)
+        ->assertJsonCount(1, 'campaigns');
+
+    // filter ended → không campaign nào có stats (ended chưa từng dùng)
+    $this->actingAs($admin)->getJson('/manager/promotions/analytics?status=ended')
+        ->assertOk()
+        ->assertJsonCount(0, 'campaigns')
+        ->assertJsonPath('kpis.total_orders', 0);
+});
+
 test('command rebuild bulk: revenue tinh 1 lan moi invoice (khong nhan N), order_count = distinct invoice', function () {
     $admin = posAdmin();
     $coupon = promoV2(['type' => 'coupon', 'code' => 'BULKREV'.substr(uniqid(), -4)]);
