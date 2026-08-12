@@ -62,6 +62,26 @@ test('command rebuild daily stats cho hom qua', function () {
     expect((float) $stat->discount_total)->toBe(5000.0); // tiền giảm thực tế
 });
 
+test('analytics api tra kpis va campaigns', function () {
+    $admin = posAdmin();
+    $coupon = promoStat();
+    $coupon->actions()->create(['action_type' => 'discount_amount', 'action_value' => 10000, 'max_discount_amount' => null]);
+    $item = posMenuItem(['price' => 50000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 50000, 'status' => 'completed']], ['status' => 'pending']);
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id, 'payment_method' => 'cash',
+        'amount_received' => 50000, 'promotion_code' => $coupon->code,
+    ])->assertOk();
+
+    $this->actingAs($admin)->getJson('/manager/promotions/analytics')
+        ->assertOk()
+        ->assertJsonStructure(['kpis' => ['total_revenue', 'total_orders', 'total_discount', 'avg_discount', 'roi'], 'daily_chart', 'type_breakdown', 'campaigns'])
+        ->assertJsonPath('kpis.total_revenue', 40000)
+        ->assertJsonPath('kpis.total_discount', 10000)
+        ->assertJsonPath('kpis.roi', (40000 - 10000) / 10000);
+});
+
 test('command rebuild bulk: revenue tinh 1 lan moi invoice (khong nhan N), order_count = distinct invoice', function () {
     $admin = posAdmin();
     $coupon = promoV2(['type' => 'coupon', 'code' => 'BULKREV'.substr(uniqid(), -4)]);

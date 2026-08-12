@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Promotion;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -71,6 +72,75 @@ class PromotionController extends Controller
             'filters' => $request->only(['search', 'status']),
             'menu_items' => MenuItem::orderBy('name')->get(['id', 'name']),
             'menu_categories' => MenuCategory::orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    public function analytics(Request $request): JsonResponse
+    {
+        $from = $request->input('from');
+        $to = $request->input('to');
+
+        $statsQuery = DB::table('daily_promotion_stats')
+            ->join('promotions', 'promotions.id', '=', 'daily_promotion_stats.promotion_id')
+            ->select(
+                'promotions.id', 'promotions.name', 'promotions.type', 'promotions.code',
+                DB::raw('SUM(daily_promotion_stats.order_count) as order_count'),
+                DB::raw('SUM(daily_promotion_stats.revenue) as revenue'),
+                DB::raw('SUM(daily_promotion_stats.discount_total) as discount_total'),
+            );
+        if ($from) {
+            $statsQuery->where('daily_promotion_stats.stat_date', '>=', $from);
+        }
+        if ($to) {
+            $statsQuery->where('daily_promotion_stats.stat_date', '<=', $to);
+        }
+        $statsQuery->groupBy('promotions.id', 'promotions.name', 'promotions.type', 'promotions.code');
+
+        $campaigns = $statsQuery->get()->map(function ($row) {
+            $revenue = (float) $row->revenue;
+            $discount = (float) $row->discount_total;
+            $roi = $discount > 0 ? ($revenue - $discount) / $discount : null;
+            return [
+                'id' => $row->id, 'name' => $row->name, 'type' => $row->type, 'code' => $row->code,
+                'order_count' => (int) $row->order_count,
+                'revenue' => $revenue,
+                'discount_total' => $discount,
+                'roi' => $roi,
+                'roi_percent' => $roi === null ? null : round($roi * 100, 1),
+            ];
+        });
+
+        $kpis = [
+            'total_revenue' => (float) $campaigns->sum('revenue'),
+            'total_orders' => (int) $campaigns->sum('order_count'),
+            'total_discount' => (float) $campaigns->sum('discount_total'),
+            'avg_discount' => $campaigns->sum('order_count') > 0
+                ? round($campaigns->sum('discount_total') / $campaigns->sum('order_count'), 2) : 0,
+            'roi' => (float) $campaigns->sum('discount_total') > 0
+                ? round(($campaigns->sum('revenue') - $campaigns->sum('discount_total')) / $campaigns->sum('discount_total'), 2) : 0,
+        ];
+
+        $dailyQuery = DB::table('daily_promotion_stats');
+        if ($from) $dailyQuery->where('stat_date', '>=', $from);
+        if ($to) $dailyQuery->where('stat_date', '<=', $to);
+        $daily = $dailyQuery->select('stat_date',
+            DB::raw('SUM(order_count) as usage_count'),
+            DB::raw('SUM(revenue) as revenue'))
+            ->groupBy('stat_date')->orderBy('stat_date')->get()
+            ->map(fn ($r) => ['date' => $r->stat_date, 'usage_count' => (int) $r->usage_count, 'revenue' => (float) $r->revenue])->values();
+
+        $typeBreakdown = collect($campaigns)->groupBy('type')->map(function ($g, $type) {
+            $total = (int) $g->sum('order_count');
+            return ['type' => $type, 'count' => $total];
+        })->values();
+        $allCount = (int) $typeBreakdown->sum('count');
+        $typeBreakdown = $typeBreakdown->map(fn ($t) => ['type' => $t['type'], 'count' => $t['count'], 'percent' => $allCount > 0 ? round($t['count'] / $allCount * 100, 1) : 0]);
+
+        return response()->json([
+            'kpis' => $kpis,
+            'daily_chart' => $daily,
+            'type_breakdown' => $typeBreakdown,
+            'campaigns' => $campaigns,
         ]);
     }
 

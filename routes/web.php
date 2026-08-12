@@ -115,6 +115,7 @@ Route::middleware('auth')->group(function () {
         // Promotions Management
         Route::get('/promotions', [PromotionController::class, 'index'])->middleware('permission:promotions.view');
         Route::post('/promotions', [PromotionController::class, 'store'])->middleware('permission:promotions.create');
+        Route::get('/promotions/analytics', [PromotionController::class, 'analytics'])->middleware('permission:promotions.view');
         Route::post('/promotions/{promotion}', [PromotionController::class, 'update'])->middleware('permission:promotions.edit');
         Route::delete('/promotions/{promotion}', [PromotionController::class, 'destroy'])->middleware('permission:promotions.delete');
 
