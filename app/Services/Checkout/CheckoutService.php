@@ -284,6 +284,33 @@ class CheckoutService
                 }
             }
 
+            // 7c. Upsert daily_promotion_stats (realtime)
+            $invoiceTotal = (float) $invoice->total_amount;
+            foreach ($appliedPromotions as $pr) {
+                $promo = $pr['promotion'];
+                $statDate = now()->toDateString();
+                $attrs = ['promotion_id' => $promo->id, 'stat_date' => $statDate];
+                $row = DB::table('daily_promotion_stats')->where($attrs)->first();
+                if ($row) {
+                    DB::table('daily_promotion_stats')->where($attrs)->update([
+                        'order_count' => DB::raw('order_count + 1'),
+                        'unique_orders' => DB::raw('unique_orders + 1'),
+                        'revenue' => DB::raw('revenue + '.round($invoiceTotal, 2)),
+                        'discount_total' => DB::raw('discount_total + '.round((float) $pr['amount'], 2)),
+                        'updated_at' => now(),
+                    ]);
+                } else {
+                    DB::table('daily_promotion_stats')->insert(array_merge($attrs, [
+                        'order_count' => 1,
+                        'unique_orders' => 1,
+                        'revenue' => round($invoiceTotal, 2),
+                        'discount_total' => round((float) $pr['amount'], 2),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]));
+                }
+            }
+
             // 8. Cập nhật orders (1 nguồn duy nhất): phân bổ discount theo tỷ trọng, đơn cuối nhận phần dư
             $count = $orders->count();
             $assignedDiscount = 0.0;
