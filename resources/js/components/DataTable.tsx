@@ -132,14 +132,17 @@ export default function DataTable<T>({
                                             ? () => handleSort(col.key)
                                             : undefined
                                     }
-                                    className={`px-4 ${isCompact ? 'py-2 text-xs' : 'py-3.5'} ${alignClass(col.align)} ${col.headerClassName ?? ''} ${col.sortable ? 'cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800' : ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
+                                    className={`relative px-4 ${isCompact ? 'py-2 text-xs' : 'py-3.5'} ${alignClass(col.align)} ${col.headerClassName ?? ''} ${col.sortable ? 'cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800' : ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
                                 >
                                     <div
                                         className={`flex items-center ${col.align === 'right' ? 'justify-end' : col.align === 'center' ? 'justify-center' : ''}`}
                                     >
-                                        <span>{col.header}</span>
-                                        {col.sortable &&
-                                            renderSortIcon(col.key)}
+                                        <span className="flex-1">{col.header}</span>
+                                        {col.sortable && (
+                                            <span className={`shrink-0 ${col.align === 'center' ? 'absolute right-2' : ''}`}>
+                                                {renderSortIcon(col.key)}
+                                            </span>
+                                        )}
                                     </div>
                                 </th>
                             ))}
