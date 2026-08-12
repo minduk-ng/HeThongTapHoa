@@ -193,4 +193,26 @@ class PromotionEngine
 
         return $total;
     }
+
+    public static function candidates(iterable $lines, float $subtotal): array
+    {
+        $lines = collect($lines);
+
+        return Promotion::query()
+            ->where('type', 'promotion')
+            ->where('status', true)
+            ->where(fn ($q) => $q->whereNull('start_date')->orWhere('start_date', '<=', now()))
+            ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()))
+            ->with(['conditions', 'actions'])
+            ->get()
+            ->filter(fn ($p) => self::matchesConditions($p, $lines, $subtotal) && self::quotaOk($p))
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'code' => $p->code,
+                'estimated_discount' => self::estimateDiscount($p, $lines, $subtotal),
+            ])
+            ->values()
+            ->all();
+    }
 }
