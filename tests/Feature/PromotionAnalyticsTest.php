@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\DailyPromotionStat;
+use App\Models\Invoice;
 use App\Models\OrderPromotion;
 use App\Models\Promotion;
 
@@ -59,4 +60,39 @@ test('command rebuild daily stats cho hom qua', function () {
     expect($stat)->not->toBeNull();
     expect((float) $stat->revenue)->toBe(35000.0);       // tổng tiền hoá đơn = invoices.total_amount (sau giảm: 40000 - 5000)
     expect((float) $stat->discount_total)->toBe(5000.0); // tiền giảm thực tế
+});
+
+test('command rebuild bulk: revenue tinh 1 lan moi invoice (khong nhan N), order_count = distinct invoice', function () {
+    $admin = posAdmin();
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'BULKREV'.substr(uniqid(), -4)]);
+    addAction($coupon, 'discount_amount', 10000);
+    $item = posMenuItem(['price' => 50000, 'vat_rate' => 0]);
+    $table = posTable(['status' => 'occupied']);
+    $order1 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 50000, 'status' => 'completed']], ['status' => 'completed']);
+    $order2 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 50000, 'status' => 'completed']], ['status' => 'completed']);
+
+    $this->actingAs($admin)->post('/staff/pos/bulk-checkout', [
+        'order_ids' => [$order1->id, $order2->id],
+        'table_id' => $table->id,
+        'payment_method' => 'cash',
+        'amount_received' => 90000,
+        'change_amount' => 0,
+        'promotion_code' => $coupon->code,
+    ])->assertSessionHasNoErrors();
+
+    $invoice = Invoice::firstOrFail();
+    expect((float) $invoice->total_amount)->toBe(90000.0);
+
+    // Backdate order_promotions về hôm qua (created_at guarded → forceFill)
+    OrderPromotion::where('invoice_id', $invoice->id)->get()->each(function ($op) {
+        $op->forceFill(['created_at' => now()->subDay()])->save();
+    });
+
+    $this->artisan('promotions:aggregate-daily')->assertSuccessful();
+
+    $stat = DailyPromotionStat::where('promotion_id', $coupon->id)->where('stat_date', now()->subDay()->toDateString())->first();
+    expect($stat)->not->toBeNull();
+    expect((float) $stat->revenue)->toBe(90000.0); // invoice tính 1 lần, không nhân N (2 order → 180000 là sai)
+    expect((int) $stat->order_count)->toBe(1);     // 1 invoice distinct
+    expect((int) $stat->unique_orders)->toBe(2);   // 2 order distinct
 });
