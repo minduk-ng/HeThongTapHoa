@@ -456,9 +456,9 @@ test('analytics api tra kpis va campaigns', function () {
     $this->actingAs($admin)->getJson('/manager/promotions/analytics')
         ->assertOk()
         ->assertJsonStructure(['kpis' => ['total_revenue', 'total_orders', 'total_discount', 'avg_discount', 'roi'], 'daily_chart', 'type_breakdown', 'campaigns'])
-        ->assertJsonPath('kpis.total_revenue', 50000)
+        ->assertJsonPath('kpis.total_revenue', 40000)
         ->assertJsonPath('kpis.total_discount', 10000)
-        ->assertJsonPath('kpis.roi', (50000 - 10000) / 10000);
+        ->assertJsonPath('kpis.roi', (40000 - 10000) / 10000);
 });
 ```
 
