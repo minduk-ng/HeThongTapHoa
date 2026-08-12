@@ -200,10 +200,6 @@ export default function PaymentDrawer({
                         {/* Cột trái: Danh sách món */}
                         <div className="border-r border-zinc-200 dark:border-zinc-800 flex flex-col min-h-0 bg-zinc-50/50 dark:bg-zinc-900/50">
                             <div className="flex-1 min-h-0 overflow-y-auto">
-                                <div className="px-6 py-4">
-                                    <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-200 mb-1">Chi tiết món</h3>
-                                    <span className="text-xs text-zinc-500">{cartItems.reduce((s, i) => s + i.quantity, 0)} món · {orderCodes.length > 0 ? orderCodes.join(', ') : '—'}</span>
-                                </div>
                                 {cartItems.length === 0 ? (
                                     <div className="px-6 text-center text-sm text-zinc-500 dark:text-zinc-400 py-10">
                                         Chưa chọn món
@@ -380,11 +376,10 @@ export default function PaymentDrawer({
                                             if (mode === 'payment') setAmountReceived(payable);
                                             else if (mode === 'deposit') setAmountReceived(totalAmount);
                                         }}
-                                        className={`h-20 rounded-xl border-2 flex flex-col items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${
-                                            paymentMethod === 'cash'
+                                        className={`h-20 rounded-xl border-2 flex flex-col items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${paymentMethod === 'cash'
                                                 ? 'border-sky-600 bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
                                                 : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                                        }`}
+                                            }`}
                                     >
                                         <Banknote className="w-7 h-7 stroke-[1.5]" />
                                         <span className="text-xs font-semibold">Tiền mặt</span>
@@ -393,11 +388,10 @@ export default function PaymentDrawer({
                                     <button
                                         type="button"
                                         onClick={() => setPaymentMethod('bank_transfer')}
-                                        className={`h-20 rounded-xl border-2 flex flex-col items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${
-                                            paymentMethod === 'bank_transfer'
+                                        className={`h-20 rounded-xl border-2 flex flex-col items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${paymentMethod === 'bank_transfer'
                                                 ? 'border-sky-600 bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
                                                 : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                                        }`}
+                                            }`}
                                     >
                                         <QrCode className="w-7 h-7 stroke-[1.5]" />
                                         <span className="text-xs font-semibold">Chuyển khoản</span>
@@ -428,11 +422,10 @@ export default function PaymentDrawer({
                                                     key={idx}
                                                     type="button"
                                                     onClick={() => setAmountReceived(preset)}
-                                                    className={`py-2.5 px-1 border rounded-xl text-xs font-bold transition-all text-center tabular-nums active:scale-95 ${
-                                                        amountReceived === preset
+                                                    className={`py-2.5 px-1 border rounded-xl text-xs font-bold transition-all text-center tabular-nums active:scale-95 ${amountReceived === preset
                                                             ? 'border-sky-600 bg-sky-600 text-white shadow-sm'
                                                             : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {(preset / 1000).toFixed(0)}k
                                                 </button>
@@ -472,7 +465,7 @@ export default function PaymentDrawer({
                                             />
                                         </div>
                                     )}
-                                    
+
                                     {((mode === 'reservation' && amountReceived > 0) || mode !== 'reservation') && (() => {
                                         const qrAmount = Math.max(0, Math.round(mode === 'payment' ? payable : amountReceived));
                                         const tableLabel = selectedTable ? selectedTable.table_number : '';
@@ -513,7 +506,7 @@ export default function PaymentDrawer({
                 {/* Footer Action Buttons */}
                 <div className="px-6 py-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60">
                     {mode === 'payment' && (
-                        <div className="grid grid-cols-2 gap-3">                            
+                        <div className="grid grid-cols-2 gap-3">
                             <button
                                 type="button"
                                 disabled={submitting || isSubmitting || (paymentMethod === 'cash' && amountReceived < payable)}

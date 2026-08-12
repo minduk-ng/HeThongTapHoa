@@ -111,7 +111,7 @@ Bọc từng method (giữ signature hiện tại — thêm tính key bên trong
 - `chartData(string $range, Carbon $start, Carbon $end)`: `$this->cached("dashboard_chart_{$range}_{$start->toDateString()}", 120, ...)`
 - `topProducts(Carbon $start, Carbon $end)`: `$this->cached("dashboard_top_products_{$start->toDateString()}", 300, ...)` (thay đổi chậm hơn)
 - `lowStock()`: `$this->cached("dashboard_low_stock", 300, ...)` (thay đổi chậm)
-- `liveOperations(string $range)`: **KHÔNG cache** — thao tác thời gian thực (KDS pending/completed, serving queue, tables_map); các count query đều có index → nhanh.
+- `liveOperations(string $range)`: **KHÔNG cache** — thao tác thời gian thực (KDS pending/completed, serving queue, tables_map); chỉ chạy khi `$range === 'today'`, lọc theo `order_items.created_at` (chưa index — chấp nhận vì bảng cỡ trung bình + TTL 0). Nếu `order_items` tăng volume, thêm index `created_at` hoặc cache TTL ngắn (~30s).
 - `getDateBounds`: thuần tính, không cache.
 
 **Quan trọng — bọc đúng:** để tránh lồng closure lộn xộn, refactor nhẹ: mỗi method đổi body thành `return $this->cached($key, $ttl, fn () => <logic cũ>);`. Giữ nguyên logic, chỉ thêm lớp cache.
