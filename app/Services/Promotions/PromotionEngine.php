@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 
 class PromotionEngine
 {
-    public static function resolveAll(array $codes, iterable $lines, float $subtotal, bool $lockForUpdate = false): array
+    public static function resolveAll(array $codes, iterable $lines, float $subtotal, bool $lockForUpdate = false, ?int $preferredAutoId = null): array
     {
         $lines = collect($lines)->values();
 
@@ -59,9 +59,9 @@ class PromotionEngine
             $candidates = $candidatesQuery->get()
                 ->filter(fn ($p) => self::matchesConditions($p, $lines, $subtotal) && self::quotaOk($p));
 
-            $auto = $candidates
-                ->sortByDesc(fn ($p) => self::estimateDiscount($p, $lines, $subtotal))
-                ->first();
+            $auto = $preferredAutoId !== null
+                ? $candidates->first(fn ($p) => $p->id === $preferredAutoId)
+                : $candidates->sortByDesc(fn ($p) => self::estimateDiscount($p, $lines, $subtotal))->first();
         }
 
         // 4. Gộp pool: mã trước, auto sau
