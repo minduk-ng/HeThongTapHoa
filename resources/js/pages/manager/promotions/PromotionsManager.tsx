@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { Plus, Search, SlidersHorizontal, Ticket, Pencil, Eye } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
@@ -81,6 +81,35 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
             status: statusFilter === 'all' ? undefined : statusFilter,
         }, { preserveState: true });
     };
+
+    // Lọc ngay lập tức theo search + statusFilter (không chờ server) — đồng bộ với stat/chart
+    const filteredPromotions = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        const now = Date.now();
+        // end_date từ server dạng d/m/Y
+        const toTs = (v: string | null) => {
+            if (!v) return null;
+            const [d, m, y] = v.split('/').map(Number);
+            if (!d || !m || !y) return null;
+            return new Date(y, m - 1, d, 23, 59, 59).getTime();
+        };
+        return promotions.filter((p) => {
+            if (statusFilter !== 'all') {
+                const endTs = toTs(p.end_date);
+                if (statusFilter === 'running') {
+                    if (!p.status) return false;
+                    if (endTs !== null && endTs < now) return false;
+                } else if (statusFilter === 'ended') {
+                    if (endTs === null || endTs >= now) return false;
+                }
+            }
+            if (q) {
+                const code = (p.code || `KM_${p.id}`).toLowerCase();
+                if (!code.includes(q) && !p.name.toLowerCase().includes(q)) return false;
+            }
+            return true;
+        });
+    }, [promotions, search, statusFilter]);
 
     const columns: DataTableColumn<PromotionData>[] = [
         { key: 'name', header: 'Mã / Tên chiến dịch', render: (p) => (
@@ -178,7 +207,7 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
                         <div className="p-3">
                             <DataTable<PromotionData>
                                 columns={columns}
-                                rows={promotions}
+                                rows={filteredPromotions}
                                 rowKey={(p) => p.id}
                                 emptyMessage="Chưa có chiến dịch nào"
                                 defaultSortKey="id"
