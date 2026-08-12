@@ -137,7 +137,7 @@ export default function DataTable<T>({
                                     <div
                                         className={`flex items-center ${col.align === 'right' ? 'justify-end' : col.align === 'center' ? 'justify-center' : ''}`}
                                     >
-                                        <span className="flex-1">{col.header}</span>
+                                        <span>{col.header}</span>
                                         {col.sortable && (
                                             <span className={`shrink-0 ${col.align === 'center' ? 'absolute right-2' : ''}`}>
                                                 {renderSortIcon(col.key)}
