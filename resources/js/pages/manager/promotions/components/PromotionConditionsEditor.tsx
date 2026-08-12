@@ -7,11 +7,12 @@ interface Props {
     conditions: ConditionRow[];
     onChange: (conditions: ConditionRow[]) => void;
     menuItems: { id: number; name: string }[];
+    menuCategories: { id: number; name: string }[];
 }
 
-const TYPES = [['min_order_value', 'Giá trị đơn tối thiểu (đ)'], ['min_quantity', 'Số lượng món tối thiểu'], ['specific_product', 'Món cụ thể']] as const;
+const TYPES = [['min_order_value', 'Giá trị đơn tối thiểu (đ)'], ['min_quantity', 'Số lượng món tối thiểu'], ['specific_product', 'Món cụ thể'], ['specific_category', 'Danh mục cụ thể']] as const;
 
-export default function PromotionConditionsEditor({ conditions, onChange, menuItems }: Props) {
+export default function PromotionConditionsEditor({ conditions, onChange, menuItems, menuCategories }: Props) {
     const update = (i: number, key: keyof ConditionRow, value: string) =>
         onChange(conditions.map((c, idx) => (idx === i ? { ...c, [key]: value } : c)));
     const add = () => onChange([...conditions, { cond_type: 'min_order_value', cond_value: '' }]);
@@ -30,6 +31,12 @@ export default function PromotionConditionsEditor({ conditions, onChange, menuIt
                             className="flex-1 min-w-[180px] px-3 py-2 text-xs border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700">
                             <option value="">Chọn món...</option>
                             {menuItems.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                        </select>
+                    ) : c.cond_type === 'specific_category' ? (
+                        <select value={c.cond_value} onChange={(e) => update(i, 'cond_value', e.target.value)}
+                            className="flex-1 min-w-[180px] px-3 py-2 text-xs border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700">
+                            <option value="">Chọn danh mục...</option>
+                            {menuCategories.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                         </select>
                     ) : (
                         <input type="number" value={c.cond_value} onChange={(e) => update(i, 'cond_value', e.target.value)}

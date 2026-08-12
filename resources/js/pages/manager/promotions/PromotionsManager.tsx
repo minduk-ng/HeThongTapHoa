@@ -121,7 +121,7 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
                     </>
                 }
             >
-                <div className="space-y-4">
+                <div className="space-y-4 flex-1 min-h-0 overflow-y-auto">
                     <PromotionStatsCards stats={analytics?.kpis ?? stats} />
                     {analytics && <PromotionAnalyticsCharts daily={analytics.daily_chart} types={analytics.type_breakdown} />}
                     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">

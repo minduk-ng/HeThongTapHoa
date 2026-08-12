@@ -240,7 +240,7 @@ class PromotionController extends Controller
             'exclusive' => ['sometimes', 'boolean'],
             'stackable' => ['sometimes', 'boolean'],
             'conditions' => ['nullable', 'array'],
-            'conditions.*.cond_type' => ['required', Rule::in(['min_order_value', 'min_quantity', 'specific_product'])],
+            'conditions.*.cond_type' => ['required', Rule::in(['min_order_value', 'min_quantity', 'specific_product', 'specific_category'])],
             'conditions.*.cond_value' => ['required', 'string'],
             'actions' => ['required', 'array', 'min:1'],
             'actions.*.action_type' => ['required', Rule::in(['discount_percent', 'discount_amount', 'free_product'])],

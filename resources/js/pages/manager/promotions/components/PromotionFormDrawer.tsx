@@ -17,7 +17,7 @@ interface Props {
 
 const randomCode = () => Array.from({ length: 8 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
 
-export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, menuItems }: Props) {
+export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, menuItems, menuCategories }: Props) {
     const [name, setName] = useState('');
     const [type, setType] = useState<'promotion' | 'coupon' | 'voucher'>('promotion');
     const [code, setCode] = useState('');
@@ -170,7 +170,7 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                                     <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tổng số lượt sử dụng tối đa</label>
                                     <input type="number" value={maxUsage} onChange={(e) => setMaxUsage(e.target.value)} placeholder="Không giới hạn" className={inputCls} />
                                 </div>
-                                <PromotionConditionsEditor conditions={conditions} onChange={setConditions} menuItems={menuItems} />
+                                <PromotionConditionsEditor conditions={conditions} onChange={setConditions} menuItems={menuItems} menuCategories={menuCategories} />
                             </div>
                         </section>
 

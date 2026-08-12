@@ -156,6 +156,7 @@ class PromotionEngine
                 'min_order_value' => $subtotal >= (float) $cond->cond_value,
                 'min_quantity' => $lines->sum('quantity') >= (int) $cond->cond_value,
                 'specific_product' => $lines->contains(fn ($l) => (int) ($l['menu_item_id'] ?? 0) === (int) $cond->cond_value),
+                'specific_category' => self::lineInCategory($lines, (int) $cond->cond_value),
                 default => false,
             };
             if (! $ok) {
@@ -164,6 +165,15 @@ class PromotionEngine
         }
 
         return true;
+    }
+
+    private static function lineInCategory(Collection $lines, int $categoryId): bool
+    {
+        $itemIds = MenuItem::where('category_id', $categoryId)->pluck('id')->all();
+        if (! $itemIds) {
+            return false;
+        }
+        return $lines->contains(fn ($l) => in_array((int) ($l['menu_item_id'] ?? 0), $itemIds, true));
     }
 
     private static function estimateDiscount(Promotion $p, Collection $lines, float $subtotal): float
