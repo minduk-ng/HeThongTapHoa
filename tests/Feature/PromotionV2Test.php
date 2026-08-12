@@ -242,6 +242,29 @@ test('checkout: free_product them line 0d', function () {
     expect((float) $freeLine->unit_price)->toBe(0.0);
 });
 
+test('checkout voi selected_promotion_id: ap dung dung promotion da chon', function () {
+    $admin = posAdmin();
+    $pBig = promoV2(['type' => 'promotion']);
+    addAction($pBig, 'discount_amount', 20000);
+    $pSmall = promoV2(['type' => 'promotion']);
+    addAction($pSmall, 'discount_amount', 5000);
+
+    $item = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'pending']);
+
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 95000,
+        'selected_promotion_id' => $pSmall->id,
+    ])->assertOk();
+
+    $invoice = $order->fresh()->invoice;
+    expect((float) $invoice->discount_amount)->toBe(5000.0);
+    expect((float) $invoice->total_amount)->toBe(95000.0);
+});
+
 test('race: 2 checkout dong thoi khong vuot max_usage', function () {
     $admin = posAdmin();
     $coupon = promoV2(['type' => 'coupon', 'code' => 'RACE1', 'max_usage' => 1]);

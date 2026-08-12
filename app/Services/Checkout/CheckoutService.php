@@ -32,9 +32,9 @@ class CheckoutService
      * @param  array<int,array{method:string,amount:float,reference?:?string,note?:?string}>  $paymentRows
      * @param  array<string>  $promotionCodes
      */
-    public static function run(Order $order, array $paymentRows, array $promotionCodes, ?int $userId): Invoice
+    public static function run(Order $order, array $paymentRows, array $promotionCodes, ?int $userId, ?int $selectedPromotionId = null): Invoice
     {
-        return static::runBulk(collect([$order]), $paymentRows, $promotionCodes, $userId, null);
+        return static::runBulk(collect([$order]), $paymentRows, $promotionCodes, $userId, null, $selectedPromotionId);
     }
 
     /**
@@ -44,9 +44,9 @@ class CheckoutService
      * @param  array<int,array{method:string,amount:float,reference?:?string,note?:?string}>  $paymentRows
      * @param  array<string>  $promotionCodes
      */
-    public static function runBulk(Collection $orders, array $paymentRows, array $promotionCodes, ?int $userId, ?string $tableName = null): Invoice
+    public static function runBulk(Collection $orders, array $paymentRows, array $promotionCodes, ?int $userId, ?string $tableName = null, ?int $selectedPromotionId = null): Invoice
     {
-        $invoice = DB::transaction(function () use ($orders, $paymentRows, $promotionCodes, $userId, $tableName) {
+        $invoice = DB::transaction(function () use ($orders, $paymentRows, $promotionCodes, $userId, $tableName, $selectedPromotionId) {
             $orders = $orders->values();
 
             // 1. Build lines từ tất cả orders
@@ -95,7 +95,7 @@ class CheckoutService
             $appliedPromotions = [];
 
             if (! empty($promotionCodes) || Promotion::query()->where('type', 'promotion')->where('status', true)->exists()) {
-                $resolved = PromotionEngine::resolveAll($promotionCodes, $engineLines, $subtotal, true);
+                $resolved = PromotionEngine::resolveAll($promotionCodes, $engineLines, $subtotal, true, $selectedPromotionId);
                 if ($resolved['status'] === 'rejected') {
                     throw new \Exception('Mã khuyến mãi '.($resolved['code'] ?? '').' không hợp lệ hoặc đã hết hạn.', 422);
                 }

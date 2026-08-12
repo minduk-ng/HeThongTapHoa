@@ -108,6 +108,7 @@ class PaymentController extends Controller
             'change_amount' => 'nullable|numeric|min:0',
             'promotion_code' => 'nullable|string|max:50',
             'idempotency_key' => 'nullable|string|max:100',
+            'selected_promotion_id' => ['nullable', 'integer', Rule::exists('promotions', 'id')->whereNull('deleted_at')],
         ]);
 
         if (IdempotencyGuard::isDuplicate($request, 'checkout', [
@@ -180,6 +181,7 @@ class PaymentController extends Controller
                     $codes,
                     $request->user()?->id,
                     $tableNameStr,
+                    $validated['selected_promotion_id'] ?? null,
                 );
 
                 $totalAmount = (float) $invoice->total_amount;
@@ -270,6 +272,7 @@ class PaymentController extends Controller
             'change_amount' => 'nullable|numeric|min:0',
             'promotion_code' => 'nullable|string|max:50',
             'idempotency_key' => 'nullable|string|max:100',
+            'selected_promotion_id' => ['nullable', 'integer', Rule::exists('promotions', 'id')->whereNull('deleted_at')],
         ]);
 
         if (IdempotencyGuard::isDuplicate($request, 'bulk_checkout', [
@@ -345,6 +348,7 @@ class PaymentController extends Controller
                     $codes,
                     $request->user()?->id,
                     $tableNameStr,
+                    $validated['selected_promotion_id'] ?? null,
                 );
 
                 $totalAmount = (float) $invoice->total_amount;
