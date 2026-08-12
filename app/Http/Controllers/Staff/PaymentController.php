@@ -34,7 +34,14 @@ class PaymentController extends Controller
             'items' => 'nullable|array',
             'items.*.menu_item_id' => ['required_with:items', 'integer', Rule::exists('menu_items', 'id')->whereNull('deleted_at')],
             'items.*.quantity' => 'required_with:items|integer|min:1',
-            'selected_promotion_id' => ['nullable', 'integer', Rule::exists('promotions', 'id')->whereNull('deleted_at')],
+            'selected_promotion_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
+                if ((int) $value === 0) {
+                    return; // 0 = chủ động không áp dụng auto promotion
+                }
+                if (! \App\Models\Promotion::where('id', (int) $value)->whereNull('deleted_at')->exists()) {
+                    $fail('Chương trình khuyến mãi không tồn tại.');
+                }
+            }],
         ]);
 
         $lines = collect($validated['items'] ?? [])->map(function ($it) {
@@ -148,7 +155,14 @@ class PaymentController extends Controller
             'change_amount' => 'nullable|numeric|min:0',
             'promotion_code' => 'nullable|string|max:50',
             'idempotency_key' => 'nullable|string|max:100',
-            'selected_promotion_id' => ['nullable', 'integer', Rule::exists('promotions', 'id')->whereNull('deleted_at')],
+            'selected_promotion_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
+                if ((int) $value === 0) {
+                    return; // 0 = chủ động không áp dụng auto promotion
+                }
+                if (! \App\Models\Promotion::where('id', (int) $value)->whereNull('deleted_at')->exists()) {
+                    $fail('Chương trình khuyến mãi không tồn tại.');
+                }
+            }],
         ]);
 
         if (IdempotencyGuard::isDuplicate($request, 'checkout', [
@@ -312,7 +326,14 @@ class PaymentController extends Controller
             'change_amount' => 'nullable|numeric|min:0',
             'promotion_code' => 'nullable|string|max:50',
             'idempotency_key' => 'nullable|string|max:100',
-            'selected_promotion_id' => ['nullable', 'integer', Rule::exists('promotions', 'id')->whereNull('deleted_at')],
+            'selected_promotion_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
+                if ((int) $value === 0) {
+                    return; // 0 = chủ động không áp dụng auto promotion
+                }
+                if (! \App\Models\Promotion::where('id', (int) $value)->whereNull('deleted_at')->exists()) {
+                    $fail('Chương trình khuyến mãi không tồn tại.');
+                }
+            }],
         ]);
 
         if (IdempotencyGuard::isDuplicate($request, 'bulk_checkout', [

@@ -57,7 +57,6 @@ export function usePOSCheckout(
 
     const clearPromotion = () => {
         setPromotionCode(null);
-        setSelectedAutoId(null);
         setAppliedPromotions([]);
         setTotalDiscount(0);
         setPromotionName(null);
@@ -66,7 +65,10 @@ export function usePOSCheckout(
 
     const togglePaymentDrawer = (open: boolean) => {
         setIsPaymentDrawerOpen(open);
-        if (!open) clearPromotion();
+        if (!open) {
+            clearPromotion();
+            setSelectedAutoId(null); // lần sau mở drawer sẽ tự pick lại
+        }
         if (selectedTable) {
             const groupId = selectedTable.merged_into_table_id || selectedTable.id;
             const linkedTableIds = tables
@@ -330,7 +332,7 @@ export function usePOSCheckout(
             amount_received: amountReceived,
             change_amount: changeAmount,
             ...(promotionCode ? { promotion_code: promotionCode } : {}),
-            ...(selectedAutoId ? { selected_promotion_id: selectedAutoId } : {}),
+            ...(selectedAutoId !== null ? { selected_promotion_id: selectedAutoId } : {}),
             idempotency_key: idempotencyKey,
         };
 
@@ -445,7 +447,7 @@ export function usePOSCheckout(
                 amount_received: amountReceived,
                 change_amount: changeAmount,
                 ...(promotionCode ? { promotion_code: promotionCode } : {}),
-                ...(selectedAutoId ? { selected_promotion_id: selectedAutoId } : {}),
+                ...(selectedAutoId !== null ? { selected_promotion_id: selectedAutoId } : {}),
                 idempotency_key: idempotencyKey,
             }),
         })

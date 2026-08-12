@@ -43,10 +43,13 @@ class PromotionEngine
             }
         }
 
-        // 3. PROMOTION tự động: quét, lọc thoả điều kiện, chọn tốt nhất
+        // 3. PROMOTION tự động: quét, lọc thoả điều kiện, chọn theo preferred / tốt nhất.
+        //    preferredAutoId === 0: chủ động KHÔNG áp dụng auto promotion.
+        //    preferredAutoId === null: tự chọn tốt nhất.
+        //    preferredAutoId > 0: chọn đúng promotion đó.
         $auto = null;
         $hasNonStackable = collect($codePromotions)->contains(fn ($p) => ! $p->stackable);
-        if (! $hasNonStackable) {
+        if ($preferredAutoId !== 0 && ! $hasNonStackable) {
             $candidatesQuery = Promotion::query()
                 ->where('type', 'promotion')
                 ->where('status', true)

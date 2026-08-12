@@ -98,3 +98,14 @@ test('resolveAll voi preferredAutoId khong thoa dieu kien: khong ap auto, khong 
     expect($r['promotions'])->toBeEmpty();
     expect($r['total_discount'])->toBe(0.0);
 });
+
+test('resolveAll voi preferredAutoId = 0: chủ động không áp dụng auto promotion dù có promotion khop', function () {
+    $p = promoV2();
+    addAction($p, 'discount_amount', 20000);
+
+    // Có auto promotion khớp nhưng preferredAutoId = 0 → bỏ qua auto
+    $r = PromotionEngine::resolveAll([], engineLines(100000), 100000, false, 0);
+    expect($r['status'])->toBe('ok');
+    expect($r['promotions'])->toBeEmpty();
+    expect($r['total_discount'])->toBe(0.0);
+});

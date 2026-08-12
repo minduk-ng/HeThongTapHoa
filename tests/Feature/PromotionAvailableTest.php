@@ -49,3 +49,19 @@ test('validate-promotion nhan selected_promotion_id: tra discount dung promotion
 
     expect($res->json('discount_amount'))->toEqual(5000.0);
 });
+
+test('validate-promotion selected_promotion_id = 0: khong ap auto promotion, discount 0', function () {
+    $p = promoV2(['type' => 'promotion']);
+    addAction($p, 'discount_amount', 20000);
+    $item = posMenuItem(['price' => 100000]);
+
+    $res = $this->actingAs(posStaff())->postJson('/staff/pos/validate-promotion', [
+        'code' => null,
+        'subtotal' => 100000,
+        'items' => [['menu_item_id' => $item->id, 'quantity' => 1]],
+        'selected_promotion_id' => 0,
+    ])->assertOk();
+
+    expect($res->json('discount_amount'))->toEqual(0);
+    expect($res->json('promotions'))->toBeEmpty();
+});

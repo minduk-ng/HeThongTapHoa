@@ -248,11 +248,11 @@ export default function PaymentDrawer({
                                         </label>
                                         <div className="relative">
                                             <select
-                                                value={selectedAutoId ?? ''}
-                                                onChange={(e) => onSelectAuto(e.target.value ? Number(e.target.value) : null)}
+                                                value={selectedAutoId ?? 0}
+                                                onChange={(e) => onSelectAuto(e.target.value ? Number(e.target.value) : 0)}
                                                 className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm appearance-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none dark:border-zinc-700 dark:bg-zinc-800"
                                             >
-                                                <option value="">Không áp dụng</option>
+                                                <option value={0}>Không áp dụng</option>
                                                 {promotions.map((p) => (
                                                     <option key={p.id} value={p.id}>
                                                         {p.name} {p.estimated_discount > 0 ? `(−${p.estimated_discount.toLocaleString('vi-VN')}đ)` : ''}
