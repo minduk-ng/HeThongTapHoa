@@ -12,6 +12,7 @@ use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Promotion;
 use App\Models\Table;
 use App\Services\IdempotencyGuard;
 use App\Services\OrderActivityLogger;
@@ -35,10 +36,13 @@ class POSController extends Controller
         $categories = $this->cachedPayload($isLocal, 'pos_products_and_categories', 'pos_categories', 86400, fn () => $this->loadCategoriesPayload());
         $products = $this->cachedPayload($isLocal, 'pos_products_and_categories', 'pos_products', 86400, fn () => $this->loadProductsPayload());
 
+        $promotions = $this->cachedPayload($isLocal, 'pos_promotions', 'pos_promotions_list', 300, fn () => $this->loadPromotionsPayload());
+
         return Inertia::render('staff/pos/POSManager', [
             'tables' => $tables,
             'categories' => $categories,
             'products' => $products,
+            'promotions' => $promotions,
         ]);
     }
 
@@ -136,6 +140,17 @@ class POSController extends Controller
         });
 
         return $prods->toArray();
+    }
+
+    private function loadPromotionsPayload(): array
+    {
+        return Promotion::with(['conditions', 'actions'])
+            ->where('type', 'promotion')
+            ->where('status', true)
+            ->where(fn ($q) => $q->whereNull('start_date')->orWhere('start_date', '<=', now()))
+            ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()))
+            ->get()
+            ->toArray();
     }
 
     private function cachedPayload(bool $isLocal, string $tag, string $key, int $ttl, callable $loader): mixed

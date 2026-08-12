@@ -22,6 +22,7 @@ use App\Services\Promotions\PromotionEngine;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class CheckoutService
@@ -359,6 +360,13 @@ class CheckoutService
 
         // Dashboard KPI tiền thay đổi sau mỗi checkout → flush cache dashboard
         Cache::tags(['dashboard'])->flush();
+
+        // used_count thay đổi sau checkout → flush cache promotions hiển thị POS
+        try {
+            Cache::tags(['pos_promotions'])->flush();
+        } catch (\Throwable $e) {
+            Log::warning('pos_promotions cache flush failed: '.$e->getMessage());
+        }
 
         return $invoice;
     }

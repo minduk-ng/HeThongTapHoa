@@ -10,8 +10,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -173,6 +175,8 @@ class PromotionController extends Controller
             }
         });
 
+        $this->flushPosPromotionsCache();
+
         return back()->with('success', 'Thêm khuyến mãi thành công!');
     }
 
@@ -208,6 +212,8 @@ class PromotionController extends Controller
             }
         });
 
+        $this->flushPosPromotionsCache();
+
         return back()->with('success', 'Cập nhật khuyến mãi thành công!');
     }
 
@@ -220,6 +226,8 @@ class PromotionController extends Controller
         }
 
         $promotion->delete();
+
+        $this->flushPosPromotionsCache();
 
         return back()->with('success', 'Xóa khuyến mãi thành công!');
     }
@@ -247,5 +255,14 @@ class PromotionController extends Controller
             'actions.*.action_value' => ['required', 'numeric', 'min:0'],
             'actions.*.max_discount_amount' => ['nullable', 'numeric', 'min:0'],
         ];
+    }
+
+    private function flushPosPromotionsCache(): void
+    {
+        try {
+            Cache::tags(['pos_promotions'])->flush();
+        } catch (\Throwable $e) {
+            Log::warning('pos_promotions cache flush failed: '.$e->getMessage());
+        }
     }
 }
