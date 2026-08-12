@@ -285,27 +285,45 @@ class CheckoutService
                 }
             }
 
-            // 7c. Upsert daily_promotion_stats (realtime)
+            // 7c. Upsert daily_promotion_stats (realtime) — revenue phân bổ theo tỷ trọng discount
             $invoiceTotal = (float) $invoice->total_amount;
-            foreach ($appliedPromotions as $pr) {
+            $totalDiscountThisInvoice = (float) collect($appliedPromotions)->sum('amount');
+            $statDate = now()->toDateString();
+            $promoCount = count($appliedPromotions);
+            $assignedRevenue = 0.0;
+            foreach ($appliedPromotions as $idx => $pr) {
                 $promo = $pr['promotion'];
-                $statDate = now()->toDateString();
+                $promoAmount = (float) $pr['amount'];
+                if ($idx === $promoCount - 1) {
+                    // Đơn cuối nhận phần dư: tổng revenue = đúng invoiceTotal 1 lần
+                    $revenueShare = round(max(0.0, $invoiceTotal - $assignedRevenue), 2);
+                } elseif ($totalDiscountThisInvoice > 0) {
+                    $revenueShare = round($invoiceTotal * $promoAmount / $totalDiscountThisInvoice, 2);
+                    $assignedRevenue += $revenueShare;
+                } elseif ($idx === 0) {
+                    // Tổng discount = 0 → promotion đầu tiên nhận full, còn lại 0
+                    $revenueShare = round($invoiceTotal, 2);
+                    $assignedRevenue += $revenueShare;
+                } else {
+                    $revenueShare = 0.0;
+                }
+
                 $attrs = ['promotion_id' => $promo->id, 'stat_date' => $statDate];
                 $row = DB::table('daily_promotion_stats')->where($attrs)->first();
                 if ($row) {
                     DB::table('daily_promotion_stats')->where($attrs)->update([
                         'order_count' => DB::raw('order_count + 1'),
                         'unique_orders' => DB::raw('unique_orders + 1'),
-                        'revenue' => DB::raw('revenue + '.round($invoiceTotal, 2)),
-                        'discount_total' => DB::raw('discount_total + '.round((float) $pr['amount'], 2)),
+                        'revenue' => DB::raw('revenue + '.$revenueShare),
+                        'discount_total' => DB::raw('discount_total + '.round($promoAmount, 2)),
                         'updated_at' => now(),
                     ]);
                 } else {
                     DB::table('daily_promotion_stats')->insert(array_merge($attrs, [
                         'order_count' => 1,
                         'unique_orders' => 1,
-                        'revenue' => round($invoiceTotal, 2),
-                        'discount_total' => round((float) $pr['amount'], 2),
+                        'revenue' => $revenueShare,
+                        'discount_total' => round($promoAmount, 2),
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]));

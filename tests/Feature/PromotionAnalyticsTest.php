@@ -4,6 +4,7 @@ use App\Models\DailyPromotionStat;
 use App\Models\Invoice;
 use App\Models\OrderPromotion;
 use App\Models\Promotion;
+use Illuminate\Support\Facades\DB;
 
 function promoStat(array $attrs = []): Promotion
 {
@@ -115,4 +116,33 @@ test('command rebuild bulk: revenue tinh 1 lan moi invoice (khong nhan N), order
     expect((float) $stat->revenue)->toBe(90000.0); // invoice tính 1 lần, không nhân N (2 order → 180000 là sai)
     expect((int) $stat->order_count)->toBe(1);     // 1 invoice distinct
     expect((int) $stat->unique_orders)->toBe(2);   // 2 order distinct
+});
+
+test('revenue daily_promotion_stats khong double-count khi 1 hoa don dung nhieu promotion', function () {
+    $admin = posAdmin();
+    $auto = promoV2(['type' => 'promotion']);
+    addAction($auto, 'discount_percent', 10);          // giảm 10%
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'DC'.substr(uniqid(), -5)]);
+    addAction($coupon, 'discount_amount', 5000);
+
+    $item = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'pending']);
+
+    // checkout với mã coupon; auto 10% cũng áp (tổng discount = 10000 + 5000 = 15000)
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 85000,
+        'promotion_code' => $coupon->code,
+    ])->assertOk();
+
+    // Mỗi promotion có 1 row stats; tổng revenue các row = 1 lần invoiceTotal (85000)
+    $rows = DB::table('daily_promotion_stats')->where('stat_date', now()->toDateString())->get();
+    expect(round((float) $rows->sum('revenue'), 2))->toBe(85000.0);
+    // Phân bổ tỷ trọng: auto(10k) nhận 85000×10000/15000, coupon(5k) nhận 85000×5000/15000
+    $autoRow = $rows->firstWhere('promotion_id', $auto->id);
+    $couponRow = $rows->firstWhere('promotion_id', $coupon->id);
+    expect(round((float) $autoRow->revenue, 2))->toBe(round(85000 * 10000 / 15000, 2));
+    expect(round((float) $couponRow->revenue, 2))->toBe(round(85000 * 5000 / 15000, 2));
 });
