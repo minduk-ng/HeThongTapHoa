@@ -57,6 +57,7 @@ export function usePOSCheckout(
 
     const clearPromotion = () => {
         setPromotionCode(null);
+        setSelectedAutoId(null);
         setAppliedPromotions([]);
         setTotalDiscount(0);
         setPromotionName(null);
@@ -259,7 +260,12 @@ export function usePOSCheckout(
             const response = await fetch('/staff/pos/validate-promotion', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-                body: JSON.stringify({ subtotal, items, selected_promotion_id: selectedAutoId }),
+                body: JSON.stringify({
+                    subtotal,
+                    items,
+                    selected_promotion_id: selectedAutoId,
+                    ...(promotionCode ? { promotion_code: promotionCode } : {}),
+                }),
             });
             const data = await response.json().catch(() => ({}));
             if (response.ok && data.ok) syncApplied(data);
