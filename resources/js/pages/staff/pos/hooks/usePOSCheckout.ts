@@ -419,6 +419,10 @@ export function usePOSCheckout(
         paymentMethod: 'cash' | 'bank_transfer',
         amountReceived: number,
         changeAmount: number,
+        shouldPrint: boolean,
+        snapshotCart: CartItem[],
+        snapshotTable: POSTableData | null,
+        depositTotal: number,
         onSuccess: () => void,
     ) => {
         if (!selectedTable || allConfirmedOrders.length === 0) return;
@@ -451,6 +455,20 @@ export function usePOSCheckout(
                     togglePaymentDrawer(false);
                     if (data.deposit_refund > 0) {
                         alert(`Hoàn khách ${data.deposit_refund.toLocaleString('vi-VN')} đ từ tiền cọc thừa.`);
+                    }
+                    if (shouldPrint) {
+                        setReceiptModal({
+                            isOpen: true,
+                            paymentMethod,
+                            amountReceived,
+                            changeAmount,
+                            cartItems: snapshotCart,
+                            table: snapshotTable,
+                            invoiceCode: 'INV-' + dateCode(),
+                            depositAmount: depositTotal,
+                            depositRefund: data.deposit_refund || 0,
+                            promotionDiscount: promotionDiscount || 0,
+                        });
                     }
                     onSuccess();
                     router.reload({ only: ['tables'] });

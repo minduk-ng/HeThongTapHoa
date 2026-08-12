@@ -435,6 +435,10 @@ export default function POSManager({ tables, categories, products, promotions }:
                                 paymentMethod,
                                 amountReceived,
                                 changeAmount,
+                                shouldPrint,
+                                bulkCartItems,
+                                selectedTable,
+                                bulkDepositTotal,
                                 () => clearTableCart(selectedTable.id),
                             );
                         } else {
