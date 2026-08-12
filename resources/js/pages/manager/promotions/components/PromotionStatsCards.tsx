@@ -2,7 +2,7 @@ import React from 'react';
 import { TrendingUp, Activity, BadgePercent, TrendingDown } from 'lucide-react';
 
 interface Stats {
-    total_campaigns: number;
+    total_campaigns?: number;
     total_orders: number;
     total_revenue: number;
     total_discount: number;

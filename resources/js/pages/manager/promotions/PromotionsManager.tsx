@@ -1,10 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { Plus, Search, SlidersHorizontal, Ticket } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import ManagerPageLayout from '../../../components/ManagerPageLayout';
 import PromotionStatsCards from './components/PromotionStatsCards';
+import PromotionAnalyticsCharts from './components/PromotionAnalyticsCharts';
 import PromotionFormDrawer from './components/PromotionFormDrawer';
+
+interface AnalyticsKpis {
+    total_revenue: number;
+    total_orders: number;
+    total_discount: number;
+    avg_discount: number;
+    roi: number;
+}
+
+interface AnalyticsData {
+    kpis: AnalyticsKpis;
+    daily_chart: { date: string; usage_count: number; revenue: number }[];
+    type_breakdown: { type: string; count: number; percent: number }[];
+}
 
 export interface PromotionData {
     id: number;
@@ -42,6 +57,14 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
     const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editing, setEditing] = useState<PromotionData | null>(null);
+    const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+
+    useEffect(() => {
+        fetch('/manager/promotions/analytics', { headers: { Accept: 'application/json' } })
+            .then((r) => r.json())
+            .then((data) => setAnalytics(data))
+            .catch(() => {});
+    }, []);
 
     const applyFilters = () => {
         router.get('/manager/promotions', {
@@ -99,7 +122,8 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
                 }
             >
                 <div className="space-y-4">
-                    <PromotionStatsCards stats={stats} />
+                    <PromotionStatsCards stats={analytics?.kpis ?? stats} />
+                    {analytics && <PromotionAnalyticsCharts daily={analytics.daily_chart} types={analytics.type_breakdown} />}
                     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
                         <div className="p-5 border-b border-zinc-100 dark:border-zinc-800">
                             <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Campaign Performance</h3>
