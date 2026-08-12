@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\Controller;
+use App\Models\InvoicePromotion;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Promotion;
@@ -61,6 +62,21 @@ class PromotionController extends Controller
                 'max_discount_amount' => $a->max_discount_amount,
             ])->values(),
         ]);
+
+        $revenueAgg = DB::table('daily_promotion_stats')
+            ->select('promotion_id',
+                DB::raw('SUM(revenue) as revenue'),
+                DB::raw('SUM(discount_total) as discount_total'))
+            ->groupBy('promotion_id')
+            ->get()
+            ->keyBy('promotion_id');
+
+        $promotions = $promotions->map(function ($p) use ($revenueAgg) {
+            $agg = $revenueAgg->get($p['id']);
+            $p['revenue'] = $agg ? (float) $agg->revenue : 0.0;
+            $p['discount_total'] = $agg ? (float) $agg->discount_total : 0.0;
+            return $p;
+        });
 
         $stats = [
             'total_campaigns' => Promotion::count(),
@@ -144,6 +160,19 @@ class PromotionController extends Controller
             'type_breakdown' => $typeBreakdown,
             'campaigns' => $campaigns,
         ]);
+    }
+
+    public function invoices(Promotion $promotion): JsonResponse
+    {
+        $invoices = InvoicePromotion::query()
+            ->where('promotion_id', $promotion->id)
+            ->join('invoices', 'invoices.id', '=', 'invoice_promotions.invoice_id')
+            ->select('invoices.id', 'invoices.invoice_code', 'invoices.issued_at', 'invoices.table_name',
+                'invoices.subtotal_amount', 'invoices.discount_amount', 'invoices.total_amount', 'invoices.payment_method')
+            ->orderBy('invoices.issued_at', 'desc')
+            ->get();
+
+        return response()->json(['invoices' => $invoices]);
     }
 
     public function store(Request $request): RedirectResponse
