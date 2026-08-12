@@ -129,13 +129,15 @@ class PromotionController extends Controller
         });
 
         $kpis = [
-            'total_revenue' => (float) $campaigns->sum('revenue'),
-            'total_orders' => (int) $campaigns->sum('order_count'),
+            // Doanh thu / lượt dùng = tổng theo HOÁ ĐƠN DISTINCT có dùng ít nhất 1 KM
+            // (1 hoá đơn áp dụng nhiều promotion/coupon/voucher vẫn chỉ tính 1 lần)
+            'total_revenue' => $this->distinctInvoiceRevenue($from, $to),
+            'total_orders' => $this->distinctInvoiceCount($from, $to),
             'total_discount' => (float) $campaigns->sum('discount_total'),
             'avg_discount' => $campaigns->sum('order_count') > 0
                 ? round($campaigns->sum('discount_total') / $campaigns->sum('order_count'), 2) : 0,
             'roi' => (float) $campaigns->sum('discount_total') > 0
-                ? round(($campaigns->sum('revenue') - $campaigns->sum('discount_total')) / $campaigns->sum('discount_total'), 2) : 0,
+                ? round(($this->distinctInvoiceRevenue($from, $to) - $campaigns->sum('discount_total')) / $campaigns->sum('discount_total'), 2) : 0,
         ];
 
         $dailyQuery = DB::table('daily_promotion_stats');
@@ -173,6 +175,44 @@ class PromotionController extends Controller
             ->get();
 
         return response()->json(['invoices' => $invoices]);
+    }
+
+    /**
+     * Tổng giá trị các HOÁ ĐƠN distinct có dùng ít nhất 1 promotion/coupon/voucher.
+     * 1 hoá đơn áp dụng nhiều KM vẫn chỉ tính 1 lần (invoice_promotions distinct theo invoice_id).
+     */
+    private function distinctInvoiceRevenue(?string $from, ?string $to): float
+    {
+        $ids = $this->distinctInvoiceIds($from, $to);
+        if ($ids->isEmpty()) {
+            return 0.0;
+        }
+
+        return (float) DB::table('invoices')->whereIn('id', $ids)->sum('total_amount');
+    }
+
+    /**
+     * Số HOÁ ĐƠN distinct có dùng ít nhất 1 promotion/coupon/voucher.
+     */
+    private function distinctInvoiceCount(?string $from, ?string $to): int
+    {
+        return $this->distinctInvoiceIds($from, $to)->count();
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    private function distinctInvoiceIds(?string $from, ?string $to)
+    {
+        $query = DB::table('invoice_promotions')->whereNotNull('promotion_id');
+        if ($from) {
+            $query->whereDate('invoice_promotions.created_at', '>=', $from);
+        }
+        if ($to) {
+            $query->whereDate('invoice_promotions.created_at', '<=', $to);
+        }
+
+        return $query->distinct()->pluck('invoice_id');
     }
 
     public function store(Request $request): RedirectResponse

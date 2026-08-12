@@ -145,4 +145,10 @@ test('revenue daily_promotion_stats khong double-count khi 1 hoa don dung nhieu 
     $couponRow = $rows->firstWhere('promotion_id', $coupon->id);
     expect(round((float) $autoRow->revenue, 2))->toBe(round(85000 * 10000 / 15000, 2));
     expect(round((float) $couponRow->revenue, 2))->toBe(round(85000 * 5000 / 15000, 2));
+
+    // KPI total_revenue tính theo HOÁ ĐƠN distinct: 1 invoice dùng 2 KM → vẫn chỉ 1 lần (85000)
+    $this->actingAs($admin)->getJson('/manager/promotions/analytics')
+        ->assertOk()
+        ->assertJsonPath('kpis.total_revenue', 85000)
+        ->assertJsonPath('kpis.total_orders', 1);
 });
