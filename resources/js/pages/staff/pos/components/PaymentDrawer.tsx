@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Banknote, QrCode, X, Printer, CalendarClock, Tag, Ticket } from 'lucide-react';
-import { POSTableData, CartItem, ReservationDraft } from '../types/pos.types';
+import { POSTableData, CartItem, ReservationDraft, PromotionCandidate } from '../types/pos.types';
 import { useSubmitGuard } from '../../../../hooks/useSubmitGuard';
 
 interface PaymentDrawerProps {
@@ -12,8 +12,11 @@ interface PaymentDrawerProps {
     orderCodes?: string[];
     depositTotal?: number;
     reservationDraft?: ReservationDraft | null;
-    promotionDiscount?: number;
-    promotionName?: string | null;
+    promotions: PromotionCandidate[];
+    selectedAutoId: number | null;
+    onSelectAuto: (id: number | null) => void;
+    appliedPromotions: { id: number; name: string; code: string | null; discount_amount: number }[];
+    totalDiscount: number;
     onApplyPromotion?: (code: string, subtotal: number, items: { menu_item_id: number; quantity: number; unit_price: number }[]) => Promise<{ ok: boolean; discount_amount?: number; total?: number; error?: string }>;
     onClearPromotion?: () => void;
     onConfirmPayment: (paymentMethod: 'cash' | 'bank_transfer', amountReceived: number, changeAmount: number, shouldPrint: boolean) => void;
@@ -31,8 +34,11 @@ export default function PaymentDrawer({
     orderCodes = [],
     depositTotal = 0,
     reservationDraft,
-    promotionDiscount = 0,
-    promotionName = null,
+    promotions,
+    selectedAutoId,
+    onSelectAuto,
+    appliedPromotions,
+    totalDiscount,
     onApplyPromotion,
     onClearPromotion,
     onConfirmPayment,
@@ -63,7 +69,7 @@ export default function PaymentDrawer({
     }, 0);
     const totalAmount = subtotal;
 
-    const discountedTotal = Math.max(0, totalAmount - promotionDiscount);
+    const discountedTotal = Math.max(0, totalAmount - totalDiscount);
     const payable = Math.max(0, discountedTotal - depositTotal);
     const depositRefund = Math.max(0, depositTotal - discountedTotal);
 
@@ -99,7 +105,7 @@ export default function PaymentDrawer({
 
     const cashPresets = mode === 'payment' ? calculatePresets(payable) : [100000, 200000, 500000, totalAmount];
     const changeAmount = mode === 'payment' ? Math.max(0, amountReceived - payable) + depositRefund : 0;
-    const promotionApplied = promotionName != null && promotionName !== '';
+    const promotionApplied = appliedPromotions.some((ap) => ap.code !== null);
 
     const handlePromotion = async () => {
         const code = promotionInput.trim();
@@ -252,23 +258,34 @@ export default function PaymentDrawer({
                             )}
 
                             {mode === 'payment' && onApplyPromotion && (
-                                <div className="space-y-2 rounded-2xl border border-zinc-200 p-3 dark:border-zinc-800">
+                                <div className="space-y-3 rounded-2xl border border-zinc-200 p-3 dark:border-zinc-800">
                                     <div className="flex items-center gap-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                                         <Ticket className="h-4 w-4 text-sky-600 stroke-[1.5]" />
-                                        Mã khuyến mãi
+                                        Khuyến mãi tự động (Promotion)
+                                    </div>
+                                    <select
+                                        value={selectedAutoId ?? ''}
+                                        onChange={(e) => onSelectAuto(e.target.value ? Number(e.target.value) : null)}
+                                        className="w-full rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                                    >
+                                        <option value="">Chọn promotion...</option>
+                                        {promotions.map((p) => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.name} {p.estimated_discount > 0 ? `(−${p.estimated_discount.toLocaleString('vi-VN')}đ)` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                    <div className="flex items-center gap-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                        <Tag className="h-4 w-4 text-sky-600 stroke-[1.5]" />
+                                        Mã coupon / voucher
                                     </div>
                                     <div className="flex gap-2">
-                                        <input
-                                            value={promotionInput}
-                                            onChange={(event) => setPromotionInput(event.target.value.toUpperCase())}
-                                            disabled={promotionApplied}
+                                        <input value={promotionInput} onChange={(e) => setPromotionInput(e.target.value.toUpperCase())} disabled={promotionApplied}
                                             placeholder="Nhập mã…"
-                                            className="min-w-0 flex-1 rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-semibold uppercase outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800"
-                                        />
+                                            className="min-w-0 flex-1 rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-semibold uppercase outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800" />
                                         {promotionApplied ? (
-                                            <button type="button" onClick={() => { onClearPromotion?.(); setPromotionInput(''); setPromotionError(null); }} className="rounded-xl border border-zinc-300 px-3 py-2 text-xs font-semibold dark:border-zinc-700">
-                                                Hủy mã
-                                            </button>
+                                            <button type="button" onClick={() => { onClearPromotion?.(); setPromotionInput(''); setPromotionError(null); }} className="rounded-xl border border-zinc-300 px-3 py-2 text-xs font-semibold dark:border-zinc-700">Hủy mã</button>
                                         ) : (
                                             <button type="button" onClick={handlePromotion} disabled={promotionLoading || promotionInput.trim() === ''} className="rounded-xl bg-sky-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
                                                 {promotionLoading ? 'Đang áp…' : 'Áp dụng'}
@@ -276,6 +293,17 @@ export default function PaymentDrawer({
                                         )}
                                     </div>
                                     {promotionError && <p className="text-xs text-rose-500">{promotionError}</p>}
+
+                                    {appliedPromotions.length > 0 && (
+                                        <div className="space-y-1 border-t border-zinc-200 pt-2 dark:border-zinc-800">
+                                            {appliedPromotions.map((ap, i) => (
+                                                <div key={i} className="flex justify-between text-xs text-rose-600 dark:text-rose-400">
+                                                    <span>{ap.name}</span>
+                                                    <span className="tabular-nums">−{ap.discount_amount.toLocaleString('vi-VN')} đ</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -289,10 +317,10 @@ export default function PaymentDrawer({
                                         <span>Trong đó VAT:</span>
                                         <span className="font-semibold tabular-nums">{vatInTotal.toLocaleString('vi-VN')} đ</span>
                                     </div>
-                                    {mode === 'payment' && promotionApplied && (
+                                    {mode === 'payment' && totalDiscount > 0 && (
                                         <div className="flex justify-between border-t border-sky-200/60 pt-2 text-xs font-semibold text-rose-600 dark:border-sky-800/60 dark:text-rose-400">
-                                            <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5 stroke-[1.5]" />{promotionName}:</span>
-                                            <span className="tabular-nums">−{promotionDiscount.toLocaleString('vi-VN')} đ</span>
+                                            <span>Tổng giảm khuyến mãi:</span>
+                                            <span className="tabular-nums">−{totalDiscount.toLocaleString('vi-VN')} đ</span>
                                         </div>
                                     )}
                                     {mode === 'payment' && depositTotal > 0 && (

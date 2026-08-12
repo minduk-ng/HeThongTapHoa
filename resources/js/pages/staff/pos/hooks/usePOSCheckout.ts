@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { router, usePage } from '@inertiajs/react';
-import { POSTableData, CartItem, ReceiptModalState } from '../types/pos.types';
+import { POSTableData, CartItem, ReceiptModalState, PromotionCandidate } from '../types/pos.types';
 import { usePOSCheckoutLock } from './usePOSCheckoutLock';
 
 function getCsrfTokenFromCookie(): string {
@@ -22,12 +22,17 @@ function getCsrfTokenFromCookie(): string {
 
 export function usePOSCheckout(
     selectedTable: POSTableData | null = null,
-    tables: POSTableData[] = []
+    tables: POSTableData[] = [],
+    promotions: PromotionCandidate[] = []
 ) {
     const { auth } = usePage<any>().props;
     const [processingOrders, setProcessingOrders] = useState<Record<number, boolean>>({});
     const [kitchenSubmitting, setKitchenSubmitting] = useState(false);
     const [isPaymentDrawerOpen, setIsPaymentDrawerOpen] = useState(false);
+    const [availablePromotions, setAvailablePromotions] = useState<PromotionCandidate[]>(promotions);
+    const [selectedAutoId, setSelectedAutoId] = useState<number | null>(null);
+    const [appliedPromotions, setAppliedPromotions] = useState<{ id: number; name: string; code: string | null; discount_amount: number }[]>([]);
+    const [totalDiscount, setTotalDiscount] = useState(0);
     const [promotionCode, setPromotionCode] = useState<string | null>(null);
     const [promotionDiscount, setPromotionDiscount] = useState(0);
     const [promotionName, setPromotionName] = useState<string | null>(null);
@@ -52,8 +57,10 @@ export function usePOSCheckout(
 
     const clearPromotion = () => {
         setPromotionCode(null);
-        setPromotionDiscount(0);
+        setAppliedPromotions([]);
+        setTotalDiscount(0);
         setPromotionName(null);
+        setPromotionDiscount(0);
     };
 
     const togglePaymentDrawer = (open: boolean) => {
@@ -85,6 +92,15 @@ export function usePOSCheckout(
             }
         };
     }, []);
+
+    useEffect(() => {
+        setAvailablePromotions(promotions);
+        if (promotions.length > 0 && selectedAutoId === null) {
+            // mặc định chọn promotion ước tính cao nhất (payload cache không có estimated_discount → giữ đầu list)
+            setSelectedAutoId(promotions.reduce((best, p) => (p.estimated_discount > (best?.estimated_discount ?? -1) ? p : best), promotions[0])?.id ?? null);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [promotions]);
 
     const dateCode = () => {
         const d = new Date();
@@ -181,6 +197,20 @@ export function usePOSCheckout(
         });
     };
 
+    const syncApplied = (data: any) => {
+        setTotalDiscount(Number(data.discount_amount) || 0);
+        setPromotionDiscount(Number(data.discount_amount) || 0); // giữ cho ReceiptPrintModal
+        const list = Array.isArray(data.promotions) && data.promotions.length
+            ? data.promotions.map((x: any) => ({ id: x.id, name: x.name, code: x.code ?? null, discount_amount: Number(x.discount_amount) || 0 }))
+            : [];
+        setAppliedPromotions(list);
+        setPromotionName(data.promotion?.name ?? null); // giữ cho ReceiptPrintModal
+        if (!list.some((x: any) => x.code !== null)) {
+            // không còn coupon mã (toàn auto/empty) → xoá promotion_code để checkout không tự ý áp lại mã cũ
+            setPromotionCode(null);
+        }
+    };
+
     const applyPromotion = async (
         code: string,
         subtotal: number,
@@ -203,8 +233,7 @@ export function usePOSCheckout(
 
             if (response.ok && data.ok) {
                 setPromotionCode(code);
-                setPromotionDiscount(data.discount_amount || 0);
-                setPromotionName(data.promotion?.name || null);
+                syncApplied(data);
                 return {
                     ok: true,
                     discount_amount: data.discount_amount,
@@ -219,6 +248,22 @@ export function usePOSCheckout(
         } catch {
             return { ok: false, error: 'Không thể kết nối máy chủ.' };
         }
+    };
+
+    const applyAutoPromotions = async (
+        subtotal: number,
+        items: { menu_item_id: number; quantity: number; unit_price: number }[] = []
+    ) => {
+        const csrfToken = getCsrfTokenFromCookie();
+        try {
+            const response = await fetch('/staff/pos/validate-promotion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ subtotal, items, selected_promotion_id: selectedAutoId }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.ok && data.ok) syncApplied(data);
+        } catch { /* bỏ qua */ }
     };
 
     const handleConfirmPayment = (
@@ -279,6 +324,7 @@ export function usePOSCheckout(
             amount_received: amountReceived,
             change_amount: changeAmount,
             ...(promotionCode ? { promotion_code: promotionCode } : {}),
+            ...(selectedAutoId ? { selected_promotion_id: selectedAutoId } : {}),
             idempotency_key: idempotencyKey,
         };
 
@@ -389,6 +435,7 @@ export function usePOSCheckout(
                 amount_received: amountReceived,
                 change_amount: changeAmount,
                 ...(promotionCode ? { promotion_code: promotionCode } : {}),
+                ...(selectedAutoId ? { selected_promotion_id: selectedAutoId } : {}),
                 idempotency_key: idempotencyKey,
             }),
         })
@@ -414,6 +461,12 @@ export function usePOSCheckout(
         submitting,
         isPaymentDrawerOpen,
         setIsPaymentDrawerOpen: togglePaymentDrawer,
+        availablePromotions,
+        selectedAutoId,
+        setSelectedAutoId,
+        appliedPromotions,
+        totalDiscount,
+        applyAutoPromotions,
         promotionCode,
         promotionName,
         promotionDiscount,
