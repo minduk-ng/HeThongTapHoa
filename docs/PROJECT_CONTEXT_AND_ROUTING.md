@@ -47,8 +47,10 @@
 | `/reservation/cancel` | POST | Hủy đặt bàn; nếu có cọc đang giữ bắt buộc chọn `deposit_resolution: refund\|forfeit` (422 nếu thiếu) |
 | `/deposit` | POST | Thu cọc cho đơn đã gửi bếp (payload `method: cash\|transfer`) |
 | `/send-to-kitchen` | POST | Gửi món mới + giảm món (`reduced_items`) xuống Bếp trong 1 transaction |
-| `/checkout` | POST | Thanh toán 1 đơn (tự động cấn trừ cọc; trả `deposit_refund` nếu cọc > tổng hoá đơn) |
-| `/bulk-checkout` | POST | Thanh toán gộp toàn bộ đơn trên bàn/nhóm bàn gộp |
+| `/checkout` | POST | Thanh toán 1 đơn (tự động cấn trừ cọc; trả `deposit_refund` nếu cọc > tổng hoá đơn) — hỗ trợ `selected_promotion_id` (chọn auto promotion cụ thể) |
+| `/bulk-checkout` | POST | Thanh toán gộp toàn bộ đơn trên bàn/nhóm bàn gộp — hỗ trợ `selected_promotion_id` |
+| `/validate-promotion` | POST | Kiểm tra/áp mã coupon/voucher (`code`/`codes`) + auto promotion (`selected_promotion_id`), trả từng `promotions: [{id, name, code, discount_amount}]` + tổng discount |
+| `/available-promotions` | POST | Trả danh sách auto promotion (`type=promotion`) khớp giỏ hàng kèm `estimated_discount` (không increment used_count) |
 | `/transfer-table`, `/merge-tables`, `/unmerge-table` | POST | Chuyển / gộp / tách bàn |
 | `/serving-queue` | GET | Lấy hàng chờ phục vụ (`status = completed` + `served_at IS NULL`, chỉ đơn hôm nay) |
 | `/mark-served` | POST | Đánh dấu đã phục vụ (`item_ids: number[]` → `served_at = now()`) |
@@ -64,6 +66,13 @@
 | `/manager/inventory/ingredients` | `Manager\IngredientController` | `resources/js/pages/manager/inventory/ingredients/IngredientsManager.tsx` | Quản lý kho nguyên liệu, tồn kho, đơn vị tính, nhập kho Excel |
 | `/manager/inventory/recipes` | `Manager\RecipeController` | `resources/js/pages/manager/inventory/recipes/RecipesManager.tsx` | Quản lý định lượng công thức món (chế biến) |
 | `/manager/orders` | `Manager\OrderListController` | `resources/js/pages/manager/orders/OrderList.tsx` / `OrderDetail.tsx` | Danh sách & chi tiết đơn hàng đã phát sinh |
+| `/manager/promotions` | `Manager\PromotionController` | `resources/js/pages/manager/promotions/PromotionsManager.tsx` | Quản lý chương trình khuyến mãi: chiến dịch (promotion tự động / coupon / voucher), điều kiện & giới hạn, mục tiêu (`target_usage`), analytics (KPI theo hoá đơn distinct), bảng Campaign Performance + modal danh sách hoá đơn đã dùng mã |
+
+**API bổ trợ của Promotion** (prefix `/manager/promotions`, khai báo tại `routes/web.php`):
+| Route Path | Method | Chức Năng |
+| :--- | :--- | :--- |
+| `/analytics` | GET | KPI doanh thu/lượt dùng theo **hoá đơn distinct** dùng KM, biểu đồ theo ngày, tỷ lệ sử dụng theo loại, danh sách campaign (revenue/discount_total/roi) |
+| `/{promotion}/invoices` | GET | Danh sách hoá đơn đã dùng mã của campaign (join `invoice_promotions` + `invoices`) |
 
 ### 2.4 Màn Hình Quản Trị Hệ Thống (Admin Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
