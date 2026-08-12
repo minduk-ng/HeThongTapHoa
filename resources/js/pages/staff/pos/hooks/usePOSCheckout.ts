@@ -228,7 +228,7 @@ export function usePOSCheckout(
                     'X-XSRF-TOKEN': csrfToken,
                     'X-Requested-With': 'XMLHttpRequest',
                 },
-                body: JSON.stringify({ code, subtotal, items }),
+                body: JSON.stringify({ code, subtotal, items, selected_promotion_id: selectedAutoId }),
             });
             const data = await response.json().catch(() => ({}));
 
@@ -264,7 +264,7 @@ export function usePOSCheckout(
                     subtotal,
                     items,
                     selected_promotion_id: selectedAutoId,
-                    ...(promotionCode ? { promotion_code: promotionCode } : {}),
+                    code: promotionCode ?? undefined,
                 }),
             });
             const data = await response.json().catch(() => ({}));

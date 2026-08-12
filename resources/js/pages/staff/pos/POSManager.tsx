@@ -271,19 +271,7 @@ export default function POSManager({ tables, categories, products, promotions }:
             })));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isPaymentDrawerOpen, drawerMode]);
-
-    useEffect(() => {
-        if (isPaymentDrawerOpen && drawerMode === 'payment' && paymentCart.length > 0) {
-            const subtotal = paymentCart.reduce((s, i) => s + i.quantity * i.unit_price, 0);
-            applyAutoPromotions(subtotal, paymentCart.map((item) => ({
-                menu_item_id: item.menu_item_id,
-                quantity: item.quantity,
-                unit_price: item.unit_price,
-            })));
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedAutoId]);
+    }, [isPaymentDrawerOpen, drawerMode, selectedAutoId]);
 
     const isCurrentTableCheckoutLocked = useMemo(() => {
         if (!selectedTable) return false;
