@@ -55,19 +55,28 @@ export function usePOSCheckout(
 
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Hủy mã coupon/voucher: giữ auto promotion (selectedAutoId + entries code=null) nguyên vẹn
+    // để display và checkout khớp nhau (không reset selectedAutoId — chỉ xoá phần mã nhập).
     const clearPromotion = () => {
         setPromotionCode(null);
-        setAppliedPromotions([]);
-        setTotalDiscount(0);
-        setPromotionName(null);
-        setPromotionDiscount(0);
+        const autoOnly = appliedPromotions.filter((ap) => ap.code === null);
+        const autoDiscount = autoOnly.reduce((sum, ap) => sum + ap.discount_amount, 0);
+        setAppliedPromotions(autoOnly);
+        setTotalDiscount(autoDiscount);
+        setPromotionDiscount(autoDiscount);
+        setPromotionName(autoOnly[0]?.name ?? null);
     };
 
     const togglePaymentDrawer = (open: boolean) => {
         setIsPaymentDrawerOpen(open);
         if (!open) {
-            clearPromotion();
-            setSelectedAutoId(null); // lần sau mở drawer sẽ tự pick lại
+            // Đóng drawer: reset hoàn toàn (kể cả auto) để lần sau mở lại tự pick lại
+            setPromotionCode(null);
+            setAppliedPromotions([]);
+            setTotalDiscount(0);
+            setPromotionDiscount(0);
+            setPromotionName(null);
+            setSelectedAutoId(null);
         }
         if (selectedTable) {
             const groupId = selectedTable.merged_into_table_id || selectedTable.id;
