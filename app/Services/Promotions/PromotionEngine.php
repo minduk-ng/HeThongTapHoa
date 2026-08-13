@@ -42,9 +42,6 @@ class PromotionEngine
                     return ['status' => 'rejected', 'reason' => 'not_found', 'code' => $code];
                 }
                 $reject = self::validateAgainst($promotion, $lines, $subtotal);
-                if ($reject === 'condition_not_met' && ! self::timeSlotOk($promotion)) {
-                    continue; // ngoài khung giờ vàng → không áp dụng, không reject
-                }
                 if ($reject !== null) {
                     return ['status' => 'rejected', 'reason' => $reject, 'code' => $code];
                 }
@@ -69,9 +66,6 @@ class PromotionEngine
                 return ['status' => 'rejected', 'reason' => 'not_found', 'code' => $code];
             }
             $reject = self::validateAgainst($p, $lines, $subtotal);
-            if ($reject === 'condition_not_met' && ! self::timeSlotOk($p)) {
-                continue; // ngoài khung giờ vàng → không áp dụng, không reject
-            }
             if ($reject !== null) {
                 return ['status' => 'rejected', 'reason' => $reject, 'code' => $code];
             }
@@ -189,6 +183,9 @@ class PromotionEngine
         }
         if (! self::quotaOk($p)) {
             return 'out_of_uses';
+        }
+        if (! self::timeSlotOk($p)) {
+            return 'out_of_slot';
         }
         if (! self::matchesConditions($p, $lines, $subtotal)) {
             return 'condition_not_met';

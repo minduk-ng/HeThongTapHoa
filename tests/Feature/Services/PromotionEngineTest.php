@@ -233,9 +233,8 @@ test('resolveAll: khong trong khung gio vang thi khong ap dung', function () {
 
     $r = PromotionEngine::resolveAll([$p->code], engineLines(100000), 100000);
 
-    expect($r['status'])->toBe('ok');
-    expect($r['promotions'])->toBeEmpty();
-    expect($r['total_discount'])->toBe(0.0);
+    expect($r['status'])->toBe('rejected');
+    expect($r['reason'])->toBe('out_of_slot');
 });
 
 test('resolveAll: trong khung gio vang thi ap dung', function () {
