@@ -112,16 +112,17 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
         }
 
         setSubmitting(true);
+        const isBatch = codePrefix !== '' || codeQuantity !== '';
         const payload = {
             name, type,
-            code: type === 'promotion' ? null : (code.toUpperCase() || null),
+            code: type === 'promotion' || isBatch ? null : (code.toUpperCase() || null),
             start_date: startDate || null, end_date: endDate || null,
             status, max_usage: codePrefix ? null : (maxUsage === '' ? null : Number(maxUsage)),
             target_usage: targetUsage === '' ? null : Number(targetUsage),
             exclusive, stackable,
-            code_prefix: codePrefix || null,
-            code_quantity: codeQuantity === '' ? null : Number(codeQuantity),
-            code_random: codeRandom,
+            code_prefix: code !== '' ? null : (codePrefix || null),
+            code_quantity: code !== '' ? null : (codeQuantity === '' ? null : Number(codeQuantity)),
+            code_random: code !== '' ? false : codeRandom,
             conditions: conditions.map((c) => ({ cond_type: c.cond_type, cond_value: c.cond_value })),
             actions: actions.map((a) => ({
                 action_type: a.action_type,
@@ -175,8 +176,8 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                                         <div>
                                             <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Mã Code <span className="text-rose-500">*</span></label>
                                             <div className="flex gap-2">
-                                                <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Nhập mã hoặc tạo ngẫu nhiên" className={inputCls} />
-                                                <button type="button" onClick={() => setCode(randomCode())} title="Tạo mã ngẫu nhiên"
+                                                <input value={code} onChange={(e) => { setCode(e.target.value.toUpperCase()); setCodePrefix(''); setCodeQuantity(''); setCodeRandom(false); }} placeholder="Nhập mã hoặc tạo ngẫu nhiên" className={inputCls} />
+                                                <button type="button" onClick={() => { setCode(randomCode()); setCodePrefix(''); setCodeQuantity(''); setCodeRandom(false); }} title="Tạo mã ngẫu nhiên"
                                                     className="px-3 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                                                     <Shuffle className="w-4 h-4" />
                                                 </button>
@@ -224,23 +225,23 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                                     )}
                                 </div>
                                 <PromotionConditionsEditor conditions={conditions} onChange={setConditions} menuItems={menuItems} menuCategories={menuCategories} />
-                                {(type === 'coupon' || type === 'voucher') && (
+                                {(type === 'coupon' || type === 'voucher') && code === '' && (
                                     <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 space-y-3">
                                         <h5 className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Phát hành mã hàng loạt (tùy chọn)</h5>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Chuỗi tiền tố</label>
-                                                <input value={codePrefix} onChange={(e) => setCodePrefix(e.target.value.toUpperCase())}
+                                                <input value={codePrefix} onChange={(e) => { setCodePrefix(e.target.value.toUpperCase()); setCode(''); }}
                                                     placeholder={codeRandom ? 'VD: DK' : 'VD: GIAM30'} className={inputCls} />
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Số lượng mã</label>
-                                                <input type="number" min={1} max={100000} value={codeQuantity} onChange={(e) => setCodeQuantity(e.target.value)}
+                                                <input type="number" min={1} max={100000} value={codeQuantity} onChange={(e) => { setCodeQuantity(e.target.value); setCode(''); }}
                                                     placeholder="VD: 500" className={inputCls} />
                                             </div>
                                         </div>
                                         <label className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                                            <input type="checkbox" checked={codeRandom} onChange={(e) => setCodeRandom(e.target.checked)} className="h-4 w-4 accent-sky-600" />
+                                            <input type="checkbox" checked={codeRandom} onChange={(e) => { setCodeRandom(e.target.checked); setCode(''); }} className="h-4 w-4 accent-sky-600" />
                                             Mã ngẫu nhiên (mỗi mã dùng 1 lần — voucher)
                                         </label>
                                         <p className="text-[11px] text-zinc-500">

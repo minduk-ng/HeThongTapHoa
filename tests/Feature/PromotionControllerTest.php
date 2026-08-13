@@ -253,6 +253,36 @@ test('store coupon batch khong can code rieng (chi prefix + quantity)', function
     expect($promo->codes()->pluck('code')->sort()->values()->all())->toBe(['BNC-001', 'BNC-002']);
 });
 
+test('store gui ca code va batch: batch thang, code bi loai tru (khong tao ma le)', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'type' => 'coupon',
+        'name' => 'Batch mutual',
+        'code' => 'MUTUAL', // bị loại trừ vì có batch
+        'code_prefix' => 'MUT',
+        'code_quantity' => 2,
+        'code_random' => false,
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
+    ])->assertSessionHasNoErrors();
+
+    $promo = Promotion::where('name', 'Batch mutual')->first();
+    expect($promo->code)->toBeNull(); // batch thắng, code bị null
+    expect($promo->codes)->toHaveCount(2);
+});
+
+test('store gui batch nhung code_prefix null: khong phai batch, code le giu lai', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'type' => 'coupon',
+        'name' => 'Single code',
+        'code' => 'SINGLE1',
+        'code_prefix' => null,
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
+    ])->assertSessionHasNoErrors();
+
+    $promo = Promotion::where('name', 'Single code')->first();
+    expect($promo->code)->toBe('SINGLE1');
+    expect($promo->codes)->toHaveCount(0);
+});
+
 test('store prefix trung bi 422', function () {
     $this->actingAs(posAdmin())->post('/manager/promotions', [
         'type' => 'coupon', 'name' => 'A', 'code' => 'A1',

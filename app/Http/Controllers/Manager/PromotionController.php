@@ -318,20 +318,22 @@ class PromotionController extends Controller
         $validated = $request->validate($this->rules());
 
         DB::transaction(function () use ($validated) {
+            // Batch (code_prefix) và mã lẻ (code) loại trừ lẫn nhau — chọn 1 trong 2
+            $isBatch = ! empty($validated['code_prefix'] ?? null);
             $promotion = Promotion::create([
                 'name' => $validated['name'],
                 'type' => $validated['type'],
-                'code' => $validated['type'] === 'promotion' ? null : (mb_strtoupper(trim($validated['code'] ?? '')) ?: null),
+                'code' => $validated['type'] === 'promotion' || $isBatch ? null : (mb_strtoupper(trim($validated['code'] ?? '')) ?: null),
                 'start_date' => ($validated['start_date'] ?? null) ? Carbon::parse($validated['start_date'])->startOfDay() : null,
                 'end_date' => ($validated['end_date'] ?? null) ? Carbon::parse($validated['end_date'])->endOfDay() : null,
                 'status' => $validated['status'] ?? true,
-                'max_usage' => ($validated['code_prefix'] ?? null) ? null : ($validated['max_usage'] ?? null),
+                'max_usage' => $isBatch ? null : ($validated['max_usage'] ?? null),
                 'target_usage' => $validated['target_usage'] ?? null,
                 'exclusive' => $validated['exclusive'] ?? false,
                 'stackable' => $validated['stackable'] ?? true,
-                'code_prefix' => $validated['code_prefix'] ?? null,
-                'code_quantity' => $validated['code_quantity'] ?? null,
-                'code_random' => $validated['code_random'] ?? false,
+                'code_prefix' => $isBatch ? $validated['code_prefix'] : null,
+                'code_quantity' => $isBatch ? $validated['code_quantity'] : null,
+                'code_random' => $isBatch ? ($validated['code_random'] ?? false) : false,
             ]);
 
             foreach ($validated['conditions'] ?? [] as $cond) {
@@ -367,20 +369,22 @@ class PromotionController extends Controller
         $validated = $request->validate($this->rules($promotion));
 
         DB::transaction(function () use ($validated, $promotion) {
+            // Batch (code_prefix) và mã lẻ (code) loại trừ lẫn nhau — chọn 1 trong 2
+            $isBatch = ! empty($validated['code_prefix'] ?? null);
             $promotion->update([
                 'name' => $validated['name'],
                 'type' => $validated['type'],
-                'code' => $validated['type'] === 'promotion' ? null : (mb_strtoupper(trim($validated['code'] ?? '')) ?: null),
+                'code' => $validated['type'] === 'promotion' || $isBatch ? null : (mb_strtoupper(trim($validated['code'] ?? '')) ?: null),
                 'start_date' => ($validated['start_date'] ?? null) ? Carbon::parse($validated['start_date'])->startOfDay() : null,
                 'end_date' => ($validated['end_date'] ?? null) ? Carbon::parse($validated['end_date'])->endOfDay() : null,
                 'status' => $validated['status'] ?? true,
-                'max_usage' => ($validated['code_prefix'] ?? null) ? null : ($validated['max_usage'] ?? null),
+                'max_usage' => $isBatch ? null : ($validated['max_usage'] ?? null),
                 'target_usage' => $validated['target_usage'] ?? null,
                 'exclusive' => $validated['exclusive'] ?? false,
                 'stackable' => $validated['stackable'] ?? true,
-                'code_prefix' => $validated['code_prefix'] ?? null,
-                'code_quantity' => $validated['code_quantity'] ?? null,
-                'code_random' => $validated['code_random'] ?? false,
+                'code_prefix' => $isBatch ? $validated['code_prefix'] : null,
+                'code_quantity' => $isBatch ? $validated['code_quantity'] : null,
+                'code_random' => $isBatch ? ($validated['code_random'] ?? false) : false,
             ]);
 
             // Xoá conditions/actions cũ rồi tạo lại (update đơn giản, ít data)
