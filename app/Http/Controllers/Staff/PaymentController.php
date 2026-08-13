@@ -80,6 +80,7 @@ class PaymentController extends Controller
                 'out_of_uses' => 'Mã khuyến mãi đã hết lượt sử dụng.',
                 'condition_not_met' => 'Đơn hàng chưa đáp ứng điều kiện khuyến mãi.',
                 'exclusive_conflict' => 'Mã khuyến mãi xung đột với khuyến mãi khác.',
+                'already_used' => 'Mã khuyến mãi đã được sử dụng.',
             ];
 
             return response()->json([

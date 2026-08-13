@@ -148,7 +148,7 @@ class PromotionEngine
             $applied[] = [
                 'promotion' => $p,
                 'amount' => $amount,
-                'code' => $p->type === 'promotion' ? null : $p->code,
+                'code' => $p->type === 'promotion' ? null : ($promotionCodesById[$p->id]->code ?? $p->code),
                 'actions_applied' => $actionsApplied,
             ];
         }

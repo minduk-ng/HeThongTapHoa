@@ -282,6 +282,14 @@ class CheckoutService
                         'code_used' => $pr['code'],
                         'discount_applied' => $allocated,
                     ]);
+
+                    // Truy vết invoice cho mã con đã dùng
+                    if ($pr['code']) {
+                        \App\Models\PromotionCode::where('code', $pr['code'])
+                            ->where('status', 'used')
+                            ->whereNull('used_invoice_id')
+                            ->update(['used_invoice_id' => $invoice->id]);
+                    }
                 }
             }
 
