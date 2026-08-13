@@ -109,3 +109,34 @@ test('resolveAll voi preferredAutoId = 0: chủ động không áp dụng auto p
     expect($r['promotions'])->toBeEmpty();
     expect($r['total_discount'])->toBe(0.0);
 });
+
+test('resolveAll preferredAutoId la numeric-string: van chon dung promotion (cast int)', function () {
+    $p = promoV2();
+    addAction($p, 'discount_amount', 5000);
+
+    $r = PromotionEngine::resolveAll([], engineLines(100000), 100000, false, (string) $p->id);
+    expect($r['status'])->toBe('ok');
+    expect($r['promotions'])->toHaveCount(1);
+    expect($r['promotions'][0]['promotion']->id)->toBe($p->id);
+});
+
+test('resolveAll preferredAutoId la promotion het luot: khong ap auto, khong reject', function () {
+    $p = promoV2(['max_usage' => 1, 'used_count' => 1]);
+    addAction($p, 'discount_amount', 20000);
+
+    $r = PromotionEngine::resolveAll([], engineLines(100000), 100000, false, $p->id);
+    expect($r['status'])->toBe('ok');
+    expect($r['promotions'])->toBeEmpty();
+    expect($r['total_discount'])->toBe(0.0);
+});
+
+test('resolveAll preferredAutoId la promotion het han: khong ap auto, khong reject', function () {
+    $p = promoV2();
+    addAction($p, 'discount_amount', 20000);
+    $p->update(['end_date' => now()->subDay()]);
+
+    $r = PromotionEngine::resolveAll([], engineLines(100000), 100000, false, $p->id);
+    expect($r['status'])->toBe('ok');
+    expect($r['promotions'])->toBeEmpty();
+    expect($r['total_discount'])->toBe(0.0);
+});

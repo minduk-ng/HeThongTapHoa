@@ -35,12 +35,7 @@ class PaymentController extends Controller
             'items.*.menu_item_id' => ['required_with:items', 'integer', Rule::exists('menu_items', 'id')->whereNull('deleted_at')],
             'items.*.quantity' => 'required_with:items|integer|min:1',
             'selected_promotion_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
-                if ((int) $value === 0) {
-                    return; // 0 = chủ động không áp dụng auto promotion
-                }
-                if (! \App\Models\Promotion::where('id', (int) $value)->whereNull('deleted_at')->exists()) {
-                    $fail('Chương trình khuyến mãi không tồn tại.');
-                }
+                $this->validateSelectedPromotion((int) $value, $fail);
             }],
         ]);
 
@@ -156,12 +151,7 @@ class PaymentController extends Controller
             'promotion_code' => 'nullable|string|max:50',
             'idempotency_key' => 'nullable|string|max:100',
             'selected_promotion_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
-                if ((int) $value === 0) {
-                    return; // 0 = chủ động không áp dụng auto promotion
-                }
-                if (! \App\Models\Promotion::where('id', (int) $value)->whereNull('deleted_at')->exists()) {
-                    $fail('Chương trình khuyến mãi không tồn tại.');
-                }
+                $this->validateSelectedPromotion((int) $value, $fail);
             }],
         ]);
 
@@ -327,12 +317,7 @@ class PaymentController extends Controller
             'promotion_code' => 'nullable|string|max:50',
             'idempotency_key' => 'nullable|string|max:100',
             'selected_promotion_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
-                if ((int) $value === 0) {
-                    return; // 0 = chủ động không áp dụng auto promotion
-                }
-                if (! \App\Models\Promotion::where('id', (int) $value)->whereNull('deleted_at')->exists()) {
-                    $fail('Chương trình khuyến mãi không tồn tại.');
-                }
+                $this->validateSelectedPromotion((int) $value, $fail);
             }],
         ]);
 
@@ -483,6 +468,30 @@ class PaymentController extends Controller
             }
 
             return back()->withErrors(['error' => 'Thanh toán thất bại: '.$e->getMessage()]);
+        }
+    }
+
+    /**
+     * Validate selected_promotion_id: 0 = không áp dụng (hợp lệ); ≥1 phải tồn tại,
+     * đang bật (status=true) và còn trong khoảng hiệu lực — tránh chọn nhầm mã đã tắt/hết hạn.
+     */
+    private function validateSelectedPromotion(int $value, callable $fail): void
+    {
+        if ($value === 0) {
+            return; // 0 = chủ động không áp dụng auto promotion
+        }
+
+        $now = now();
+        $exists = \App\Models\Promotion::query()
+            ->where('id', $value)
+            ->whereNull('deleted_at')
+            ->where('status', true)
+            ->where(fn ($q) => $q->whereNull('start_date')->orWhere('start_date', '<=', $now))
+            ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $now))
+            ->exists();
+
+        if (! $exists) {
+            $fail('Chương trình khuyến mãi không tồn tại, đang tạm ngưng hoặc đã hết hạn.');
         }
     }
 }

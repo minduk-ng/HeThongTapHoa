@@ -217,3 +217,61 @@ test('campaign revenue trong index la full doanh thu hoa don distinct (khong pha
         ->where('promotions.1.id', $auto->id)
         ->where('promotions.1.revenue', 85000));
 });
+
+test('command aggregate-daily --date rebuild dung ngay cu the', function () {
+    $admin = posAdmin();
+    $coupon = promoStat();
+    $coupon->actions()->create(['action_type' => 'discount_amount', 'action_value' => 3000, 'max_discount_amount' => null]);
+    $item = posMenuItem(['price' => 20000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 20000, 'status' => 'completed']], ['status' => 'pending']);
+
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 20000,
+        'promotion_code' => $coupon->code,
+    ])->assertOk();
+
+    $target = now()->subDays(3)->toDateString();
+    OrderPromotion::where('promotion_id', $coupon->id)->get()->each(fn ($op) => $op->forceFill(['created_at' => $target.' 10:00:00'])->save());
+
+    $this->artisan('promotions:aggregate-daily', ['--date' => $target])->assertSuccessful();
+
+    $stat = DailyPromotionStat::where('promotion_id', $coupon->id)->where('stat_date', $target)->first();
+    expect($stat)->not->toBeNull();
+    expect((float) $stat->revenue)->toBe(17000.0); // 20000 - 3000
+    expect((float) $stat->discount_total)->toBe(3000.0);
+});
+
+test('command rebuild 0-discount multi-promo: first nhan full, con lai 0, tong = invoiceTotal', function () {
+    $admin = posAdmin();
+    // 1 invoice dùng 2 promotion nhưng tổng discount tiền = 0 (free_product không trừ tiền)
+    $free = posMenuItem(['price' => 10000]);
+    $auto = promoStat(['type' => 'promotion']);
+    $auto->actions()->create(['action_type' => 'free_product', 'action_value' => $free->id, 'max_discount_amount' => null]);
+    $coupon = promoStat();
+    $coupon->actions()->create(['action_type' => 'free_product', 'action_value' => $free->id, 'max_discount_amount' => null]);
+
+    $item = posMenuItem(['price' => 50000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 50000, 'status' => 'completed']], ['status' => 'pending']);
+
+    // checkout với mã coupon (free_product) + auto (free_product) cùng áp → 1 invoice, 2 promotion, discount tiền = 0
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 50000,
+        'promotion_code' => $coupon->code,
+    ])->assertOk();
+
+    $target = now()->subDays(2)->toDateString();
+    OrderPromotion::all()->each(fn ($op) => $op->forceFill(['created_at' => $target.' 10:00:00'])->save());
+
+    $this->artisan('promotions:aggregate-daily', ['--date' => $target])->assertSuccessful();
+
+    $rows = DB::table('daily_promotion_stats')->where('stat_date', $target)->get();
+    // Tổng discount = 0 → promotion đầu tiên nhận full invoice (50000), còn lại 0
+    expect($rows)->toHaveCount(2);
+    expect(round((float) $rows->sum('revenue'), 2))->toBe(50000.0);
+});

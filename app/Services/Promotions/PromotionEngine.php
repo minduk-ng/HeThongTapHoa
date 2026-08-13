@@ -63,7 +63,7 @@ class PromotionEngine
                 ->filter(fn ($p) => self::matchesConditions($p, $lines, $subtotal) && self::quotaOk($p));
 
             $auto = $preferredAutoId !== null
-                ? $candidates->first(fn ($p) => $p->id === $preferredAutoId)
+                ? $candidates->first(fn ($p) => (int) $p->id === (int) $preferredAutoId)
                 : $candidates->sortByDesc(fn ($p) => self::estimateDiscount($p, $lines, $subtotal))->first();
         }
 

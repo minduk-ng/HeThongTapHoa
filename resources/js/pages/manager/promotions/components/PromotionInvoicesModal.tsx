@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
 import DataTable, { DataTableColumn } from '../../../../components/DataTable';
 
 interface InvoiceRow {
@@ -22,16 +22,40 @@ interface Props {
 export default function PromotionInvoicesModal({ isOpen, onClose, promotionId }: Props) {
     const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
     const [loading, setLoading] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(false);
+    const [nextPage, setNextPage] = useState<string | null>(null);
 
     useEffect(() => {
         if (!isOpen || promotionId === null) return;
         setLoading(true);
-        fetch(`/manager/promotions/${promotionId}/invoices`, { headers: { Accept: 'application/json' } })
+        setInvoices([]);
+        setHasMore(false);
+        setNextPage(null);
+        fetch(`/manager/promotions/${promotionId}/invoices?per_page=50`, { headers: { Accept: 'application/json' } })
             .then((r) => r.json())
-            .then((data) => setInvoices(data.invoices || []))
+            .then((data) => {
+                setInvoices(data.invoices || []);
+                setHasMore(data.meta?.has_more ?? false);
+                setNextPage(data.meta?.next_page ?? null);
+            })
             .catch(() => setInvoices([]))
             .finally(() => setLoading(false));
     }, [isOpen, promotionId]);
+
+    const loadMore = () => {
+        if (!nextPage || loadingMore) return;
+        setLoadingMore(true);
+        fetch(nextPage, { headers: { Accept: 'application/json' } })
+            .then((r) => r.json())
+            .then((data) => {
+                setInvoices((prev) => [...prev, ...(data.invoices || [])]);
+                setHasMore(data.meta?.has_more ?? false);
+                setNextPage(data.meta?.next_page ?? null);
+            })
+            .catch(() => {})
+            .finally(() => setLoadingMore(false));
+    };
 
     if (!isOpen) return null;
 
@@ -57,13 +81,30 @@ export default function PromotionInvoicesModal({ isOpen, onClose, promotionId }:
                 {loading ? (
                     <div className="py-10 text-center text-sm text-zinc-500">Đang tải...</div>
                 ) : (
-                    <DataTable<InvoiceRow>
-                        columns={columns}
-                        rows={invoices}
-                        rowKey={(i) => i.id}
-                        emptyMessage="Chưa có hoá đơn nào dùng mã này"
-                        showCompactToggle={false}
-                    />
+                    <>
+                        <DataTable<InvoiceRow>
+                            columns={columns}
+                            rows={invoices}
+                            rowKey={(i) => i.id}
+                            emptyMessage="Chưa có hoá đơn nào dùng mã này"
+                            showCompactToggle={false}
+                            showPageSize={false}
+                            defaultPageSize={50}
+                        />
+                        {hasMore && (
+                            <div className="flex justify-center pt-4">
+                                <button
+                                    type="button"
+                                    onClick={loadMore}
+                                    disabled={loadingMore}
+                                    className="flex items-center gap-1.5 rounded-lg border border-zinc-300 px-4 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                >
+                                    <ChevronDown className="h-3.5 w-3.5 stroke-[1.5]" />
+                                    <span>{loadingMore ? 'Đang tải...' : 'Tải thêm'}</span>
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>

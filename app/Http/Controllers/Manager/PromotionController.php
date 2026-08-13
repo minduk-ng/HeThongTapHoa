@@ -210,17 +210,28 @@ class PromotionController extends Controller
         return $query->pluck('id')->all();
     }
 
-    public function invoices(Promotion $promotion): JsonResponse
+    public function invoices(Request $request, Promotion $promotion): JsonResponse
     {
-        $invoices = InvoicePromotion::query()
+        $perPage = min(max((int) $request->input('per_page', 50), 1), 200);
+
+        $query = InvoicePromotion::query()
             ->where('promotion_id', $promotion->id)
             ->join('invoices', 'invoices.id', '=', 'invoice_promotions.invoice_id')
             ->select('invoices.id', 'invoices.invoice_code', 'invoices.issued_at', 'invoices.table_name',
                 'invoices.subtotal_amount', 'invoices.discount_amount', 'invoices.total_amount', 'invoices.payment_method')
             ->orderBy('invoices.issued_at', 'desc')
-            ->get();
+            ->orderBy('invoices.id', 'desc');
 
-        return response()->json(['invoices' => $invoices]);
+        $paginator = $query->simplePaginate($perPage);
+
+        return response()->json([
+            'invoices' => $paginator->items(),
+            'meta' => [
+                'per_page' => $paginator->perPage(),
+                'has_more' => $paginator->hasMorePages(),
+                'next_page' => $paginator->nextPageUrl(),
+            ],
+        ]);
     }
 
     /**

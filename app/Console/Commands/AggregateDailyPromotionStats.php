@@ -7,20 +7,66 @@ use Illuminate\Support\Facades\DB;
 
 class AggregateDailyPromotionStats extends Command
 {
-    protected $signature = 'promotions:aggregate-daily';
+    protected $signature = 'promotions:aggregate-daily
+        {--date= : Rebuild một ngày cụ thể (Y-m-d, mặc định hôm qua)}
+        {--from= : Rebuild từ ngày (Y-m-d, dùng chung với --to)}
+        {--to= : Rebuild tới ngày (Y-m-d)}';
 
-    protected $description = 'Rebuild daily_promotion_stats cho ngày hôm qua từ order_promotions + invoices';
+    protected $description = 'Rebuild daily_promotion_stats từ order_promotions + invoices (mặc định hôm qua, hoặc theo --date / --from --to)';
 
     public function handle(): int
     {
-        $yesterday = now()->subDay()->toDateString();
+        $dates = $this->resolveDates();
 
-        DB::table('daily_promotion_stats')->where('stat_date', $yesterday)->delete();
+        foreach ($dates as $date) {
+            $this->rebuildDay($date);
+        }
 
-        // 1) Phân bổ revenue theo tỷ trọng discount: mỗi invoice 1 lần, không nhân N
+        $summary = implode(', ', $dates);
+        $this->info("Đã rebuild daily_promotion_stats cho: {$summary}");
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * @return array<string>  danh sách ngày Y-m-d cần rebuild
+     */
+    private function resolveDates(): array
+    {
+        if ($from = $this->option('from')) {
+            $to = $this->option('to') ?? $from;
+            $cursor = \Illuminate\Support\Carbon::parse($from);
+            $end = \Illuminate\Support\Carbon::parse($to);
+            if ($cursor->gt($end)) {
+                $this->error('--from phải trước hoặc bằng --to.');
+
+                return [];
+            }
+            $dates = [];
+            while (! $cursor->gt($end)) {
+                $dates[] = $cursor->toDateString();
+                $cursor->addDay();
+            }
+
+            return $dates;
+        }
+
+        if ($date = $this->option('date')) {
+            return [\Illuminate\Support\Carbon::parse($date)->toDateString()];
+        }
+
+        return [now()->subDay()->toDateString()];
+    }
+
+    private function rebuildDay(string $date): void
+    {
+        DB::table('daily_promotion_stats')->where('stat_date', $date)->delete();
+
+        // 1) Phân bổ revenue theo tỷ trọng discount: mỗi invoice 1 lần, không nhân N.
+        // ORDER BY cố định → "dòng cuối nhận phần dư" luôn xác định (rebuild lặp cho kết quả giống nhau).
         $invoiceLines = DB::table('order_promotions')
             ->join('invoices', 'invoices.id', '=', 'order_promotions.invoice_id')
-            ->whereDate('order_promotions.created_at', $yesterday)
+            ->whereDate('order_promotions.created_at', $date)
             ->whereNotNull('order_promotions.promotion_id')
             ->select(
                 'order_promotions.promotion_id',
@@ -28,6 +74,8 @@ class AggregateDailyPromotionStats extends Command
                 'invoices.total_amount as total',
                 'order_promotions.discount_applied as discount'
             )
+            ->orderBy('order_promotions.invoice_id')
+            ->orderBy('order_promotions.id')
             ->get();
 
         $revenueByPromo = [];
@@ -57,7 +105,7 @@ class AggregateDailyPromotionStats extends Command
 
         // 2) order_count / unique_orders / discount_total từ order_promotions
         $orderStats = DB::table('order_promotions')
-            ->whereDate('created_at', $yesterday)
+            ->whereDate('created_at', $date)
             ->whereNotNull('promotion_id')
             ->select(
                 'promotion_id',
@@ -71,7 +119,7 @@ class AggregateDailyPromotionStats extends Command
         foreach ($orderStats as $row) {
             DB::table('daily_promotion_stats')->insert([
                 'promotion_id' => $row->promotion_id,
-                'stat_date' => $yesterday,
+                'stat_date' => $date,
                 'order_count' => $row->order_count,
                 'unique_orders' => $row->unique_orders,
                 'revenue' => $revenueByPromo[(int) $row->promotion_id] ?? 0.0,
@@ -80,9 +128,5 @@ class AggregateDailyPromotionStats extends Command
                 'updated_at' => now(),
             ]);
         }
-
-        $this->info("Đã rebuild daily_promotion_stats cho {$yesterday}");
-
-        return self::SUCCESS;
     }
 }
