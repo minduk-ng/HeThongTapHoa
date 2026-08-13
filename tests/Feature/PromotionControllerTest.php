@@ -69,6 +69,28 @@ test('store type promotion luu code null', function () {
     expect($promo->code)->toBeNull();
 });
 
+test('store luu target_usage cho promotion', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'type' => 'promotion',
+        'name' => 'KM co muc tieu',
+        'target_usage' => 100,
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
+    ])->assertSessionHasNoErrors();
+
+    $promo = Promotion::where('name', 'KM co muc tieu')->first();
+    expect($promo->target_usage)->toBe(100);
+});
+
+test('index tra target_usage trong campaign payload', function () {
+    $this->actingAs(posAdmin());
+    $promo = promoV2(['type' => 'promotion', 'target_usage' => 50]);
+    addAction($promo, 'discount_amount', 5000);
+
+    $this->get('/manager/promotions')->assertInertia(fn ($page) => $page->component('manager/promotions/PromotionsManager')
+        ->where('promotions.0.id', $promo->id)
+        ->where('promotions.0.target_usage', 50));
+});
+
 test('update chỉnh sửa và tạo lại conditions/actions', function () {
     $admin = posAdmin();
     $promo = promoV2(['type' => 'coupon', 'code' => 'UP'.substr(uniqid(), -4), 'name' => 'Cũ']);
@@ -162,6 +184,39 @@ test('store code trung lap bi tu choi 422/redirect (khong phai 500)', function (
         'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
     ])->assertSessionHasErrors(['code']);
     expect(Promotion::where('code', 'DUPX')->count())->toBe(1);
+});
+
+test('index tra revenue + discount_total cho tung campaign', function () {
+    $this->actingAs(posAdmin());
+    $p = promoV2(['type' => 'promotion']);
+    addAction($p, 'discount_amount', 5000);
+    $item = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'pending']);
+    $this->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id, 'payment_method' => 'cash', 'amount_received' => 95000,
+    ])->assertOk();
+
+    $this->get('/manager/promotions')->assertInertia(fn ($page) => $page->component('manager/promotions/PromotionsManager')
+        ->where('promotions.0.id', $p->id)
+        ->where('promotions.0.revenue', 95000)
+        ->where('promotions.0.discount_total', 5000));
+});
+
+test('promotion invoices endpoint tra danh sach hoa don da dung ma', function () {
+    $this->actingAs(posAdmin());
+    $p = promoV2(['type' => 'coupon', 'code' => 'INVX'.substr(uniqid(), -4)]);
+    addAction($p, 'discount_amount', 5000);
+    $item = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'pending']);
+    $this->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id, 'payment_method' => 'cash', 'amount_received' => 95000, 'promotion_code' => $p->code,
+    ])->assertOk();
+
+    $res = $this->getJson("/manager/promotions/{$p->id}/invoices")->assertOk();
+    expect($res->json('invoices'))->toHaveCount(1);
+    expect((float) $res->json('invoices.0.discount_amount'))->toBe(5000.0);
 });
 
 test('end_date chuan hoa cuoi ngay: coupon con ap dung trong ngay cuoi', function () {

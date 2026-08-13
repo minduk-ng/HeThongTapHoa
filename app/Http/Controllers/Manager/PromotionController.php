@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\Controller;
+use App\Models\InvoicePromotion;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Promotion;
@@ -10,8 +11,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -48,6 +51,7 @@ class PromotionController extends Controller
             'status' => $p->status,
             'used_count' => $p->used_count,
             'max_usage' => $p->max_usage,
+            'target_usage' => $p->target_usage,
             'exclusive' => $p->exclusive,
             'stackable' => $p->stackable,
             'conditions' => $p->conditions->map(fn ($c) => [
@@ -59,6 +63,32 @@ class PromotionController extends Controller
                 'max_discount_amount' => $a->max_discount_amount,
             ])->values(),
         ]);
+
+        // Doanh thu campaign = full doanh thu hoá đơn distinct có dùng mã đó (không phân bổ theo discount,
+        // dù 1 hoá đơn dùng nhiều mã vẫn gán full cho mỗi mã — overlap có chủ đích để xem theo từng campaign).
+        // discount_total vẫn lấy từ daily_promotion_stats (tổng giảm thật của mã).
+        $revenueAgg = DB::table(DB::raw('(SELECT DISTINCT ip.promotion_id, ip.invoice_id, invoices.total_amount
+                FROM invoice_promotions ip
+                JOIN invoices ON invoices.id = ip.invoice_id
+                WHERE ip.promotion_id IS NOT NULL) as t'))
+            ->select('promotion_id', DB::raw('SUM(total_amount) as revenue'))
+            ->groupBy('promotion_id')
+            ->get()
+            ->keyBy('promotion_id');
+
+        $discountAgg = DB::table('daily_promotion_stats')
+            ->select('promotion_id', DB::raw('SUM(discount_total) as discount_total'))
+            ->groupBy('promotion_id')
+            ->get()
+            ->keyBy('promotion_id');
+
+        $promotions = $promotions->map(function ($p) use ($revenueAgg, $discountAgg) {
+            $rev = $revenueAgg->get($p['id']);
+            $disc = $discountAgg->get($p['id']);
+            $p['revenue'] = $rev ? (float) $rev->revenue : 0.0;
+            $p['discount_total'] = $disc ? (float) $disc->discount_total : 0.0;
+            return $p;
+        });
 
         $stats = [
             'total_campaigns' => Promotion::count(),
@@ -79,6 +109,11 @@ class PromotionController extends Controller
     {
         $from = $request->input('from');
         $to = $request->input('to');
+        $search = $request->input('search');
+        $status = $request->input('status', 'all');
+
+        // Lọc cùng tập campaign như bảng Campaign Performance (search + status)
+        $promotionIds = $this->filteredPromotionIds($search, $status);
 
         $statsQuery = DB::table('daily_promotion_stats')
             ->join('promotions', 'promotions.id', '=', 'daily_promotion_stats.promotion_id')
@@ -87,7 +122,9 @@ class PromotionController extends Controller
                 DB::raw('SUM(daily_promotion_stats.order_count) as order_count'),
                 DB::raw('SUM(daily_promotion_stats.revenue) as revenue'),
                 DB::raw('SUM(daily_promotion_stats.discount_total) as discount_total'),
-            );
+            )
+            ->whereNull('promotions.deleted_at')
+            ->whereIn('daily_promotion_stats.promotion_id', $promotionIds);
         if ($from) {
             $statsQuery->where('daily_promotion_stats.stat_date', '>=', $from);
         }
@@ -111,16 +148,18 @@ class PromotionController extends Controller
         });
 
         $kpis = [
-            'total_revenue' => (float) $campaigns->sum('revenue'),
+            // Doanh thu = tổng HOÁ ĐƠN DISTINCT có dùng ít nhất 1 KM (1 hoá đơn nhiều mã vẫn tính 1 lần).
+            // Lượt dùng = tổng lượt áp dụng KM (mỗi mã trên 1 hoá đơn tính 1 lượt) — khớp biểu đồ daily/pie.
+            'total_revenue' => $this->distinctInvoiceRevenue($from, $to, $promotionIds),
             'total_orders' => (int) $campaigns->sum('order_count'),
             'total_discount' => (float) $campaigns->sum('discount_total'),
             'avg_discount' => $campaigns->sum('order_count') > 0
                 ? round($campaigns->sum('discount_total') / $campaigns->sum('order_count'), 2) : 0,
             'roi' => (float) $campaigns->sum('discount_total') > 0
-                ? round(($campaigns->sum('revenue') - $campaigns->sum('discount_total')) / $campaigns->sum('discount_total'), 2) : 0,
+                ? round(($this->distinctInvoiceRevenue($from, $to, $promotionIds) - $campaigns->sum('discount_total')) / $campaigns->sum('discount_total'), 2) : 0,
         ];
 
-        $dailyQuery = DB::table('daily_promotion_stats');
+        $dailyQuery = DB::table('daily_promotion_stats')->whereIn('promotion_id', $promotionIds);
         if ($from) $dailyQuery->where('stat_date', '>=', $from);
         if ($to) $dailyQuery->where('stat_date', '<=', $to);
         $daily = $dailyQuery->select('stat_date',
@@ -144,6 +183,82 @@ class PromotionController extends Controller
         ]);
     }
 
+    /**
+     * Danh sách promotion id khớp bộ lọc search + status — cùng logic như index().
+     *
+     * @return array<int>
+     */
+    private function filteredPromotionIds(?string $search, ?string $status): array
+    {
+        $query = Promotion::query();
+
+        if ($search) {
+            $s = trim($search);
+            $query->where(fn ($q) => $q
+                ->where('name', 'like', "%{$s}%")
+                ->orWhere('code', 'like', "%{$s}%"));
+        }
+
+        $now = now();
+        if ($status === 'running') {
+            $query->where('status', true)
+                ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $now));
+        } elseif ($status === 'ended') {
+            $query->where(fn ($q) => $q->whereNotNull('end_date')->where('end_date', '<', $now));
+        }
+
+        return $query->pluck('id')->all();
+    }
+
+    public function invoices(Promotion $promotion): JsonResponse
+    {
+        $invoices = InvoicePromotion::query()
+            ->where('promotion_id', $promotion->id)
+            ->join('invoices', 'invoices.id', '=', 'invoice_promotions.invoice_id')
+            ->select('invoices.id', 'invoices.invoice_code', 'invoices.issued_at', 'invoices.table_name',
+                'invoices.subtotal_amount', 'invoices.discount_amount', 'invoices.total_amount', 'invoices.payment_method')
+            ->orderBy('invoices.issued_at', 'desc')
+            ->get();
+
+        return response()->json(['invoices' => $invoices]);
+    }
+
+    /**
+     * Tổng giá trị các HOÁ ĐƠN distinct có dùng ít nhất 1 promotion/coupon/voucher.
+     * 1 hoá đơn áp dụng nhiều KM vẫn chỉ tính 1 lần (invoice_promotions distinct theo invoice_id).
+     *
+     * @param  array<int>|null  $promotionIds  lọc theo tập campaign (null = tất cả)
+     */
+    private function distinctInvoiceRevenue(?string $from, ?string $to, ?array $promotionIds = null): float
+    {
+        $ids = $this->distinctInvoiceIds($from, $to, $promotionIds);
+        if ($ids->isEmpty()) {
+            return 0.0;
+        }
+
+        return (float) DB::table('invoices')->whereIn('id', $ids)->sum('total_amount');
+    }
+
+    /**
+     * @param  array<int>|null  $promotionIds
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    private function distinctInvoiceIds(?string $from, ?string $to, ?array $promotionIds = null)
+    {
+        $query = DB::table('invoice_promotions')->whereNotNull('promotion_id');
+        if ($promotionIds !== null) {
+            $query->whereIn('promotion_id', $promotionIds);
+        }
+        if ($from) {
+            $query->whereDate('invoice_promotions.created_at', '>=', $from);
+        }
+        if ($to) {
+            $query->whereDate('invoice_promotions.created_at', '<=', $to);
+        }
+
+        return $query->distinct()->pluck('invoice_id');
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate($this->rules());
@@ -157,6 +272,7 @@ class PromotionController extends Controller
                 'end_date' => ($validated['end_date'] ?? null) ? Carbon::parse($validated['end_date'])->endOfDay() : null,
                 'status' => $validated['status'] ?? true,
                 'max_usage' => $validated['max_usage'] ?? null,
+                'target_usage' => $validated['target_usage'] ?? null,
                 'exclusive' => $validated['exclusive'] ?? false,
                 'stackable' => $validated['stackable'] ?? true,
             ]);
@@ -172,6 +288,8 @@ class PromotionController extends Controller
                 ]);
             }
         });
+
+        $this->flushPosPromotionsCache();
 
         return back()->with('success', 'Thêm khuyến mãi thành công!');
     }
@@ -189,6 +307,7 @@ class PromotionController extends Controller
                 'end_date' => ($validated['end_date'] ?? null) ? Carbon::parse($validated['end_date'])->endOfDay() : null,
                 'status' => $validated['status'] ?? true,
                 'max_usage' => $validated['max_usage'] ?? null,
+                'target_usage' => $validated['target_usage'] ?? null,
                 'exclusive' => $validated['exclusive'] ?? false,
                 'stackable' => $validated['stackable'] ?? true,
             ]);
@@ -208,6 +327,8 @@ class PromotionController extends Controller
             }
         });
 
+        $this->flushPosPromotionsCache();
+
         return back()->with('success', 'Cập nhật khuyến mãi thành công!');
     }
 
@@ -220,6 +341,8 @@ class PromotionController extends Controller
         }
 
         $promotion->delete();
+
+        $this->flushPosPromotionsCache();
 
         return back()->with('success', 'Xóa khuyến mãi thành công!');
     }
@@ -237,15 +360,25 @@ class PromotionController extends Controller
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'status' => ['sometimes', 'boolean'],
             'max_usage' => ['nullable', 'integer', 'min:1'],
+            'target_usage' => ['nullable', 'integer', 'min:1'],
             'exclusive' => ['sometimes', 'boolean'],
             'stackable' => ['sometimes', 'boolean'],
             'conditions' => ['nullable', 'array'],
-            'conditions.*.cond_type' => ['required', Rule::in(['min_order_value', 'min_quantity', 'specific_product'])],
+            'conditions.*.cond_type' => ['required', Rule::in(['min_order_value', 'min_quantity', 'specific_product', 'specific_category'])],
             'conditions.*.cond_value' => ['required', 'string'],
             'actions' => ['required', 'array', 'min:1'],
             'actions.*.action_type' => ['required', Rule::in(['discount_percent', 'discount_amount', 'free_product'])],
             'actions.*.action_value' => ['required', 'numeric', 'min:0'],
             'actions.*.max_discount_amount' => ['nullable', 'numeric', 'min:0'],
         ];
+    }
+
+    private function flushPosPromotionsCache(): void
+    {
+        try {
+            Cache::tags(['pos_promotions'])->flush();
+        } catch (\Throwable $e) {
+            Log::warning('pos_promotions cache flush failed: '.$e->getMessage());
+        }
     }
 }

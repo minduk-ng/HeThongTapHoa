@@ -116,10 +116,18 @@ export interface ServingItem {
     completed_at: string;
 }
 
+export interface PromotionCandidate {
+    id: number;
+    name: string;
+    code: string | null;
+    estimated_discount: number;
+}
+
 export interface POSManagerProps {
     tables: POSTableData[];
     categories: CategoryData[];
     products: POSProductData[];
+    promotions: PromotionCandidate[];
 }
 
 export interface ReservationDraft {

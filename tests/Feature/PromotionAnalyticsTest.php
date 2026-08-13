@@ -4,6 +4,7 @@ use App\Models\DailyPromotionStat;
 use App\Models\Invoice;
 use App\Models\OrderPromotion;
 use App\Models\Promotion;
+use Illuminate\Support\Facades\DB;
 
 function promoStat(array $attrs = []): Promotion
 {
@@ -82,6 +83,43 @@ test('analytics api tra kpis va campaigns', function () {
         ->assertJsonPath('kpis.roi', (40000 - 10000) / 10000);
 });
 
+test('analytics loc theo status: chi tinh campaigns trong filter', function () {
+    $admin = posAdmin();
+    // campaign đang chạy (không end_date)
+    $running = promoStat(['type' => 'promotion']);
+    $running->actions()->create(['action_type' => 'discount_amount', 'action_value' => 5000, 'max_discount_amount' => null]);
+    // campaign đã kết thúc
+    $ended = promoStat(['type' => 'promotion']);
+    $ended->actions()->create(['action_type' => 'discount_amount', 'action_value' => 20000, 'max_discount_amount' => null]);
+    $ended->update(['end_date' => now()->subDay()]);
+
+    $item = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
+    $table = posTable();
+    $o1 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'pending']);
+    $o2 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'pending']);
+
+    // running auto tự áp cho o1, ended KHÔNG áp (đã hết hạn) → chỉ running có stats
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $o1->id, 'payment_method' => 'cash', 'amount_received' => 95000,
+    ])->assertOk();
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $o2->id, 'payment_method' => 'cash', 'amount_received' => 100000,
+    ])->assertOk();
+
+    // filter running → chỉ campaign running (2 đơn đều bị running auto áp)
+    $this->actingAs($admin)->getJson('/manager/promotions/analytics?status=running')
+        ->assertOk()
+        ->assertJsonPath('kpis.total_orders', 2)
+        ->assertJsonPath('campaigns.0.id', $running->id)
+        ->assertJsonCount(1, 'campaigns');
+
+    // filter ended → không campaign nào có stats (ended chưa từng dùng)
+    $this->actingAs($admin)->getJson('/manager/promotions/analytics?status=ended')
+        ->assertOk()
+        ->assertJsonCount(0, 'campaigns')
+        ->assertJsonPath('kpis.total_orders', 0);
+});
+
 test('command rebuild bulk: revenue tinh 1 lan moi invoice (khong nhan N), order_count = distinct invoice', function () {
     $admin = posAdmin();
     $coupon = promoV2(['type' => 'coupon', 'code' => 'BULKREV'.substr(uniqid(), -4)]);
@@ -115,4 +153,67 @@ test('command rebuild bulk: revenue tinh 1 lan moi invoice (khong nhan N), order
     expect((float) $stat->revenue)->toBe(90000.0); // invoice tính 1 lần, không nhân N (2 order → 180000 là sai)
     expect((int) $stat->order_count)->toBe(1);     // 1 invoice distinct
     expect((int) $stat->unique_orders)->toBe(2);   // 2 order distinct
+});
+
+test('revenue daily_promotion_stats khong double-count khi 1 hoa don dung nhieu promotion', function () {
+    $admin = posAdmin();
+    $auto = promoV2(['type' => 'promotion']);
+    addAction($auto, 'discount_percent', 10);          // giảm 10%
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'DC'.substr(uniqid(), -5)]);
+    addAction($coupon, 'discount_amount', 5000);
+
+    $item = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'pending']);
+
+    // checkout với mã coupon; auto 10% cũng áp (tổng discount = 10000 + 5000 = 15000)
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 85000,
+        'promotion_code' => $coupon->code,
+    ])->assertOk();
+
+    // Mỗi promotion có 1 row stats; tổng revenue các row = 1 lần invoiceTotal (85000)
+    $rows = DB::table('daily_promotion_stats')->where('stat_date', now()->toDateString())->get();
+    expect(round((float) $rows->sum('revenue'), 2))->toBe(85000.0);
+    // Phân bổ tỷ trọng: auto(10k) nhận 85000×10000/15000, coupon(5k) nhận 85000×5000/15000
+    $autoRow = $rows->firstWhere('promotion_id', $auto->id);
+    $couponRow = $rows->firstWhere('promotion_id', $coupon->id);
+    expect(round((float) $autoRow->revenue, 2))->toBe(round(85000 * 10000 / 15000, 2));
+    expect(round((float) $couponRow->revenue, 2))->toBe(round(85000 * 5000 / 15000, 2));
+
+    // KPI total_revenue tính theo HOÁ ĐƠN distinct: 1 invoice dùng 2 KM → vẫn chỉ 1 lần (85000)
+    // total_orders = tổng lượt áp dụng KM: 2 mã trên 1 hoá đơn = 2 lượt
+    $this->actingAs($admin)->getJson('/manager/promotions/analytics')
+        ->assertOk()
+        ->assertJsonPath('kpis.total_revenue', 85000)
+        ->assertJsonPath('kpis.total_orders', 2);
+});
+
+test('campaign revenue trong index la full doanh thu hoa don distinct (khong phan bo theo discount)', function () {
+    $this->actingAs(posAdmin());
+    $auto = promoV2(['type' => 'promotion']);
+    addAction($auto, 'discount_percent', 10);          // giảm 10% = 10000
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'CF'.substr(uniqid(), -5)]);
+    addAction($coupon, 'discount_amount', 5000);
+
+    $item = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'pending']);
+
+    // checkout với mã coupon; auto 10% cũng áp → 1 invoice 85000 dùng cả 2 mã
+    $this->actingAs(posAdmin())->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 85000,
+        'promotion_code' => $coupon->code,
+    ])->assertOk();
+
+    // Cả 2 campaign đều hiển thị full doanh thu 85000 (dù trùng) — không chia đôi theo discount
+    $this->get('/manager/promotions')->assertInertia(fn ($page) => $page->component('manager/promotions/PromotionsManager')
+        ->where('promotions.0.id', $coupon->id)
+        ->where('promotions.0.revenue', 85000)
+        ->where('promotions.1.id', $auto->id)
+        ->where('promotions.1.revenue', 85000));
 });

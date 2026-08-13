@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Plus, Search, SlidersHorizontal, Ticket } from 'lucide-react';
+import { Plus, Search, SlidersHorizontal, Ticket, Pencil, Eye } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import ManagerPageLayout from '../../../components/ManagerPageLayout';
+import DataTable, { DataTableColumn } from '../../../components/DataTable';
 import PromotionStatsCards from './components/PromotionStatsCards';
 import PromotionAnalyticsCharts from './components/PromotionAnalyticsCharts';
 import PromotionFormDrawer from './components/PromotionFormDrawer';
+import PromotionInvoicesModal from './components/PromotionInvoicesModal';
 
 interface AnalyticsKpis {
     total_revenue: number;
@@ -30,7 +32,10 @@ export interface PromotionData {
     end_date: string | null;
     status: boolean;
     used_count: number;
+    revenue: number;
+    discount_total: number;
     max_usage: number | null;
+    target_usage: number | null;
     exclusive: boolean;
     stackable: boolean;
     conditions: { cond_type: string; cond_value: string }[];
@@ -57,14 +62,18 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
     const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editing, setEditing] = useState<PromotionData | null>(null);
+    const [invoiceView, setInvoiceView] = useState<number | null>(null);
     const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
 
     useEffect(() => {
-        fetch('/manager/promotions/analytics', { headers: { Accept: 'application/json' } })
+        const params = new URLSearchParams();
+        if (statusFilter !== 'all') params.set('status', statusFilter);
+        if (search) params.set('search', search);
+        fetch(`/manager/promotions/analytics?${params.toString()}`, { headers: { Accept: 'application/json' } })
             .then((r) => r.json())
             .then((data) => setAnalytics(data))
             .catch(() => {});
-    }, []);
+    }, [statusFilter, search]);
 
     const applyFilters = () => {
         router.get('/manager/promotions', {
@@ -72,6 +81,73 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
             status: statusFilter === 'all' ? undefined : statusFilter,
         }, { preserveState: true });
     };
+
+    // Lọc ngay lập tức theo search + statusFilter (không chờ server) — đồng bộ với stat/chart
+    const filteredPromotions = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        const now = Date.now();
+        // end_date từ server dạng d/m/Y
+        const toTs = (v: string | null) => {
+            if (!v) return null;
+            const [d, m, y] = v.split('/').map(Number);
+            if (!d || !m || !y) return null;
+            return new Date(y, m - 1, d, 23, 59, 59).getTime();
+        };
+        return promotions.filter((p) => {
+            if (statusFilter !== 'all') {
+                const endTs = toTs(p.end_date);
+                if (statusFilter === 'running') {
+                    if (!p.status) return false;
+                    if (endTs !== null && endTs < now) return false;
+                } else if (statusFilter === 'ended') {
+                    if (endTs === null || endTs >= now) return false;
+                }
+            }
+            if (q) {
+                const code = (p.code || `KM_${p.id}`).toLowerCase();
+                if (!code.includes(q) && !p.name.toLowerCase().includes(q)) return false;
+            }
+            return true;
+        });
+    }, [promotions, search, statusFilter]);
+
+    const columns: DataTableColumn<PromotionData>[] = [
+        { key: 'name', header: 'Mã / Tên chiến dịch', render: (p) => (
+            <div>
+                <div className="font-medium text-zinc-900 dark:text-zinc-100">{p.code || `KM_${p.id}`}</div>
+                <div className="text-xs text-zinc-500">{p.name}</div>
+            </div>
+        )},
+        { key: 'type', header: 'Loại', align: 'center', sortable: true, render: (p) => (
+            <span className={`px-2.5 py-1 rounded text-xs font-medium ${TYPE_CLASS[p.type]}`}>{TYPE_LABEL[p.type]}</span>
+        )},
+        { key: 'used_count', header: 'Số đơn', align: 'center', sortable: true, render: (p) => <span className="font-medium tabular-nums">{p.used_count}</span> },
+        { key: 'revenue', header: 'Tổng doanh thu', align: 'center', sortable: true, render: (p) => <span className="tabular-nums">{(p.revenue ?? 0).toLocaleString('vi-VN')} đ</span> },
+        { key: 'discount_total', header: 'Tổng giảm giá', align: 'center', sortable: true, render: (p) => <span className="tabular-nums">{(p.discount_total ?? 0).toLocaleString('vi-VN')} đ</span> },
+        { key: 'perf', header: 'Hiệu suất', align: 'center', render: (p) => {
+                    const perf = (p.target_usage ?? p.max_usage) ? Math.min(100, Math.round((p.used_count / (p.target_usage ?? p.max_usage!)) * 100)) : null;
+            return perf === null ? <span className="text-xs text-zinc-400">—</span> : (
+                <div className="flex items-center gap-2">
+                    <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
+                        <div className="bg-sky-600 h-full rounded-full" style={{ width: `${perf}%` }} />
+                    </div>
+                    <span className="text-xs font-medium text-sky-600 w-8 text-right">{perf}%</span>
+                </div>
+            );
+        }},
+        { key: 'actions', header: 'Thao tác', align: 'center', render: (p) => (
+            <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <button type="button" onClick={() => { setEditing(p); setDrawerOpen(true); }} title="Sửa"
+                    className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950">
+                    <Pencil className="w-4 h-4" />
+                </button>
+                <button type="button" onClick={() => setInvoiceView(p.id)} title="Xem hoá đơn đã dùng mã"
+                    className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    <Eye className="w-4 h-4" />
+                </button>
+            </div>
+        )},
+    ];
 
     return (
         <DashboardLayout fullWidth={true}>
@@ -121,58 +197,30 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
                     </>
                 }
             >
-                <div className="space-y-4">
+                <div className="space-y-4 flex-1 min-h-0 overflow-y-auto">
                     <PromotionStatsCards stats={analytics?.kpis ?? stats} />
                     {analytics && <PromotionAnalyticsCharts daily={analytics.daily_chart} types={analytics.type_breakdown} />}
                     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
                         <div className="p-5 border-b border-zinc-100 dark:border-zinc-800">
                             <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Campaign Performance</h3>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-zinc-50 dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-400 text-xs uppercase tracking-wider">
-                                    <tr>
-                                        <th className="px-4 py-3">Mã / Tên chiến dịch</th>
-                                        <th className="px-4 py-3">Loại</th>
-                                        <th className="px-4 py-3 text-right">Số đơn</th>
-                                        <th className="px-4 py-3 text-right">Hiệu suất</th>
-                                        <th className="px-4 py-3 text-center">Thao tác</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                                    {promotions.length === 0 ? (
-                                        <tr><td colSpan={5} className="py-12 px-6 text-center text-zinc-500">Chưa có chiến dịch nào</td></tr>
-                                    ) : promotions.map((p) => {
-                                        const perf = p.max_usage ? Math.min(100, Math.round((p.used_count / p.max_usage) * 100)) : null;
-                                        return (
-                                            <tr key={p.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 cursor-pointer"
-                                                onClick={() => { setEditing(p); setDrawerOpen(true); }}>
-                                                <td className="px-4 py-3">
-                                                    <div className="font-medium text-zinc-900 dark:text-zinc-100">{p.code || `KM_${p.id}`}</div>
-                                                    <div className="text-xs text-zinc-500">{p.name}</div>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <span className={`px-2.5 py-1 rounded text-xs font-medium ${TYPE_CLASS[p.type]}`}>{TYPE_LABEL[p.type]}</span>
-                                                </td>
-                                                <td className="px-4 py-3 text-right font-medium tabular-nums">{p.used_count}</td>
-                                                <td className="px-4 py-3">
-                                                    {perf === null ? (
-                                                        <span className="text-xs text-zinc-400">—</span>
-                                                    ) : (
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
-                                                                <div className="bg-sky-600 h-full rounded-full" style={{ width: `${perf}%` }} />
-                                                            </div>
-                                                            <span className="text-xs font-medium text-sky-600 w-8 text-right">{perf}%</span>
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3 text-center text-xs text-blue-600">Sửa</td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                        <div className="p-3">
+                            <DataTable<PromotionData>
+                                columns={columns}
+                                rows={filteredPromotions}
+                                rowKey={(p) => p.id}
+                                emptyMessage="Chưa có chiến dịch nào"
+                                defaultSortKey="id"
+                                defaultSortDirection="desc"
+                                getSortValue={(p, key) => {
+                                    if (key === 'name') return p.name;
+                                    if (key === 'type') return p.type;
+                                    if (key === 'revenue') return p.revenue ?? 0;
+                                    if (key === 'discount_total') return p.discount_total ?? 0;
+                                    if (key === 'used_count') return p.used_count;
+                                    return p.id;
+                                }}
+                            />
                         </div>
                     </div>
                 </div>
@@ -185,6 +233,8 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
                 menuItems={menu_items}
                 menuCategories={menu_categories}
             />
+
+            <PromotionInvoicesModal isOpen={invoiceView !== null} onClose={() => setInvoiceView(null)} promotionId={invoiceView} />
         </DashboardLayout>
     );
 }

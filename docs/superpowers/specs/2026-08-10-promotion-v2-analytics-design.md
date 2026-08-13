@@ -113,7 +113,7 @@ ROI = (Doanh thu mang lại − Chi phí KM) / Chi phí KM
 ```
 Query đọc từ `daily_promotion_stats` (JOIN promotions) — KHÔNG quét orders/invoice_lines. Filter theo `stat_date` range.
 
-**Biểu đồ:** line chart (doanh thu & lượt dùng theo ngày) + pie (tỷ lệ sử dụng) — dùng Chart.js (kiểm tra repo đã có `chart.js` dependency — dự án đã dùng Chart.js ở DashboardManager).
+**Biểu đồ:** line chart (doanh thu & lượt dùng theo ngày) + pie (tỷ lệ sử dụng) — dùng **recharts** (dependency đã có trong package.json, DashboardManager đã dùng `ResponsiveContainer`/`AreaChart`/`PieChart`).
 
 **Frontend:** `PromotionsManager.tsx` (spec 2) nối `analytics` API → render 4 KPI cards + chart + bảng campaign performance số thật. "Xuất báo cáo" → `GET /manager/promotions/analytics/export` (CSV) — nếu muốn.
 

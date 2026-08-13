@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 
 class PromotionEngine
 {
-    public static function resolveAll(array $codes, iterable $lines, float $subtotal, bool $lockForUpdate = false): array
+    public static function resolveAll(array $codes, iterable $lines, float $subtotal, bool $lockForUpdate = false, ?int $preferredAutoId = null): array
     {
         $lines = collect($lines)->values();
 
@@ -43,10 +43,13 @@ class PromotionEngine
             }
         }
 
-        // 3. PROMOTION tự động: quét, lọc thoả điều kiện, chọn tốt nhất
+        // 3. PROMOTION tự động: quét, lọc thoả điều kiện, chọn theo preferred / tốt nhất.
+        //    preferredAutoId === 0: chủ động KHÔNG áp dụng auto promotion.
+        //    preferredAutoId === null: tự chọn tốt nhất.
+        //    preferredAutoId > 0: chọn đúng promotion đó.
         $auto = null;
         $hasNonStackable = collect($codePromotions)->contains(fn ($p) => ! $p->stackable);
-        if (! $hasNonStackable) {
+        if ($preferredAutoId !== 0 && ! $hasNonStackable) {
             $candidatesQuery = Promotion::query()
                 ->where('type', 'promotion')
                 ->where('status', true)
@@ -59,9 +62,9 @@ class PromotionEngine
             $candidates = $candidatesQuery->get()
                 ->filter(fn ($p) => self::matchesConditions($p, $lines, $subtotal) && self::quotaOk($p));
 
-            $auto = $candidates
-                ->sortByDesc(fn ($p) => self::estimateDiscount($p, $lines, $subtotal))
-                ->first();
+            $auto = $preferredAutoId !== null
+                ? $candidates->first(fn ($p) => $p->id === $preferredAutoId)
+                : $candidates->sortByDesc(fn ($p) => self::estimateDiscount($p, $lines, $subtotal))->first();
         }
 
         // 4. Gộp pool: mã trước, auto sau
@@ -156,6 +159,7 @@ class PromotionEngine
                 'min_order_value' => $subtotal >= (float) $cond->cond_value,
                 'min_quantity' => $lines->sum('quantity') >= (int) $cond->cond_value,
                 'specific_product' => $lines->contains(fn ($l) => (int) ($l['menu_item_id'] ?? 0) === (int) $cond->cond_value),
+                'specific_category' => self::lineInCategory($lines, (int) $cond->cond_value),
                 default => false,
             };
             if (! $ok) {
@@ -164,6 +168,15 @@ class PromotionEngine
         }
 
         return true;
+    }
+
+    private static function lineInCategory(Collection $lines, int $categoryId): bool
+    {
+        $itemIds = MenuItem::where('category_id', $categoryId)->pluck('id')->all();
+        if (! $itemIds) {
+            return false;
+        }
+        return $lines->contains(fn ($l) => in_array((int) ($l['menu_item_id'] ?? 0), $itemIds, true));
     }
 
     private static function estimateDiscount(Promotion $p, Collection $lines, float $subtotal): float
@@ -182,5 +195,27 @@ class PromotionEngine
         }
 
         return $total;
+    }
+
+    public static function candidates(iterable $lines, float $subtotal): array
+    {
+        $lines = collect($lines);
+
+        return Promotion::query()
+            ->where('type', 'promotion')
+            ->where('status', true)
+            ->where(fn ($q) => $q->whereNull('start_date')->orWhere('start_date', '<=', now()))
+            ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()))
+            ->with(['conditions', 'actions'])
+            ->get()
+            ->filter(fn ($p) => self::matchesConditions($p, $lines, $subtotal) && self::quotaOk($p))
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'code' => $p->code,
+                'estimated_discount' => self::estimateDiscount($p, $lines, $subtotal),
+            ])
+            ->values()
+            ->all();
     }
 }

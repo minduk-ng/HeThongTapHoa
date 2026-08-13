@@ -50,6 +50,32 @@ test('condition min_quantity + specific_product: AND', function () {
     expect($res2['total_discount'])->toBe(0.0);
 });
 
+test('condition specific_category: ap dung khi don co mon thuoc danh muc', function () {
+    $cat = App\Models\MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
+    $itemIn = App\Models\MenuItem::create(['category_id' => $cat->id, 'name' => 'Mon trong cat '.uniqid(), 'price' => 25000, 'vat_rate' => 0, 'is_available' => true]);
+    $itemOut = App\Models\MenuItem::create(['category_id' => null, 'name' => 'Mon ngoai '.uniqid(), 'price' => 25000, 'vat_rate' => 0, 'is_available' => true]);
+
+    $p = promoV2();
+    addCond($p, 'specific_category', (string) $cat->id);
+    addAction($p, 'discount_percent', 10);
+
+    // Có món thuộc danh mục → áp dụng
+    $res = PromotionEngine::resolveAll([], collect([
+        ['menu_item_id' => $itemIn->id, 'quantity' => 1, 'subtotal' => 25000],
+        ['menu_item_id' => $itemOut->id, 'quantity' => 1, 'subtotal' => 25000],
+    ]), 50000);
+    expect($res['status'])->toBe('ok');
+    expect($res['total_discount'])->toBe(5000.0);
+
+    // Không có món thuộc danh mục → không áp dụng
+    $res2 = PromotionEngine::resolveAll([], collect([
+        ['menu_item_id' => $itemOut->id, 'quantity' => 1, 'subtotal' => 25000],
+    ]), 25000);
+    expect($res2['status'])->toBe('ok');
+    expect($res2['promotions'])->toBeEmpty();
+    expect($res2['total_discount'])->toBe(0.0);
+});
+
 test('promotion tu dong chon 1 tot nhat', function () {
     $p1 = promoV2();
     addAction($p1, 'discount_amount', 5000);
@@ -214,6 +240,29 @@ test('checkout: free_product them line 0d', function () {
     expect($freeLine)->not->toBeNull();
     expect((float) $freeLine->subtotal)->toBe(0.0);
     expect((float) $freeLine->unit_price)->toBe(0.0);
+});
+
+test('checkout voi selected_promotion_id: ap dung dung promotion da chon', function () {
+    $admin = posAdmin();
+    $pBig = promoV2(['type' => 'promotion']);
+    addAction($pBig, 'discount_amount', 20000);
+    $pSmall = promoV2(['type' => 'promotion']);
+    addAction($pSmall, 'discount_amount', 5000);
+
+    $item = posMenuItem(['price' => 100000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'pending']);
+
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 95000,
+        'selected_promotion_id' => $pSmall->id,
+    ])->assertOk();
+
+    $invoice = $order->fresh()->invoice;
+    expect((float) $invoice->discount_amount)->toBe(5000.0);
+    expect((float) $invoice->total_amount)->toBe(95000.0);
 });
 
 test('race: 2 checkout dong thoi khong vuot max_usage', function () {

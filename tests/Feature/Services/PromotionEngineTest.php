@@ -69,3 +69,43 @@ test('resolveAll dieu kien khong tho tra condition_not_met', function () {
     expect($r['status'])->toBe('rejected');
     expect($r['reason'])->toBe('condition_not_met');
 });
+
+test('resolveAll voi preferredAutoId: chon dung promotion chi dinh, khong chon tot nhat', function () {
+    $pSmall = promoV2();
+    addAction($pSmall, 'discount_amount', 5000);
+    $pBig = promoV2();
+    addAction($pBig, 'discount_amount', 20000);
+
+    // Không truyền preferred → chọn tốt nhất (pBig)
+    $r = PromotionEngine::resolveAll([], engineLines(100000), 100000);
+    expect($r['promotions'])->toHaveCount(1);
+    expect($r['promotions'][0]['promotion']->id)->toBe($pBig->id);
+
+    // Truyền pSmall → chọn pSmall dù discount thấp hơn
+    $r2 = PromotionEngine::resolveAll([], engineLines(100000), 100000, false, $pSmall->id);
+    expect($r2['promotions'])->toHaveCount(1);
+    expect($r2['promotions'][0]['promotion']->id)->toBe($pSmall->id);
+    expect($r2['total_discount'])->toBe(5000.0);
+});
+
+test('resolveAll voi preferredAutoId khong thoa dieu kien: khong ap auto, khong reject', function () {
+    $p = promoV2();
+    addCond($p, 'min_order_value', '999999');
+    addAction($p, 'discount_amount', 20000);
+
+    $r = PromotionEngine::resolveAll([], engineLines(100000), 100000, false, $p->id);
+    expect($r['status'])->toBe('ok');
+    expect($r['promotions'])->toBeEmpty();
+    expect($r['total_discount'])->toBe(0.0);
+});
+
+test('resolveAll voi preferredAutoId = 0: chủ động không áp dụng auto promotion dù có promotion khop', function () {
+    $p = promoV2();
+    addAction($p, 'discount_amount', 20000);
+
+    // Có auto promotion khớp nhưng preferredAutoId = 0 → bỏ qua auto
+    $r = PromotionEngine::resolveAll([], engineLines(100000), 100000, false, 0);
+    expect($r['status'])->toBe('ok');
+    expect($r['promotions'])->toBeEmpty();
+    expect($r['total_discount'])->toBe(0.0);
+});

@@ -116,6 +116,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/promotions', [PromotionController::class, 'index'])->middleware('permission:promotions.view');
         Route::post('/promotions', [PromotionController::class, 'store'])->middleware('permission:promotions.create');
         Route::get('/promotions/analytics', [PromotionController::class, 'analytics'])->middleware('permission:promotions.view');
+        Route::get('/promotions/{promotion}/invoices', [PromotionController::class, 'invoices'])->middleware('permission:promotions.view');
         Route::post('/promotions/{promotion}', [PromotionController::class, 'update'])->middleware('permission:promotions.edit');
         Route::delete('/promotions/{promotion}', [PromotionController::class, 'destroy'])->middleware('permission:promotions.delete');
 
@@ -170,6 +171,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/pos/deposit', [ReservationController::class, 'deposit'])->middleware('permission:pos.create');
         Route::post('/pos/send-to-kitchen', [POSController::class, 'sendToKitchen'])->middleware('permission:pos.create');
         Route::post('/pos/validate-promotion', [PaymentController::class, 'validatePromotion'])->middleware('permission:pos.create');
+        Route::post('/pos/available-promotions', [PaymentController::class, 'availablePromotions'])->middleware('permission:pos.create');
         Route::post('/pos/checkout', [PaymentController::class, 'checkout'])->middleware('permission:pos.create');
         Route::post('/pos/bulk-checkout', [PaymentController::class, 'bulkCheckout'])->middleware('permission:pos.create');
         Route::post('/pos/transfer-table', [TableOperationController::class, 'transferTable'])->middleware('permission:pos.create');

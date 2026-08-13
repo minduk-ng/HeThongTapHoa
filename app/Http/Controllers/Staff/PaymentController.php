@@ -27,13 +27,21 @@ class PaymentController extends Controller
     public function validatePromotion(Request $request)
     {
         $validated = $request->validate([
-            'code' => 'required_without:codes|nullable|string|max:50',
+            'code' => 'nullable|string|max:50',
             'codes' => 'nullable|array|min:1',
             'codes.*' => 'string|max:50',
             'subtotal' => 'nullable|numeric|min:0',
             'items' => 'nullable|array',
             'items.*.menu_item_id' => ['required_with:items', 'integer', Rule::exists('menu_items', 'id')->whereNull('deleted_at')],
             'items.*.quantity' => 'required_with:items|integer|min:1',
+            'selected_promotion_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
+                if ((int) $value === 0) {
+                    return; // 0 = chủ động không áp dụng auto promotion
+                }
+                if (! \App\Models\Promotion::where('id', (int) $value)->whereNull('deleted_at')->exists()) {
+                    $fail('Chương trình khuyến mãi không tồn tại.');
+                }
+            }],
         ]);
 
         $lines = collect($validated['items'] ?? [])->map(function ($it) {
@@ -59,10 +67,13 @@ class PaymentController extends Controller
             ]]);
         }
 
-        $codes = $validated['codes'] ?? [$validated['code'] ?? null];
+        $codes = collect($validated['codes'] ?? [$validated['code'] ?? null])
+            ->filter(fn ($c) => $c !== null && trim((string) $c) !== '')
+            ->values()
+            ->all();
 
         $linesSubtotal = $lines->sum('subtotal');
-        $resolved = PromotionEngine::resolveAll($codes, $lines, (float) $linesSubtotal, false);
+        $resolved = PromotionEngine::resolveAll($codes, $lines, (float) $linesSubtotal, false, $validated['selected_promotion_id'] ?? null);
 
         if ($resolved['status'] === 'rejected') {
             $reason = $resolved['reason'] ?? 'not_found';
@@ -99,6 +110,42 @@ class PaymentController extends Controller
         ]);
     }
 
+    public function availablePromotions(Request $request)
+    {
+        $validated = $request->validate([
+            'subtotal' => 'nullable|numeric|min:0',
+            'items' => 'nullable|array',
+            'items.*.menu_item_id' => ['required_with:items', 'integer', Rule::exists('menu_items', 'id')->whereNull('deleted_at')],
+            'items.*.quantity' => 'required_with:items|integer|min:1',
+        ]);
+
+        $lines = collect($validated['items'] ?? [])->map(function ($it) {
+            $mi = MenuItem::find($it['menu_item_id']);
+            return [
+                'order_item_id' => null,
+                'menu_item_id' => (int) $it['menu_item_id'],
+                'quantity' => (int) ($it['quantity'] ?? 0),
+                'subtotal' => (float) $it['quantity'] * (float) ($mi?->price ?? 0),
+                'category_id' => $mi?->category_id,
+            ];
+        });
+
+        if ($lines->isEmpty()) {
+            $lines = collect([[
+                'order_item_id' => null,
+                'menu_item_id' => null,
+                'quantity' => 0,
+                'subtotal' => (float) ($validated['subtotal'] ?? 0),
+                'category_id' => null,
+            ]]);
+        }
+
+        $linesSubtotal = $lines->sum('subtotal');
+        $candidates = PromotionEngine::candidates($lines, (float) $linesSubtotal);
+
+        return response()->json(['ok' => true, 'promotions' => $candidates]);
+    }
+
     public function checkout(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
@@ -108,6 +155,14 @@ class PaymentController extends Controller
             'change_amount' => 'nullable|numeric|min:0',
             'promotion_code' => 'nullable|string|max:50',
             'idempotency_key' => 'nullable|string|max:100',
+            'selected_promotion_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
+                if ((int) $value === 0) {
+                    return; // 0 = chủ động không áp dụng auto promotion
+                }
+                if (! \App\Models\Promotion::where('id', (int) $value)->whereNull('deleted_at')->exists()) {
+                    $fail('Chương trình khuyến mãi không tồn tại.');
+                }
+            }],
         ]);
 
         if (IdempotencyGuard::isDuplicate($request, 'checkout', [
@@ -180,6 +235,7 @@ class PaymentController extends Controller
                     $codes,
                     $request->user()?->id,
                     $tableNameStr,
+                    $validated['selected_promotion_id'] ?? null,
                 );
 
                 $totalAmount = (float) $invoice->total_amount;
@@ -270,6 +326,14 @@ class PaymentController extends Controller
             'change_amount' => 'nullable|numeric|min:0',
             'promotion_code' => 'nullable|string|max:50',
             'idempotency_key' => 'nullable|string|max:100',
+            'selected_promotion_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
+                if ((int) $value === 0) {
+                    return; // 0 = chủ động không áp dụng auto promotion
+                }
+                if (! \App\Models\Promotion::where('id', (int) $value)->whereNull('deleted_at')->exists()) {
+                    $fail('Chương trình khuyến mãi không tồn tại.');
+                }
+            }],
         ]);
 
         if (IdempotencyGuard::isDuplicate($request, 'bulk_checkout', [
@@ -345,6 +409,7 @@ class PaymentController extends Controller
                     $codes,
                     $request->user()?->id,
                     $tableNameStr,
+                    $validated['selected_promotion_id'] ?? null,
                 );
 
                 $totalAmount = (float) $invoice->total_amount;

@@ -15,12 +15,13 @@ import { usePOSTables } from './hooks/usePOSTables';
 import { usePOSCart } from './hooks/usePOSCart';
 import { usePOSCheckout } from './hooks/usePOSCheckout';
 import { usePOSReservation } from './hooks/usePOSReservation';
-import { POSTableData, POSProductData, CategoryData } from './types/pos.types';
+import { POSTableData, POSProductData, CategoryData, PromotionCandidate } from './types/pos.types';
 
-export default function POSManager({ tables, categories, products }: POSManagerProps) {
+export default function POSManager({ tables, categories, products, promotions }: POSManagerProps) {
     const safeTables = (Array.isArray(tables) ? tables : Object.values(tables || {})) as POSTableData[];
     const safeCategories = (Array.isArray(categories) ? categories : Object.values(categories || {})) as CategoryData[];
     const safeProducts = (Array.isArray(products) ? products : Object.values(products || {})) as POSProductData[];
+    const safePromotions = (Array.isArray(promotions) ? promotions : Object.values(promotions || {})) as PromotionCandidate[];
 
     const [activeTab, setActiveTab] = useState<'tables' | 'menu' | 'log'>('tables');
     const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([]);
@@ -188,8 +189,6 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         submitting: checkoutSubmitting,
         isPaymentDrawerOpen,
         setIsPaymentDrawerOpen,
-        promotionDiscount,
-        promotionName,
         applyPromotion,
         clearPromotion,
         lockedCheckoutTables,
@@ -198,7 +197,12 @@ export default function POSManager({ tables, categories, products }: POSManagerP
         handleSendToKitchen,
         handleConfirmPayment,
         handleBulkCheckout,
-    } = usePOSCheckout(selectedTable, safeTables);
+        selectedAutoId,
+        setSelectedAutoId,
+        appliedPromotions,
+        totalDiscount,
+        applyAutoPromotions,
+    } = usePOSCheckout(selectedTable, safeTables, safePromotions);
 
     const {
         reservationDrafts,
@@ -254,6 +258,20 @@ export default function POSManager({ tables, categories, products }: POSManagerP
             .filter(([invId]) => activeOrderCodes.includes(invId))
             .flatMap(([_, items]) => items);
     }, [selectedTable, tableCarts, safeTables]);
+
+    const paymentCart = paymentMode === 'bulk' && drawerMode === 'payment' ? bulkCartItems : currentCart;
+
+    useEffect(() => {
+        if (isPaymentDrawerOpen && drawerMode === 'payment' && paymentCart.length > 0) {
+            const subtotal = paymentCart.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+            applyAutoPromotions(subtotal, paymentCart.map((item) => ({
+                menu_item_id: item.menu_item_id,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+            })));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isPaymentDrawerOpen, drawerMode, selectedAutoId]);
 
     const isCurrentTableCheckoutLocked = useMemo(() => {
         if (!selectedTable) return false;
@@ -401,8 +419,11 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                 orderCodes={currentOrderCodes}
                 depositTotal={currentDepositTotal}
                 reservationDraft={currentReservationDraft}
-                promotionDiscount={promotionDiscount}
-                promotionName={promotionName}
+                promotions={safePromotions}
+                selectedAutoId={selectedAutoId}
+                onSelectAuto={setSelectedAutoId}
+                appliedPromotions={appliedPromotions}
+                totalDiscount={totalDiscount}
                 onApplyPromotion={applyPromotion}
                 onClearPromotion={clearPromotion}
                 onConfirmPayment={(paymentMethod, amountReceived, changeAmount, shouldPrint) => {
@@ -414,6 +435,10 @@ export default function POSManager({ tables, categories, products }: POSManagerP
                                 paymentMethod,
                                 amountReceived,
                                 changeAmount,
+                                shouldPrint,
+                                bulkCartItems,
+                                selectedTable,
+                                bulkDepositTotal,
                                 () => clearTableCart(selectedTable.id),
                             );
                         } else {
