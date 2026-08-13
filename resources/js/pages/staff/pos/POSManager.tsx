@@ -202,6 +202,7 @@ export default function POSManager({ tables, categories, products, promotions }:
         appliedPromotions,
         totalDiscount,
         applyAutoPromotions,
+        loadAvailablePromotions,
     } = usePOSCheckout(selectedTable, safeTables, safePromotions);
 
     const {
@@ -264,11 +265,14 @@ export default function POSManager({ tables, categories, products, promotions }:
     useEffect(() => {
         if (isPaymentDrawerOpen && drawerMode === 'payment' && paymentCart.length > 0) {
             const subtotal = paymentCart.reduce((s, i) => s + i.quantity * i.unit_price, 0);
-            applyAutoPromotions(subtotal, paymentCart.map((item) => ({
+            const items = paymentCart.map((item) => ({
                 menu_item_id: item.menu_item_id,
                 quantity: item.quantity,
                 unit_price: item.unit_price,
-            })));
+            }));
+            // Load danh sách auto promotion + estimated_discount, tự pick best nếu chưa chọn
+            loadAvailablePromotions(subtotal, items);
+            applyAutoPromotions(subtotal, items);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isPaymentDrawerOpen, drawerMode, selectedAutoId]);

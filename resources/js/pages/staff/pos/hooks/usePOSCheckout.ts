@@ -283,6 +283,35 @@ export function usePOSCheckout(
         } catch { /* bỏ qua */ }
     };
 
+    // Lấy danh sách auto promotion khớp giỏ hàng kèm estimated_discount (từ available-promotions),
+    // cập nhật dropdown; nếu chưa chọn → tự chọn promotion ước tính cao nhất.
+    const loadAvailablePromotions = async (
+        subtotal: number,
+        items: { menu_item_id: number; quantity: number; unit_price: number }[] = []
+    ) => {
+        const csrfToken = getCsrfTokenFromCookie();
+        try {
+            const response = await fetch('/staff/pos/available-promotions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ subtotal, items }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.ok && data.ok && Array.isArray(data.promotions)) {
+                const list = data.promotions as PromotionCandidate[];
+                setAvailablePromotions(list);
+                const currentlyUnset = selectedAutoId === null || selectedAutoId === 0;
+                if (currentlyUnset && list.length > 0) {
+                    const best = list.reduce<PromotionCandidate | undefined>(
+                        (acc, p) => (p.estimated_discount > (acc?.estimated_discount ?? -1) ? p : acc),
+                        list[0]
+                    );
+                    setSelectedAutoId(best?.id ?? null);
+                }
+            }
+        } catch { /* bỏ qua */ }
+    };
+
     const handleConfirmPayment = (
         selectedTable: POSTableData | null,
         currentCart: CartItem[],
@@ -502,6 +531,7 @@ export function usePOSCheckout(
         appliedPromotions,
         totalDiscount,
         applyAutoPromotions,
+        loadAvailablePromotions,
         promotionCode,
         promotionName,
         promotionDiscount,

@@ -23,31 +23,48 @@ export default function PromotionInvoicesModal({ isOpen, onClose, promotionId }:
     const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(false);
     const [nextPage, setNextPage] = useState<string | null>(null);
 
     useEffect(() => {
         if (!isOpen || promotionId === null) return;
         setLoading(true);
+        setError(null);
         setInvoices([]);
         setHasMore(false);
         setNextPage(null);
         fetch(`/manager/promotions/${promotionId}/invoices?per_page=50`, { headers: { Accept: 'application/json' } })
-            .then((r) => r.json())
+            .then((r) => {
+                if (!r.ok) throw new Error('Không thể tải danh sách hoá đơn.');
+                return r.json();
+            })
             .then((data) => {
                 setInvoices(data.invoices || []);
                 setHasMore(data.meta?.has_more ?? false);
                 setNextPage(data.meta?.next_page ?? null);
             })
-            .catch(() => setInvoices([]))
+            .catch(() => setError('Không thể tải danh sách hoá đơn. Vui lòng thử lại.'))
             .finally(() => setLoading(false));
     }, [isOpen, promotionId]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [isOpen, onClose]);
 
     const loadMore = () => {
         if (!nextPage || loadingMore) return;
         setLoadingMore(true);
         fetch(nextPage, { headers: { Accept: 'application/json' } })
-            .then((r) => r.json())
+            .then((r) => {
+                if (!r.ok) throw new Error('Không thể tải thêm.');
+                return r.json();
+            })
             .then((data) => {
                 setInvoices((prev) => [...prev, ...(data.invoices || [])]);
                 setHasMore(data.meta?.has_more ?? false);
@@ -70,8 +87,11 @@ export default function PromotionInvoicesModal({ isOpen, onClose, promotionId }:
     ];
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[85vh] overflow-auto p-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4" onClick={onClose}>
+            <div
+                className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[85vh] overflow-auto p-6"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3 mb-5">
                     <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Hoá đơn đã dùng mã</h3>
                     <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-600 p-1 rounded-lg">
@@ -80,6 +100,8 @@ export default function PromotionInvoicesModal({ isOpen, onClose, promotionId }:
                 </div>
                 {loading ? (
                     <div className="py-10 text-center text-sm text-zinc-500">Đang tải...</div>
+                ) : error ? (
+                    <div className="py-10 text-center text-sm text-rose-600">{error}</div>
                 ) : (
                     <>
                         <DataTable<InvoiceRow>
