@@ -28,6 +28,7 @@ class Promotion extends Model
     protected $fillable = [
         'name', 'type', 'code', 'start_date', 'end_date',
         'status', 'max_usage', 'target_usage', 'used_count', 'exclusive', 'stackable',
+        'code_prefix', 'code_quantity', 'code_random',
     ];
 
     protected $casts = [
@@ -39,6 +40,8 @@ class Promotion extends Model
         'used_count' => 'int',
         'exclusive' => 'bool',
         'stackable' => 'bool',
+        'code_quantity' => 'int',
+        'code_random' => 'bool',
     ];
 
     public function conditions(): HasMany
@@ -49,5 +52,10 @@ class Promotion extends Model
     public function actions(): HasMany
     {
         return $this->hasMany(PromotionAction::class);
+    }
+
+    public function codes(): HasMany
+    {
+        return $this->hasMany(PromotionCode::class);
     }
 }
