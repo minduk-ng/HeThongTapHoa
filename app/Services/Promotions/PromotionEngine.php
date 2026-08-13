@@ -4,6 +4,7 @@ namespace App\Services\Promotions;
 
 use App\Models\MenuItem;
 use App\Models\Promotion;
+use App\Models\PromotionCode;
 use Illuminate\Support\Collection;
 
 class PromotionEngine
@@ -17,9 +18,37 @@ class PromotionEngine
 
         // 1. COUPON/VOUCHER từ mã nhập
         $codePromotions = [];
+        $promotionCodesById = []; // promotion_id => PromotionCode (chỉ khi đã match mã con)
         foreach (array_values($codes) as $code) {
+            $codeUpper = mb_strtoupper(trim($code));
+
+            // 1a. Thử mã con (promotion_codes) trước — index unique, case-insensitive
+            $pcQuery = PromotionCode::query()->whereRaw('UPPER(code) = ?', [$codeUpper]);
+            if ($lockForUpdate) {
+                $pcQuery->lockForUpdate();
+            }
+            $pc = $pcQuery->first();
+
+            if ($pc) {
+                if ($pc->status !== 'unused') {
+                    return ['status' => 'rejected', 'reason' => 'already_used', 'code' => $code];
+                }
+                $promotion = Promotion::query()->with(['conditions', 'actions'])->find($pc->promotion_id);
+                if (! $promotion) {
+                    return ['status' => 'rejected', 'reason' => 'not_found', 'code' => $code];
+                }
+                $reject = self::validateAgainst($promotion, $lines, $subtotal);
+                if ($reject !== null) {
+                    return ['status' => 'rejected', 'reason' => $reject, 'code' => $code];
+                }
+                $codePromotions[] = $promotion;
+                $promotionCodesById[$promotion->id] = $pc;
+                continue;
+            }
+
+            // 1b. Fallback mã lẻ (promotions.code) như cũ
             $promotion = Promotion::query()
-                ->whereRaw('UPPER(code) = ?', [mb_strtoupper(trim($code))]);
+                ->whereRaw('UPPER(code) = ?', [$codeUpper]);
             if ($lockForUpdate) {
                 $promotion->lockForUpdate();
             }
@@ -107,6 +136,13 @@ class PromotionEngine
             // Quota: increment trong lock (chỉ khi checkout/thanh toán thật)
             if ($lockForUpdate) {
                 $p->increment('used_count');
+                // Đánh dấu mã con đã dùng (mỗi mã 1 lần) — đã lockForUpdate ở step 1a
+                if (isset($promotionCodesById[$p->id])) {
+                    $promotionCodesById[$p->id]->forceFill([
+                        'status' => 'used',
+                        'used_at' => now(),
+                    ])->save();
+                }
             }
 
             $applied[] = [

@@ -140,3 +140,57 @@ test('resolveAll preferredAutoId la promotion het han: khong ap auto, khong reje
     expect($r['promotions'])->toBeEmpty();
     expect($r['total_discount'])->toBe(0.0);
 });
+
+test('resolveAll: ma con chua dung thi ok', function () {
+    $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'ENG1', 'code_quantity' => 1, 'code_random' => false]);
+    addAction($p, 'discount_amount', 5000);
+    \App\Services\Promotions\PromotionCodeService::generate($p);
+    $code = $p->codes()->first()->code;
+
+    $r = PromotionEngine::resolveAll([$code], engineLines(100000), 100000);
+
+    expect($r['status'])->toBe('ok');
+    expect($r['total_discount'])->toBe(5000.0);
+});
+
+test('resolveAll: ma con da dung tra already_used', function () {
+    $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'ENG2', 'code_quantity' => 1, 'code_random' => false]);
+    addAction($p, 'discount_amount', 5000);
+    \App\Services\Promotions\PromotionCodeService::generate($p);
+    $pc = $p->codes()->first();
+    $pc->update(['status' => 'used', 'used_at' => now()]);
+
+    $r = PromotionEngine::resolveAll([$pc->code], engineLines(100000), 100000);
+
+    expect($r['status'])->toBe('rejected');
+    expect($r['reason'])->toBe('already_used');
+});
+
+test('resolveAll: ma le cu van hoạt động (backward compat)', function () {
+    $p = promoV2(['type' => 'coupon']);
+    addAction($p, 'discount_amount', 5000);
+
+    $r = PromotionEngine::resolveAll([$p->code], engineLines(100000), 100000);
+
+    expect($r['status'])->toBe('ok');
+    expect($r['total_discount'])->toBe(5000.0);
+});
+
+test('resolveAll lockForUpdate: ma con duoc danh dau used khi checkout', function () {
+    $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'ENG3', 'code_quantity' => 1, 'code_random' => false]);
+    addAction($p, 'discount_amount', 5000);
+    \App\Services\Promotions\PromotionCodeService::generate($p);
+    $pc = $p->codes()->first();
+
+    $r = PromotionEngine::resolveAll([$pc->code], engineLines(100000), 100000, true);
+
+    expect($r['status'])->toBe('ok');
+    $pc->refresh();
+    expect($pc->status)->toBe('used');
+    expect($pc->used_at)->not->toBeNull();
+
+    // Dùng lại → already_used
+    $r2 = PromotionEngine::resolveAll([$pc->code], engineLines(100000), 100000);
+    expect($r2['status'])->toBe('rejected');
+    expect($r2['reason'])->toBe('already_used');
+});
