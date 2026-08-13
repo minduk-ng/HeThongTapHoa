@@ -23,7 +23,7 @@ class PromotionEngine
             $codeUpper = mb_strtoupper(trim($code));
 
             // 1a. Thử mã con (promotion_codes) trước — index unique, case-insensitive
-            $pcQuery = PromotionCode::query()->whereRaw('UPPER(code) = ?', [$codeUpper]);
+            $pcQuery = PromotionCode::query()->where('code', $codeUpper);
             if ($lockForUpdate) {
                 $pcQuery->lockForUpdate();
             }
@@ -33,7 +33,11 @@ class PromotionEngine
                 if ($pc->status !== 'unused') {
                     return ['status' => 'rejected', 'reason' => 'already_used', 'code' => $code];
                 }
-                $promotion = Promotion::query()->with(['conditions', 'actions'])->find($pc->promotion_id);
+                $promotionQuery = Promotion::query()->with(['conditions', 'actions']);
+                if ($lockForUpdate) {
+                    $promotionQuery->lockForUpdate();
+                }
+                $promotion = $promotionQuery->find($pc->promotion_id);
                 if (! $promotion) {
                     return ['status' => 'rejected', 'reason' => 'not_found', 'code' => $code];
                 }
@@ -41,14 +45,17 @@ class PromotionEngine
                 if ($reject !== null) {
                     return ['status' => 'rejected', 'reason' => $reject, 'code' => $code];
                 }
-                $codePromotions[] = $promotion;
-                $promotionCodesById[$promotion->id] = $pc;
+                // Dedupe: 2 mã con cùng campaign → chỉ áp 1 lần (giữ mã đầu, tránh double discount)
+                if (! collect($codePromotions)->contains(fn ($cp) => (int) $cp->id === (int) $promotion->id)) {
+                    $codePromotions[] = $promotion;
+                    $promotionCodesById[$promotion->id] = $pc;
+                }
                 continue;
             }
 
             // 1b. Fallback mã lẻ (promotions.code) như cũ
             $promotion = Promotion::query()
-                ->whereRaw('UPPER(code) = ?', [$codeUpper]);
+                ->where('code', $codeUpper);
             if ($lockForUpdate) {
                 $promotion->lockForUpdate();
             }

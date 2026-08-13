@@ -93,7 +93,7 @@ class PaymentController extends Controller
         $promotions = collect($resolved['promotions'])->map(fn ($r) => [
             'id' => $r['promotion']->id,
             'name' => $r['promotion']->name,
-            'code' => $r['promotion']->code,
+            'code' => $r['code'] ?? $r['promotion']->code,
             'discount_amount' => $r['amount'],
         ])->values()->all();
 

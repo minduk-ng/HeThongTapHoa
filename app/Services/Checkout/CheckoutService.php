@@ -108,7 +108,7 @@ class CheckoutService
                     $p = $pr['promotion'];
                     $promotionRows[] = [
                         'promotion_id' => $p->id,
-                        'code' => $p->code ?? 'AUTO-'.$p->id,
+                        'code' => $pr['code'] ?? $p->code ?? 'AUTO-'.$p->id,
                         'name' => $p->name,
                         'discount_type' => $pr['actions_applied'][0]['type'] ?? $p->type,
                         'discount_value' => (float) ($pr['actions_applied'][0]['value'] ?? 0),

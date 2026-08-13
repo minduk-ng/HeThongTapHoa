@@ -185,6 +185,9 @@ function posOrder(?Table $table, array $itemsSpec = [], array $attrs = []): Orde
 function promoV2(array $attrs = []): Promotion
 {
     $type = $attrs['type'] ?? 'promotion';
+    if (isset($attrs['code'])) {
+        $attrs['code'] = mb_strtoupper(trim($attrs['code']));
+    }
 
     return Promotion::create(array_merge([
         'name' => 'Promo '.uniqid(),

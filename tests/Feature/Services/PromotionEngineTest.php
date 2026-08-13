@@ -166,6 +166,28 @@ test('resolveAll: ma con da dung tra already_used', function () {
     expect($r['reason'])->toBe('already_used');
 });
 
+test('resolveAll: 2 ma con cung campaign chi ap 1 lan, chi tieu 1 ma', function () {
+    $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'DEDUPE', 'code_quantity' => 2, 'code_random' => false]);
+    addAction($p, 'discount_amount', 5000);
+    \App\Services\Promotions\PromotionCodeService::generate($p);
+    $codes = $p->codes()->pluck('code')->all();
+    expect(count($codes))->toBe(2);
+
+    $r = PromotionEngine::resolveAll($codes, engineLines(100000), 100000, true);
+
+    expect($r['status'])->toBe('ok');
+    expect($r['promotions'])->toHaveCount(1); // không double discount
+    expect($r['promotions'][0]['promotion']->id)->toBe($p->id);
+    expect($r['promotions'][0]['code'])->toBe($codes[0]);
+    expect($r['total_discount'])->toBe(5000.0);
+
+    // Chỉ 1 mã con được đánh dấu used, mã còn lại vẫn unused
+    expect($p->codes()->where('status', 'used')->count())->toBe(1);
+    expect($p->codes()->where('status', 'unused')->count())->toBe(1);
+    $p->refresh();
+    expect($p->used_count)->toBe(1);
+});
+
 test('resolveAll: ma le cu van hoạt động (backward compat)', function () {
     $p = promoV2(['type' => 'coupon']);
     addAction($p, 'discount_amount', 5000);
