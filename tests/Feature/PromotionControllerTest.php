@@ -235,6 +235,22 @@ test('store coupon voi code_prefix + quantity tao du ma con', function () {
     expect($promo->codes()->pluck('code')->sort()->values()->all())->toBe(['BC01-001', 'BC01-002', 'BC01-003']);
 });
 
+test('store coupon batch khong can code rieng (chi prefix + quantity)', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'type' => 'coupon',
+        'name' => 'Batch no code',
+        'code_prefix' => 'BNC',
+        'code_quantity' => 2,
+        'code_random' => false,
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
+    ])->assertSessionHasNoErrors();
+
+    $promo = Promotion::where('name', 'Batch no code')->first();
+    expect($promo->code)->toBeNull();
+    expect($promo->codes)->toHaveCount(2);
+    expect($promo->codes()->pluck('code')->sort()->values()->all())->toBe(['BNC-001', 'BNC-002']);
+});
+
 test('store prefix trung bi 422', function () {
     $this->actingAs(posAdmin())->post('/manager/promotions', [
         'type' => 'coupon', 'name' => 'A', 'code' => 'A1',

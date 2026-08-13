@@ -426,7 +426,7 @@ class PromotionController extends Controller
         return [
             'name' => ['required', 'string', 'max:100'],
             'type' => ['required', Rule::in(['promotion', 'coupon', 'voucher'])],
-            'code' => ['nullable', 'string', 'max:50', Rule::requiredIf(fn () => in_array((string) request('type'), ['coupon', 'voucher'], true)), Rule::unique('promotions', 'code')->ignore($promotion?->id)],
+            'code' => ['nullable', 'string', 'max:50', Rule::requiredIf(fn () => in_array((string) request('type'), ['coupon', 'voucher'], true) && ! request('code_prefix')), Rule::unique('promotions', 'code')->ignore($promotion?->id)],
             'code_prefix' => ['nullable', 'string', 'max:30', 'required_with:code_quantity'],
             'code_quantity' => ['nullable', 'integer', 'min:1', 'max:100000', 'required_with:code_prefix'],
             'code_random' => ['sometimes', 'boolean'],

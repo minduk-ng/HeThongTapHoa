@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { X, Shuffle } from 'lucide-react';
+import { X, Shuffle, Download } from 'lucide-react';
 import DatePicker from '../../../../components/DatePicker';
 import PromotionActionsEditor, { ActionRow } from './PromotionActionsEditor';
 import PromotionConditionsEditor, { ConditionRow } from './PromotionConditionsEditor';
 import PromotionPreview from './PromotionPreview';
+import { exportXLSX } from '../../../../components/reports/reportExport';
 import { PromotionData } from '../PromotionsManager';
 
 interface Props {
@@ -67,6 +68,35 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
             setCodePrefix(''); setCodeQuantity(''); setCodeRandom(false);
         }
     }, [promotionToEdit, isOpen]);
+
+    const [exporting, setExporting] = useState(false);
+
+    const handleExport = async () => {
+        if (!promotionToEdit || exporting || promotionToEdit.codes_count <= 0) return;
+        setExporting(true);
+        try {
+            const res = await fetch(`/manager/promotions/${promotionToEdit.id}/codes?export=1`, { headers: { Accept: 'application/json' } });
+            if (!res.ok) throw new Error('fail');
+            const data = await res.json();
+            const rows = (data.codes || []).map((c: any) => [
+                c.code,
+                c.status === 'used' ? 'Đã dùng' : 'Chưa dùng',
+                c.used_at ? new Date(c.used_at).toLocaleString('vi-VN') : '—',
+                c.invoice_code || '—',
+            ]);
+            await exportXLSX(
+                `Danh sách mã ${promotionToEdit.code_prefix || 'KM'}`,
+                promotionToEdit.name,
+                ['Mã', 'Trạng thái', 'Thời gian dùng', 'Hoá đơn'],
+                rows,
+                `ma-${promotionToEdit.code_prefix || 'km'}`,
+            );
+        } catch {
+            // im lặng — modal danh sách mã có error state riêng
+        } finally {
+            setExporting(false);
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -141,7 +171,7 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                                             <option value="voucher">Mã quà tặng (Voucher)</option>
                                         </select>
                                     </div>
-                                    {type !== 'promotion' && (
+                                    {type !== 'promotion' && codePrefix === '' && codeQuantity === '' && (
                                         <div>
                                             <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Mã Code <span className="text-rose-500">*</span></label>
                                             <div className="flex gap-2">
@@ -253,6 +283,13 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                             <PromotionPreview name={name} type={type} actions={actions} conditions={conditions} endDate={endDate || ''} status={status} />
                         </section>
                         <div className="flex justify-end gap-3">
+                            {promotionToEdit && promotionToEdit.codes_count > 0 && (
+                                <button type="button" onClick={handleExport} disabled={exporting}
+                                    className="px-4 py-2 text-sm font-medium text-sky-600 dark:text-sky-400 border border-sky-300 dark:border-sky-700 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-950/40 disabled:opacity-50 flex items-center gap-1.5">
+                                    <Download className="w-4 h-4 stroke-[1.5]" />
+                                    <span>{exporting ? 'Đang xuất...' : 'Export Excel'}</span>
+                                </button>
+                            )}
                             <button type="button" onClick={onClose}
                                 className="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700">Hủy bỏ</button>
                             <button type="submit" disabled={submitting}
