@@ -267,6 +267,31 @@ test('index tra batch fields + codes_count/codes_used', function () {
         ->where('promotions.0.codes_used', 1));
 });
 
+test('GET codes tra danh sach ma con + bo dem', function () {
+    $this->actingAs(posAdmin());
+    $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'CODES1', 'code_quantity' => 3, 'code_random' => false]);
+    addAction($p, 'discount_amount', 1000);
+    \App\Services\Promotions\PromotionCodeService::generate($p);
+    $p->codes()->first()->update(['status' => 'used', 'used_at' => now()]);
+
+    $res = $this->getJson("/manager/promotions/{$p->id}/codes")->assertOk();
+    expect($res->json('codes'))->toHaveCount(3);
+    expect($res->json('meta.per_page'))->toBe(50);
+    $usedCount = collect($res->json('codes'))->where('status', 'used')->count();
+    expect($usedCount)->toBe(1);
+});
+
+test('GET codes export=1 tra toan bo khong phan trang', function () {
+    $this->actingAs(posAdmin());
+    $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'CODESX', 'code_quantity' => 5, 'code_random' => false]);
+    addAction($p, 'discount_amount', 1000);
+    \App\Services\Promotions\PromotionCodeService::generate($p);
+
+    $res = $this->getJson("/manager/promotions/{$p->id}/codes?export=1")->assertOk();
+    expect($res->json('codes'))->toHaveCount(5);
+    expect($res->json('meta'))->toBeNull();
+});
+
 test('end_date chuan hoa cuoi ngay: coupon con ap dung trong ngay cuoi', function () {
     Carbon::setTestNow('2026-08-03 12:00:00');
     try {

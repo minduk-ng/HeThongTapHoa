@@ -7,6 +7,7 @@ use App\Models\InvoicePromotion;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Promotion;
+use App\Models\PromotionCode;
 use App\Services\Promotions\PromotionCodeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -243,6 +244,31 @@ class PromotionController extends Controller
 
         return response()->json([
             'invoices' => $paginator->items(),
+            'meta' => [
+                'per_page' => $paginator->perPage(),
+                'has_more' => $paginator->hasMorePages(),
+                'next_page' => $paginator->nextPageUrl(),
+            ],
+        ]);
+    }
+
+    public function codes(Request $request, Promotion $promotion): JsonResponse
+    {
+        $query = PromotionCode::query()
+            ->where('promotion_id', $promotion->id)
+            ->leftJoin('invoices', 'invoices.id', '=', 'promotion_codes.used_invoice_id')
+            ->select('promotion_codes.id', 'promotion_codes.code', 'promotion_codes.status', 'promotion_codes.used_at', 'invoices.invoice_code')
+            ->orderBy('promotion_codes.id', 'desc');
+
+        if ($request->boolean('export')) {
+            return response()->json(['codes' => $query->get()]);
+        }
+
+        $perPage = min(max((int) $request->input('per_page', 50), 1), 200);
+        $paginator = $query->simplePaginate($perPage);
+
+        return response()->json([
+            'codes' => $paginator->items(),
             'meta' => [
                 'per_page' => $paginator->perPage(),
                 'has_more' => $paginator->hasMorePages(),
