@@ -255,6 +255,39 @@ test('resolveAll: trong khung gio vang thi ap dung', function () {
     expect($r['total_discount'])->toBe(5000.0);
 });
 
+test('resolveAll: boundary gio - dung trong khung khi co giay, dung ngoai khung khi het gio', function () {
+    // Slot 11:00–13:00 với giây lưu trong DB (MySQL trả '11:00:00')
+    $p = promoV2(['type' => 'coupon']);
+    addAction($p, 'discount_amount', 5000);
+    $dow = (int) now()->dayOfWeek;
+    PromotionTimeSlot::create([
+        'promotion_id' => $p->id,
+        'day_of_week' => $dow,
+        'start_time' => '11:00:00',
+        'end_time' => '13:00:00',
+    ]);
+
+    // 12:30:00 — trong khung → áp dụng
+    \Illuminate\Support\Carbon::setTestNow(\Illuminate\Support\Carbon::createFromFormat('Y-m-d H:i:s', now()->format('Y-m-d').' 12:30:00'));
+    $rIn = PromotionEngine::resolveAll([$p->code], engineLines(100000), 100000);
+    expect($rIn['status'])->toBe('ok');
+    expect($rIn['total_discount'])->toBe(5000.0);
+
+    // 13:00:00 — hết khung (end_time 13:00 nửa mở) → reject out_of_slot
+    \Illuminate\Support\Carbon::setTestNow(\Illuminate\Support\Carbon::createFromFormat('Y-m-d H:i:s', now()->format('Y-m-d').' 13:00:00'));
+    $rOut = PromotionEngine::resolveAll([$p->code], engineLines(100000), 100000);
+    expect($rOut['status'])->toBe('rejected');
+    expect($rOut['reason'])->toBe('out_of_slot');
+
+    // 11:00:00 — đầu khung → áp dụng (>= start)
+    \Illuminate\Support\Carbon::setTestNow(\Illuminate\Support\Carbon::createFromFormat('Y-m-d H:i:s', now()->format('Y-m-d').' 11:00:00'));
+    $rStart = PromotionEngine::resolveAll([$p->code], engineLines(100000), 100000);
+    expect($rStart['status'])->toBe('ok');
+    expect($rStart['total_discount'])->toBe(5000.0);
+
+    \Illuminate\Support\Carbon::setTestNow(); // reset
+});
+
 test('resolveAll: campaign khong co time slot van ap dung binh thuong (backward compat)', function () {
     $p = promoV2(['type' => 'coupon']);
     addAction($p, 'discount_amount', 5000);

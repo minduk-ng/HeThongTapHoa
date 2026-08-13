@@ -234,8 +234,8 @@ class PromotionEngine
 
         return $p->timeSlots->contains(
             fn ($slot) => (int) $slot->day_of_week === $dow
-                && $hm >= $slot->start_time
-                && $hm < $slot->end_time
+                && $hm >= substr((string) $slot->start_time, 0, 5)
+                && $hm < substr((string) $slot->end_time, 0, 5)
         );
     }
 
