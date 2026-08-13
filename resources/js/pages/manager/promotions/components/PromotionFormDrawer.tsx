@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { X, Shuffle, Download } from 'lucide-react';
+import { X, Plus, Shuffle, Download } from 'lucide-react';
 import DatePicker from '../../../../components/DatePicker';
 import PromotionActionsEditor, { ActionRow } from './PromotionActionsEditor';
 import PromotionConditionsEditor, { ConditionRow } from './PromotionConditionsEditor';
@@ -17,6 +17,13 @@ interface Props {
 }
 
 const randomCode = () => Array.from({ length: 8 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+
+const DAYS = [
+    { v: 0, l: 'CN' }, { v: 1, l: 'T2' }, { v: 2, l: 'T3' }, { v: 3, l: 'T4' },
+    { v: 4, l: 'T5' }, { v: 5, l: 'T6' }, { v: 6, l: 'T7' },
+];
+
+interface SlotRow { days: number[]; start: string; end: string; }
 
 export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, menuItems, menuCategories }: Props) {
     const [name, setName] = useState('');
@@ -36,6 +43,19 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
     const [codeRandom, setCodeRandom] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
+    const [timeSlots, setTimeSlots] = useState<SlotRow[]>([]);
+
+    const updateSlot = (i: number, patch: Partial<SlotRow>) =>
+        setTimeSlots((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+    const addSlot = () => setTimeSlots((prev) => [...prev, { days: [], start: '11:00', end: '13:00' }]);
+    const removeSlot = (i: number) => setTimeSlots((prev) => prev.filter((_, idx) => idx !== i));
+    const toggleDay = (i: number, d: number) => {
+        setTimeSlots((prev) => prev.map((s, idx) => {
+            if (idx !== i) return s;
+            const has = s.days.includes(d);
+            return { ...s, days: has ? s.days.filter((x) => x !== d) : [...s.days, d].sort() };
+        }));
+    };
 
     useEffect(() => {
         setErrors({});
@@ -60,12 +80,18 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
             setCodePrefix(promotionToEdit.code_prefix || '');
             setCodeQuantity(promotionToEdit.code_quantity === null ? '' : String(promotionToEdit.code_quantity));
             setCodeRandom(promotionToEdit.code_random);
+            setTimeSlots((promotionToEdit.time_slots ?? []).map((s) => ({
+                days: [s.day_of_week],
+                start: s.start_time.slice(0, 5),
+                end: s.end_time.slice(0, 5),
+            })));
         } else {
             setName(''); setType('promotion'); setCode(''); setStartDate(null); setEndDate(null);
             setStatus(true); setMaxUsage(''); setTargetUsage(''); setExclusive(false); setStackable(true);
             setActions([{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]);
             setConditions([]);
             setCodePrefix(''); setCodeQuantity(''); setCodeRandom(false);
+            setTimeSlots([]);
         }
     }, [promotionToEdit, isOpen]);
 
@@ -129,6 +155,9 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                 action_value: Number(a.action_value) || 0,
                 max_discount_amount: a.action_type === 'discount_percent' && a.max_discount_amount !== '' ? Number(a.max_discount_amount) : null,
             })),
+            time_slots: timeSlots.flatMap((s) =>
+                s.days.map((d) => ({ day_of_week: d, start_time: s.start, end_time: s.end }))
+            ),
         };
         router.post(promotionToEdit ? `/manager/promotions/${promotionToEdit.id}` : '/manager/promotions', payload, {
             onSuccess: onClose,
@@ -257,6 +286,38 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                                         {errors.code_prefix && <p className="text-xs text-rose-500">{errors.code_prefix}</p>}
                                     </div>
                                 )}
+                                <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 space-y-3">
+                                    <h5 className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Khung giờ vàng (tùy chọn)</h5>
+                                    <p className="text-[11px] text-zinc-500">Chỉ áp dụng khi thời điểm thanh toán nằm trong khung giờ đã chọn. Để trống = áp dụng mọi lúc.</p>
+                                    {timeSlots.map((slot, i) => (
+                                        <div key={i} className="space-y-2 rounded-lg border border-zinc-200 dark:border-zinc-800 p-3">
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {DAYS.map((d) => (
+                                                    <button key={d.v} type="button" onClick={() => toggleDay(i, d.v)}
+                                                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                                                            slot.days.includes(d.v)
+                                                                ? 'bg-sky-600 text-white'
+                                                                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300'
+                                                        }`}>
+                                                        {d.l}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <input type="time" value={slot.start} onChange={(e) => updateSlot(i, { start: e.target.value })} className={inputCls + ' !w-auto'} />
+                                                <span className="text-xs text-zinc-500">—</span>
+                                                <input type="time" value={slot.end} onChange={(e) => updateSlot(i, { end: e.target.value })} className={inputCls + ' !w-auto'} />
+                                                <button type="button" onClick={() => removeSlot(i)} className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950 rounded-lg">
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                            {errors[`time_slots.${i}.end_time`] && <p className="text-xs text-rose-500">{errors[`time_slots.${i}.end_time`]}</p>}
+                                        </div>
+                                    ))}
+                                    <button type="button" onClick={addSlot} className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                                        <Plus className="w-3.5 h-3.5" /> Thêm khung giờ
+                                    </button>
+                                </div>
                             </div>
                         </section>
 

@@ -46,6 +46,7 @@ export interface PromotionData {
     code_random: boolean;
     codes_count: number;
     codes_used: number;
+    time_slots: { day_of_week: number; start_time: string; end_time: string }[];
 }
 
 interface Props {
