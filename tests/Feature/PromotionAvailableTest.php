@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\PromotionTimeSlot;
+use App\Services\Promotions\PromotionCodeService;
+
 test('available-promotions tra danh sach promotion type=promotion khop dieu kien + estimated_discount', function () {
     $p = promoV2(['type' => 'promotion']);
     addAction($p, 'discount_percent', 10);
@@ -53,7 +56,7 @@ test('validate-promotion nhan selected_promotion_id: tra discount dung promotion
 test('validate-promotion tra child code cho ma con', function () {
     $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'VP1', 'code_quantity' => 1, 'code_random' => false]);
     addAction($p, 'discount_amount', 5000);
-    \App\Services\Promotions\PromotionCodeService::generate($p);
+    PromotionCodeService::generate($p);
     $code = $p->codes()->first()->code;
 
     $item = posMenuItem(['price' => 100000]);
@@ -83,4 +86,27 @@ test('validate-promotion selected_promotion_id = 0: khong ap auto promotion, dis
 
     expect($res->json('discount_amount'))->toEqual(0);
     expect($res->json('promotions'))->toBeEmpty();
+});
+
+test('validate-promotion code ngoai khung gio vang tra 422 out_of_slot', function () {
+    $p = promoV2(['type' => 'coupon', 'code' => 'SLOT'.substr(uniqid(), -4)]);
+    addAction($p, 'discount_amount', 5000);
+    // Slot ở NGÀY KHÁC (ngày hôm nay + 3) → luôn không khớp thứ
+    $otherDow = (((int) now()->dayOfWeek) + 3) % 7;
+    PromotionTimeSlot::create([
+        'promotion_id' => $p->id,
+        'day_of_week' => $otherDow,
+        'start_time' => '00:00',
+        'end_time' => '23:59',
+    ]);
+    $item = posMenuItem(['price' => 100000]);
+
+    $res = $this->actingAs(posStaff())->postJson('/staff/pos/validate-promotion', [
+        'code' => $p->code,
+        'subtotal' => 100000,
+        'items' => [['menu_item_id' => $item->id, 'quantity' => 1]],
+    ]);
+
+    $res->assertStatus(422);
+    expect($res->json('error'))->toBe('Mã chỉ áp dụng trong khung giờ đã đăng ký.');
 });

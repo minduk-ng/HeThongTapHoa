@@ -58,4 +58,9 @@ class Promotion extends Model
     {
         return $this->hasMany(PromotionCode::class);
     }
+
+    public function timeSlots(): HasMany
+    {
+        return $this->hasMany(PromotionTimeSlot::class);
+    }
 }

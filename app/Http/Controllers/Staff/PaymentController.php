@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Staff\Concerns\DispatchesSafely;
 use App\Models\MenuItem;
 use App\Models\Order;
+use App\Models\Promotion;
 use App\Models\Table;
 use App\Services\Checkout\CheckoutService;
 use App\Services\IdempotencyGuard;
@@ -79,6 +80,7 @@ class PaymentController extends Controller
                 'expired' => 'Mã khuyến mãi đã hết hạn.',
                 'out_of_uses' => 'Mã khuyến mãi đã hết lượt sử dụng.',
                 'condition_not_met' => 'Đơn hàng chưa đáp ứng điều kiện khuyến mãi.',
+                'out_of_slot' => 'Mã chỉ áp dụng trong khung giờ đã đăng ký.',
                 'exclusive_conflict' => 'Mã khuyến mãi xung đột với khuyến mãi khác.',
                 'already_used' => 'Mã khuyến mãi đã được sử dụng.',
             ];
@@ -117,6 +119,7 @@ class PaymentController extends Controller
 
         $lines = collect($validated['items'] ?? [])->map(function ($it) {
             $mi = MenuItem::find($it['menu_item_id']);
+
             return [
                 'order_item_id' => null,
                 'menu_item_id' => (int) $it['menu_item_id'],
@@ -483,7 +486,7 @@ class PaymentController extends Controller
         }
 
         $now = now();
-        $exists = \App\Models\Promotion::query()
+        $exists = Promotion::query()
             ->where('id', $value)
             ->whereNull('deleted_at')
             ->where('status', true)

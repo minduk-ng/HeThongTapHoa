@@ -98,7 +98,12 @@ class CheckoutService
             if (! empty($promotionCodes) || Promotion::query()->where('type', 'promotion')->where('status', true)->exists()) {
                 $resolved = PromotionEngine::resolveAll($promotionCodes, $engineLines, $subtotal, true, $selectedPromotionId);
                 if ($resolved['status'] === 'rejected') {
-                    throw new \Exception('Mã khuyến mãi '.($resolved['code'] ?? '').' không hợp lệ hoặc đã hết hạn.', 422);
+                    $reasonMsg = match ($resolved['reason'] ?? 'not_found') {
+                        'out_of_slot' => 'Mã chỉ áp dụng trong khung giờ đã đăng ký.',
+                        'already_used' => 'Mã khuyến mãi đã được sử dụng.',
+                        default => 'Mã khuyến mãi không hợp lệ hoặc đã hết hạn.',
+                    };
+                    throw new \Exception($reasonMsg, 422);
                 }
                 $totalDiscount = $resolved['total_discount'];
                 $freeItems = $resolved['free_items'] ?? [];

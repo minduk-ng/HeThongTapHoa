@@ -33,7 +33,7 @@ class PromotionEngine
                 if ($pc->status !== 'unused') {
                     return ['status' => 'rejected', 'reason' => 'already_used', 'code' => $code];
                 }
-                $promotionQuery = Promotion::query()->with(['conditions', 'actions']);
+                $promotionQuery = Promotion::query()->with(['conditions', 'actions', 'timeSlots']);
                 if ($lockForUpdate) {
                     $promotionQuery->lockForUpdate();
                 }
@@ -50,6 +50,7 @@ class PromotionEngine
                     $codePromotions[] = $promotion;
                     $promotionCodesById[$promotion->id] = $pc;
                 }
+
                 continue;
             }
 
@@ -59,7 +60,7 @@ class PromotionEngine
             if ($lockForUpdate) {
                 $promotion->lockForUpdate();
             }
-            $p = $promotion->with(['conditions', 'actions'])->first();
+            $p = $promotion->with(['conditions', 'actions', 'timeSlots'])->first();
 
             if (! $p) {
                 return ['status' => 'rejected', 'reason' => 'not_found', 'code' => $code];
@@ -91,7 +92,7 @@ class PromotionEngine
                 ->where('status', true)
                 ->where(fn ($q) => $q->whereNull('start_date')->orWhere('start_date', '<=', now()))
                 ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()))
-                ->with(['conditions', 'actions']);
+                ->with(['conditions', 'actions', 'timeSlots']);
             if ($lockForUpdate) {
                 $candidatesQuery->lockForUpdate();
             }
@@ -183,6 +184,9 @@ class PromotionEngine
         if (! self::quotaOk($p)) {
             return 'out_of_uses';
         }
+        if (! self::timeSlotOk($p)) {
+            return 'out_of_slot';
+        }
         if (! self::matchesConditions($p, $lines, $subtotal)) {
             return 'condition_not_met';
         }
@@ -210,7 +214,29 @@ class PromotionEngine
             }
         }
 
+        // Khung giờ vàng: nếu campaign có time_slots thì thời điểm hiện tại phải nằm trong ≥1 slot
+        if (! self::timeSlotOk($p)) {
+            return false;
+        }
+
         return true;
+    }
+
+    private static function timeSlotOk(Promotion $p): bool
+    {
+        if ($p->timeSlots->isEmpty()) {
+            return true; // không ràng buộc giờ
+        }
+
+        $now = now();
+        $dow = (int) $now->dayOfWeek; // 0=CN ... 6=T7
+        $hm = $now->format('H:i');
+
+        return $p->timeSlots->contains(
+            fn ($slot) => (int) $slot->day_of_week === $dow
+                && $hm >= substr((string) $slot->start_time, 0, 5)
+                && $hm < substr((string) $slot->end_time, 0, 5)
+        );
     }
 
     private static function lineInCategory(Collection $lines, int $categoryId): bool
@@ -219,6 +245,7 @@ class PromotionEngine
         if (! $itemIds) {
             return false;
         }
+
         return $lines->contains(fn ($l) => in_array((int) ($l['menu_item_id'] ?? 0), $itemIds, true));
     }
 
@@ -249,7 +276,7 @@ class PromotionEngine
             ->where('status', true)
             ->where(fn ($q) => $q->whereNull('start_date')->orWhere('start_date', '<=', now()))
             ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()))
-            ->with(['conditions', 'actions'])
+            ->with(['conditions', 'actions', 'timeSlots'])
             ->get()
             ->filter(fn ($p) => self::matchesConditions($p, $lines, $subtotal) && self::quotaOk($p))
             ->map(fn ($p) => [

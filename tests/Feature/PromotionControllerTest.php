@@ -340,6 +340,53 @@ test('GET codes export=1 tra toan bo khong phan trang', function () {
     expect($res->json('meta'))->toBeNull();
 });
 
+test('store luu time_slots: tao dung so dong promotion_time_slots', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'type' => 'coupon',
+        'name' => 'Slot campaign',
+        'code' => 'SLOT1',
+        'time_slots' => [
+            ['day_of_week' => 1, 'start_time' => '11:00', 'end_time' => '13:00'],
+            ['day_of_week' => 2, 'start_time' => '11:00', 'end_time' => '13:00'],
+            ['day_of_week' => 3, 'start_time' => '11:00', 'end_time' => '13:00'],
+        ],
+        'actions' => [['action_type' => 'discount_percent', 'action_value' => 30]],
+    ])->assertSessionHasNoErrors();
+
+    $promo = \App\Models\Promotion::where('name', 'Slot campaign')->first();
+    expect($promo->timeSlots)->toHaveCount(3);
+    expect($promo->timeSlots->pluck('day_of_week')->sort()->values()->all())->toBe([1, 2, 3]);
+});
+
+test('store end_time truoc start_time bi 422', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'type' => 'coupon',
+        'name' => 'Bad slot',
+        'code' => 'BADSLOT',
+        'time_slots' => [
+            ['day_of_week' => 1, 'start_time' => '13:00', 'end_time' => '11:00'],
+        ],
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
+    ])->assertSessionHasErrors('time_slots.0.end_time');
+});
+
+test('index tra time_slots trong payload', function () {
+    $this->actingAs(posAdmin());
+    $promo = promoV2(['type' => 'coupon', 'code' => 'SLOTIDX']);
+    addAction($promo, 'discount_amount', 5000);
+    \App\Models\PromotionTimeSlot::create([
+        'promotion_id' => $promo->id,
+        'day_of_week' => 5,
+        'start_time' => '17:00',
+        'end_time' => '20:00',
+    ]);
+
+    $this->get('/manager/promotions')->assertInertia(fn ($page) => $page->component('manager/promotions/PromotionsManager')
+        ->where('promotions.0.id', $promo->id)
+        ->where('promotions.0.time_slots.0.day_of_week', 5)
+        ->where('promotions.0.time_slots.0.start_time', '17:00'));
+});
+
 test('end_date chuan hoa cuoi ngay: coupon con ap dung trong ngay cuoi', function () {
     Carbon::setTestNow('2026-08-03 12:00:00');
     try {
