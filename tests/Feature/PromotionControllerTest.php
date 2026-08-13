@@ -242,11 +242,13 @@ test('store coupon batch khong can code rieng (chi prefix + quantity)', function
         'code_prefix' => 'BNC',
         'code_quantity' => 2,
         'code_random' => false,
+        'max_usage' => 50, // bị bỏ qua vì batch
         'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
     ])->assertSessionHasNoErrors();
 
     $promo = Promotion::where('name', 'Batch no code')->first();
     expect($promo->code)->toBeNull();
+    expect($promo->max_usage)->toBeNull(); // batch: mỗi mã con 1 lần, không giới hạn tổng
     expect($promo->codes)->toHaveCount(2);
     expect($promo->codes()->pluck('code')->sort()->values()->all())->toBe(['BNC-001', 'BNC-002']);
 });

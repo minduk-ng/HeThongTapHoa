@@ -210,10 +210,12 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                             <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4 border-b border-zinc-100 dark:border-zinc-800 pb-2">Điều kiện &amp; Giới hạn</h4>
                             <div className="space-y-3">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tổng số lượt sử dụng tối đa</label>
-                                        <input type="number" value={maxUsage} onChange={(e) => setMaxUsage(e.target.value)} placeholder="Không giới hạn" className={inputCls} />
-                                    </div>
+                                    {codePrefix === '' && codeQuantity === '' && (
+                                        <div>
+                                            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tổng số lượt sử dụng tối đa</label>
+                                            <input type="number" value={maxUsage} onChange={(e) => setMaxUsage(e.target.value)} placeholder="Không giới hạn" className={inputCls} />
+                                        </div>
+                                    )}
                                     {type === 'promotion' && (
                                         <div>
                                             <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Mục tiêu (số lượt dùng)</label>
