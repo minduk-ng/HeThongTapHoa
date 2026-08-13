@@ -27,7 +27,7 @@ class PromotionController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = Promotion::with(['conditions', 'actions']);
+        $query = Promotion::with(['conditions', 'actions', 'timeSlots']);
 
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
@@ -72,6 +72,11 @@ class PromotionController extends Controller
                 'action_type' => $a->action_type,
                 'action_value' => (float) $a->action_value,
                 'max_discount_amount' => $a->max_discount_amount,
+            ])->values(),
+            'time_slots' => $p->timeSlots->map(fn ($s) => [
+                'day_of_week' => $s->day_of_week,
+                'start_time' => $s->start_time,
+                'end_time' => $s->end_time,
             ])->values(),
         ]);
 
@@ -347,6 +352,11 @@ class PromotionController extends Controller
                 ]);
             }
 
+            // Khung giờ vàng
+            foreach ($validated['time_slots'] ?? [] as $slot) {
+                $promotion->timeSlots()->create($slot);
+            }
+
             // Sinh mã con hàng loạt (nếu có prefix + quantity)
             if ($validated['code_prefix'] ?? null) {
                 try {
@@ -400,6 +410,12 @@ class PromotionController extends Controller
                     'max_discount_amount' => $action['max_discount_amount'] ?? null,
                 ]);
             }
+
+            // Xoá slot cũ rồi tạo lại — pattern giống conditions
+            $promotion->timeSlots()->delete();
+            foreach ($validated['time_slots'] ?? [] as $slot) {
+                $promotion->timeSlots()->create($slot);
+            }
         });
 
         $this->flushPosPromotionsCache();
@@ -434,6 +450,10 @@ class PromotionController extends Controller
             'code_prefix' => ['nullable', 'string', 'max:30', 'required_with:code_quantity'],
             'code_quantity' => ['nullable', 'integer', 'min:1', 'max:100000', 'required_with:code_prefix'],
             'code_random' => ['sometimes', 'boolean'],
+            'time_slots' => ['nullable', 'array'],
+            'time_slots.*.day_of_week' => ['required', 'integer', 'between:0,6'],
+            'time_slots.*.start_time' => ['required', 'date_format:H:i'],
+            'time_slots.*.end_time' => ['required', 'date_format:H:i', 'after:time_slots.*.start_time'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'status' => ['sometimes', 'boolean'],
