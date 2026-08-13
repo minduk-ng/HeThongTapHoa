@@ -219,6 +219,79 @@ test('promotion invoices endpoint tra danh sach hoa don da dung ma', function ()
     expect((float) $res->json('invoices.0.discount_amount'))->toBe(5000.0);
 });
 
+test('store coupon voi code_prefix + quantity tao du ma con', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'type' => 'coupon',
+        'name' => 'Batch coupon',
+        'code' => 'BATCHCOUPON',
+        'code_prefix' => 'BC01',
+        'code_quantity' => 3,
+        'code_random' => false,
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
+    ])->assertSessionHasNoErrors();
+
+    $promo = Promotion::where('name', 'Batch coupon')->first();
+    expect($promo->codes)->toHaveCount(3);
+    expect($promo->codes()->pluck('code')->sort()->values()->all())->toBe(['BC01-001', 'BC01-002', 'BC01-003']);
+});
+
+test('store prefix trung bi 422', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'type' => 'coupon', 'name' => 'A', 'code' => 'A1',
+        'code_prefix' => 'DUPB', 'code_quantity' => 1, 'code_random' => false,
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 1000]],
+    ])->assertSessionHasNoErrors();
+
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'type' => 'coupon', 'name' => 'B', 'code' => 'B1',
+        'code_prefix' => 'DUPB', 'code_quantity' => 1, 'code_random' => false,
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 1000]],
+    ])->assertSessionHasErrors('code_prefix');
+});
+
+test('index tra batch fields + codes_count/codes_used', function () {
+    $this->actingAs(posAdmin());
+    $promo = promoV2(['type' => 'coupon', 'code' => 'IDXB'.substr(uniqid(), -4), 'code_prefix' => 'IDXB', 'code_quantity' => 2, 'code_random' => false]);
+    addAction($promo, 'discount_amount', 5000);
+    $promo->codes()->createMany([
+        ['code' => 'IDXB-001', 'status' => 'unused'],
+        ['code' => 'IDXB-002', 'status' => 'used'],
+    ]);
+
+    $this->get('/manager/promotions')->assertInertia(fn ($page) => $page->component('manager/promotions/PromotionsManager')
+        ->where('promotions.0.id', $promo->id)
+        ->where('promotions.0.code_prefix', 'IDXB')
+        ->where('promotions.0.code_quantity', 2)
+        ->where('promotions.0.code_random', false)
+        ->where('promotions.0.codes_count', 2)
+        ->where('promotions.0.codes_used', 1));
+});
+
+test('GET codes tra danh sach ma con + bo dem', function () {
+    $this->actingAs(posAdmin());
+    $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'CODES1', 'code_quantity' => 3, 'code_random' => false]);
+    addAction($p, 'discount_amount', 1000);
+    \App\Services\Promotions\PromotionCodeService::generate($p);
+    $p->codes()->first()->update(['status' => 'used', 'used_at' => now()]);
+
+    $res = $this->getJson("/manager/promotions/{$p->id}/codes")->assertOk();
+    expect($res->json('codes'))->toHaveCount(3);
+    expect($res->json('meta.per_page'))->toBe(50);
+    $usedCount = collect($res->json('codes'))->where('status', 'used')->count();
+    expect($usedCount)->toBe(1);
+});
+
+test('GET codes export=1 tra toan bo khong phan trang', function () {
+    $this->actingAs(posAdmin());
+    $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'CODESX', 'code_quantity' => 5, 'code_random' => false]);
+    addAction($p, 'discount_amount', 1000);
+    \App\Services\Promotions\PromotionCodeService::generate($p);
+
+    $res = $this->getJson("/manager/promotions/{$p->id}/codes?export=1")->assertOk();
+    expect($res->json('codes'))->toHaveCount(5);
+    expect($res->json('meta'))->toBeNull();
+});
+
 test('end_date chuan hoa cuoi ngay: coupon con ap dung trong ngay cuoi', function () {
     Carbon::setTestNow('2026-08-03 12:00:00');
     try {

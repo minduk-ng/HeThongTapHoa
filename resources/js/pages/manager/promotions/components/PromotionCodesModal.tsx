@@ -1,0 +1,147 @@
+import React, { useEffect, useState } from 'react';
+import { X, ChevronDown, Download } from 'lucide-react';
+import DataTable, { DataTableColumn } from '../../../../components/DataTable';
+import { exportXLSX } from '../../../../components/reports/reportExport';
+
+interface CodeRow {
+    id: number;
+    code: string;
+    status: string;
+    used_at: string | null;
+    invoice_code: string | null;
+}
+
+interface Props {
+    isOpen: boolean;
+    onClose: () => void;
+    promotion: { id: number; code_prefix: string | null; name: string } | null;
+}
+
+export default function PromotionCodesModal({ isOpen, onClose, promotion }: Props) {
+    const [codes, setCodes] = useState<CodeRow[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [exporting, setExporting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [hasMore, setHasMore] = useState(false);
+    const [nextPage, setNextPage] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!isOpen || !promotion) return;
+        setLoading(true);
+        setError(null);
+        setCodes([]);
+        setHasMore(false);
+        setNextPage(null);
+        fetch(`/manager/promotions/${promotion.id}/codes?per_page=50`, { headers: { Accept: 'application/json' } })
+            .then((r) => {
+                if (!r.ok) throw new Error('fail');
+                return r.json();
+            })
+            .then((data) => {
+                setCodes(data.codes || []);
+                setHasMore(data.meta?.has_more ?? false);
+                setNextPage(data.meta?.next_page ?? null);
+            })
+            .catch(() => setError('Không thể tải danh sách mã. Vui lòng thử lại.'))
+            .finally(() => setLoading(false));
+    }, [isOpen, promotion]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', h);
+        return () => window.removeEventListener('keydown', h);
+    }, [isOpen, onClose]);
+
+    const loadMore = () => {
+        if (!nextPage || loadingMore) return;
+        setLoadingMore(true);
+        fetch(nextPage, { headers: { Accept: 'application/json' } })
+            .then((r) => r.json())
+            .then((data) => {
+                setCodes((prev) => [...prev, ...(data.codes || [])]);
+                setHasMore(data.meta?.has_more ?? false);
+                setNextPage(data.meta?.next_page ?? null);
+            })
+            .catch(() => {})
+            .finally(() => setLoadingMore(false));
+    };
+
+    const handleExport = async () => {
+        if (!promotion || exporting) return;
+        setExporting(true);
+        try {
+            const res = await fetch(`/manager/promotions/${promotion.id}/codes?export=1`, { headers: { Accept: 'application/json' } });
+            const data = await res.json();
+            const all = (data.codes || []) as CodeRow[];
+            const rows = all.map((c) => [
+                c.code,
+                c.status === 'used' ? 'Đã dùng' : 'Chưa dùng',
+                c.used_at ? new Date(c.used_at).toLocaleString('vi-VN') : '—',
+                c.invoice_code || '—',
+            ]);
+            await exportXLSX(
+                `Danh sách mã ${promotion.code_prefix || 'KM'}`,
+                promotion.name,
+                ['Mã', 'Trạng thái', 'Thời gian dùng', 'Hoá đơn'],
+                rows,
+                `ma-${promotion.code_prefix || 'km'}`,
+            );
+        } catch {
+            setError('Không thể xuất Excel. Vui lòng thử lại.');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    const columns: DataTableColumn<CodeRow>[] = [
+        { key: 'code', header: 'Mã', render: (c) => <span className="font-mono font-medium">{c.code}</span> },
+        { key: 'status', header: 'Trạng thái', align: 'center', render: (c) => (
+            <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${c.status === 'used' ? 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
+                {c.status === 'used' ? 'Đã dùng' : 'Chưa dùng'}
+            </span>
+        )},
+        { key: 'used_at', header: 'Thời gian dùng', render: (c) => c.used_at ? new Date(c.used_at).toLocaleString('vi-VN') : '—' },
+        { key: 'invoice_code', header: 'Hoá đơn', render: (c) => c.invoice_code || '—' },
+    ];
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-auto p-6" onClick={(e) => e.stopPropagation()}>
+                <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3 mb-4">
+                    <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Danh sách mã {promotion?.code_prefix || ''}</h3>
+                    <div className="flex items-center gap-2">
+                        <button type="button" onClick={handleExport} disabled={exporting || codes.length === 0}
+                            className="flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300">
+                            <Download className="h-3.5 w-3.5 stroke-[1.5]" />
+                            <span>{exporting ? 'Đang xuất...' : 'Export Excel'}</span>
+                        </button>
+                        <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-600 p-1 rounded-lg"><X className="w-5 h-5" /></button>
+                    </div>
+                </div>
+                {loading ? (
+                    <div className="py-10 text-center text-sm text-zinc-500">Đang tải...</div>
+                ) : error ? (
+                    <div className="py-10 text-center text-sm text-rose-600">{error}</div>
+                ) : (
+                    <>
+                        <DataTable<CodeRow> columns={columns} rows={codes} rowKey={(c) => c.id}
+                            emptyMessage="Chưa có mã nào" showCompactToggle={false} showPageSize={false} defaultPageSize={50} />
+                        {hasMore && (
+                            <div className="flex justify-center pt-4">
+                                <button type="button" onClick={loadMore} disabled={loadingMore}
+                                    className="flex items-center gap-1.5 rounded-lg border border-zinc-300 px-4 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300">
+                                    <ChevronDown className="h-3.5 w-3.5 stroke-[1.5]" />
+                                    <span>{loadingMore ? 'Đang tải...' : 'Tải thêm'}</span>
+                                </button>
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}

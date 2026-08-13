@@ -30,6 +30,9 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
     const [stackable, setStackable] = useState(true);
     const [actions, setActions] = useState<ActionRow[]>([{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]);
     const [conditions, setConditions] = useState<ConditionRow[]>([]);
+    const [codePrefix, setCodePrefix] = useState('');
+    const [codeQuantity, setCodeQuantity] = useState('');
+    const [codeRandom, setCodeRandom] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
 
@@ -53,11 +56,15 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                 max_discount_amount: a.max_discount_amount === null ? '' : String(a.max_discount_amount),
             })) : [{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]);
             setConditions(promotionToEdit.conditions.map((c) => ({ cond_type: c.cond_type, cond_value: c.cond_value })));
+            setCodePrefix(promotionToEdit.code_prefix || '');
+            setCodeQuantity(promotionToEdit.code_quantity === null ? '' : String(promotionToEdit.code_quantity));
+            setCodeRandom(promotionToEdit.code_random);
         } else {
             setName(''); setType('promotion'); setCode(''); setStartDate(null); setEndDate(null);
             setStatus(true); setMaxUsage(''); setTargetUsage(''); setExclusive(false); setStackable(true);
             setActions([{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]);
             setConditions([]);
+            setCodePrefix(''); setCodeQuantity(''); setCodeRandom(false);
         }
     }, [promotionToEdit, isOpen]);
 
@@ -82,6 +89,9 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
             status, max_usage: maxUsage === '' ? null : Number(maxUsage),
             target_usage: targetUsage === '' ? null : Number(targetUsage),
             exclusive, stackable,
+            code_prefix: codePrefix || null,
+            code_quantity: codeQuantity === '' ? null : Number(codeQuantity),
+            code_random: codeRandom,
             conditions: conditions.map((c) => ({ cond_type: c.cond_type, cond_value: c.cond_value })),
             actions: actions.map((a) => ({
                 action_type: a.action_type,
@@ -182,6 +192,38 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                                     )}
                                 </div>
                                 <PromotionConditionsEditor conditions={conditions} onChange={setConditions} menuItems={menuItems} menuCategories={menuCategories} />
+                                {(type === 'coupon' || type === 'voucher') && (
+                                    <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 space-y-3">
+                                        <h5 className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Phát hành mã hàng loạt (tùy chọn)</h5>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Chuỗi tiền tố</label>
+                                                <input value={codePrefix} onChange={(e) => setCodePrefix(e.target.value.toUpperCase())}
+                                                    placeholder={codeRandom ? 'VD: DK' : 'VD: GIAM30'} className={inputCls} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Số lượng mã</label>
+                                                <input type="number" min={1} max={100000} value={codeQuantity} onChange={(e) => setCodeQuantity(e.target.value)}
+                                                    placeholder="VD: 500" className={inputCls} />
+                                            </div>
+                                        </div>
+                                        <label className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                                            <input type="checkbox" checked={codeRandom} onChange={(e) => setCodeRandom(e.target.checked)} className="h-4 w-4 accent-sky-600" />
+                                            Mã ngẫu nhiên (mỗi mã dùng 1 lần — voucher)
+                                        </label>
+                                        <p className="text-[11px] text-zinc-500">
+                                            {codeRandom
+                                                ? `Hệ thống tự sinh ${codeQuantity || 'N'} mã khác nhau không trùng (VD: ${codePrefix || 'DK'}123…).`
+                                                : `Sinh ${codeQuantity || 'N'} mã theo thứ tự (VD: ${codePrefix || 'GIAM30'}-001…).`}
+                                        </p>
+                                        {promotionToEdit && promotionToEdit.codes_count > 0 && (
+                                            <p className="text-[11px] font-medium text-zinc-600">
+                                                Đã tạo: {promotionToEdit.codes_count} mã · Đã dùng: {promotionToEdit.codes_used}
+                                            </p>
+                                        )}
+                                        {errors.code_prefix && <p className="text-xs text-rose-500">{errors.code_prefix}</p>}
+                                    </div>
+                                )}
                             </div>
                         </section>
 

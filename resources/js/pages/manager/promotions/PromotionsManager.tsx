@@ -8,6 +8,7 @@ import PromotionStatsCards from './components/PromotionStatsCards';
 import PromotionAnalyticsCharts from './components/PromotionAnalyticsCharts';
 import PromotionFormDrawer from './components/PromotionFormDrawer';
 import PromotionInvoicesModal from './components/PromotionInvoicesModal';
+import PromotionCodesModal from './components/PromotionCodesModal';
 
 interface AnalyticsKpis {
     total_revenue: number;
@@ -40,6 +41,11 @@ export interface PromotionData {
     stackable: boolean;
     conditions: { cond_type: string; cond_value: string }[];
     actions: { action_type: string; action_value: number; max_discount_amount: number | null }[];
+    code_prefix: string | null;
+    code_quantity: number | null;
+    code_random: boolean;
+    codes_count: number;
+    codes_used: number;
 }
 
 interface Props {
@@ -63,6 +69,7 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editing, setEditing] = useState<PromotionData | null>(null);
     const [invoiceView, setInvoiceView] = useState<number | null>(null);
+    const [codeView, setCodeView] = useState<PromotionData | null>(null);
     const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
 
     useEffect(() => {
@@ -144,6 +151,10 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
                 <button type="button" onClick={() => setInvoiceView(p.id)} title="Xem hoá đơn đã dùng mã"
                     className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                     <Eye className="w-4 h-4" />
+                </button>
+                <button type="button" onClick={() => setCodeView(p)} title="Xem danh sách mã"
+                    className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    <Ticket className="w-4 h-4" />
                 </button>
             </div>
         )},
@@ -235,6 +246,8 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
             />
 
             <PromotionInvoicesModal isOpen={invoiceView !== null} onClose={() => setInvoiceView(null)} promotionId={invoiceView} />
+
+            <PromotionCodesModal isOpen={codeView !== null} onClose={() => setCodeView(null)} promotion={codeView} />
         </DashboardLayout>
     );
 }

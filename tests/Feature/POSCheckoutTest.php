@@ -381,3 +381,47 @@ test('checkout chap nhan e_wallet va change_amount co the thieu', function () {
         // KHÔNG gửi change_amount — trước đây required → 422
     ])->assertOk();
 });
+
+test('checkout voi ma con chi dung duoc 1 lan', function () {
+    $admin = posAdmin();
+    $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'POS1', 'code_quantity' => 1, 'code_random' => false]);
+    addAction($p, 'discount_amount', 5000);
+    \App\Services\Promotions\PromotionCodeService::generate($p);
+    $code = $p->codes()->first()->code;
+
+    $item = posMenuItem(['price' => 20000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 20000, 'status' => 'completed']], ['status' => 'pending']);
+
+    // Lần 1: dùng được
+    $r1 = $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id, 'payment_method' => 'cash', 'amount_received' => 20000, 'promotion_code' => $code,
+    ]);
+    $r1->assertOk();
+
+    // Mã đã used + truy vết invoice
+    $pc = $p->codes()->first()->fresh();
+    expect($pc->status)->toBe('used');
+    expect($pc->used_invoice_id)->toBe(Invoice::latest('id')->firstOrFail()->id);
+
+    // Lần 2: đơn khác, cùng mã → reject already_used
+    $o2 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 20000, 'status' => 'completed']], ['status' => 'pending']);
+    $r2 = $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $o2->id, 'payment_method' => 'cash', 'amount_received' => 20000, 'promotion_code' => $code,
+    ]);
+    $r2->assertStatus(422);
+});
+
+test('validate-promotion ma con da dung tra loi ro rang', function () {
+    $admin = posAdmin();
+    $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'POSV', 'code_quantity' => 1, 'code_random' => false]);
+    addAction($p, 'discount_amount', 5000);
+    \App\Services\Promotions\PromotionCodeService::generate($p);
+    $pc = $p->codes()->first();
+    $pc->update(['status' => 'used', 'used_at' => now()]);
+
+    $this->actingAs($admin)->postJson('/staff/pos/validate-promotion', [
+        'code' => $pc->code, 'subtotal' => 100000,
+    ])->assertStatus(422)
+        ->assertJson(['error' => 'Mã khuyến mãi đã được sử dụng.']);
+});

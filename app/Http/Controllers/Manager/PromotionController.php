@@ -7,15 +7,19 @@ use App\Models\InvoicePromotion;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Promotion;
+use App\Models\PromotionCode;
+use App\Services\Promotions\PromotionCodeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -41,11 +45,18 @@ class PromotionController extends Controller
             $query->where(fn ($q) => $q->whereNotNull('end_date')->where('end_date', '<', $now));
         }
 
+        $query->withCount(['codes as codes_count', 'codes as codes_used' => fn ($q) => $q->where('status', 'used')]);
+
         $promotions = $query->latest('id')->get()->map(fn ($p) => [
             'id' => $p->id,
             'name' => $p->name,
             'type' => $p->type,
             'code' => $p->code,
+            'code_prefix' => $p->code_prefix,
+            'code_quantity' => $p->code_quantity,
+            'code_random' => (bool) $p->code_random,
+            'codes_count' => $p->codes_count ?? 0,
+            'codes_used' => $p->codes_used ?? 0,
             'start_date' => $p->start_date?->format('d/m/Y'),
             'end_date' => $p->end_date?->format('d/m/Y'),
             'status' => $p->status,
@@ -87,6 +98,7 @@ class PromotionController extends Controller
             $disc = $discountAgg->get($p['id']);
             $p['revenue'] = $rev ? (float) $rev->revenue : 0.0;
             $p['discount_total'] = $disc ? (float) $disc->discount_total : 0.0;
+
             return $p;
         });
 
@@ -137,6 +149,7 @@ class PromotionController extends Controller
             $revenue = (float) $row->revenue;
             $discount = (float) $row->discount_total;
             $roi = $discount > 0 ? ($revenue - $discount) / $discount : null;
+
             return [
                 'id' => $row->id, 'name' => $row->name, 'type' => $row->type, 'code' => $row->code,
                 'order_count' => (int) $row->order_count,
@@ -160,8 +173,12 @@ class PromotionController extends Controller
         ];
 
         $dailyQuery = DB::table('daily_promotion_stats')->whereIn('promotion_id', $promotionIds);
-        if ($from) $dailyQuery->where('stat_date', '>=', $from);
-        if ($to) $dailyQuery->where('stat_date', '<=', $to);
+        if ($from) {
+            $dailyQuery->where('stat_date', '>=', $from);
+        }
+        if ($to) {
+            $dailyQuery->where('stat_date', '<=', $to);
+        }
         $daily = $dailyQuery->select('stat_date',
             DB::raw('SUM(order_count) as usage_count'),
             DB::raw('SUM(revenue) as revenue'))
@@ -170,6 +187,7 @@ class PromotionController extends Controller
 
         $typeBreakdown = collect($campaigns)->groupBy('type')->map(function ($g, $type) {
             $total = (int) $g->sum('order_count');
+
             return ['type' => $type, 'count' => $total];
         })->values();
         $allCount = (int) $typeBreakdown->sum('count');
@@ -234,6 +252,31 @@ class PromotionController extends Controller
         ]);
     }
 
+    public function codes(Request $request, Promotion $promotion): JsonResponse
+    {
+        $query = PromotionCode::query()
+            ->where('promotion_id', $promotion->id)
+            ->leftJoin('invoices', 'invoices.id', '=', 'promotion_codes.used_invoice_id')
+            ->select('promotion_codes.id', 'promotion_codes.code', 'promotion_codes.status', 'promotion_codes.used_at', 'invoices.invoice_code')
+            ->orderBy('promotion_codes.id', 'desc');
+
+        if ($request->boolean('export')) {
+            return response()->json(['codes' => $query->get()]);
+        }
+
+        $perPage = min(max((int) $request->input('per_page', 50), 1), 200);
+        $paginator = $query->simplePaginate($perPage);
+
+        return response()->json([
+            'codes' => $paginator->items(),
+            'meta' => [
+                'per_page' => $paginator->perPage(),
+                'has_more' => $paginator->hasMorePages(),
+                'next_page' => $paginator->nextPageUrl(),
+            ],
+        ]);
+    }
+
     /**
      * Tổng giá trị các HOÁ ĐƠN distinct có dùng ít nhất 1 promotion/coupon/voucher.
      * 1 hoá đơn áp dụng nhiều KM vẫn chỉ tính 1 lần (invoice_promotions distinct theo invoice_id).
@@ -252,7 +295,7 @@ class PromotionController extends Controller
 
     /**
      * @param  array<int>|null  $promotionIds
-     * @return \Illuminate\Support\Collection<int, int>
+     * @return Collection<int, int>
      */
     private function distinctInvoiceIds(?string $from, ?string $to, ?array $promotionIds = null)
     {
@@ -286,6 +329,9 @@ class PromotionController extends Controller
                 'target_usage' => $validated['target_usage'] ?? null,
                 'exclusive' => $validated['exclusive'] ?? false,
                 'stackable' => $validated['stackable'] ?? true,
+                'code_prefix' => $validated['code_prefix'] ?? null,
+                'code_quantity' => $validated['code_quantity'] ?? null,
+                'code_random' => $validated['code_random'] ?? false,
             ]);
 
             foreach ($validated['conditions'] ?? [] as $cond) {
@@ -297,6 +343,17 @@ class PromotionController extends Controller
                     'action_value' => $action['action_value'],
                     'max_discount_amount' => $action['max_discount_amount'] ?? null,
                 ]);
+            }
+
+            // Sinh mã con hàng loạt (nếu có prefix + quantity)
+            if ($validated['code_prefix'] ?? null) {
+                try {
+                    PromotionCodeService::generate($promotion);
+                } catch (\InvalidArgumentException $e) {
+                    throw ValidationException::withMessages([
+                        'code_prefix' => $e->getMessage(),
+                    ]);
+                }
             }
         });
 
@@ -321,6 +378,9 @@ class PromotionController extends Controller
                 'target_usage' => $validated['target_usage'] ?? null,
                 'exclusive' => $validated['exclusive'] ?? false,
                 'stackable' => $validated['stackable'] ?? true,
+                'code_prefix' => $validated['code_prefix'] ?? null,
+                'code_quantity' => $validated['code_quantity'] ?? null,
+                'code_random' => $validated['code_random'] ?? false,
             ]);
 
             // Xoá conditions/actions cũ rồi tạo lại (update đơn giản, ít data)
@@ -367,6 +427,9 @@ class PromotionController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'type' => ['required', Rule::in(['promotion', 'coupon', 'voucher'])],
             'code' => ['nullable', 'string', 'max:50', Rule::requiredIf(fn () => in_array((string) request('type'), ['coupon', 'voucher'], true)), Rule::unique('promotions', 'code')->ignore($promotion?->id)],
+            'code_prefix' => ['nullable', 'string', 'max:30', 'required_with:code_quantity'],
+            'code_quantity' => ['nullable', 'integer', 'min:1', 'max:100000', 'required_with:code_prefix'],
+            'code_random' => ['sometimes', 'boolean'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'status' => ['sometimes', 'boolean'],

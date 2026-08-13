@@ -117,6 +117,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/promotions', [PromotionController::class, 'store'])->middleware('permission:promotions.create');
         Route::get('/promotions/analytics', [PromotionController::class, 'analytics'])->middleware('permission:promotions.view');
         Route::get('/promotions/{promotion}/invoices', [PromotionController::class, 'invoices'])->middleware('permission:promotions.view');
+        Route::get('/promotions/{promotion}/codes', [PromotionController::class, 'codes'])->middleware('permission:promotions.view');
         Route::post('/promotions/{promotion}', [PromotionController::class, 'update'])->middleware('permission:promotions.edit');
         Route::delete('/promotions/{promotion}', [PromotionController::class, 'destroy'])->middleware('permission:promotions.delete');
 

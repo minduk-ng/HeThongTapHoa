@@ -108,7 +108,7 @@ class CheckoutService
                     $p = $pr['promotion'];
                     $promotionRows[] = [
                         'promotion_id' => $p->id,
-                        'code' => $p->code ?? 'AUTO-'.$p->id,
+                        'code' => $pr['code'] ?? $p->code ?? 'AUTO-'.$p->id,
                         'name' => $p->name,
                         'discount_type' => $pr['actions_applied'][0]['type'] ?? $p->type,
                         'discount_value' => (float) ($pr['actions_applied'][0]['value'] ?? 0),
@@ -282,6 +282,14 @@ class CheckoutService
                         'code_used' => $pr['code'],
                         'discount_applied' => $allocated,
                     ]);
+
+                    // Truy vết invoice cho mã con đã dùng
+                    if ($pr['code']) {
+                        \App\Models\PromotionCode::where('code', $pr['code'])
+                            ->where('status', 'used')
+                            ->whereNull('used_invoice_id')
+                            ->update(['used_invoice_id' => $invoice->id]);
+                    }
                 }
             }
 
