@@ -133,7 +133,9 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
         { key: 'revenue', header: 'Tổng doanh thu', align: 'center', sortable: true, render: (p) => <span className="tabular-nums">{(p.revenue ?? 0).toLocaleString('vi-VN')} đ</span> },
         { key: 'discount_total', header: 'Tổng giảm giá', align: 'center', sortable: true, render: (p) => <span className="tabular-nums">{(p.discount_total ?? 0).toLocaleString('vi-VN')} đ</span> },
         { key: 'perf', header: 'Hiệu suất', align: 'center', render: (p) => {
-                    const perf = (p.target_usage ?? p.max_usage) ? Math.min(100, Math.round((p.used_count / (p.target_usage ?? p.max_usage!)) * 100)) : null;
+                    const perf = p.codes_count > 0
+                        ? (p.codes_count ? Math.min(100, Math.round((p.codes_used / p.codes_count) * 100)) : null)
+                        : ((p.target_usage ?? p.max_usage) ? Math.min(100, Math.round((p.used_count / (p.target_usage ?? p.max_usage!)) * 100)) : null);
             return perf === null ? <span className="text-xs text-zinc-400">—</span> : (
                 <div className="flex items-center gap-2">
                     <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
