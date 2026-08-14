@@ -176,67 +176,76 @@ export default function Sidebar() {
                                         </div>
                                     )}
 
-                                    {/* Mega-menu 2 columns for groups with sub_groups */}
+                                    {/* Flyout 2 cấp cho group có sub_group (file-tree style) */}
                                     {isOpen && subs && (
                                         <div
-                                            className="absolute left-0 mt-1.5 flex flex-col rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 z-50 animate-fade-in"
+                                            className="absolute left-0 mt-1.5 w-48 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 z-50 animate-fade-in"
                                             onMouseEnter={() => handleMouseEnter(groupName)}
                                             onMouseLeave={handleMouseLeave}
                                         >
-                                            <div className="flex">
-                                                {/* Left column: sub_groups */}
-                                                <div className="w-40 shrink-0 space-y-0.5">
-                                                    {subKeys.map((key) => {
-                                                        const isActiveSub = activeSub === key;
-                                                        return (
-                                                            <button key={key} type="button"
-                                                                onMouseEnter={() => setActiveSubGroup(key)}
-                                                                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-                                                                    isActiveSub
-                                                                        ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
-                                                                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
-                                                                }`}>
-                                                                <span>{key}</span>
-                                                                <ChevronRight className="h-3.5 w-3.5" />
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                                {/* Right column: items of active sub_group */}
-                                                <div className="w-60 space-y-0.5 border-l border-slate-200 pl-1 dark:border-slate-700">
-                                                    {activeSub && subs[activeSub].map((item) => {
-                                                        const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
-                                                        return (
-                                                            <Link key={item.route_path} href={item.route_path}
-                                                                onClick={() => { setOpenGroup(null); setPinnedGroup(null); }}
-                                                                className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                                                                    isActive
-                                                                        ? 'bg-sky-600 text-white font-semibold shadow-xs'
-                                                                        : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
-                                                                }`}>
-                                                                {item.name}
-                                                            </Link>
-                                                        );
-                                                    })}
-                                                </div>
+                                            <div className="space-y-0.5">
+                                                {/* Cấp 1: danh sách sub_group */}
+                                                {subKeys.map((key) => {
+                                                    const isActiveSub = activeSub === key;
+                                                    return (
+                                                        <button key={key} type="button"
+                                                            onMouseEnter={() => setActiveSubGroup(key)}
+                                                            onClick={() => setActiveSubGroup(key)}
+                                                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
+                                                                isActiveSub
+                                                                    ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
+                                                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                                                            }`}>
+                                                            <span>{key}</span>
+                                                            <ChevronRight className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    );
+                                                })}
+                                                {/* Flat items của mixed group */}
+                                                {flatItems.length > 0 && (
+                                                    <>
+                                                        <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+                                                        {flatItems.map((item) => {
+                                                            const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
+                                                            return (
+                                                                <Link key={item.route_path} href={item.route_path}
+                                                                    onClick={() => { setOpenGroup(null); setPinnedGroup(null); }}
+                                                                    className={`flex items-center rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                                                                        isActive
+                                                                            ? 'bg-sky-600 text-white font-semibold shadow-xs'
+                                                                            : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
+                                                                    }`}>
+                                                                    {item.name}
+                                                                </Link>
+                                                            );
+                                                        })}
+                                                    </>
+                                                )}
                                             </div>
-                                            {/* Flat items of a mixed group (no __subs) stay reachable */}
-                                            {flatItems.length > 0 && (
-                                                <div className="mt-1 space-y-0.5 border-t border-slate-200 pt-1 dark:border-slate-700">
-                                                    {flatItems.map((item) => {
-                                                        const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
-                                                        return (
-                                                            <Link key={item.route_path} href={item.route_path}
-                                                                onClick={() => { setOpenGroup(null); setPinnedGroup(null); }}
-                                                                className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                                                                    isActive
-                                                                        ? 'bg-sky-600 text-white font-semibold shadow-xs'
-                                                                        : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
-                                                                }`}>
-                                                                {item.name}
-                                                            </Link>
-                                                        );
-                                                    })}
+
+                                            {/* Cấp 2: items của activeSubGroup — đẩy sang phải, ngang hàng dòng đầu, cách 8px */}
+                                            {activeSub && subs[activeSub].length > 0 && (
+                                                <div
+                                                    className="absolute left-full top-0 ml-2 w-60 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 animate-fade-in"
+                                                    onMouseEnter={() => handleMouseEnter(groupName)}
+                                                    onMouseLeave={handleMouseLeave}
+                                                >
+                                                    <div className="space-y-0.5">
+                                                        {subs[activeSub].map((item) => {
+                                                            const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
+                                                            return (
+                                                                <Link key={item.route_path} href={item.route_path}
+                                                                    onClick={() => { setOpenGroup(null); setPinnedGroup(null); }}
+                                                                    className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                                                                        isActive
+                                                                            ? 'bg-sky-600 text-white font-semibold shadow-xs'
+                                                                            : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
+                                                                    }`}>
+                                                                    {item.name}
+                                                                </Link>
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
