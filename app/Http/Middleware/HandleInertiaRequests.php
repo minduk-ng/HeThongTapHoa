@@ -62,14 +62,16 @@ class HandleInertiaRequests extends Middleware
                         $pages = Page::orderBy('sort_order')->get();
                         foreach ($pages as $page) {
                             if ($page->route_path === '/' || in_array($page->id, $allowedPageIds)) {
-                                if (! isset($navigation[$page->group_name])) {
-                                    $navigation[$page->group_name] = [];
-                                }
-                                $navigation[$page->group_name][] = [
+                                $item = [
                                     'id' => $page->id,
                                     'name' => $page->name,
                                     'route_path' => $page->route_path,
                                 ];
+                                if ($page->sub_group) {
+                                    $navigation[$page->group_name]['__subs'][$page->sub_group][] = $item;
+                                } else {
+                                    $navigation[$page->group_name][] = $item;
+                                }
                             }
                         }
                         
@@ -103,14 +105,16 @@ class HandleInertiaRequests extends Middleware
                 $pages = Page::orderBy('sort_order')->get();
                 foreach ($pages as $page) {
                     if ($page->route_path === '/' || in_array($page->id, $allowedPageIds)) {
-                        if (! isset($navigation[$page->group_name])) {
-                            $navigation[$page->group_name] = [];
-                        }
-                        $navigation[$page->group_name][] = [
+                        $item = [
                             'id' => $page->id,
                             'name' => $page->name,
                             'route_path' => $page->route_path,
                         ];
+                        if ($page->sub_group) {
+                            $navigation[$page->group_name]['__subs'][$page->sub_group][] = $item;
+                        } else {
+                            $navigation[$page->group_name][] = $item;
+                        }
                     }
                 }
                 
