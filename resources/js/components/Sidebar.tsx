@@ -53,14 +53,18 @@ export default function Sidebar() {
         }
 
         setOpenGroup(groupName);
-        // Reset activeSubGroup on open so a previously-selected sub never sticks
-        const group = navigation[groupName];
 
-        if (group && !Array.isArray(group) && group.__subs) {
-            const keys = Object.keys(group.__subs);
-            const active = keys.find((key) => group.__subs[key].some((item) =>
-                currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path))));
-            setActiveSubGroup(active ?? null);
+        // Reset activeSubGroup only on a genuinely fresh open (not on re-entry across the gap),
+        // so moving from a parent row into the level-2 panel doesn't wipe the hovered sub.
+        if (openGroup !== groupName) {
+            const group = navigation[groupName];
+
+            if (group && !Array.isArray(group) && group.__subs) {
+                const keys = Object.keys(group.__subs);
+                const active = keys.find((key) => group.__subs[key].some((item) =>
+                    currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path))));
+                setActiveSubGroup(active ?? null);
+            }
         }
     };
 
@@ -196,12 +200,18 @@ export default function Sidebar() {
                                             <div className="space-y-0.5">
                                                 {/* Cấp 1: danh sách sub_group */}
                                                 {subKeys.map((key) => {
+                                                    const isActiveSub = activeSub === key;
+
                                                     return (
                                                         <div key={key} className="relative">
                                                             <button type="button"
                                                                 onMouseEnter={() => setActiveSubGroup(key)}
                                                                 onClick={() => setActiveSubGroup(key)}
-                                                                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors `}>
+                                                                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
+                                                                    isActiveSub
+                                                                        ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
+                                                                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                                                                }`}>
                                                                 <span>{key}</span>
                                                                 <ChevronRight className="h-3.5 w-3.5" />
                                                             </button>
