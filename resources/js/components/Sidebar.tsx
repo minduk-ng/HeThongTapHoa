@@ -227,7 +227,6 @@ export default function Sidebar() {
                                             {activeSub && subs[activeSub].length > 0 && (
                                                 <div
                                                     className="absolute left-full top-0 ml-2 w-60 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 animate-fade-in"
-                                                    onMouseEnter={() => handleMouseEnter(groupName)}
                                                     onMouseLeave={handleMouseLeave}
                                                 >
                                                     <div className="space-y-0.5">
