@@ -1,9 +1,9 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { NavigationItem, PageProps } from '../types/auth';
-import ThemeToggle from './ThemeToggle';
 import { cdnAsset } from '../utils/cdn';
+import ThemeToggle from './ThemeToggle';
 
 export default function Sidebar() {
     const { auth, navigation } = usePage<PageProps>().props;
@@ -19,6 +19,7 @@ export default function Sidebar() {
         if (typeof document !== 'undefined') {
             return document.documentElement.classList.contains('dark');
         }
+
         return false;
     });
 
@@ -35,12 +36,14 @@ export default function Sidebar() {
             if (avatarRef.current && !avatarRef.current.contains(event.target as Node)) {
                 setIsAvatarOpen(false);
             }
+
             if (navRef.current && !navRef.current.contains(event.target as Node)) {
                 setOpenGroup(null);
                 setPinnedGroup(null);
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
+
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
@@ -48,9 +51,11 @@ export default function Sidebar() {
         if (hoverTimeoutRef.current) {
             clearTimeout(hoverTimeoutRef.current);
         }
+
         setOpenGroup(groupName);
         // Reset activeSubGroup on open so a previously-selected sub never sticks
         const group = navigation[groupName];
+
         if (group && !Array.isArray(group) && group.__subs) {
             const keys = Object.keys(group.__subs);
             const active = keys.find((key) => group.__subs[key].some((item) =>
@@ -60,7 +65,10 @@ export default function Sidebar() {
     };
 
     const handleMouseLeave = () => {
-        if (pinnedGroup) return; // Stay open if pinned
+        if (pinnedGroup) {
+            return; // Stay open if pinned
+        }
+
         hoverTimeoutRef.current = setTimeout(() => {
             setOpenGroup(null);
         }, 200);
@@ -68,6 +76,7 @@ export default function Sidebar() {
 
     const handleGroupClick = (groupName: string, e: React.MouseEvent) => {
         e.preventDefault();
+
         if (pinnedGroup === groupName) {
             setPinnedGroup(null);
             setOpenGroup(null);
@@ -154,6 +163,7 @@ export default function Sidebar() {
                                             <div className="space-y-1">
                                                 {flatItems.map((item) => {
                                                     const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
+
                                                     return (
                                                         <Link
                                                             key={item.route_path}
@@ -187,6 +197,7 @@ export default function Sidebar() {
                                                 {/* Cấp 1: danh sách sub_group */}
                                                 {subKeys.map((key) => {
                                                     const isActiveSub = activeSub === key;
+
                                                     return (
                                                         <button key={key} type="button"
                                                             onMouseEnter={() => setActiveSubGroup(key)}
@@ -207,9 +218,13 @@ export default function Sidebar() {
                                                         <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
                                                         {flatItems.map((item) => {
                                                             const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
+
                                                             return (
                                                                 <Link key={item.route_path} href={item.route_path}
-                                                                    onClick={() => { setOpenGroup(null); setPinnedGroup(null); }}
+                                                                    onClick={() => {
+                                                                        setOpenGroup(null);
+                                                                        setPinnedGroup(null);
+                                                                    }}
                                                                     className={`flex items-center rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                                                                         isActive
                                                                             ? 'bg-sky-600 text-white font-semibold shadow-xs'
@@ -227,14 +242,17 @@ export default function Sidebar() {
                                             {activeSub && subs[activeSub].length > 0 && (
                                                 <div
                                                     className="absolute left-full top-0 ml-2 w-60 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 animate-fade-in"
-                                                    onMouseLeave={handleMouseLeave}
                                                 >
                                                     <div className="space-y-0.5">
                                                         {subs[activeSub].map((item) => {
                                                             const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
+
                                                             return (
                                                                 <Link key={item.route_path} href={item.route_path}
-                                                                    onClick={() => { setOpenGroup(null); setPinnedGroup(null); }}
+                                                                    onClick={() => {
+                                                                        setOpenGroup(null);
+                                                                        setPinnedGroup(null);
+                                                                    }}
                                                                     className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                                                                         isActive
                                                                             ? 'bg-sky-600 text-white font-semibold shadow-xs'
