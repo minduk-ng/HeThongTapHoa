@@ -60,7 +60,7 @@ export default function Sidebar() {
             const keys = Object.keys(group.__subs);
             const active = keys.find((key) => group.__subs[key].some((item) =>
                 currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path))));
-            setActiveSubGroup(active ?? keys[0] ?? null);
+            setActiveSubGroup(active ?? null);
         }
     };
 
@@ -128,7 +128,7 @@ export default function Sidebar() {
                                 ? subKeys.find((key) => subs[key].some((item) =>
                                     currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path))))
                                 : null;
-                            const activeSub = subs && activeSubGroup && subs[activeSubGroup] ? activeSubGroup : (activeSubName ?? subKeys[0] ?? null);
+                            const activeSub = subs && activeSubGroup && subs[activeSubGroup] ? activeSubGroup : (activeSubName ?? null);
                             const hasActiveChild = [...flatItems, ...(subs ? Object.values(subs).flat() : [])].some((item) =>
                                 currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path)));
 
@@ -196,20 +196,42 @@ export default function Sidebar() {
                                             <div className="space-y-0.5">
                                                 {/* Cấp 1: danh sách sub_group */}
                                                 {subKeys.map((key) => {
-                                                    const isActiveSub = activeSub === key;
-
                                                     return (
-                                                        <button key={key} type="button"
-                                                            onMouseEnter={() => setActiveSubGroup(key)}
-                                                            onClick={() => setActiveSubGroup(key)}
-                                                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-                                                                isActiveSub
-                                                                    ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
-                                                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
-                                                            }`}>
-                                                            <span>{key}</span>
-                                                            <ChevronRight className="h-3.5 w-3.5" />
-                                                        </button>
+                                                        <div key={key} className="relative">
+                                                            <button type="button"
+                                                                onMouseEnter={() => setActiveSubGroup(key)}
+                                                                onClick={() => setActiveSubGroup(key)}
+                                                                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors `}>
+                                                                <span>{key}</span>
+                                                                <ChevronRight className="h-3.5 w-3.5" />
+                                                            </button>
+
+                                                            {/* Cấp 2: items của sub_group — đẩy sang phải, ngang hàng dòng cha, cách 8px */}
+                                                            {activeSub === key && subs[key].length > 0 && (
+                                                                <div className="absolute left-full top-0 ml-2 w-60 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 animate-fade-in">
+                                                                    <div className="space-y-0.5">
+                                                                        {subs[key].map((item) => {
+                                                                            const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
+
+                                                                            return (
+                                                                                <Link key={item.route_path} href={item.route_path}
+                                                                                    onClick={() => {
+                                                                                        setOpenGroup(null);
+                                                                                        setPinnedGroup(null);
+                                                                                    }}
+                                                                                    className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                                                                                        isActive
+                                                                                            ? 'bg-sky-600 text-white font-semibold shadow-xs'
+                                                                                            : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
+                                                                                    }`}>
+                                                                                    {item.name}
+                                                                                </Link>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     );
                                                 })}
                                                 {/* Flat items của mixed group */}
@@ -237,34 +259,6 @@ export default function Sidebar() {
                                                     </>
                                                 )}
                                             </div>
-
-                                            {/* Cấp 2: items của activeSubGroup — đẩy sang phải, ngang hàng dòng đầu, cách 8px */}
-                                            {activeSub && subs[activeSub].length > 0 && (
-                                                <div
-                                                    className="absolute left-full top-0 ml-2 w-60 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 animate-fade-in"
-                                                >
-                                                    <div className="space-y-0.5">
-                                                        {subs[activeSub].map((item) => {
-                                                            const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
-
-                                                            return (
-                                                                <Link key={item.route_path} href={item.route_path}
-                                                                    onClick={() => {
-                                                                        setOpenGroup(null);
-                                                                        setPinnedGroup(null);
-                                                                    }}
-                                                                    className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                                                                        isActive
-                                                                            ? 'bg-sky-600 text-white font-semibold shadow-xs'
-                                                                            : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
-                                                                    }`}>
-                                                                    {item.name}
-                                                                </Link>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
                                     )}
                                 </div>
