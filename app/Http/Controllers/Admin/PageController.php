@@ -54,12 +54,14 @@ class PageController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'route_path' => ['required', 'string', 'max:255', 'unique:pages,route_path'],
             'group_name' => ['required', 'string', 'max:255'],
+            'sub_group' => ['nullable', 'string', 'max:50'],
         ]);
 
         Page::create([
             'name' => $validated['name'],
             'route_path' => $validated['route_path'],
             'group_name' => $validated['group_name'],
+            'sub_group' => $validated['sub_group'] ?? null,
             'sort_order' => (int) Page::max('sort_order') + 1,
         ]);
 
@@ -74,12 +76,14 @@ class PageController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'route_path' => ['required', 'string', 'max:255', 'unique:pages,route_path,'.$page->id],
             'group_name' => ['required', 'string', 'max:255'],
+            'sub_group' => ['nullable', 'string', 'max:50'],
         ]);
 
         $page->update([
             'name' => $validated['name'],
             'route_path' => $validated['route_path'],
             'group_name' => $validated['group_name'],
+            'sub_group' => $validated['sub_group'] ?? null,
         ]);
 
         Cache::forget('system_page_roles');
