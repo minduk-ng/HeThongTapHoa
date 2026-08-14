@@ -35,7 +35,6 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
     const [maxUsage, setMaxUsage] = useState('');
     const [targetUsage, setTargetUsage] = useState('');
     const [exclusive, setExclusive] = useState(false);
-    const [stackable, setStackable] = useState(true);
     const [actions, setActions] = useState<ActionRow[]>([{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]);
     const [conditions, setConditions] = useState<ConditionRow[]>([]);
     const [codePrefix, setCodePrefix] = useState('');
@@ -71,7 +70,7 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
             setStatus(promotionToEdit.status);
             setMaxUsage(promotionToEdit.max_usage === null ? '' : String(promotionToEdit.max_usage));
             setTargetUsage(promotionToEdit.target_usage === null ? '' : String(promotionToEdit.target_usage));
-            setExclusive(promotionToEdit.exclusive); setStackable(promotionToEdit.stackable);
+            setExclusive(!promotionToEdit.stackable);
             setActions(promotionToEdit.actions.length ? promotionToEdit.actions.map((a) => ({
                 action_type: a.action_type, action_value: String(a.action_value),
                 max_discount_amount: a.max_discount_amount === null ? '' : String(a.max_discount_amount),
@@ -87,7 +86,7 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
             })));
         } else {
             setName(''); setType('promotion'); setCode(''); setStartDate(null); setEndDate(null);
-            setStatus(true); setMaxUsage(''); setTargetUsage(''); setExclusive(false); setStackable(true);
+            setStatus(true); setMaxUsage(''); setTargetUsage(''); setExclusive(false);
             setActions([{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]);
             setConditions([]);
             setCodePrefix(''); setCodeQuantity(''); setCodeRandom(false);
@@ -145,7 +144,7 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
             start_date: startDate || null, end_date: endDate || null,
             status, max_usage: codePrefix ? null : (maxUsage === '' ? null : Number(maxUsage)),
             target_usage: targetUsage === '' ? null : Number(targetUsage),
-            exclusive, stackable,
+            stackable: !exclusive,
             code_prefix: code !== '' ? null : (codePrefix || null),
             code_quantity: code !== '' ? null : (codeQuantity === '' ? null : Number(codeQuantity)),
             code_random: code !== '' ? false : codeRandom,
@@ -322,22 +321,17 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                         </section>
 
                         {/* Toggles */}
-                        <section className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 space-y-3">
-                            <div className="flex items-start justify-between gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-zinc-900 dark:text-zinc-100 mb-1">Độc quyền</label>
-                                    <p className="text-xs text-zinc-500">Không áp dụng chung với bất kỳ chương trình hoặc mã giảm giá nào khác.</p>
+                        {type !== 'promotion' && (
+                            <section className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 space-y-3">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-zinc-900 dark:text-zinc-100 mb-1">Độc quyền</label>
+                                        <p className="text-xs text-zinc-500">Không áp dụng chung với các chương trình khuyến mãi tự động.</p>
+                                    </div>
+                                    <input type="checkbox" checked={exclusive} onChange={(e) => setExclusive(e.target.checked)} className="h-4 w-4 accent-sky-600" />
                                 </div>
-                                <input type="checkbox" checked={exclusive} onChange={(e) => setExclusive(e.target.checked)} className="h-4 w-4 accent-sky-600" />
-                            </div>
-                            <div className="flex items-start justify-between gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-zinc-900 dark:text-zinc-100 mb-1">Áp dụng đồng thời</label>
-                                    <p className="text-xs text-zinc-500">Cho phép áp dụng đè lên các chương trình giảm giá tự động.</p>
-                                </div>
-                                <input type="checkbox" checked={stackable} onChange={(e) => setStackable(e.target.checked)} className="h-4 w-4 accent-sky-600" />
-                            </div>
-                        </section>
+                            </section>
+                        )}
                     </div>
 
                     {/* Right: preview */}

@@ -37,7 +37,6 @@ export interface PromotionData {
     discount_total: number;
     max_usage: number | null;
     target_usage: number | null;
-    exclusive: boolean;
     stackable: boolean;
     conditions: { cond_type: string; cond_value: string }[];
     actions: { action_type: string; action_value: number; max_discount_amount: number | null }[];
