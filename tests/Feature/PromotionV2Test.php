@@ -128,17 +128,32 @@ test('resolveAll: code trung lap chi ap dung 1 lan', function () {
     expect($res['total_discount'])->toBe(10000.0);  // không bị nhân đôi
 });
 
-test('exclusive=true bo het promotion khac', function () {
-    $ex = promoV2(['type' => 'coupon', 'code' => 'EXCL', 'exclusive' => true]);
-    addAction($ex, 'discount_amount', 30000);
-    $other = promoV2(['type' => 'coupon', 'code' => 'OTHER']);
-    addAction($other, 'discount_amount', 5000);
+test('coupon stackable=false: bo auto promotion khi nhap ma', function () {
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'NOSTACK', 'stackable' => false]);
+    addAction($coupon, 'discount_amount', 20000);
+    $auto = promoV2();
+    addAction($auto, 'discount_amount', 5000);
 
-    $res = PromotionEngine::resolveAll(['EXCL', 'OTHER'], linesV2(), 150000);
+    $res = PromotionEngine::resolveAll(['NOSTACK'], linesV2(), 150000);
 
     expect($res['status'])->toBe('ok');
     expect(count($res['promotions']))->toBe(1);
-    expect($res['promotions'][0]['promotion']->id)->toBe($ex->id);
+    expect($res['promotions'][0]['promotion']->id)->toBe($coupon->id);
+    expect($res['total_discount'])->toBe(20000.0);
+});
+
+test('coupon stackable=true: ap chung auto promotion', function () {
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'STACKOK', 'stackable' => true]);
+    addAction($coupon, 'discount_percent', 10);
+    $auto = promoV2();
+    addAction($auto, 'discount_amount', 5000);
+
+    $res = PromotionEngine::resolveAll(['STACKOK'], linesV2(), 150000);
+
+    expect($res['status'])->toBe('ok');
+    expect(count($res['promotions']))->toBe(2);
+    // 10% của 150000 = 15000 (mã) + 5000 (auto) = 20000
+    expect($res['total_discount'])->toBe(20000.0);
 });
 
 test('free_product: tra ve free_items', function () {

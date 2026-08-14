@@ -15,7 +15,7 @@ function promoStat(array $attrs = []): Promotion
     return Promotion::create(array_merge([
         'name' => 'Promo '.uniqid(), 'type' => 'coupon', 'code' => mb_strtoupper('STAT'.uniqid()),
         'status' => true, 'max_usage' => null, 'used_count' => 0,
-        'exclusive' => false, 'stackable' => true,
+        'stackable' => true,
     ], $attrs));
 }
 

@@ -180,7 +180,7 @@ function posOrder(?Table $table, array $itemsSpec = [], array $attrs = []): Orde
 }
 
 /**
- * Tạo promotion v2 (type/code/status/max_usage/exclusive/stackable).
+ * Tạo promotion v2 (type/code/status/max_usage/stackable).
  */
 function promoV2(array $attrs = []): Promotion
 {
@@ -196,7 +196,6 @@ function promoV2(array $attrs = []): Promotion
         'status' => true,
         'max_usage' => null,
         'used_count' => 0,
-        'exclusive' => false,
         'stackable' => true,
     ], $attrs));
 }

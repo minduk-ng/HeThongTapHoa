@@ -72,15 +72,7 @@ class PromotionEngine
             $codePromotions[] = $p;
         }
 
-        // 2. exclusive: 1 mã exclusive → bỏ hết khác
-        if (count($codePromotions) > 1) {
-            $exclusive = collect($codePromotions)->first(fn ($p) => $p->exclusive);
-            if ($exclusive) {
-                $codePromotions = [$exclusive];
-            }
-        }
-
-        // 3. PROMOTION tự động: quét, lọc thoả điều kiện, chọn theo preferred / tốt nhất.
+        // 2. PROMOTION tự động: quét, lọc thoả điều kiện, chọn theo preferred / tốt nhất.
         //    preferredAutoId === 0: chủ động KHÔNG áp dụng auto promotion.
         //    preferredAutoId === null: tự chọn tốt nhất.
         //    preferredAutoId > 0: chọn đúng promotion đó.
@@ -106,7 +98,7 @@ class PromotionEngine
 
         // 4. Gộp pool: mã trước, auto sau
         $pool = $codePromotions;
-        if ($auto && collect($codePromotions)->doesntContain(fn ($p) => $p->exclusive)) {
+        if ($auto) {
             $pool[] = $auto;
         }
 

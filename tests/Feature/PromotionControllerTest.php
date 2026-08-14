@@ -27,7 +27,6 @@ test('store tạo promotion + conditions + actions và chuẩn hoá code hoa', f
         'end_date' => '2026-08-03',
         'status' => true,
         'max_usage' => 100,
-        'exclusive' => false,
         'stackable' => true,
         'conditions' => [
             ['cond_type' => 'min_order_value', 'cond_value' => '100000'],
