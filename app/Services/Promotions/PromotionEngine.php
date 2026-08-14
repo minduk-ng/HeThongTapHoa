@@ -96,13 +96,13 @@ class PromotionEngine
                 : $candidates->sortByDesc(fn ($p) => self::estimateDiscount($p, $lines, $subtotal))->first();
         }
 
-        // 4. Gộp pool: mã trước, auto sau
+        // 3. Gộp pool: mã trước, auto sau
         $pool = $codePromotions;
         if ($auto) {
             $pool[] = $auto;
         }
 
-        // 5. Áp dụng hành động
+        // 4. Áp dụng hành động
         $applied = [];
         $totalDiscount = 0.0;
         $freeItems = [];

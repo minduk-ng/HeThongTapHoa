@@ -102,7 +102,7 @@ test('discount_percent cap max_discount_amount', function () {
     expect($res['total_discount'])->toBe(15000.0);  // 20% = 30000, cap 15000
 });
 
-test('coupon nhap ma: validate + exclusive', function () {
+test('coupon nhap ma: stackable=false chan auto', function () {
     // stackable=false → chặn promotion tự động (spec: PROMOTION tự động bị loại nếu có COUPON stackable=false)
     $coupon = promoV2(['type' => 'coupon', 'code' => 'SAVE10', 'stackable' => false]);
     addAction($coupon, 'discount_percent', 10);
