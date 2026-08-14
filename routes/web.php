@@ -37,7 +37,10 @@ use App\Http\Middleware\CheckPageAccess;
 use Illuminate\Support\Facades\Route;
 
 // Home (authenticated)
-Route::inertia('/', 'welcome')->name('home')->middleware('auth');
+Route::get('/', [DashboardController::class, 'index'])->name('home')->middleware('permission:dashboard.view');
+Route::get('/dashboard', function () {
+    return redirect('/', 301);
+})->name('dashboard.legacy')->middleware('permission:dashboard.view');
 
 // Guest routes (only accessible when NOT logged in)
 Route::middleware('guest')->group(function () {

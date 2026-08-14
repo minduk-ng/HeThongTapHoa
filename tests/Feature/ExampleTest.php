@@ -1,7 +1,7 @@
 <?php
 
-test('redirects to login for unauthenticated users', function () {
+test('unauthenticated users cannot access home', function () {
     $response = $this->get('/');
 
-    $response->assertStatus(302);
+    $response->assertStatus(403);
 });

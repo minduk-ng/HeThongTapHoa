@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use App\Models\Role;
+use App\Models\Permission;
 use App\Models\Page;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,8 @@ test('user inertia shared data is cached and invalidated on changes', function (
         'email_verified_at' => now(),
     ]);
     $role = Role::create(['name' => 'manager', 'description' => 'Manager role']);
+    $permission = Permission::create(['name' => 'dashboard.view']);
+    $role->permissions()->attach($permission->id);
     $user->roles()->attach($role->id);
 
     $this->actingAs($user);
