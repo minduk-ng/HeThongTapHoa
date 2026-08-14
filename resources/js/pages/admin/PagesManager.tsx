@@ -28,6 +28,7 @@ export default function PagesManager({ pages }: Props) {
         name: '',
         route_path: '',
         group_name: '',
+        sub_group: '',
     });
 
     const openCreateModal = () => {
@@ -44,6 +45,7 @@ export default function PagesManager({ pages }: Props) {
             name: page.name,
             route_path: page.route_path,
             group_name: page.group_name,
+            sub_group: page.sub_group ?? '',
         });
         setIsNewGroup(false);
         setEditingPage(page);
@@ -454,6 +456,9 @@ export default function PagesManager({ pages }: Props) {
                                                 <td><code className="rounded bg-gray-100 px-1.5 py-0.5 text-sm dark:bg-slate-700 text-pink-600 dark:text-pink-400">{page.route_path}</code></td>
                                                 <td>
                                                     <span className="badge badge-indigo">{page.group_name}</span>
+                                                    {page.sub_group && (
+                                                        <p className="text-xs text-zinc-500 mt-1">{page.sub_group}</p>
+                                                    )}
                                                 </td>
                                                 <td className="font-semibold text-gray-700 dark:text-gray-300 font-mono text-sm">{page.user_count} người</td>
                                                 <td className="text-right space-x-2">
@@ -550,6 +555,18 @@ export default function PagesManager({ pages }: Props) {
                                     </button>
                                 </div>
                                 {errors.group_name && <p className="form-error">{errors.group_name}</p>}
+                            </div>
+
+                            <div>
+                                <label className="form-label">Nhóm con (sub-group)</label>
+                                <input
+                                    type="text"
+                                    value={data.sub_group}
+                                    onChange={(e) => setData('sub_group', e.target.value)}
+                                    className="input-field"
+                                    placeholder="VD: Doanh thu"
+                                />
+                                {errors.sub_group && <p className="form-error">{errors.sub_group}</p>}
                             </div>
 
                             <div className="modal-footer">

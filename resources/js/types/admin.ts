@@ -18,6 +18,7 @@ export interface Page {
     name: string;
     route_path: string;
     group_name: string;
+    sub_group?: string | null;
     sort_order: number;
     user_count?: number;
     roles?: Role[];
