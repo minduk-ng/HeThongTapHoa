@@ -16,3 +16,12 @@ test('navigation bao cao chia __subs theo sub_group, group khac flat', function 
             ->has('navigation.Quản lý')
             ->has('navigation.Quản lý.0.id'));
 });
+
+test('trang chu nam trong group rieng Trang chu dau sidebar', function () {
+    $this->seed(AuthorizationSeeder::class);
+    $admin = posAdmin();
+    $this->actingAs($admin)->get('/')->assertInertia(fn ($page) => $page
+        ->component('manager/dashboard/DashboardManager')
+        ->has('navigation.Trang chủ', 1)
+        ->where('navigation.Trang chủ.0.route_path', '/'));
+});

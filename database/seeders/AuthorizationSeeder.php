@@ -35,8 +35,8 @@ class AuthorizationSeeder extends Seeder
             [
                 'name' => 'Tổng quan',
                 'route_path' => '/',
-                'group_name' => 'Quản lý',
-                'sort_order' => 18,
+                'group_name' => 'Trang chủ',
+                'sort_order' => 1,
             ],
             [
                 'name' => 'Danh mục',
