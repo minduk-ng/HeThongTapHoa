@@ -105,7 +105,7 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
     };
 
     const handleRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        router.get('/manager/dashboard', { date_range: e.target.value }, { preserveState: true });
+        router.get('/', { date_range: e.target.value }, { preserveState: true });
     };
 
     const getTableColorClass = (status: string) => {

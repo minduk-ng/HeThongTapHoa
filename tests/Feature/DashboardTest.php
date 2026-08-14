@@ -20,20 +20,20 @@ class DashboardTest extends TestCase
         $this->seed(AuthorizationSeeder::class);
     }
 
-    public function test_guest_cannot_access_manager_dashboard()
+    public function test_guest_cannot_access_dashboard_home()
     {
-        $response = $this->get('/manager/dashboard');
+        $response = $this->get('/');
         $response->assertRedirect('/login');
     }
 
-    public function test_unauthorized_user_cannot_access_manager_dashboard()
+    public function test_unauthorized_user_cannot_access_dashboard_home()
     {
         $user = User::factory()->create();
-        $response = $this->actingAs($user)->get('/manager/dashboard');
+        $response = $this->actingAs($user)->get('/');
         $response->assertStatus(403);
     }
 
-    public function test_authorized_admin_can_access_manager_dashboard()
+    public function test_authorized_admin_can_access_dashboard_home()
     {
         $adminUser = User::where('email', 'admin@admin.com')->first();
         if (! $adminUser) {
@@ -42,7 +42,7 @@ class DashboardTest extends TestCase
             $adminUser->roles()->attach($adminRole);
         }
 
-        $response = $this->actingAs($adminUser)->get('/manager/dashboard');
+        $response = $this->actingAs($adminUser)->get('/');
         $response->assertOk();
     }
 
@@ -55,7 +55,7 @@ class DashboardTest extends TestCase
             $adminUser->roles()->attach($adminRole);
         }
 
-        $response = $this->actingAs($adminUser)->get('/manager/dashboard?date_range=today');
+        $response = $this->actingAs($adminUser)->get('/?date_range=today');
 
         $response->assertInertia(fn ($page) => $page
             ->component('manager/dashboard/DashboardManager')
@@ -91,7 +91,7 @@ class DashboardTest extends TestCase
             'vat_rate' => 0, 'vat_amount' => 0, 'discount_amount' => 0,
         ]);
 
-        $response = $this->actingAs($adminUser)->get('/manager/dashboard?date_range=today');
+        $response = $this->actingAs($adminUser)->get('/?date_range=today');
         $response->assertInertia(fn ($page) => $page
             ->component('manager/dashboard/DashboardManager')
             ->has('analytics.top_products', 1)

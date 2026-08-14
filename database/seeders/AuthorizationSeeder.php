@@ -168,6 +168,9 @@ class AuthorizationSeeder extends Seeder
             ],
         ];
 
+        // Upgrade path: delete legacy dashboard page row so no duplicate "Tổng quan" nav item
+        DB::table('pages')->where('route_path', '/manager/dashboard')->delete();
+
         foreach ($pages as $page) {
             DB::table('pages')->updateOrInsert(
                 ['route_path' => $page['route_path']],

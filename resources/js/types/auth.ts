@@ -18,12 +18,13 @@ export type Auth = {
 };
 
 export type NavigationItem = {
+    id: number;
     name: string;
     route_path: string;
 };
 
 export type NavigationGroup = {
-    [groupName: string]: NavigationItem[];
+    [groupName: string]: NavigationItem[] | { __subs: Record<string, NavigationItem[]> };
 };
 
 export type PageProps<T extends Record<string, unknown> = Record<string, unknown>> = T & {

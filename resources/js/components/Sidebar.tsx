@@ -1,12 +1,9 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { PageProps } from '../types/auth';
+import type { NavigationItem, PageProps } from '../types/auth';
 import ThemeToggle from './ThemeToggle';
 import { cdnAsset } from '../utils/cdn';
-
-interface NavItem { id: number; name: string; route_path: string; }
-type NavGroup = NavItem[] | { __subs: Record<string, NavItem[]> };
 
 export default function Sidebar() {
     const { auth, navigation } = usePage<PageProps>().props;
@@ -52,6 +49,14 @@ export default function Sidebar() {
             clearTimeout(hoverTimeoutRef.current);
         }
         setOpenGroup(groupName);
+        // Reset activeSubGroup on open so a previously-selected sub never sticks
+        const group = navigation[groupName];
+        if (group && !Array.isArray(group) && group.__subs) {
+            const keys = Object.keys(group.__subs);
+            const active = keys.find((key) => group.__subs[key].some((item) =>
+                currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path))));
+            setActiveSubGroup(active ?? keys[0] ?? null);
+        }
     };
 
     const handleMouseLeave = () => {
@@ -100,18 +105,23 @@ export default function Sidebar() {
 
                     {/* Middle: Navigation Links (GitHub-style hover/pin dropdowns) */}
                     <nav className="flex items-center gap-1" ref={navRef}>
-                        {Object.entries(navigation as Record<string, NavGroup>).map(([groupName, groupValue]) => {
+                        {Object.entries(navigation).map(([groupName, groupValue]) => {
                             const isOpen = openGroup === groupName;
                             const isPinned = pinnedGroup === groupName;
                             const hasSubs = !Array.isArray(groupValue) && groupValue.__subs !== undefined;
-                            const subs = hasSubs ? (groupValue as { __subs: Record<string, NavItem[]> }).__subs : null;
+                            const subs = hasSubs ? (groupValue as { __subs: Record<string, NavigationItem[]> }).__subs : null;
                             const subKeys = subs ? Object.keys(subs) : [];
-                            const activeSub = subs && activeSubGroup && subs[activeSubGroup] ? activeSubGroup : (subKeys[0] ?? null);
-                            const hasActiveChild = subs
-                                ? Object.values(subs).flat().some(item =>
-                                    currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path)))
-                                : (groupValue as NavItem[]).some(item =>
-                                    currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path)));
+                            // Flat items of a group (the array part; a mixed group carries them alongside __subs)
+                            const flatItems: NavigationItem[] = Array.isArray(groupValue)
+                                ? groupValue
+                                : Object.keys(groupValue).filter((key) => key !== '__subs').map((key) => (groupValue as unknown as Record<string, NavigationItem>)[key]);
+                            const activeSubName = subs
+                                ? subKeys.find((key) => subs[key].some((item) =>
+                                    currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path))))
+                                : null;
+                            const activeSub = subs && activeSubGroup && subs[activeSubGroup] ? activeSubGroup : (activeSubName ?? subKeys[0] ?? null);
+                            const hasActiveChild = [...flatItems, ...(subs ? Object.values(subs).flat() : [])].some((item) =>
+                                currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path)));
 
                             return (
                                 <div 
@@ -142,7 +152,7 @@ export default function Sidebar() {
                                             onMouseLeave={handleMouseLeave}
                                         >
                                             <div className="space-y-1">
-                                                {(groupValue as NavItem[]).map((item) => {
+                                                {flatItems.map((item) => {
                                                     const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
                                                     return (
                                                         <Link
@@ -169,47 +179,66 @@ export default function Sidebar() {
                                     {/* Mega-menu 2 columns for groups with sub_groups */}
                                     {isOpen && subs && (
                                         <div
-                                            className="absolute left-0 mt-1.5 flex rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 z-50 animate-fade-in"
+                                            className="absolute left-0 mt-1.5 flex flex-col rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 z-50 animate-fade-in"
                                             onMouseEnter={() => handleMouseEnter(groupName)}
                                             onMouseLeave={handleMouseLeave}
                                         >
-                                            {/* Left column: sub_groups */}
-                                            <div className="w-40 shrink-0 space-y-0.5">
-                                                {subKeys.map((key) => {
-                                                    const isActiveSub = activeSub === key;
-                                                    const subActive = subs[key].some(item =>
-                                                        currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path)));
-                                                    return (
-                                                        <button key={key} type="button"
-                                                            onMouseEnter={() => setActiveSubGroup(key)}
-                                                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-                                                                isActiveSub
-                                                                    ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
-                                                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
-                                                            }`}>
-                                                            <span>{key}</span>
-                                                            <ChevronRight className="h-3.5 w-3.5" />
-                                                        </button>
-                                                    );
-                                                })}
+                                            <div className="flex">
+                                                {/* Left column: sub_groups */}
+                                                <div className="w-40 shrink-0 space-y-0.5">
+                                                    {subKeys.map((key) => {
+                                                        const isActiveSub = activeSub === key;
+                                                        return (
+                                                            <button key={key} type="button"
+                                                                onMouseEnter={() => setActiveSubGroup(key)}
+                                                                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
+                                                                    isActiveSub
+                                                                        ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
+                                                                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                                                                }`}>
+                                                                <span>{key}</span>
+                                                                <ChevronRight className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                                {/* Right column: items of active sub_group */}
+                                                <div className="w-60 space-y-0.5 border-l border-slate-200 pl-1 dark:border-slate-700">
+                                                    {activeSub && subs[activeSub].map((item) => {
+                                                        const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
+                                                        return (
+                                                            <Link key={item.route_path} href={item.route_path}
+                                                                onClick={() => { setOpenGroup(null); setPinnedGroup(null); }}
+                                                                className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                                                                    isActive
+                                                                        ? 'bg-sky-600 text-white font-semibold shadow-xs'
+                                                                        : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
+                                                                }`}>
+                                                                {item.name}
+                                                            </Link>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
-                                            {/* Right column: items of active sub_group */}
-                                            <div className="w-60 space-y-0.5 border-l border-slate-200 pl-1 dark:border-slate-700">
-                                                {activeSub && subs[activeSub].map((item) => {
-                                                    const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
-                                                    return (
-                                                        <Link key={item.route_path} href={item.route_path}
-                                                            onClick={() => { setOpenGroup(null); setPinnedGroup(null); }}
-                                                            className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                                                                isActive
-                                                                    ? 'bg-sky-600 text-white font-semibold shadow-xs'
-                                                                    : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
-                                                            }`}>
-                                                            {item.name}
-                                                        </Link>
-                                                    );
-                                                })}
-                                            </div>
+                                            {/* Flat items of a mixed group (no __subs) stay reachable */}
+                                            {flatItems.length > 0 && (
+                                                <div className="mt-1 space-y-0.5 border-t border-slate-200 pt-1 dark:border-slate-700">
+                                                    {flatItems.map((item) => {
+                                                        const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
+                                                        return (
+                                                            <Link key={item.route_path} href={item.route_path}
+                                                                onClick={() => { setOpenGroup(null); setPinnedGroup(null); }}
+                                                                className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                                                                    isActive
+                                                                        ? 'bg-sky-600 text-white font-semibold shadow-xs'
+                                                                        : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
+                                                                }`}>
+                                                                {item.name}
+                                                            </Link>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>

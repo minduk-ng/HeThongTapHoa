@@ -37,10 +37,10 @@ use App\Http\Middleware\CheckPageAccess;
 use Illuminate\Support\Facades\Route;
 
 // Home (authenticated)
-Route::get('/', [DashboardController::class, 'index'])->name('home')->middleware('permission:dashboard.view');
+Route::get('/', [DashboardController::class, 'index'])->name('home')->middleware(['auth', 'permission:dashboard.view']);
 Route::get('/dashboard', function () {
     return redirect('/', 301);
-})->name('dashboard.legacy')->middleware('permission:dashboard.view');
+})->name('dashboard.legacy')->middleware(['auth', 'permission:dashboard.view']);
 
 // Guest routes (only accessible when NOT logged in)
 Route::middleware('guest')->group(function () {
@@ -149,9 +149,6 @@ Route::middleware('auth')->group(function () {
         // Order List
         Route::get('/orders', [OrderListController::class, 'index'])->middleware('permission:orders.view');
         Route::get('/orders/{order}', [OrderListController::class, 'show'])->middleware('permission:orders.view');
-
-        // Dashboard/Báo cáo
-        Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('permission:dashboard.view');
     });
 
     // Reports Management
