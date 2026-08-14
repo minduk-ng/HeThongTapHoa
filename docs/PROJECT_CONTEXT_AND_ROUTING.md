@@ -59,7 +59,7 @@
 ### 2.3 Màn Hình Quản Lý (Manager Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
-| `/manager/dashboard` | `Manager\DashboardController` | `resources/js/pages/manager/dashboard/DashboardManager.tsx` | Trang báo cáo phân tích doanh thu & giám sát KDS/Sơ đồ bàn realtime |
+| `/` (trang chủ) | `Manager\DashboardController` | `resources/js/pages/manager/dashboard/DashboardManager.tsx` | Trang chủ hệ thống: báo cáo phân tích doanh thu & giám sát KDS/Sơ đồ bàn realtime. `/dashboard` redirect 301 về `/`. Yêu cầu quyền `dashboard.view` |
 | `/manager/categories` | `Manager\CategoryController` | `resources/js/pages/manager/categories/CategoriesManager.tsx` | Quản lý danh mục món ăn / thức uống |
 | `/manager/products` | `Manager\ProductController` | `resources/js/pages/manager/products/ProductsManager.tsx` | Quản lý danh sách sản phẩm, giá bán, thuế VAT, Import/Export Excel |
 | `/manager/tables` | `Manager\TableController` | `resources/js/pages/manager/tables/TableManager.tsx` | Quản lý khu vực & sơ đồ bàn, tạo hàng loạt bàn (batch), đặt bàn kiểu Manager (`TableFormDrawer` — chỉ ghi `tables.reservation_*`, không tạo đơn) |
@@ -102,7 +102,15 @@
 - `ReportDonut.tsx`: Biểu đồ tròn Recharts hiển thị tỷ trọng các phương thức thanh toán.
 - `ReportDailyBars.tsx`: Biểu đồ cột Recharts hiển thị so sánh doanh thu & lợi nhuận theo ngày.
 
-### 2.6 Shared Components Dùng Chung (`resources/js/components`)
+### 2.6 Navigation Sidebar & Nhóm Báo Cáo (Menu `__subs` + Sidebar Flyout)
+- **Nguồn dữ liệu menu**: bảng `pages` (group_name, sub_group, sort_order) → `HandleInertiaRequests.php` build `navigation`. Group có `sub_group` trở thành object `{ __subs: { <sub_group>: [...] } }`; group không có là mảng phẳng. `RolesManager` / `PagesManager` chỉnh nhóm trang.
+- **Nhóm Báo cáo** gồm 2 sub_group:
+  - **Doanh thu**: `/reports/sales-invoices`, `/reports/invoice-items`, `/reports/product-details`, `/reports/profit`.
+  - **Hoạt động**: `/reports/cancelled`, `/reports/reservations`, `/reports/payments`.
+- **Sidebar (menu header)**: `resources/js/components/Sidebar.tsx` — group có `__subs` render **flyout 2 cấp kiểu file-tree** (cấp 1 danh sách sub_group dọc, cấp 2 mở sang phải ngang hàng mục cha, chỉ hiện khi hover/click mục cha — xem quy tắc mục 15 trong `AGENTS.md`). Group phẳng giữ dropdown 1 cột cũ.
+- **Trang chủ** là group riêng đứng đầu sidebar (`group_name = "Trang chủ"`, `sort_order = 1`, route `/`).
+
+### 2.7 Shared Components Dùng Chung (`resources/js/components`)
 - **`resources/js/components/DatePicker.tsx`**: DatePicker dùng chung (mode `single`/`range`, controlled, wire `Y-m-d`, hiển thị `dd/mm/yyyy`, segmented input dd/mm/yyyy, nhảy nhanh tháng/năm, hỗ trợ min/max + dark mode). Helpers: `resources/js/utils/date.ts`. Spec: `docs/superpowers/specs/2026-07-31-date-picker-design.md`. Ứng dụng trong PromotionFormDrawer (mode `single`; ngày bắt đầu 00:00, ngày kết thúc 23:59:59).
 
 ---
