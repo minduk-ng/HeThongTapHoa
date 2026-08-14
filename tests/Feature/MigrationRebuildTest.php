@@ -44,9 +44,14 @@ test('promotion v2: 4 bang moi ton tai, legacy da xoa', function () {
 test('promotion v2: schema cac bang dung', function () {
     expect(Schema::hasColumns('promotions', [
         'id', 'name', 'type', 'code', 'start_date', 'end_date', 'status',
-        'max_usage', 'used_count', 'exclusive', 'stackable',
+        'max_usage', 'used_count', 'stackable',
     ]))->toBeTrue();
+    expect(Schema::hasColumn('promotions', 'exclusive'))->toBeFalse();
     expect(Schema::hasColumns('promotion_conditions', ['id', 'promotion_id', 'cond_type', 'cond_value']))->toBeTrue();
     expect(Schema::hasColumns('promotion_actions', ['id', 'promotion_id', 'action_type', 'action_value', 'max_discount_amount']))->toBeTrue();
     expect(Schema::hasColumns('order_promotions', ['id', 'invoice_id', 'order_id', 'promotion_id', 'code_used', 'discount_applied']))->toBeTrue();
+});
+
+test('promotion v2: cot exclusive da bi xoa', function () {
+    expect(Schema::hasColumn('promotions', 'exclusive'))->toBeFalse();
 });

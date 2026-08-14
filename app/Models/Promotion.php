@@ -18,7 +18,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int|null $max_usage
  * @property int|null $target_usage
  * @property int $used_count
- * @property bool $exclusive
  * @property bool $stackable
  */
 class Promotion extends Model
@@ -27,7 +26,7 @@ class Promotion extends Model
 
     protected $fillable = [
         'name', 'type', 'code', 'start_date', 'end_date',
-        'status', 'max_usage', 'target_usage', 'used_count', 'exclusive', 'stackable',
+        'status', 'max_usage', 'target_usage', 'used_count', 'stackable',
         'code_prefix', 'code_quantity', 'code_random',
     ];
 
@@ -38,7 +37,6 @@ class Promotion extends Model
         'max_usage' => 'int',
         'target_usage' => 'int',
         'used_count' => 'int',
-        'exclusive' => 'bool',
         'stackable' => 'bool',
         'code_quantity' => 'int',
         'code_random' => 'bool',
