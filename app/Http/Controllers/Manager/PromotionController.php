@@ -378,7 +378,7 @@ class PromotionController extends Controller
     {
         $validated = $request->validate($this->rules($promotion));
 
-        $this->assertTypeConfigValid($validated);
+        $this->assertTypeConfigValid($validated, $promotion);
 
         DB::transaction(function () use ($validated, $promotion) {
             // Batch (code_prefix) và mã lẻ (code) loại trừ lẫn nhau — chọn 1 trong 2
@@ -480,24 +480,30 @@ class PromotionController extends Controller
         }
     }
 
-    private function assertTypeConfigValid(array $validated): void
+    private function assertTypeConfigValid(array $validated, ?Promotion $promotion = null): void
     {
-        if (($validated['type'] ?? null) === 'coupon' && ! empty($validated['code_prefix'] ?? null)) {
+        if (($validated['type'] ?? null) === 'coupon'
+            && ! empty($validated['code_prefix'] ?? null)
+            && ($promotion === null || empty($promotion->code_prefix))) {
             throw ValidationException::withMessages([
                 'code_prefix' => 'Coupon chỉ dùng 1 mã đơn, không phát hành mã hàng loạt.',
             ]);
         }
 
         if (($validated['type'] ?? null) === 'voucher') {
-            if (empty($validated['code_prefix'] ?? null) || empty($validated['code_quantity'] ?? null)) {
-                throw ValidationException::withMessages([
-                    'code_prefix' => 'Voucher phải phát hành mã hàng loạt (chuỗi tiền tố + số lượng mã).',
-                ]);
-            }
-            if (! empty($validated['code'] ?? null)) {
-                throw ValidationException::withMessages([
-                    'code' => 'Voucher không dùng mã đơn — dùng batch mã ngẫu nhiên.',
-                ]);
+            // Bản ghi voucher cũ (không prefix) được phép lưu nguyên — chỉ ép ràng buộc mới cho bản ghi MỚI
+            $isLegacyVoucher = $promotion !== null && empty($promotion->code_prefix);
+            if (! $isLegacyVoucher) {
+                if (empty($validated['code_prefix'] ?? null) || empty($validated['code_quantity'] ?? null)) {
+                    throw ValidationException::withMessages([
+                        'code_prefix' => 'Voucher phải phát hành mã hàng loạt (chuỗi tiền tố + số lượng mã).',
+                    ]);
+                }
+                if (! empty($validated['code'] ?? null)) {
+                    throw ValidationException::withMessages([
+                        'code' => 'Voucher không dùng mã đơn — dùng batch mã ngẫu nhiên.',
+                    ]);
+                }
             }
         }
     }

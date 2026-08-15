@@ -229,6 +229,7 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                                                 </button>
                                             </div>
                                             {errors.code && <p className="text-xs text-rose-500 mt-1">{errors.code}</p>}
+                                            {errors.code_prefix && <p className="text-xs text-rose-500 mt-1">{errors.code_prefix}</p>}
                                         </div>
                                     )}
                                 </div>
@@ -287,7 +288,7 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                                             </div>
                                         </div>
                                         <label className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                                            <input type="checkbox" checked disabled className="h-4 w-4 accent-sky-600" />
+                                            <input type="checkbox" checked={codeRandom} disabled className="h-4 w-4 accent-sky-600" />
                                             Mã ngẫu nhiên (mỗi mã dùng 1 lần — voucher)
                                         </label>
                                         <p className="text-[11px] text-zinc-500">

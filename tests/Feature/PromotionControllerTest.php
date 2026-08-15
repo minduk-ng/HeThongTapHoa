@@ -221,14 +221,14 @@ test('promotion invoices endpoint tra danh sach hoa don da dung ma', function ()
 test('store voucher voi code_prefix + quantity tao du ma con', function () {
     $this->actingAs(posAdmin())->post('/manager/promotions', [
         'type' => 'voucher',
-        'name' => 'Batch coupon',
+        'name' => 'Batch voucher',
         'code_prefix' => 'BC01',
         'code_quantity' => 3,
         'code_random' => false,
         'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
     ])->assertSessionHasNoErrors();
 
-    $promo = Promotion::where('name', 'Batch coupon')->first();
+    $promo = Promotion::where('name', 'Batch voucher')->first();
     expect($promo->codes)->toHaveCount(3);
     expect($promo->code_random)->toBeTrue();
     expect($promo->codes()->pluck('code')->map(fn ($c) => str_starts_with($c, 'BC01'))->every(fn ($b) => $b))->toBeTrue();
@@ -237,7 +237,7 @@ test('store voucher voi code_prefix + quantity tao du ma con', function () {
 test('store voucher batch khong can code rieng (chi prefix + quantity)', function () {
     $this->actingAs(posAdmin())->post('/manager/promotions', [
         'type' => 'voucher',
-        'name' => 'Batch no code',
+        'name' => 'Voucher no code',
         'code_prefix' => 'BNC',
         'code_quantity' => 2,
         'code_random' => false,
@@ -245,7 +245,7 @@ test('store voucher batch khong can code rieng (chi prefix + quantity)', functio
         'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
     ])->assertSessionHasNoErrors();
 
-    $promo = Promotion::where('name', 'Batch no code')->first();
+    $promo = Promotion::where('name', 'Voucher no code')->first();
     expect($promo->code)->toBeNull();
     expect($promo->max_usage)->toBeNull(); // batch: mỗi mã con 1 lần, không giới hạn tổng
     expect($promo->codes)->toHaveCount(2);
@@ -452,4 +452,47 @@ test('coupon hop le chi luu code don, khong prefix', function () {
     expect($p->code_prefix)->toBeNull();
     expect($p->code_quantity)->toBeNull();
     expect($p->code_random)->toBeFalse();
+});
+
+test('sua coupon batch cu chi doi ten van luu duoc', function () {
+    $this->actingAs(posAdmin());
+    // Tạo trực tiếp qua model (bypass validation) — mô phỏng bản ghi coupon batch cũ
+    $legacy = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'LC'.substr(uniqid(), -3), 'code_quantity' => 2, 'code_random' => false]);
+    $legacy->actions()->create(['action_type' => 'discount_amount', 'action_value' => 5000]);
+
+    $this->post("/manager/promotions/{$legacy->id}", [
+        'name' => 'Coupon batch cu doi ten',
+        'type' => 'coupon',
+        'code' => null,
+        'code_prefix' => $legacy->code_prefix,
+        'code_quantity' => 2,
+        'code_random' => false,
+        'status' => true,
+        'stackable' => true,
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000, 'max_discount_amount' => null]],
+    ])->assertSessionHasNoErrors();
+
+    $legacy->refresh();
+    expect($legacy->name)->toBe('Coupon batch cu doi ten');
+    expect($legacy->code_prefix)->toBe($legacy->code_prefix);
+});
+
+test('sua voucher cu van luu duoc', function () {
+    $this->actingAs(posAdmin());
+    // Voucher cũ không có prefix (không phải batch) — lưu nguyên không bị chặn
+    $legacy = promoV2(['type' => 'voucher', 'code' => 'OV'.substr(uniqid(), -6)]);
+    $legacy->actions()->create(['action_type' => 'discount_amount', 'action_value' => 10000]);
+
+    $this->post("/manager/promotions/{$legacy->id}", [
+        'name' => 'Voucher cu doi ten',
+        'type' => 'voucher',
+        'code' => $legacy->code,
+        'status' => true,
+        'stackable' => true,
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 10000, 'max_discount_amount' => null]],
+    ])->assertSessionHasNoErrors();
+
+    $legacy->refresh();
+    expect($legacy->name)->toBe('Voucher cu doi ten');
+    expect($legacy->code)->toBe($legacy->code);
 });
