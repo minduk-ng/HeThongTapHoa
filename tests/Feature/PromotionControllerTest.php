@@ -480,7 +480,8 @@ test('sua coupon batch cu chi doi ten van luu duoc', function () {
 test('sua voucher cu van luu duoc', function () {
     $this->actingAs(posAdmin());
     // Voucher cũ không có prefix (không phải batch) — lưu nguyên không bị chặn
-    $legacy = promoV2(['type' => 'voucher', 'code' => 'OV'.substr(uniqid(), -6)]);
+    $code = 'OV'.strtoupper(substr(uniqid(), -6));
+    $legacy = promoV2(['type' => 'voucher', 'code' => $code]);
     $legacy->actions()->create(['action_type' => 'discount_amount', 'action_value' => 10000]);
 
     $this->post("/manager/promotions/{$legacy->id}", [
@@ -494,5 +495,6 @@ test('sua voucher cu van luu duoc', function () {
 
     $legacy->refresh();
     expect($legacy->name)->toBe('Voucher cu doi ten');
-    expect($legacy->code)->toBe($legacy->code);
+    expect($legacy->code)->toBe($code);
+    expect($legacy->code_prefix)->toBeNull();
 });

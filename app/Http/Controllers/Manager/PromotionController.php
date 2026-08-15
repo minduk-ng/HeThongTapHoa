@@ -386,7 +386,9 @@ class PromotionController extends Controller
             $promotion->update([
                 'name' => $validated['name'],
                 'type' => $validated['type'],
-                'code' => in_array($validated['type'], ['promotion', 'voucher'], true) || $isBatch ? null : (mb_strtoupper(trim($validated['code'] ?? '')) ?: null),
+                'code' => in_array($validated['type'], ['promotion', 'voucher'], true) || $isBatch
+                    ? (($validated['type'] === 'voucher' && ! $isBatch && ! empty($promotion->code)) ? $promotion->code : null)
+                    : (mb_strtoupper(trim($validated['code'] ?? '')) ?: null),
                 'start_date' => ($validated['start_date'] ?? null) ? Carbon::parse($validated['start_date'])->startOfDay() : null,
                 'end_date' => ($validated['end_date'] ?? null) ? Carbon::parse($validated['end_date'])->endOfDay() : null,
                 'status' => $validated['status'] ?? true,
