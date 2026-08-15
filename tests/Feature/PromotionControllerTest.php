@@ -218,11 +218,10 @@ test('promotion invoices endpoint tra danh sach hoa don da dung ma', function ()
     expect((float) $res->json('invoices.0.discount_amount'))->toBe(5000.0);
 });
 
-test('store coupon voi code_prefix + quantity tao du ma con', function () {
+test('store voucher voi code_prefix + quantity tao du ma con', function () {
     $this->actingAs(posAdmin())->post('/manager/promotions', [
-        'type' => 'coupon',
+        'type' => 'voucher',
         'name' => 'Batch coupon',
-        'code' => 'BATCHCOUPON',
         'code_prefix' => 'BC01',
         'code_quantity' => 3,
         'code_random' => false,
@@ -231,12 +230,13 @@ test('store coupon voi code_prefix + quantity tao du ma con', function () {
 
     $promo = Promotion::where('name', 'Batch coupon')->first();
     expect($promo->codes)->toHaveCount(3);
-    expect($promo->codes()->pluck('code')->sort()->values()->all())->toBe(['BC01-001', 'BC01-002', 'BC01-003']);
+    expect($promo->code_random)->toBeTrue();
+    expect($promo->codes()->pluck('code')->map(fn ($c) => str_starts_with($c, 'BC01'))->every(fn ($b) => $b))->toBeTrue();
 });
 
-test('store coupon batch khong can code rieng (chi prefix + quantity)', function () {
+test('store voucher batch khong can code rieng (chi prefix + quantity)', function () {
     $this->actingAs(posAdmin())->post('/manager/promotions', [
-        'type' => 'coupon',
+        'type' => 'voucher',
         'name' => 'Batch no code',
         'code_prefix' => 'BNC',
         'code_quantity' => 2,
@@ -249,23 +249,19 @@ test('store coupon batch khong can code rieng (chi prefix + quantity)', function
     expect($promo->code)->toBeNull();
     expect($promo->max_usage)->toBeNull(); // batch: mỗi mã con 1 lần, không giới hạn tổng
     expect($promo->codes)->toHaveCount(2);
-    expect($promo->codes()->pluck('code')->sort()->values()->all())->toBe(['BNC-001', 'BNC-002']);
+    expect($promo->codes()->pluck('code')->map(fn ($c) => str_starts_with($c, 'BNC'))->every(fn ($b) => $b))->toBeTrue();
 });
 
-test('store gui ca code va batch: batch thang, code bi loai tru (khong tao ma le)', function () {
+test('store voucher gui ca code va batch: bi chan 422 (khong duoc code don)', function () {
     $this->actingAs(posAdmin())->post('/manager/promotions', [
-        'type' => 'coupon',
+        'type' => 'voucher',
         'name' => 'Batch mutual',
-        'code' => 'MUTUAL', // bị loại trừ vì có batch
+        'code' => 'MUTUAL', // voucher không được dùng mã đơn
         'code_prefix' => 'MUT',
         'code_quantity' => 2,
         'code_random' => false,
         'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000]],
-    ])->assertSessionHasNoErrors();
-
-    $promo = Promotion::where('name', 'Batch mutual')->first();
-    expect($promo->code)->toBeNull(); // batch thắng, code bị null
-    expect($promo->codes)->toHaveCount(2);
+    ])->assertSessionHasErrors('code');
 });
 
 test('store gui batch nhung code_prefix null: khong phai batch, code le giu lai', function () {
@@ -284,13 +280,13 @@ test('store gui batch nhung code_prefix null: khong phai batch, code le giu lai'
 
 test('store prefix trung bi 422', function () {
     $this->actingAs(posAdmin())->post('/manager/promotions', [
-        'type' => 'coupon', 'name' => 'A', 'code' => 'A1',
+        'type' => 'voucher', 'name' => 'A',
         'code_prefix' => 'DUPB', 'code_quantity' => 1, 'code_random' => false,
         'actions' => [['action_type' => 'discount_amount', 'action_value' => 1000]],
     ])->assertSessionHasNoErrors();
 
     $this->actingAs(posAdmin())->post('/manager/promotions', [
-        'type' => 'coupon', 'name' => 'B', 'code' => 'B1',
+        'type' => 'voucher', 'name' => 'B',
         'code_prefix' => 'DUPB', 'code_quantity' => 1, 'code_random' => false,
         'actions' => [['action_type' => 'discount_amount', 'action_value' => 1000]],
     ])->assertSessionHasErrors('code_prefix');
@@ -409,4 +405,51 @@ test('end_date chuan hoa cuoi ngay: coupon con ap dung trong ngay cuoi', functio
     } finally {
         Carbon::setTestNow();
     }
+});
+
+test('coupon gui code_prefix bi chan 422', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'name' => 'Coupon sai', 'type' => 'coupon', 'code' => 'C1'.substr(uniqid(), -4),
+        'code_prefix' => 'C1', 'code_quantity' => 5,
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000, 'max_discount_amount' => null]],
+    ])->assertSessionHasErrors('code_prefix');
+});
+
+test('voucher thieu code_prefix/quantity bi chan 422', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'name' => 'Voucher sai', 'type' => 'voucher', 'code' => 'V1'.substr(uniqid(), -4),
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000, 'max_discount_amount' => null]],
+    ])->assertSessionHasErrors('code_prefix');
+});
+
+test('voucher gui code don bi chan 422', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'name' => 'Voucher sai code', 'type' => 'voucher',
+        'code' => 'V2'.substr(uniqid(), -4), 'code_prefix' => 'V2', 'code_quantity' => 3,
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000, 'max_discount_amount' => null]],
+    ])->assertSessionHasErrors('code');
+});
+
+test('voucher hop le duoc ep code_random=true', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'name' => 'Voucher dung', 'type' => 'voucher',
+        'code_prefix' => 'VOK'.substr(uniqid(), -4), 'code_quantity' => 3, 'code_random' => false,
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000, 'max_discount_amount' => null]],
+    ])->assertSessionHasNoErrors();
+
+    $p = \App\Models\Promotion::where('name', 'Voucher dung')->first();
+    expect($p->code_random)->toBeTrue();
+});
+
+test('coupon hop le chi luu code don, khong prefix', function () {
+    $this->actingAs(posAdmin())->post('/manager/promotions', [
+        'name' => 'Coupon dung', 'type' => 'coupon', 'code' => 'COK'.substr(uniqid(), -4),
+        'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000, 'max_discount_amount' => null]],
+    ])->assertSessionHasNoErrors();
+
+    $p = \App\Models\Promotion::where('name', 'Coupon dung')->first();
+    expect($p->code)->not->toBeNull();
+    expect($p->code_prefix)->toBeNull();
+    expect($p->code_quantity)->toBeNull();
+    expect($p->code_random)->toBeFalse();
 });

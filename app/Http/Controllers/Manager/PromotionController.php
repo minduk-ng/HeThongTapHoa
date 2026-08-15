@@ -321,13 +321,15 @@ class PromotionController extends Controller
     {
         $validated = $request->validate($this->rules());
 
+        $this->assertTypeConfigValid($validated);
+
         DB::transaction(function () use ($validated) {
             // Batch (code_prefix) và mã lẻ (code) loại trừ lẫn nhau — chọn 1 trong 2
             $isBatch = ! empty($validated['code_prefix'] ?? null);
             $promotion = Promotion::create([
                 'name' => $validated['name'],
                 'type' => $validated['type'],
-                'code' => $validated['type'] === 'promotion' || $isBatch ? null : (mb_strtoupper(trim($validated['code'] ?? '')) ?: null),
+                'code' => in_array($validated['type'], ['promotion', 'voucher'], true) || $isBatch ? null : (mb_strtoupper(trim($validated['code'] ?? '')) ?: null),
                 'start_date' => ($validated['start_date'] ?? null) ? Carbon::parse($validated['start_date'])->startOfDay() : null,
                 'end_date' => ($validated['end_date'] ?? null) ? Carbon::parse($validated['end_date'])->endOfDay() : null,
                 'status' => $validated['status'] ?? true,
@@ -336,7 +338,7 @@ class PromotionController extends Controller
                 'stackable' => $validated['stackable'] ?? true,
                 'code_prefix' => $isBatch ? $validated['code_prefix'] : null,
                 'code_quantity' => $isBatch ? $validated['code_quantity'] : null,
-                'code_random' => $isBatch ? ($validated['code_random'] ?? false) : false,
+                'code_random' => $isBatch ? ($validated['type'] === 'voucher' ? true : ($validated['code_random'] ?? false)) : false,
             ]);
 
             foreach ($validated['conditions'] ?? [] as $cond) {
@@ -376,13 +378,15 @@ class PromotionController extends Controller
     {
         $validated = $request->validate($this->rules($promotion));
 
+        $this->assertTypeConfigValid($validated);
+
         DB::transaction(function () use ($validated, $promotion) {
             // Batch (code_prefix) và mã lẻ (code) loại trừ lẫn nhau — chọn 1 trong 2
             $isBatch = ! empty($validated['code_prefix'] ?? null);
             $promotion->update([
                 'name' => $validated['name'],
                 'type' => $validated['type'],
-                'code' => $validated['type'] === 'promotion' || $isBatch ? null : (mb_strtoupper(trim($validated['code'] ?? '')) ?: null),
+                'code' => in_array($validated['type'], ['promotion', 'voucher'], true) || $isBatch ? null : (mb_strtoupper(trim($validated['code'] ?? '')) ?: null),
                 'start_date' => ($validated['start_date'] ?? null) ? Carbon::parse($validated['start_date'])->startOfDay() : null,
                 'end_date' => ($validated['end_date'] ?? null) ? Carbon::parse($validated['end_date'])->endOfDay() : null,
                 'status' => $validated['status'] ?? true,
@@ -391,7 +395,7 @@ class PromotionController extends Controller
                 'stackable' => $validated['stackable'] ?? true,
                 'code_prefix' => $isBatch ? $validated['code_prefix'] : null,
                 'code_quantity' => $isBatch ? $validated['code_quantity'] : null,
-                'code_random' => $isBatch ? ($validated['code_random'] ?? false) : false,
+                'code_random' => $isBatch ? ($validated['type'] === 'voucher' ? true : ($validated['code_random'] ?? false)) : false,
             ]);
 
             // Xoá conditions/actions cũ rồi tạo lại (update đơn giản, ít data)
@@ -473,6 +477,28 @@ class PromotionController extends Controller
             Cache::tags(['pos_promotions'])->flush();
         } catch (\Throwable $e) {
             Log::warning('pos_promotions cache flush failed: '.$e->getMessage());
+        }
+    }
+
+    private function assertTypeConfigValid(array $validated): void
+    {
+        if (($validated['type'] ?? null) === 'coupon' && ! empty($validated['code_prefix'] ?? null)) {
+            throw ValidationException::withMessages([
+                'code_prefix' => 'Coupon chỉ dùng 1 mã đơn, không phát hành mã hàng loạt.',
+            ]);
+        }
+
+        if (($validated['type'] ?? null) === 'voucher') {
+            if (empty($validated['code_prefix'] ?? null) || empty($validated['code_quantity'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'code_prefix' => 'Voucher phải phát hành mã hàng loạt (chuỗi tiền tố + số lượng mã).',
+                ]);
+            }
+            if (! empty($validated['code'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'code' => 'Voucher không dùng mã đơn — dùng batch mã ngẫu nhiên.',
+                ]);
+            }
         }
     }
 }
