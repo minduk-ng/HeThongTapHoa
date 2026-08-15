@@ -140,14 +140,14 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
         const isBatch = codePrefix !== '' || codeQuantity !== '';
         const payload = {
             name, type,
-            code: type === 'promotion' || isBatch ? null : (code.toUpperCase() || null),
+            code: type === 'promotion' || type === 'voucher' || isBatch ? null : (code.toUpperCase() || null),
             start_date: startDate || null, end_date: endDate || null,
             status, max_usage: codePrefix ? null : (maxUsage === '' ? null : Number(maxUsage)),
             target_usage: targetUsage === '' ? null : Number(targetUsage),
             stackable: !exclusive,
             code_prefix: code !== '' ? null : (codePrefix || null),
             code_quantity: code !== '' ? null : (codeQuantity === '' ? null : Number(codeQuantity)),
-            code_random: code !== '' ? false : codeRandom,
+            code_random: type === 'voucher' ? true : (code !== '' ? false : codeRandom),
             conditions: conditions.map((c) => ({ cond_type: c.cond_type, cond_value: c.cond_value })),
             actions: actions.map((a) => ({
                 action_type: a.action_type,
@@ -194,13 +194,31 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Loại hình <span className="text-rose-500">*</span></label>
-                                        <select value={type} onChange={(e) => setType(e.target.value as any)} className={inputCls}>
+                                        <select value={type} onChange={(e) => {
+                                            const t = e.target.value as 'promotion' | 'coupon' | 'voucher';
+                                            setType(t);
+
+                                            if (t === 'voucher') {
+                                                setCode(''); setCodeRandom(true);
+                                            } else if (t === 'coupon') {
+                                                setCodePrefix(''); setCodeQuantity(''); setCodeRandom(false);
+                                            }
+                                        }} className={inputCls}>
                                             <option value="promotion">Khuyến mãi tự động (Promotion)</option>
-                                            <option value="coupon">Mã giảm giá (Coupon)</option>
-                                            <option value="voucher">Mã quà tặng (Voucher)</option>
+                                            <option value="coupon">Mã giảm giá (Coupon) — dùng chung, nhập 1 mã</option>
+                                            <option value="voucher">Mã quà tặng (Voucher) — mỗi khách 1 mã riêng</option>
                                         </select>
+                                        {promotionToEdit && (
+                                            (type === 'coupon' && (codePrefix !== '' || codeQuantity !== '')) ||
+                                            (type === 'voucher' && code !== '') ||
+                                            (type === 'voucher' && !codeRandom)
+                                        ) && (
+                                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                                                Cấu hình này không khớp với loại {type === 'coupon' ? 'Coupon (chỉ mã đơn)' : 'Voucher (bắt buộc mã ngẫu nhiên hàng loạt)'}. Bản ghi cũ vẫn lưu được.
+                                            </p>
+                                        )}
                                     </div>
-                                    {type !== 'promotion' && codePrefix === '' && codeQuantity === '' && (
+                                    {type === 'coupon' && (
                                         <div>
                                             <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Mã Code <span className="text-rose-500">*</span></label>
                                             <div className="flex gap-2">
@@ -239,7 +257,7 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                             <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4 border-b border-zinc-100 dark:border-zinc-800 pb-2">Điều kiện &amp; Giới hạn</h4>
                             <div className="space-y-3">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {codePrefix === '' && codeQuantity === '' && (
+                                    {type !== 'voucher' && (
                                         <div>
                                             <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tổng số lượt sử dụng tối đa</label>
                                             <input type="number" value={maxUsage} onChange={(e) => setMaxUsage(e.target.value)} placeholder="Không giới hạn" className={inputCls} />
@@ -253,29 +271,27 @@ export default function PromotionFormDrawer({ isOpen, onClose, promotionToEdit, 
                                     )}
                                 </div>
                                 <PromotionConditionsEditor conditions={conditions} onChange={setConditions} menuItems={menuItems} menuCategories={menuCategories} />
-                                {(type === 'coupon' || type === 'voucher') && code === '' && (
+                                {type === 'voucher' && (
                                     <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 space-y-3">
-                                        <h5 className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Phát hành mã hàng loạt (tùy chọn)</h5>
+                                        <h5 className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Phát hành mã hàng loạt</h5>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Chuỗi tiền tố</label>
                                                 <input value={codePrefix} onChange={(e) => { setCodePrefix(e.target.value.toUpperCase()); setCode(''); }}
-                                                    placeholder={codeRandom ? 'VD: DK' : 'VD: GIAM30'} className={inputCls} />
+                                                    placeholder="VD: DK" className={inputCls} />
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Số lượng mã</label>
                                                 <input type="number" min={1} max={100000} value={codeQuantity} onChange={(e) => { setCodeQuantity(e.target.value); setCode(''); }}
-                                                    placeholder="VD: 500" className={inputCls} />
+                                                    placeholder="VD: 100" className={inputCls} />
                                             </div>
                                         </div>
                                         <label className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                                            <input type="checkbox" checked={codeRandom} onChange={(e) => { setCodeRandom(e.target.checked); setCode(''); }} className="h-4 w-4 accent-sky-600" />
+                                            <input type="checkbox" checked disabled className="h-4 w-4 accent-sky-600" />
                                             Mã ngẫu nhiên (mỗi mã dùng 1 lần — voucher)
                                         </label>
                                         <p className="text-[11px] text-zinc-500">
-                                            {codeRandom
-                                                ? `Hệ thống tự sinh ${codeQuantity || 'N'} mã khác nhau không trùng (VD: ${codePrefix || 'DK'}123…).`
-                                                : `Sinh ${codeQuantity || 'N'} mã theo thứ tự (VD: ${codePrefix || 'GIAM30'}-001…).`}
+                                            Hệ thống tự sinh {codeQuantity || 'N'} mã ngẫu nhiên khác nhau không trùng (VD: {codePrefix || 'DK'}12345…).
                                         </p>
                                         {promotionToEdit && promotionToEdit.codes_count > 0 && (
                                             <p className="text-[11px] font-medium text-zinc-600">
