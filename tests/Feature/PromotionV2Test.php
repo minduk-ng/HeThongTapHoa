@@ -365,3 +365,23 @@ test('bulk checkout: SUM(order_promotions.discount_applied) = tổng giảm hóa
     expect((float) $order2->fresh()->discount_amount)->toBe(30000.0);
     expect((float) $invoice->discount_amount)->toBe(40000.0);
 });
+
+test('VAT thuc thu: vat_amount tinh tren gia sau discount', function () {
+    $item = posMenuItem(['price' => 100000, 'vat_rate' => 10]);
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'VAT1'.substr(uniqid(), -4)]);
+    addAction($coupon, 'discount_percent', 28);   // giảm 28% → total 72000
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']], ['status' => 'pending']);
+
+    $this->actingAs(posAdmin())->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 72000,
+        'promotion_code' => $coupon->code,
+    ])->assertOk();
+
+    $invoice = $order->fresh()->invoice;
+    expect((float) $invoice->total_amount)->toBe(72000.0);
+    // net(72000) = floor(72000/1.1) = 65454; vat = 72000-65454 = 6546
+    expect((float) $invoice->vat_amount)->toBe(6546.0);
+});

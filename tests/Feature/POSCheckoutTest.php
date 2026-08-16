@@ -425,3 +425,36 @@ test('validate-promotion ma con da dung tra loi ro rang', function () {
     ])->assertStatus(422)
         ->assertJson(['error' => 'Mã khuyến mãi đã được sử dụng.']);
 });
+
+test('free product: mon tang trong order bi set 0 va kho van tru', function () {
+    $free = posMenuItem(['price' => 20000, 'vat_rate' => 0]);
+    $ingredient = \App\Models\Ingredient::create(['name' => 'Ngl free '.uniqid(), 'stock_quantity' => 100, 'unit' => 'g']);
+    $free->recipes()->create(['ingredient_id' => $ingredient->id, 'amount' => 10, 'unit' => 'g']);
+
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'F'.substr(uniqid(), -5)]);
+    addAction($coupon, 'free_product', $free->id);
+
+    $item = posMenuItem(['price' => 30000, 'vat_rate' => 0]);
+    $table = posTable();
+    // Đơn có cả món thường + món tặng (nhân viên đã bấm thêm)
+    $order = posOrder($table, [
+        ['item' => $item, 'qty' => 1, 'price' => 30000, 'status' => 'completed'],
+        ['item' => $free, 'qty' => 1, 'price' => 20000, 'status' => 'completed'],
+    ], ['status' => 'pending']);
+
+    $this->actingAs(posAdmin())->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 30000,
+        'promotion_code' => $coupon->code,
+    ])->assertOk();
+
+    $invoice = $order->fresh()->invoice;
+    // Món tặng subtotal = 0 trong invoice line
+    $freeLine = $invoice->lines()->where('menu_item_id', $free->id)->first();
+    expect((float) $freeLine->subtotal)->toBe(0.0);
+    // Tổng hoá đơn = 30000 (món thường) — món tặng không tính tiền
+    expect((float) $invoice->total_amount)->toBe(30000.0);
+    // Kho đã trừ nguyên liệu món tặng
+    expect((float) $ingredient->fresh()->stock_quantity)->toBe(90.0);
+});

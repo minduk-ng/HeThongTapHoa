@@ -8,7 +8,6 @@ use App\Models\Ingredient;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\InvoicePromotion;
-use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderPromotion;
@@ -92,7 +91,8 @@ class CheckoutService
 
             $promotionRows = [];
             $totalDiscount = 0.0;
-            $freeItems = [];
+            $freeItemIds = [];
+            $freeGiftTotals = [];   // menu_item_id => subtotal gốc món tặng (để cộng vào totalDiscount)
             $appliedPromotions = [];
 
             if (! empty($promotionCodes) || Promotion::query()->where('type', 'promotion')->where('status', true)->exists()) {
@@ -106,7 +106,7 @@ class CheckoutService
                     throw new \Exception($reasonMsg, 422);
                 }
                 $totalDiscount = $resolved['total_discount'];
-                $freeItems = $resolved['free_items'] ?? [];
+                $freeItemIds = $resolved['free_item_ids'] ?? [];
                 $appliedPromotions = $resolved['promotions'] ?? [];
 
                 foreach ($appliedPromotions as $pr) {
@@ -123,18 +123,38 @@ class CheckoutService
                 }
             }
 
-            // 2b. Phân bổ discount xuống từng line (cho báo cáo line-level) theo tỷ trọng subtotal
+            // 2b. Phân bổ discount xuống từng line (cho báo cáo line-level) theo tỷ trọng subtotal;
+            //     món tặng (free_item_ids) set giá = 0; VAT mỗi line tính trên giá sau discount (thực thu)
+            $freeHandledIds = [];
+            $freeGiftTotals = [];
             if ($totalDiscount > 0 && $subtotal > 0) {
                 $assigned = 0.0;
                 $count = count($lineInputs);
                 foreach ($lineInputs as $idx => $li) {
+                    $isFree = in_array((int) $li['menu_item_id'], $freeItemIds, true)
+                        && ! in_array($li['order_item_id'], $freeHandledIds, true);
+                    if ($isFree) {
+                        $giftSubtotal = (float) $li['subtotal'];
+                        $freeGiftTotals[] = $giftSubtotal;
+                        $freeHandledIds[] = $li['order_item_id'];
+                        $lineInputs[$idx]['unit_price'] = 0.0;
+                        $lineInputs[$idx]['subtotal'] = 0.0;
+                        $lineInputs[$idx]['vat_amount'] = 0.0;
+                        $lineInputs[$idx]['discount_amount'] = round($giftSubtotal, 2);
+                        continue;
+                    }
                     $lineDiscount = ($idx === $count - 1)
                         ? round($totalDiscount - $assigned, 2)
                         : floor($totalDiscount * (float) $li['subtotal'] / $subtotal);
                     $assigned += $lineDiscount;
                     $lineInputs[$idx]['discount_amount'] = round(max(0, min($lineDiscount, (float) $li['subtotal'])), 2);
+                    $netLineTotal = max(0.0, (float) $li['subtotal'] - (float) $lineInputs[$idx]['discount_amount']);
+                    $lineInputs[$idx]['vat_amount'] = OrderTotals::vatInPrice($netLineTotal, (float) $li['vat_rate']);
                 }
             }
+
+            // VAT thực thu = tổng vat_amount các line sau discount
+            $vatTotal = (float) collect($lineInputs)->sum('vat_amount');
 
             $total = max(0.0, $subtotal - $totalDiscount);
 
@@ -225,25 +245,6 @@ class CheckoutService
                     'vat_rate' => $li['vat_rate'],
                     'vat_amount' => $li['vat_amount'],
                     'discount_amount' => $li['discount_amount'],
-                ]);
-            }
-
-            // 6b. FREE_PRODUCT: thêm line 0đ
-            foreach ($freeItems as $free) {
-                $mi = MenuItem::find($free['menu_item_id']);
-                if (! $mi) {
-                    continue;
-                }
-                InvoiceLine::create([
-                    'invoice_id' => $invoice->id,
-                    'menu_item_id' => $mi->id,
-                    'name_snapshot' => $mi->name ?? 'Món tặng',
-                    'quantity' => 1,
-                    'unit_price' => 0,
-                    'subtotal' => 0,
-                    'vat_rate' => 0,
-                    'vat_amount' => 0,
-                    'discount_amount' => 0,
                 ]);
             }
 

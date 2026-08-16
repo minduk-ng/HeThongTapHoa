@@ -31,15 +31,16 @@ test('checkout 1 don: invoice + payments + lines + promotion snapshot, dung VAT 
     expect((float) $invoice->discount_amount)->toBe(12000.0);
     expect((float) $invoice->total_amount)->toBe(108000.0);
 
-    // VAT trong gia: itemA 2*50000=100000, net=floor(100000/1.1)=90909, vat=9091
-    expect((float) $invoice->vat_amount)->toBe(9091.0);
+    // VAT thực thu (tính trên giá sau discount): itemA net sau discount = 100000-10000 = 90000,
+    // net=floor(90000/1.1)=81818, vat=8182; itemB vat_rate=0 → vat 0
+    expect((float) $invoice->vat_amount)->toBe(8182.0);
 
     // lines
     expect($invoice->fresh()->lines)->toHaveCount(2);
     $lineA = $invoice->lines->firstWhere('menu_item_id', $itemA->id);
     expect($lineA->name_snapshot)->toBe('Cf den');
     expect((float) $lineA->subtotal)->toBe(100000.0);
-    expect((float) $lineA->vat_amount)->toBe(9091.0);
+    expect((float) $lineA->vat_amount)->toBe(8182.0);
 
     // payments
     expect($invoice->payments)->toHaveCount(1);
