@@ -135,7 +135,7 @@ class PromotionEngine
                 }
             }
 
-            $remaining = max(0.0, $base - $totalDiscount);
+            $remaining = $base;
             $amount = round(min(max(0.0, $discount), $remaining), 2);
             $totalDiscount += $amount;
             $base = max(0.0, $base - $amount);

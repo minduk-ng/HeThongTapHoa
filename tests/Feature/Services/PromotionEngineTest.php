@@ -34,8 +34,8 @@ test('resolveAll cap tong discount khong vuot subtotal', function () {
 
     $r = PromotionEngine::resolveAll([$p1->code, $p2->code], engineLines(100000), 100000);
     expect($r['status'])->toBe('ok');
-    // Chồng tầng: mã 1 90% → 90000, base còn 10000; mã 2 min(50000, remaining=0) = 0
-    expect($r['total_discount'])->toBe(90000.0);
+    // Chồng tầng: mã 1 90% → 90000, base còn 10000; mã 2 min(50000, remaining=10000) = 10000 → tổng 100000 (=100%)
+    expect($r['total_discount'])->toBe(100000.0);
 });
 
 test('resolveAll ma reject tra rejected, khong pha stack', function () {
@@ -297,4 +297,17 @@ test('resolveAll: campaign khong co time slot van ap dung binh thuong (backward 
 
     expect($r['status'])->toBe('ok');
     expect($r['total_discount'])->toBe(5000.0);
+});
+
+test('chong tang: auto >50% roi ma % van giam tren base con lai', function () {
+    $auto = promoV2();
+    addAction($auto, 'discount_percent', 60);
+    $coupon = promoV2(['type' => 'coupon', 'code' => 'BASE'.substr(uniqid(), -4)]);
+    addAction($coupon, 'discount_percent', 50);
+
+    $res = PromotionEngine::resolveAll([$coupon->code], linesV2(), 100000);
+
+    // auto 60% = 60000 → base 40000; mã 50% trên 40000 = 20000 → tổng 80000
+    expect($res['status'])->toBe('ok');
+    expect($res['total_discount'])->toBe(80000.0);
 });
