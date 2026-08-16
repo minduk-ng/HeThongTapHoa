@@ -126,12 +126,13 @@ class PromotionEngine
                     $actionsApplied[] = ['type' => 'discount_amount', 'value' => (float) $action->action_value];
                 } elseif ($action->action_type === 'free_product') {
                     $freeMenuId = (int) $action->action_value;
-                    $freeSubtotal = (float) $lines->where('menu_item_id', $freeMenuId)->sum('subtotal');
-                    if ($freeSubtotal > 0) {
-                        $discount += $freeSubtotal;
-                        $freeItemIds[] = $freeMenuId;
-                        $actionsApplied[] = ['type' => 'free_product', 'value' => $freeMenuId];
+                    if (! $lines->contains(fn ($l) => (int) ($l['menu_item_id'] ?? 0) === $freeMenuId)) {
+                        return ['status' => 'rejected', 'reason' => 'free_product_not_in_cart', 'code' => null];
                     }
+                    $freeSubtotal = (float) $lines->where('menu_item_id', $freeMenuId)->sum('subtotal');
+                    $discount += $freeSubtotal;
+                    $freeItemIds[] = $freeMenuId;
+                    $actionsApplied[] = ['type' => 'free_product', 'value' => $freeMenuId];
                 }
             }
 

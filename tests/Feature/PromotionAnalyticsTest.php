@@ -250,12 +250,11 @@ test('command aggregate-daily --date rebuild dung ngay cu the', function () {
 
 test('command rebuild 0-discount multi-promo: first nhan full, con lai 0, tong = invoiceTotal', function () {
     $admin = posAdmin();
-    // 1 invoice dùng 2 promotion nhưng tổng discount tiền = 0 (free_product không trừ tiền)
-    $free = posMenuItem(['price' => 10000]);
+    // 1 invoice dùng 2 promotion nhưng tổng discount tiền = 0 (discount_amount = 0)
     $auto = promoStat(['type' => 'promotion']);
-    $auto->actions()->create(['action_type' => 'free_product', 'action_value' => $free->id, 'max_discount_amount' => null]);
+    $auto->actions()->create(['action_type' => 'discount_amount', 'action_value' => 0, 'max_discount_amount' => null]);
     $coupon = promoStat();
-    $coupon->actions()->create(['action_type' => 'free_product', 'action_value' => $free->id, 'max_discount_amount' => null]);
+    $coupon->actions()->create(['action_type' => 'discount_amount', 'action_value' => 0, 'max_discount_amount' => null]);
 
     $item = posMenuItem(['price' => 50000, 'vat_rate' => 0]);
     $table = posTable();

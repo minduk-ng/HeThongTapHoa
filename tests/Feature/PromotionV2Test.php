@@ -171,6 +171,30 @@ test('free_product: mon tang co trong gio duoc tru subtotal + tra free_item_ids'
     expect($res['total_discount'])->toBe(20000.0);
 });
 
+test('free_product khi mon tang KHONG co trong gio -> rejected', function () {
+    $p = promoV2(['type' => 'coupon', 'code' => 'FREE1'.substr(uniqid(), -4)]);
+    addAction($p, 'free_product', 99999);
+
+    $res = PromotionEngine::resolveAll([$p->code], collect([
+        ['order_item_id' => 1, 'menu_item_id' => 10, 'quantity' => 1, 'subtotal' => 50000, 'category_id' => null],
+    ]), 50000);
+
+    expect($res['status'])->toBe('rejected');
+    expect($res['reason'])->toBe('free_product_not_in_cart');
+});
+
+test('free_product khi mon tang co trong gio -> free_item_ids + amount = subtotal mon tang', function () {
+    $p = promoV2(['type' => 'coupon', 'code' => 'FREE2'.substr(uniqid(), -4)]);
+    addAction($p, 'free_product', 10);
+
+    $res = PromotionEngine::resolveAll([$p->code], linesV2(), 150000);
+
+    expect($res['status'])->toBe('ok');
+    expect($res['free_item_ids'])->toContain(10);
+    // amount của promotion free_product = subtotal line món tặng (linesV2 line 10 = 100000)
+    expect($res['promotions'][0]['amount'])->toBe(100000.0);
+});
+
 test('validate-promotion: condition min_quantity tinh tu quantity cua line', function () {
     $item = posMenuItem(['price' => 30000, 'vat_rate' => 0]);
     $coupon = promoV2(['type' => 'coupon', 'code' => 'VQ2'.substr(uniqid(), -4)]);
@@ -240,7 +264,7 @@ test('checkout: coupon ghi order_promotions + cap dung', function () {
     expect((float) $order->items()->first()->fresh()->discount_amount)->toBe(5000.0);
 });
 
-test('checkout: free_product khong tu them line 0d khi mon tang khong co trong don', function () {
+test('checkout: free_product khong co mon tang trong don -> tu choi thanh toan', function () {
     $admin = posAdmin();
     $free = posMenuItem(['price' => 15000, 'vat_rate' => 0]);
     $p = promoV2(['type' => 'promotion']);
@@ -253,11 +277,11 @@ test('checkout: free_product khong tu them line 0d khi mon tang khong co trong d
         'order_id' => $order->id,
         'payment_method' => 'cash',
         'amount_received' => 30000,
-    ])->assertOk();
+    ])->assertStatus(422);
 
-    // Món tặng không có trong giỏ → engine không trả free_item_ids → không tự thêm line 0đ
-    $freeLine = InvoiceLine::where('menu_item_id', $free->id)->first();
-    expect($freeLine)->toBeNull();
+    // Món tặng không có trong giỏ → promotion bị từ chối (free_product_not_in_cart) → không có hóa đơn / line 0đ
+    expect(Invoice::count())->toBe(0);
+    expect(InvoiceLine::where('menu_item_id', $free->id)->exists())->toBeFalse();
 });
 
 test('checkout voi selected_promotion_id: ap dung dung promotion da chon', function () {

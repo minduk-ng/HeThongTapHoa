@@ -82,6 +82,7 @@ class PaymentController extends Controller
                 'condition_not_met' => 'Đơn hàng chưa đáp ứng điều kiện khuyến mãi.',
                 'out_of_slot' => 'Mã chỉ áp dụng trong khung giờ đã đăng ký.',
                 'already_used' => 'Mã khuyến mãi đã được sử dụng.',
+                'free_product_not_in_cart' => 'Đơn cần có món tặng mới áp dụng được mã này.',
             ];
 
             return response()->json([
