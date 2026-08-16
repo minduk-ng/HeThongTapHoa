@@ -142,7 +142,7 @@ test('coupon stackable=false: bo auto promotion khi nhap ma', function () {
     expect($res['total_discount'])->toBe(20000.0);
 });
 
-test('coupon stackable=true: ap chung auto promotion', function () {
+test('coupon stackable=true: ap chung auto promotion (chong tang)', function () {
     $coupon = promoV2(['type' => 'coupon', 'code' => 'STACKOK', 'stackable' => true]);
     addAction($coupon, 'discount_percent', 10);
     $auto = promoV2();
@@ -152,19 +152,23 @@ test('coupon stackable=true: ap chung auto promotion', function () {
 
     expect($res['status'])->toBe('ok');
     expect(count($res['promotions']))->toBe(2);
-    // 10% của 150000 = 15000 (mã) + 5000 (auto) = 20000
-    expect($res['total_discount'])->toBe(20000.0);
+    // Chồng tầng: auto 5000 trước → base 145000; mã 10% trên 145000 = 14500
+    // Tổng = 5000 + 14500 = 19500
+    expect($res['total_discount'])->toBe(19500.0);
 });
 
-test('free_product: tra ve free_items', function () {
+test('free_product: mon tang co trong gio duoc tru subtotal + tra free_item_ids', function () {
     $mi = posMenuItem(['price' => 20000]);
     $p = promoV2();
     addAction($p, 'free_product', $mi->id);
 
-    $res = PromotionEngine::resolveAll([], linesV2(), 150000);
+    $res = PromotionEngine::resolveAll([], collect([
+        ['order_item_id' => 1, 'menu_item_id' => $mi->id, 'quantity' => 1, 'subtotal' => 20000, 'category_id' => null],
+    ]), 20000);
 
     expect($res['status'])->toBe('ok');
-    expect($res['free_items'])->toContain(['menu_item_id' => $mi->id, 'name' => $mi->name]);
+    expect($res['free_item_ids'])->toContain($mi->id);
+    expect($res['total_discount'])->toBe(20000.0);
 });
 
 test('validate-promotion: condition min_quantity tinh tu quantity cua line', function () {
@@ -236,7 +240,7 @@ test('checkout: coupon ghi order_promotions + cap dung', function () {
     expect((float) $order->items()->first()->fresh()->discount_amount)->toBe(5000.0);
 });
 
-test('checkout: free_product them line 0d', function () {
+test('checkout: free_product khong tu them line 0d khi mon tang khong co trong don', function () {
     $admin = posAdmin();
     $free = posMenuItem(['price' => 15000, 'vat_rate' => 0]);
     $p = promoV2(['type' => 'promotion']);
@@ -251,10 +255,9 @@ test('checkout: free_product them line 0d', function () {
         'amount_received' => 30000,
     ])->assertOk();
 
+    // Món tặng không có trong giỏ → engine không trả free_item_ids → không tự thêm line 0đ
     $freeLine = InvoiceLine::where('menu_item_id', $free->id)->first();
-    expect($freeLine)->not->toBeNull();
-    expect((float) $freeLine->subtotal)->toBe(0.0);
-    expect((float) $freeLine->unit_price)->toBe(0.0);
+    expect($freeLine)->toBeNull();
 });
 
 test('checkout voi selected_promotion_id: ap dung dung promotion da chon', function () {

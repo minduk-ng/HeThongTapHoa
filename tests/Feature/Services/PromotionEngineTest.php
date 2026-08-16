@@ -34,7 +34,8 @@ test('resolveAll cap tong discount khong vuot subtotal', function () {
 
     $r = PromotionEngine::resolveAll([$p1->code, $p2->code], engineLines(100000), 100000);
     expect($r['status'])->toBe('ok');
-    expect($r['total_discount'])->toBe(100000.0); // 90k + min(50k,10k)=10k
+    // Chồng tầng: mã 1 90% → 90000, base còn 10000; mã 2 min(50000, remaining=0) = 0
+    expect($r['total_discount'])->toBe(90000.0);
 });
 
 test('resolveAll ma reject tra rejected, khong pha stack', function () {

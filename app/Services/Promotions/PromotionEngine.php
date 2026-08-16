@@ -96,22 +96,26 @@ class PromotionEngine
                 : $candidates->sortByDesc(fn ($p) => self::estimateDiscount($p, $lines, $subtotal))->first();
         }
 
-        // 3. Gộp pool: mã trước, auto sau
-        $pool = $codePromotions;
+        // 3. Gộp pool: promotion tự động TRƯỚC, mã coupon/voucher SAU (tính chồng tầng)
+        $pool = [];
         if ($auto) {
             $pool[] = $auto;
         }
+        foreach ($codePromotions as $cp) {
+            $pool[] = $cp;
+        }
 
-        // 4. Áp dụng hành động
+        // 4. Áp dụng hành động (chồng tầng: base giảm dần sau mỗi promotion)
         $applied = [];
         $totalDiscount = 0.0;
-        $freeItems = [];
+        $base = $subtotal;
+        $freeItemIds = [];
         foreach ($pool as $p) {
             $discount = 0.0;
             $actionsApplied = [];
             foreach ($p->actions as $action) {
                 if ($action->action_type === 'discount_percent') {
-                    $d = $subtotal * ($action->action_value / 100);
+                    $d = $base * ($action->action_value / 100);
                     if ($action->max_discount_amount !== null) {
                         $d = min($d, (float) $action->max_discount_amount);
                     }
@@ -121,22 +125,24 @@ class PromotionEngine
                     $discount += (float) $action->action_value;
                     $actionsApplied[] = ['type' => 'discount_amount', 'value' => (float) $action->action_value];
                 } elseif ($action->action_type === 'free_product') {
-                    $mi = MenuItem::find((int) $action->action_value);
-                    if ($mi) {
-                        $freeItems[] = ['menu_item_id' => $mi->id, 'name' => $mi->name];
-                        $actionsApplied[] = ['type' => 'free_product', 'value' => $mi->id];
+                    $freeMenuId = (int) $action->action_value;
+                    $freeSubtotal = (float) $lines->where('menu_item_id', $freeMenuId)->sum('subtotal');
+                    if ($freeSubtotal > 0) {
+                        $discount += $freeSubtotal;
+                        $freeItemIds[] = $freeMenuId;
+                        $actionsApplied[] = ['type' => 'free_product', 'value' => $freeMenuId];
                     }
                 }
             }
 
-            $remaining = max(0.0, $subtotal - $totalDiscount);
+            $remaining = max(0.0, $base - $totalDiscount);
             $amount = round(min(max(0.0, $discount), $remaining), 2);
             $totalDiscount += $amount;
+            $base = max(0.0, $base - $amount);
 
             // Quota: increment trong lock (chỉ khi checkout/thanh toán thật)
             if ($lockForUpdate) {
                 $p->increment('used_count');
-                // Đánh dấu mã con đã dùng (mỗi mã 1 lần) — đã lockForUpdate ở step 1a
                 if (isset($promotionCodesById[$p->id])) {
                     $promotionCodesById[$p->id]->forceFill([
                         'status' => 'used',
@@ -157,7 +163,7 @@ class PromotionEngine
             'status' => 'ok',
             'promotions' => $applied,
             'total_discount' => round($totalDiscount, 2),
-            'free_items' => $freeItems,
+            'free_item_ids' => array_values(array_unique($freeItemIds)),
         ];
     }
 
