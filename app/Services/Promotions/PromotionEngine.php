@@ -30,8 +30,11 @@ class PromotionEngine
             $pc = $pcQuery->first();
 
             if ($pc) {
-                if ($pc->status !== 'unused') {
+                if ($pc->status === 'used') {
                     return ['status' => 'rejected', 'reason' => 'already_used', 'code' => $code];
+                }
+                if ($pc->status === 'disabled') {
+                    return ['status' => 'rejected', 'reason' => 'disabled', 'code' => $code];
                 }
                 $promotionQuery = Promotion::query()->with(['conditions', 'actions', 'timeSlots']);
                 if ($lockForUpdate) {

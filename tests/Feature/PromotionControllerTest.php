@@ -498,3 +498,19 @@ test('sua voucher cu van luu duoc', function () {
     expect($legacy->code)->toBe($code);
     expect($legacy->code_prefix)->toBeNull();
 });
+
+test('toggle codes: disable unused -> disabled, enable -> unused, used giu nguyen', function () {
+    $admin = posAdmin();
+    $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'TOG'.substr(uniqid(), -4), 'code_quantity' => 3, 'code_random' => false]);
+    \App\Services\Promotions\PromotionCodeService::generate($p);
+    $codes = \App\Models\PromotionCode::where('promotion_id', $p->id)->get();
+    $codes[0]->update(['status' => 'used']);   // 1 mã đã dùng
+
+    $this->actingAs($admin)->post("/manager/promotions/{$p->id}/codes/toggle", ['action' => 'disable'])->assertSessionHasNoErrors();
+    expect(\App\Models\PromotionCode::where('promotion_id', $p->id)->where('status', 'disabled')->count())->toBe(2);
+    expect(\App\Models\PromotionCode::where('promotion_id', $p->id)->where('status', 'used')->count())->toBe(1);
+
+    $this->actingAs($admin)->post("/manager/promotions/{$p->id}/codes/toggle", ['action' => 'enable'])->assertSessionHasNoErrors();
+    expect(\App\Models\PromotionCode::where('promotion_id', $p->id)->where('status', 'unused')->count())->toBe(2);
+    expect(\App\Models\PromotionCode::where('promotion_id', $p->id)->where('status', 'used')->count())->toBe(1);
+});

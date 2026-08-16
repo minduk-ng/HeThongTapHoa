@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { router } from '@inertiajs/react';
 import { X, ChevronDown, Download } from 'lucide-react';
 import DataTable, { DataTableColumn } from '../../../../components/DataTable';
 import { exportXLSX } from '../../../../components/reports/reportExport';
@@ -14,7 +15,7 @@ interface CodeRow {
 interface Props {
     isOpen: boolean;
     onClose: () => void;
-    promotion: { id: number; code_prefix: string | null; name: string } | null;
+    promotion: { id: number; code_prefix: string | null; name: string; type: string; codes_count: number; codes_used: number } | null;
 }
 
 export default function PromotionCodesModal({ isOpen, onClose, promotion }: Props) {
@@ -68,6 +69,11 @@ export default function PromotionCodesModal({ isOpen, onClose, promotion }: Prop
             .finally(() => setLoadingMore(false));
     };
 
+    const toggleCodes = (action: 'disable' | 'enable') => {
+        if (!promotion) return;
+        router.post(`/manager/promotions/${promotion.id}/codes/toggle`, { action }, { preserveScroll: true });
+    };
+
     const handleExport = async () => {
         if (!promotion || exporting) return;
         setExporting(true);
@@ -77,7 +83,7 @@ export default function PromotionCodesModal({ isOpen, onClose, promotion }: Prop
             const all = (data.codes || []) as CodeRow[];
             const rows = all.map((c) => [
                 c.code,
-                c.status === 'used' ? 'Đã dùng' : 'Chưa dùng',
+                c.status === 'used' ? 'Đã dùng' : c.status === 'disabled' ? 'Vô hiệu hoá' : 'Chưa dùng',
                 c.used_at ? new Date(c.used_at).toLocaleString('vi-VN') : '—',
                 c.invoice_code || '—',
             ]);
@@ -100,8 +106,8 @@ export default function PromotionCodesModal({ isOpen, onClose, promotion }: Prop
     const columns: DataTableColumn<CodeRow>[] = [
         { key: 'code', header: 'Mã', render: (c) => <span className="font-mono font-medium">{c.code}</span> },
         { key: 'status', header: 'Trạng thái', align: 'center', render: (c) => (
-            <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${c.status === 'used' ? 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
-                {c.status === 'used' ? 'Đã dùng' : 'Chưa dùng'}
+            <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${c.status === 'used' ? 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800' : c.status === 'disabled' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
+                {c.status === 'used' ? 'Đã dùng' : c.status === 'disabled' ? 'Vô hiệu hoá' : 'Chưa dùng'}
             </span>
         )},
         { key: 'used_at', header: 'Thời gian dùng', render: (c) => c.used_at ? new Date(c.used_at).toLocaleString('vi-VN') : '—' },
@@ -114,6 +120,18 @@ export default function PromotionCodesModal({ isOpen, onClose, promotion }: Prop
                 <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3 mb-4">
                     <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Danh sách mã {promotion?.code_prefix || ''}</h3>
                     <div className="flex items-center gap-2">
+                        {promotion && promotion.codes_count > 0 && (promotion.type === 'coupon' || promotion.type === 'voucher') && (
+                            <>
+                                <button type="button" onClick={() => toggleCodes('disable')} disabled={promotion.codes_used === promotion.codes_count}
+                                    className="flex items-center gap-1.5 rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900 dark:text-rose-300">
+                                    Vô hiệu hoá
+                                </button>
+                                <button type="button" onClick={() => toggleCodes('enable')}
+                                    className="flex items-center gap-1.5 rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:text-emerald-300">
+                                    Kích hoạt lại
+                                </button>
+                            </>
+                        )}
                         <button type="button" onClick={handleExport} disabled={exporting || codes.length === 0}
                             className="flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300">
                             <Download className="h-3.5 w-3.5 stroke-[1.5]" />

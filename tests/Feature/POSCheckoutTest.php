@@ -462,3 +462,21 @@ test('free product: mon tang trong order bi set 0 va kho van tru', function () {
     // Kho đã trừ nguyên liệu món tặng
     expect((float) $ingredient->fresh()->stock_quantity)->toBe(90.0);
 });
+
+test('checkout: voucher disabled bi tu choi', function () {
+    $admin = posAdmin();
+    $p = promoV2(['type' => 'voucher', 'code' => null, 'code_prefix' => 'DSBL'.substr(uniqid(), -4), 'code_quantity' => 1, 'code_random' => false]);
+    \App\Services\Promotions\PromotionCodeService::generate($p);
+    $pc = \App\Models\PromotionCode::where('promotion_id', $p->id)->first();
+    $pc->update(['status' => 'disabled']);
+    $item = posMenuItem(['price' => 20000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 20000, 'status' => 'completed']], ['status' => 'pending']);
+
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 20000,
+        'promotion_code' => $pc->code,
+    ])->assertStatus(422);
+});

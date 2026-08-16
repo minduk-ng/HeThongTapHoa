@@ -473,6 +473,26 @@ class PromotionController extends Controller
         ];
     }
 
+    public function toggleCodes(Promotion $promotion): RedirectResponse
+    {
+        $action = request('action');
+        $to = $action === 'disable' ? 'disabled' : 'unused';
+        $from = $action === 'disable' ? 'unused' : 'disabled';
+
+        PromotionCode::where('promotion_id', $promotion->id)
+            ->where('status', $from)
+            ->update(['status' => $to]);
+
+        $this->flushPosPromotionsCache();
+
+        return back()->with(
+            'success',
+            $action === 'disable'
+                ? 'Đã vô hiệu hoá các mã chưa dùng của chương trình.'
+                : 'Đã kích hoạt lại các mã của chương trình.'
+        );
+    }
+
     private function flushPosPromotionsCache(): void
     {
         try {
