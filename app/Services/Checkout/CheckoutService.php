@@ -124,12 +124,11 @@ class CheckoutService
             }
 
             // 2b. Phân bổ discount xuống từng line (cho báo cáo line-level) theo tỷ trọng subtotal;
-            //     món tặng (free_item_ids) set giá = 0; VAT mỗi line tính trên giá sau discount (thực thu)
+            //     món tặng (free_item_ids) set giá = 0, discount_amount = subtotal gốc (giá trị món tặng);
+            //     chỉ phân bổ phần allocable (totalDiscount - giá trị món tặng) lên các line trả tiền
             $freeHandledIds = [];
-            $freeGiftTotals = [];
             if ($totalDiscount > 0 && $subtotal > 0) {
-                $assigned = 0.0;
-                $count = count($lineInputs);
+                // Pass 1: xử lý các line tặng (giá = 0, discount = giá trị món tặng)
                 foreach ($lineInputs as $idx => $li) {
                     $isFree = in_array((int) $li['menu_item_id'], $freeItemIds, true)
                         && ! in_array($li['order_item_id'], $freeHandledIds, true);
@@ -141,15 +140,31 @@ class CheckoutService
                         $lineInputs[$idx]['subtotal'] = 0.0;
                         $lineInputs[$idx]['vat_amount'] = 0.0;
                         $lineInputs[$idx]['discount_amount'] = round($giftSubtotal, 2);
-                        continue;
                     }
-                    $lineDiscount = ($idx === $count - 1)
-                        ? round($totalDiscount - $assigned, 2)
-                        : floor($totalDiscount * (float) $li['subtotal'] / $subtotal);
-                    $assigned += $lineDiscount;
-                    $lineInputs[$idx]['discount_amount'] = round(max(0, min($lineDiscount, (float) $li['subtotal'])), 2);
-                    $netLineTotal = max(0.0, (float) $li['subtotal'] - (float) $lineInputs[$idx]['discount_amount']);
-                    $lineInputs[$idx]['vat_amount'] = OrderTotals::vatInPrice($netLineTotal, (float) $li['vat_rate']);
+                }
+                // Pass 2: phân bổ phần allocable lên các line trả tiền
+                $freeGiftTotal = (float) array_sum($freeGiftTotals);
+                $allocableDiscount = max(0.0, $totalDiscount - $freeGiftTotal);
+                $paidSubtotal = max(0.0, $subtotal - $freeGiftTotal);
+                $paidIndexes = [];
+                foreach ($lineInputs as $idx => $li) {
+                    if (! in_array($li['order_item_id'], $freeHandledIds, true)) {
+                        $paidIndexes[] = $idx;
+                    }
+                }
+                if ($allocableDiscount > 0 && $paidSubtotal > 0 && $paidIndexes !== []) {
+                    $assigned = 0.0;
+                    $lastPaid = count($paidIndexes) - 1;
+                    foreach ($paidIndexes as $n => $idx) {
+                        $li = $lineInputs[$idx];
+                        $lineDiscount = ($n === $lastPaid)
+                            ? round($allocableDiscount - $assigned, 2)
+                            : floor($allocableDiscount * (float) $li['subtotal'] / $paidSubtotal);
+                        $assigned += $lineDiscount;
+                        $lineInputs[$idx]['discount_amount'] = round(max(0, min($lineDiscount, (float) $li['subtotal'])), 2);
+                        $netLineTotal = max(0.0, (float) $li['subtotal'] - (float) $lineInputs[$idx]['discount_amount']);
+                        $lineInputs[$idx]['vat_amount'] = OrderTotals::vatInPrice($netLineTotal, (float) $li['vat_rate']);
+                    }
                 }
             }
 

@@ -453,6 +453,10 @@ test('free product: mon tang trong order bi set 0 va kho van tru', function () {
     // Món tặng subtotal = 0 trong invoice line
     $freeLine = $invoice->lines()->where('menu_item_id', $free->id)->first();
     expect((float) $freeLine->subtotal)->toBe(0.0);
+    // Line món tặng mang giá trị món tặng làm discount_amount
+    expect((float) $freeLine->discount_amount)->toBe(20000.0);
+    // Tổng discount các line = discount_amount của invoice (không double-count)
+    expect((float) $invoice->lines->sum('discount_amount'))->toBe((float) $invoice->discount_amount);
     // Tổng hoá đơn = 30000 (món thường) — món tặng không tính tiền
     expect((float) $invoice->total_amount)->toBe(30000.0);
     // Kho đã trừ nguyên liệu món tặng
