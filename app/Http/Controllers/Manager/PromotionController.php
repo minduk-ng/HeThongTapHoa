@@ -475,7 +475,7 @@ class PromotionController extends Controller
 
     public function toggleCodes(Promotion $promotion): RedirectResponse
     {
-        $action = request('action');
+        $action = request()->validate(['action' => ['required', Rule::in(['disable', 'enable'])]])['action'];
         $to = $action === 'disable' ? 'disabled' : 'unused';
         $from = $action === 'disable' ? 'unused' : 'disabled';
 
