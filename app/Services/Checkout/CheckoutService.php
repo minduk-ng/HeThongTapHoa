@@ -53,7 +53,6 @@ class CheckoutService
             /** @var array<int, array<string, mixed>> $lineInputs */
             $lineInputs = [];
             $subtotal = 0.0;
-            $vatTotal = 0.0;
             /** @var Order $order */
             foreach ($orders as $order) {
                 $activeItems = $order->items()->where('status', '!=', 'cancelled')->with('menuItem')->get();
@@ -63,7 +62,6 @@ class CheckoutService
                     $rate = (float) ($item->menuItem->vat_rate ?? 0);
                     $lineVat = OrderTotals::vatInPrice($lineSubtotal, $rate);
                     $subtotal += $lineSubtotal;
-                    $vatTotal += $lineVat;
                     $lineInputs[] = [
                         'order_id' => $order->id,
                         'order_item_id' => $item->id,
@@ -92,7 +90,7 @@ class CheckoutService
             $promotionRows = [];
             $totalDiscount = 0.0;
             $freeItemIds = [];
-            $freeGiftTotals = [];   // menu_item_id => subtotal gốc món tặng (để cộng vào totalDiscount)
+            $freeGiftTotals = [];   // list subtotal gốc các món tặng (để trừ khỏi allocableDiscount)
             $appliedPromotions = [];
 
             if (! empty($promotionCodes) || Promotion::query()->where('type', 'promotion')->where('status', true)->exists()) {
@@ -101,6 +99,8 @@ class CheckoutService
                     $reasonMsg = match ($resolved['reason'] ?? 'not_found') {
                         'out_of_slot' => 'Mã chỉ áp dụng trong khung giờ đã đăng ký.',
                         'already_used' => 'Mã khuyến mãi đã được sử dụng.',
+                        'disabled' => 'Mã khuyến mãi đã bị vô hiệu hoá.',
+                        'free_product_not_in_cart' => 'Đơn cần có món tặng mới áp dụng được mã này.',
                         default => 'Mã khuyến mãi không hợp lệ hoặc đã hết hạn.',
                     };
                     throw new \Exception($reasonMsg, 422);
@@ -366,7 +366,6 @@ class CheckoutService
             foreach ($orders as $idx => $order) {
                 $activeItems = $order->items()->where('status', '!=', 'cancelled')->with('menuItem')->get();
                 $orderSubtotal = (float) $activeItems->sum('subtotal');
-                $orderVat = (float) $activeItems->sum(fn ($item) => $item instanceof OrderItem ? OrderTotals::vatInPrice((float) $item->subtotal, (float) ($item->menuItem->vat_rate ?? 0)) : 0.0);
                 $orderDiscount = 0.0;
                 if ($totalDiscount > 0 && $subtotal > 0) {
                     if ($idx === $count - 1) {
@@ -376,6 +375,12 @@ class CheckoutService
                         $assignedDiscount += $orderDiscount;
                     }
                 }
+                // VAT thực thu trên giá sau discount (phân bổ theo tỷ trọng subtotal, khớp line-level)
+                $orderVat = (float) $activeItems->sum(fn ($item) => $item instanceof OrderItem
+                    ? OrderTotals::vatInPrice(
+                        max(0.0, (float) $item->subtotal - ($orderSubtotal > 0 ? $orderDiscount * (float) $item->subtotal / $orderSubtotal : 0.0)),
+                        (float) ($item->menuItem->vat_rate ?? 0))
+                    : 0.0);
                 $orderTotal = round(max(0.0, $orderSubtotal - $orderDiscount), 2);
 
                 $order->update([

@@ -384,4 +384,6 @@ test('VAT thuc thu: vat_amount tinh tren gia sau discount', function () {
     expect((float) $invoice->total_amount)->toBe(72000.0);
     // net(72000) = floor(72000/1.1) = 65454; vat = 72000-65454 = 6546
     expect((float) $invoice->vat_amount)->toBe(6546.0);
+    // Order phải cùng VAT thực thu với invoice
+    expect((float) $order->fresh()->vat_amount)->toBe((float) $invoice->vat_amount);
 });
