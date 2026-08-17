@@ -501,6 +501,7 @@ class CheckoutService
             $lots = \App\Models\StockVoucherItem::where('ingredient_id', $ingredientId)
                 ->where('quantity_remaining', '>', 0)
                 ->whereNotNull('quantity_remaining')
+                // Lô chưa có HSD (null expiry) được trừ TRƯỚC (NULLs-first trong MySQL ASC) — hợp lý: dùng hàng không hạn trước.
                 ->orderBy('expiry_date', 'asc')
                 ->lockForUpdate()
                 ->get();

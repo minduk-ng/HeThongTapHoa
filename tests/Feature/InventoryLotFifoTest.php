@@ -65,3 +65,22 @@ test('FIFO: ban dung 120g tru het lo cu truoc', function () {
     expect((float) $lot2->fresh()->quantity_remaining)->toBe(80.0);
     expect((float) $ing->fresh()->stock_quantity)->toBe(-20.0);
 });
+
+test('backfill: phieu nhap cu khong co quantity_remaining duoc gan bang quantity', function () {
+    // Tạo phiếu nhập TRỰC TIẾP qua DB (giả lập dữ liệu cũ, quantity_remaining = null)
+    $admin = posAdmin();
+    $ing = Ingredient::create(['name' => 'Backfill '.uniqid(), 'code' => 'bf'.uniqid(), 'unit' => 'g', 'stock_quantity' => 100, 'min_stock_alert' => 50, 'cost_price' => 100]);
+    $v = StockVoucher::create(['voucher_code' => 'PN-BF-001', 'type' => 'import', 'employee_id' => null, 'transacted_at' => now()->subDay(), 'created_by' => $admin->id]);
+    $v->items()->create(['ingredient_id' => $ing->id, 'quantity' => 100, 'unit_price' => 50]);
+
+    // RefreshDatabase re-runs migrations on an empty DB → backfill in up() has nothing to fill.
+    // So invoke the same backfill query directly to verify it works.
+    \Illuminate\Support\Facades\DB::table('stock_voucher_items')
+        ->join('stock_vouchers', 'stock_vouchers.id', '=', 'stock_voucher_items.voucher_id')
+        ->where('stock_vouchers.type', 'import')
+        ->whereNull('stock_voucher_items.quantity_remaining')
+        ->update(['stock_voucher_items.quantity_remaining' => \Illuminate\Support\Facades\DB::raw('stock_voucher_items.quantity')]);
+
+    $item = StockVoucherItem::where('ingredient_id', $ing->id)->first();
+    expect((float) $item->quantity_remaining)->toBe(100.0);
+});
