@@ -109,7 +109,15 @@ return new class extends Migration
     }
 };
 ```
-Kiểm tra tên bảng: `permissions` + pivot `permission_role` — nếu có FK cascade thì xoá 1 dòng `permissions` tự dọn pivot; nếu không, xoá pivot trước. Đọc migration tạo bảng `permissions` để xác định.
+Kiểm tra tên bảng: `permissions` + pivot `role_permissions` — nếu có FK cascade thì xoá 1 dòng `permissions` tự dọn pivot; nếu không, xoá pivot trước. Đọc migration tạo bảng `permissions` để xác định.
+
+**RÀNG BUỘC AN TOÀN DB (bắt buộc — không được ảnh hưởng dữ liệu khác):**
+- Migration CHỈ được phép chạy 1 câu DELETE có `WHERE name = 'pos.bypass_kitchen_lock'` trên bảng `permissions`.
+- KHÔNG dùng `Schema::dropIfExists`, KHÔNG drop bảng, KHÔNG xoá toàn bộ `permissions`/`roles`/`role_permissions`, KHÔNG truncate.
+- KHÔNG đụng các bảng khác (users, orders, invoices, tables, promotions, pages, ...) — tuyệt đối không chạy bất kỳ lệnh DDL/DML nào ngoài 1 DELETE có WHERE ở trên.
+- Pivot `role_permissions` có `cascadeOnDelete` (migration `0001_01_01_000002_create_authorization_tables.php:36-37`) → xoá 1 dòng `permissions` tự động dọn pivot liên quan. Không cần xoá pivot thủ công.
+- Trước khi viết migration, xác nhận tên bảng bằng `php artisan tinker --execute="echo DB::table('permissions')->where('name','pos.bypass_kitchen_lock')->count();"` và đếm bản ghi bị ảnh hưởng. Nếu count = 0, migration vẫn chạy được (no-op, không lỗi).
+- Sau khi migrate, chạy `php artisan migrate:status` + test toàn bộ xanh để xác nhận không break.
 
 ### 4. Docs
 
@@ -209,6 +217,12 @@ Bỏ nhắc `pos.bypass_kitchen_lock` trong comment nếu có (dòng 83 nói "v�
 - `php artisan test` toàn bộ xanh.
 - `npx eslint`, `npm run types:check`, `npm run build` pass.
 - Kiểm tra thủ công POS: gửi đơn xuống bếp (món pending) → bấm Thanh toán được ngay; sau đó vào màn hình Bếp thấy món vẫn hiện và hoàn thành bình thường.
+- **Kiểm tra DB an toàn:**
+  - Trước migrate: `php artisan tinker --execute="echo DB::table('permissions')->where('name','pos.bypass_kitchen_lock')->count();"` — ghi nhận số bản ghi.
+  - Sau migrate: `php artisan tinker --execute="echo DB::table('permissions')->where('name','pos.bypass_kitchen_lock')->count();"` → phải bằng 0.
+  - Xác nhận các bảng khác KHÔNG đổi: `users`, `orders`, `invoices`, `roles`, `role_permissions` (ngoài pivot của quyền bị xoá), `tables`, `promotions` — đếm bản ghi trước/sau giống nhau.
+  - `php artisan migrate:status` — migration mới hiển thị Ran.
+  - Test toàn bộ xanh = không có migration khác bị ảnh hưởng.
 
 ---
 
@@ -218,3 +232,4 @@ Bỏ nhắc `pos.bypass_kitchen_lock` trong comment nếu có (dòng 83 nói "v�
 - Bỏ chặn món nháp chưa gửi bếp (giữ nguyên).
 - Thay đổi trạng thái món khi thanh toán (không tự hủy).
 - Các permission khác (`pos.cancel_item`, `kitchen.cancel_item`, ...).
+- **TUYỆT ĐỐI KHÔNG**: xoá sạch/toàn bộ DB, drop bảng, truncate, xoá dữ liệu bảng khác. Migration chỉ xoá 1 dòng `permissions` cụ thể (có WHERE).
