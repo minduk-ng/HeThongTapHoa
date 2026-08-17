@@ -147,6 +147,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventory/stocktake', [StocktakeController::class, 'index'])->middleware('permission:inventory.stocktake.view');
         Route::post('/inventory/stocktake', [StocktakeController::class, 'store'])->middleware('permission:inventory.stocktake.create');
 
+        // Lịch sử tồn kho
+        Route::get('/inventory/history', [StockHistoryController::class, 'index'])->middleware('permission:inventory.history.view');
+
         // Recipes Management
         Route::get('/inventory/recipes', [RecipeController::class, 'index'])->middleware('permission:recipes.view');
         Route::post('/inventory/recipes/{product}', [RecipeController::class, 'updateRecipe'])->middleware('permission:recipes.edit');
@@ -162,9 +165,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/orders', [OrderListController::class, 'index'])->middleware('permission:orders.view');
         Route::get('/orders/{order}', [OrderListController::class, 'show'])->middleware('permission:orders.view');
     });
-
-    // Lịch sử tồn kho
-    Route::get('/inventory/history', [StockHistoryController::class, 'index'])->middleware('permission:inventory.history.view');
 
     // Reports Management
     Route::prefix('reports')->middleware(CheckPageAccess::class)->group(function () {

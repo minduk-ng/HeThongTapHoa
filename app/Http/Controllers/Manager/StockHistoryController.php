@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
+use App\Models\StockVoucher;
 use App\Models\StockVoucherItem;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -24,7 +25,10 @@ class StockHistoryController extends Controller
             $query->whereHas('voucher', fn ($q) => $q->where('transacted_at', '<=', Carbon::parse(request('to'))->endOfDay()));
         }
 
-        $items = $query->orderBy('transacted_at', 'asc')->get();
+        $items = $query
+            ->orderBy(StockVoucher::select('transacted_at')->whereColumn('id', 'stock_voucher_items.voucher_id'))
+            ->orderBy('stock_voucher_items.id')
+            ->get();
 
         $running = 0.0;
         $rows = $items->map(function ($it) use (&$running) {

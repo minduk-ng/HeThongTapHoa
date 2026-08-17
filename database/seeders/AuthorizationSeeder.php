@@ -88,7 +88,7 @@ class AuthorizationSeeder extends Seeder
             ],
             [
                 'name' => 'Lịch sử',
-                'route_path' => '/inventory/history',
+                'route_path' => '/manager/inventory/history',
                 'group_name' => 'Kho',
                 'sort_order' => 29,
             ],

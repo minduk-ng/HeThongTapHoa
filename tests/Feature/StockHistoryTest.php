@@ -9,7 +9,7 @@ test('lich su: dung so du chay sau moi giao dich', function () {
     $v2 = \App\Models\StockVoucher::create(['voucher_code' => 'PX-TEST-001', 'type' => 'export', 'transacted_at' => now(), 'created_by' => $admin->id]);
     $v2->items()->create(['ingredient_id' => $ing->id, 'quantity' => -4, 'unit_price' => null, 'quantity_remaining' => null]);
 
-    $res = $this->actingAs($admin)->get('/inventory/history?ingredient_id='.$ing->id);
+    $res = $this->actingAs($admin)->get('/manager/inventory/history?ingredient_id='.$ing->id);
     $res->assertOk();
     $res->assertInertia(fn ($page) => $page->where('rows', fn ($rows) => count($rows) === 2 && (float) $rows[0]['balance'] === 10.0 && (float) $rows[1]['balance'] === 6.0));
 });
