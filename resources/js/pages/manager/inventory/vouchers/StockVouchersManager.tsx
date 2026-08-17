@@ -168,21 +168,19 @@ export default function StockVouchersManager({ vouchers, filters, ingredients = 
                     </div>
                 }
             >
-                <div className="flex flex-col min-h-0 h-full space-y-4">
-                    <DataTable
-                        columns={columns}
-                        rows={vouchers}
-                        rowKey={(v) => v.id}
-                        defaultSortKey="transacted_at"
-                        defaultSortDirection="desc"
-                        getSortValue={(v, key) => {
-                            if (key === 'transacted_at') return v.sort_key ?? '';
-                            return (v as any)[key] ?? '';
-                        }}
-                        onRowClick={(v) => router.get(`/manager/inventory/vouchers/${v.id}`, {}, { preserveState: true })}
-                        emptyMessage="Chưa có phiếu nào"
-                    />
-                </div>
+                <DataTable
+                    columns={columns}
+                    rows={vouchers}
+                    rowKey={(v) => v.id}
+                    defaultSortKey="transacted_at"
+                    defaultSortDirection="desc"
+                    getSortValue={(v, key) => {
+                        if (key === 'transacted_at') return v.sort_key ?? '';
+                        return (v as any)[key] ?? '';
+                    }}
+                    onRowClick={(v) => router.get(`/manager/inventory/vouchers/${v.id}`, {}, { preserveState: true })}
+                    emptyMessage="Chưa có phiếu nào"
+                />
             </ManagerPageLayout>
 
             <StockImportModal

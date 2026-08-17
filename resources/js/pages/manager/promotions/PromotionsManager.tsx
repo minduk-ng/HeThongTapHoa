@@ -199,7 +199,7 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
                                 </select>
                             </div>
                             <button type="button" onClick={applyFilters}
-                                className="w-full px-3 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl">Lọc</button>
+                                className="w-full px-3 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl transition-colors">Lọc</button>
                         </div>
                         <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 mt-auto">
                             <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-800 rounded-xl">
@@ -213,11 +213,11 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
                 <div className="space-y-4 flex-1 min-h-0 overflow-y-auto">
                     <PromotionStatsCards stats={analytics?.kpis ?? stats} />
                     {analytics && <PromotionAnalyticsCharts daily={analytics.daily_chart} types={analytics.type_breakdown} />}
-                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
-                        <div className="p-5 border-b border-zinc-100 dark:border-zinc-800">
-                            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Campaign Performance</h3>
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-xs overflow-hidden">
+                        <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
+                            <h3 className="font-display text-base font-medium text-zinc-900 dark:text-zinc-100">Danh sách chiến dịch khuyến mãi</h3>
                         </div>
-                        <div className="p-3">
+                        <div>
                             <DataTable<PromotionData>
                                 columns={columns}
                                 rows={filteredPromotions}

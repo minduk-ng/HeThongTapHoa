@@ -3,10 +3,6 @@ import {
     ChevronUp,
     ChevronDown,
     Rows3,
-    ChevronLeft,
-    ChevronRight,
-    ChevronsLeft,
-    ChevronsRight,
 } from 'lucide-react';
 
 export interface DataTableColumn<T> {
@@ -27,6 +23,7 @@ interface DataTableProps<T> {
     rowKey: (row: T) => string | number;
     onRowClick?: (row: T) => void;
     emptyMessage?: string;
+    emptyHint?: string;
     defaultSortKey?: string;
     defaultSortDirection?: 'asc' | 'desc';
     defaultPageSize?: number;
@@ -42,6 +39,7 @@ export default function DataTable<T>({
     rowKey,
     onRowClick,
     emptyMessage = 'Không có dữ liệu',
+    emptyHint = 'Không tìm thấy dữ liệu phù hợp với điều kiện lọc',
     defaultSortKey,
     defaultSortDirection = 'asc',
     defaultPageSize = 20,
@@ -108,22 +106,22 @@ export default function DataTable<T>({
     const renderSortIcon = (field: string) => {
         if (sortField !== field) {
             return (
-                <ChevronUp className="ml-1 inline h-3.5 w-3.5 text-zinc-300 opacity-50 dark:text-zinc-600" />
+                <ChevronUp className="h-3 w-3 text-zinc-300 dark:text-zinc-600" />
             );
         }
         return sortDirection === 'asc' ? (
-            <ChevronUp className="ml-1 inline h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+            <ChevronUp className="h-3 w-3 text-sky-500" />
         ) : (
-            <ChevronDown className="ml-1 inline h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+            <ChevronDown className="h-3 w-3 text-sky-500" />
         );
     };
 
     return (
-        <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-zinc-900">
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
             <div className="min-h-0 flex-1 overflow-auto">
-                <table className="relative w-full text-left text-sm">
-                    <thead className="sticky top-0 z-10 border-b border-zinc-200 bg-zinc-50 font-medium text-zinc-600 backdrop-blur-xs select-none dark:border-zinc-800 dark:bg-zinc-800/90 dark:text-zinc-400">
-                        <tr>
+                <table className="w-full text-left">
+                    <thead className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-800/90">
+                        <tr className="text-xs font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400 text-center">
                             {columns.map((col) => (
                                 <th
                                     key={col.key}
@@ -132,42 +130,33 @@ export default function DataTable<T>({
                                             ? () => handleSort(col.key)
                                             : undefined
                                     }
-                                    className={`relative px-4 ${isCompact ? 'py-2 text-xs' : 'py-3.5'} text-center ${col.headerClassName ?? ''} ${col.sortable ? 'cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800' : ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
+                                    className={`relative px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center select-none ${col.headerClassName ?? ''} ${col.sortable ? 'cursor-pointer hover:bg-zinc-100/70 dark:hover:bg-zinc-700/50' : ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
                                 >
-                                    <div className="flex items-center justify-center gap-1">
+                                    <div className="flex items-center justify-center space-x-1">
                                         <span>{col.header}</span>
-                                        {col.sortable && (
-                                            <span className="shrink-0">
-                                                {renderSortIcon(col.key)}
-                                            </span>
-                                        )}
+                                        {col.sortable && renderSortIcon(col.key)}
                                     </div>
                                 </th>
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-200 text-zinc-800 dark:divide-zinc-800 dark:text-zinc-200">
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
                         {paginatedRows.length === 0 ? (
                             <tr>
                                 <td
                                     colSpan={columns.length}
-                                    className="px-6 py-12"
+                                    className="px-4 py-12 text-center"
                                 >
-                                    <div className="flex max-w-md items-start space-x-4">
-                                        <div>
-                                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                                                {emptyMessage}
-                                            </h4>
-                                            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                                                Không có dữ liệu phù hợp với
-                                                điều kiện hiện tại.
-                                            </p>
-                                        </div>
-                                    </div>
+                                    <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                                        {emptyMessage}
+                                    </p>
+                                    <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+                                        {emptyHint}
+                                    </p>
                                 </td>
                             </tr>
                         ) : (
-                            paginatedRows.map((row, index) => (
+                            paginatedRows.map((row) => (
                                 <tr
                                     key={rowKey(row)}
                                     onClick={
@@ -175,12 +164,12 @@ export default function DataTable<T>({
                                             ? () => onRowClick(row)
                                             : undefined
                                     }
-                                    className={`transition-colors hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 ${onRowClick ? 'cursor-pointer' : ''} ${rowClassName?.(row) ?? ''}`}
+                                    className={`transition-colors hover:bg-sky-50/50 dark:hover:bg-sky-900/10 ${onRowClick ? 'cursor-pointer' : ''} ${rowClassName?.(row) ?? ''}`}
                                 >
                                     {columns.map((col) => (
                                         <td
                                             key={col.key}
-                                            className={`px-4 ${isCompact ? (col.compactClassName ?? 'py-1.5') : 'py-3'} ${alignClass(col.align)} ${col.className ?? ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
+                                            className={`px-4 ${isCompact ? (col.compactClassName ?? 'py-1.5') : 'py-2.5'} text-sm tabular-nums text-zinc-700 dark:text-zinc-300 ${alignClass(col.align)} ${col.className ?? ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
                                         >
                                             {col.render(row)}
                                         </td>
@@ -192,109 +181,64 @@ export default function DataTable<T>({
                 </table>
             </div>
 
-            <div className="flex flex-col items-center justify-between gap-3 border-t border-zinc-200 bg-zinc-50 px-4 py-3 text-xs sm:flex-row dark:border-zinc-800 dark:bg-zinc-800/60">
-                <div className="flex flex-wrap items-center gap-3">
+            {/* Footer */}
+            <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-3 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                <div className="flex items-center space-x-3">
+                    <span className="text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">
+                        {sortedRows.length} bản ghi
+                    </span>
                     {showCompactToggle && (
                         <button
                             type="button"
                             onClick={() => setIsCompact(!isCompact)}
-                            className={`flex items-center space-x-1.5 rounded-lg border px-3 py-1.5 font-medium transition-colors ${
+                            className={`rounded p-1 transition-colors ${
                                 isCompact
-                                    ? 'border-sky-600 bg-sky-600 text-white shadow-xs'
-                                    : 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
+                                    ? 'bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'
+                                    : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
                             }`}
-                            title="Bật/Tắt chế độ hiển thị thu gọn"
+                            title={isCompact ? 'Chế độ thường' : 'Chế độ compact'}
                         >
-                            <Rows3 className="h-4 w-4 stroke-[1.5]" />
-                            <span>
-                                {isCompact ? 'Xem đầy đủ' : 'Thu gọn bảng'}
-                            </span>
+                            <Rows3 className="h-3.5 w-3.5" />
                         </button>
-                    )}
-                    {showPageSize && (
-                        <div className="flex items-center space-x-1 border-l border-zinc-200 pl-3 dark:border-zinc-700">
-                            <span className="mr-1 text-zinc-500">
-                                Hiển thị:
-                            </span>
-                            {[20, 50, 100].map((size) => (
-                                <button
-                                    key={size}
-                                    type="button"
-                                    onClick={() => {
-                                        setPageSize(size);
-                                        setCurrentPage(1);
-                                    }}
-                                    className={`rounded-md px-2 py-1 font-semibold transition-colors ${
-                                        pageSize === size
-                                            ? 'bg-sky-600 text-white'
-                                            : 'text-zinc-600 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:bg-zinc-700'
-                                    }`}
-                                >
-                                    {size}
-                                </button>
-                            ))}
-                            <span className="ml-1 text-zinc-400">
-                                dòng/trang
-                            </span>
-                        </div>
                     )}
                 </div>
 
-                <div className="flex items-center space-x-1">
-                    <button
-                        type="button"
-                        disabled={safeCurrentPage === 1}
-                        onClick={() => setCurrentPage(1)}
-                        className="rounded-lg border border-zinc-300 bg-white p-1.5 text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                    >
-                        <ChevronsLeft className="h-4 w-4 stroke-[1.5]" />
-                    </button>
-                    <button
-                        type="button"
-                        disabled={safeCurrentPage === 1}
-                        onClick={() =>
-                            setCurrentPage((p) => Math.max(1, p - 1))
-                        }
-                        className="rounded-lg border border-zinc-300 bg-white p-1.5 text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                    >
-                        <ChevronLeft className="h-4 w-4 stroke-[1.5]" />
-                    </button>
-                    <div className="flex items-center space-x-1.5 text-zinc-600 dark:text-zinc-400">
-                        <span>Trang</span>
-                        <input
-                            type="number"
-                            min={1}
-                            max={totalPages}
-                            value={safeCurrentPage}
+                <div className="flex items-center space-x-2">
+                    {showPageSize && totalPages > 0 && (
+                        <select
+                            value={pageSize}
                             onChange={(e) => {
-                                const val = parseInt(e.target.value, 10);
-                                if (!isNaN(val))
-                                    setCurrentPage(
-                                        Math.min(Math.max(1, val), totalPages),
-                                    );
+                                setPageSize(Number(e.target.value));
+                                setCurrentPage(1);
                             }}
-                            className="w-12 rounded-md border border-zinc-300 bg-white py-1 text-center font-semibold focus:ring-1 focus:ring-blue-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800"
-                        />
-                        <span>/ {totalPages}</span>
+                            className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-[11px] text-zinc-600 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
+                        >
+                            <option value={20}>20 / trang</option>
+                            <option value={50}>50 / trang</option>
+                            <option value={100}>100 / trang</option>
+                        </select>
+                    )}
+                    <div className="flex items-center space-x-1">
+                        <button
+                            type="button"
+                            disabled={safeCurrentPage <= 1}
+                            onClick={() => setCurrentPage(safeCurrentPage - 1)}
+                            className="rounded-md border border-zinc-200 px-2 py-1 text-[11px] font-medium text-zinc-600 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                        >
+                            Trước
+                        </button>
+                        <span className="px-2 text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">
+                            {safeCurrentPage} / {totalPages}
+                        </span>
+                        <button
+                            type="button"
+                            disabled={safeCurrentPage >= totalPages}
+                            onClick={() => setCurrentPage(safeCurrentPage + 1)}
+                            className="rounded-md border border-zinc-200 px-2 py-1 text-[11px] font-medium text-zinc-600 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                        >
+                            Sau
+                        </button>
                     </div>
-                    <button
-                        type="button"
-                        disabled={safeCurrentPage === totalPages}
-                        onClick={() =>
-                            setCurrentPage((p) => Math.min(totalPages, p + 1))
-                        }
-                        className="rounded-lg border border-zinc-300 bg-white p-1.5 text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                    >
-                        <ChevronRight className="h-4 w-4 stroke-[1.5]" />
-                    </button>
-                    <button
-                        type="button"
-                        disabled={safeCurrentPage === totalPages}
-                        onClick={() => setCurrentPage(totalPages)}
-                        className="rounded-lg border border-zinc-300 bg-white p-1.5 text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                    >
-                        <ChevronsRight className="h-4 w-4 stroke-[1.5]" />
-                    </button>
                 </div>
             </div>
         </div>

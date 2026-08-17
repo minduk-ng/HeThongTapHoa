@@ -208,35 +208,22 @@ export default function StockHistoryManager({ ingredients, ingredientId, rows, f
                     </div>
                 }
             >
-                <div className="flex flex-col min-h-0 h-full space-y-4">
-                    <div className="flex items-center justify-between px-4 pt-4">
-                        <div>
-                            <h2 className="font-display text-lg text-zinc-900 dark:text-zinc-100">
-                                {ingredientId ? 'Lịch sử giao dịch' : 'Chọn nguyên liệu'}
-                            </h2>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                {ingredientId ? `${rows.length} giao dịch` : 'Vui lòng chọn nguyên liệu để xem lịch sử'}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex-1 min-h-0 overflow-hidden px-4 pb-4">
-                        <DataTable
-                            columns={columns}
-                            rows={rows}
-                            rowKey={(r) => r.id}
-                            defaultSortKey="transacted_at"
-                            defaultSortDirection="asc"
-                            getSortValue={(r, key) => {
-                                if (key === 'quantity' || key === 'balance') {
-                                    return r[key];
-                                }
+                <DataTable
+                    columns={columns}
+                    rows={rows}
+                    rowKey={(r) => r.id}
+                    defaultSortKey="transacted_at"
+                    defaultSortDirection="asc"
+                    getSortValue={(r, key) => {
+                        if (key === 'quantity' || key === 'balance') {
+                            return r[key];
+                        }
 
-                                return (r[key as keyof HistoryRow] as string | number | null) ?? '';
-                            }}
-                            emptyMessage={ingredientId ? 'Không có giao dịch nào' : 'Chưa chọn nguyên liệu'}
-                        />
-                    </div>
-                </div>
+                        return (r[key as keyof HistoryRow] as string | number | null) ?? '';
+                    }}
+                    emptyMessage={ingredientId ? 'Không có giao dịch nào' : 'Chưa chọn nguyên liệu'}
+                    emptyHint={ingredientId ? 'Không tìm thấy dữ liệu trong khoảng thời gian đã chọn' : 'Vui lòng chọn một nguyên liệu ở thanh bên trái để xem lịch sử'}
+                />
             </ManagerPageLayout>
         </DashboardLayout>
     );

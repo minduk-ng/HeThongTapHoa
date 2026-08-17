@@ -321,112 +321,63 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
             </div>
 
             {/* Table Footer Controls */}
-            <div className="bg-zinc-50 dark:bg-zinc-800/60 border-t border-zinc-200 dark:border-zinc-800 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                {/* Left Side: Compact Toggle & Page Size Selector */}
-                <div className="flex flex-wrap items-center gap-3">
-                    {/* Compact Mode Toggle */}
+            <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-3 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs">
+                {/* Left Side: Records Count & Compact Toggle */}
+                <div className="flex items-center space-x-3">
+                    <span className="text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">
+                        {sortedCategories.length} danh mục
+                    </span>
                     <button
                         type="button"
                         onClick={() => setIsCompact(!isCompact)}
-                        className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border font-medium transition-colors ${
+                        className={`rounded p-1 transition-colors ${
                             isCompact
-                                ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
-                                : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700'
+                                ? 'bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'
+                                : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
                         }`}
-                        title="Bật/Tắt chế độ hiển thị thu gọn"
+                        title={isCompact ? 'Chế độ thường' : 'Chế độ compact'}
                     >
-                        <Rows3 className="w-4 h-4 stroke-[1.5]" />
-                        <span>{isCompact ? 'Xem đầy đủ' : 'Thu gọn bảng'}</span>
+                        <Rows3 className="h-3.5 w-3.5" />
                     </button>
-
-                    {/* Page Size Options: 20 - 50 - 100 */}
-                    <div className="flex items-center space-x-1 border-l border-zinc-200 dark:border-zinc-700 pl-3">
-                        <span className="text-zinc-500 mr-1">Hiển thị:</span>
-                        {[20, 50, 100].map((size) => (
-                            <button
-                                key={size}
-                                type="button"
-                                onClick={() => {
-                                    setPageSize(size);
-                                    setCurrentPage(1);
-                                }}
-                                className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${
-                                    pageSize === size
-                                        ? 'bg-sky-600 text-white'
-                                        : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                                }`}
-                            >
-                                {size}
-                            </button>
-                        ))}
-                        <span className="text-zinc-400 ml-1">dòng/trang</span>
-                    </div>
                 </div>
 
-                {/* Right Side: Pagination Bar */}
+                {/* Right Side: Page Size & Pagination Bar */}
                 <div className="flex items-center space-x-2">
-                    {/* First Page */}
-                    <button
-                        type="button"
-                        disabled={safeCurrentPage === 1}
-                        onClick={() => setCurrentPage(1)}
-                        className="p-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                        title="Trang đầu"
-                    >
-                        |&#9664;
-                    </button>
-
-                    {/* Previous Page */}
-                    <button
-                        type="button"
-                        disabled={safeCurrentPage === 1}
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        className="p-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                        title="Trang trước"
-                    >
-                        &#9664;
-                    </button>
-
-                    {/* Page Direct Input */}
-                    <div className="flex items-center space-x-1.5 text-zinc-600 dark:text-zinc-400">
-                        <span>Trang</span>
-                        <input
-                            type="number"
-                            min={1}
-                            max={totalPages}
-                            value={safeCurrentPage}
+                    {totalPages > 0 && (
+                        <select
+                            value={pageSize}
                             onChange={(e) => {
-                                const val = parseInt(e.target.value, 10);
-                                if (!isNaN(val)) {
-                                    setCurrentPage(Math.min(Math.max(1, val), totalPages));
-                                }
+                                setPageSize(Number(e.target.value));
+                                setCurrentPage(1);
                             }}
-                            className="w-12 text-center py-1 border rounded-md bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 font-semibold focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-                        />
-                        <span>/ {totalPages}</span>
+                            className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-[11px] text-zinc-600 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
+                        >
+                            <option value={20}>20 / trang</option>
+                            <option value={50}>50 / trang</option>
+                            <option value={100}>100 / trang</option>
+                        </select>
+                    )}
+                    <div className="flex items-center space-x-1">
+                        <button
+                            type="button"
+                            disabled={safeCurrentPage <= 1}
+                            onClick={() => setCurrentPage(safeCurrentPage - 1)}
+                            className="rounded-md border border-zinc-200 px-2 py-1 text-[11px] font-medium text-zinc-600 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                        >
+                            Trước
+                        </button>
+                        <span className="px-2 text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">
+                            {safeCurrentPage} / {totalPages}
+                        </span>
+                        <button
+                            type="button"
+                            disabled={safeCurrentPage >= totalPages}
+                            onClick={() => setCurrentPage(safeCurrentPage + 1)}
+                            className="rounded-md border border-zinc-200 px-2 py-1 text-[11px] font-medium text-zinc-600 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                        >
+                            Sau
+                        </button>
                     </div>
-
-                    {/* Next Page */}
-                    <button
-                        type="button"
-                        disabled={safeCurrentPage === totalPages}
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        className="p-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                        title="Trang sau"
-                    >
-                        &#9654;
-                    </button>
-
-                    {/* Last Page */}
-                    <button
-                        type="button"
-                        disabled={safeCurrentPage === totalPages}
-                        onClick={() => setCurrentPage(totalPages)}
-                        className="p-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                        title="Trang cuối"
-                    >
-                        &#9654;|
-                    </button>
                 </div>
             </div>
         </div>
