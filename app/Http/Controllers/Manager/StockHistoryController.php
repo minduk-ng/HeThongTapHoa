@@ -34,6 +34,7 @@ class StockHistoryController extends Controller
         $rows = $items->map(function ($it) use (&$running) {
             $running += (float) $it->quantity;
             return [
+                'id' => $it->id,
                 'transacted_at' => $it->voucher?->transacted_at?->format('d/m/Y H:i'),
                 'voucher_code' => $it->voucher?->voucher_code,
                 'type' => $it->voucher?->type,

@@ -14,6 +14,7 @@ interface Ingredient {
 }
 
 interface HistoryRow {
+    id: number;
     transacted_at: string | null;
     voucher_code: string | null;
     type: string | null;
@@ -110,7 +111,7 @@ export default function StockHistoryManager({ ingredients, ingredientId, rows, f
 
     const applyFilters = () => {
         router.reload({
-            only: ['rows'],
+            only: ['rows', 'ingredientId'],
             data: {
                 ingredient_id: selIngredient,
                 from: from || undefined,
@@ -187,7 +188,7 @@ export default function StockHistoryManager({ ingredients, ingredientId, rows, f
                         <DataTable
                             columns={columns}
                             rows={rows}
-                            rowKey={(r) => r.voucher_code ?? ''}
+                            rowKey={(r) => r.id}
                             defaultSortKey="transacted_at"
                             defaultSortDirection="asc"
                             getSortValue={(r, key) => {
