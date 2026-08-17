@@ -166,6 +166,27 @@ class AuthorizationSeeder extends Seeder
                 'group_name' => 'Nhân viên',
                 'sort_order' => 33,
             ],
+            [
+                'name' => 'Báo cáo giá trị kho',
+                'route_path' => '/reports/inventory-value',
+                'group_name' => 'Báo cáo',
+                'sub_group' => 'Hoạt động',
+                'sort_order' => 36,
+            ],
+            [
+                'name' => 'Báo cáo nguyên liệu sắp hết',
+                'route_path' => '/reports/low-stock',
+                'group_name' => 'Báo cáo',
+                'sub_group' => 'Hoạt động',
+                'sort_order' => 37,
+            ],
+            [
+                'name' => 'Báo cáo nguyên liệu sắp hết hạn',
+                'route_path' => '/reports/expiring',
+                'group_name' => 'Báo cáo',
+                'sub_group' => 'Hoạt động',
+                'sort_order' => 38,
+            ],
         ];
 
         // Upgrade path: delete legacy dashboard page row so no duplicate "Tổng quan" nav item

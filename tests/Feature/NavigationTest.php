@@ -11,7 +11,7 @@ test('navigation bao cao chia __subs theo sub_group, group khac flat', function 
         ->assertInertia(fn ($page) => $page
             ->component('manager/dashboard/DashboardManager')
             ->has('navigation.Báo cáo.__subs.Doanh thu', 5)
-            ->has('navigation.Báo cáo.__subs.Hoạt động', 3)
+            ->has('navigation.Báo cáo.__subs.Hoạt động', 6)
             ->missing('navigation.Quản lý.__subs')
             ->has('navigation.Quản lý')
             ->has('navigation.Quản lý.0.id'));
