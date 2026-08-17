@@ -107,26 +107,26 @@ export default function StockVoucherDetail({ voucher, items, total }: VoucherDet
                             <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden">
                                 <table className="w-full text-left">
                                     <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-800/90">
-                                        <tr className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                                            <th className="px-3 py-2">Mã NVL</th>
-                                            <th className="px-3 py-2">Nguyên liệu</th>
-                                            <th className="px-3 py-2 text-right">Số lượng</th>
-                                            <th className="px-3 py-2 text-right">Đơn giá</th>
-                                            <th className="px-3 py-2 text-right">Thành tiền</th>
+                                        <tr className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-center">
+                                            <th className="px-3 py-2 text-center">Mã NVL</th>
+                                            <th className="px-3 py-2 text-center">Nguyên liệu</th>
+                                            <th className="px-3 py-2 text-center">Số lượng</th>
+                                            <th className="px-3 py-2 text-center">Đơn giá</th>
+                                            <th className="px-3 py-2 text-center">Thành tiền</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
                                         {items.map((it) => (
                                             <tr key={it.ingredient_id}>
-                                                <td className="px-3 py-2 font-mono text-xs text-sky-600 dark:text-sky-400">{it.code || `NVL${String(it.ingredient_id).padStart(5, '0')}`}</td>
-                                                <td className="px-3 py-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">{it.name}</td>
-                                                <td className={`px-3 py-2 text-right text-sm font-bold tabular-nums ${it.quantity < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                                <td className="px-3 py-2 text-center font-mono text-xs text-sky-600 dark:text-sky-400">{it.code || `NVL${String(it.ingredient_id).padStart(5, '0')}`}</td>
+                                                <td className="px-3 py-2 text-left text-sm font-medium text-zinc-900 dark:text-zinc-100">{it.name}</td>
+                                                <td className={`px-3 py-2 text-center text-sm font-bold tabular-nums ${it.quantity < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                                                     {it.quantity > 0 ? '+' : ''}{it.quantity.toLocaleString('vi-VN')} {it.unit}
                                                 </td>
-                                                <td className="px-3 py-2 text-right text-sm text-zinc-600 dark:text-zinc-400 tabular-nums">
+                                                <td className="px-3 py-2 text-center text-sm text-zinc-600 dark:text-zinc-400 tabular-nums">
                                                     {it.unit_price != null ? formatCurrency(it.unit_price) : '—'}
                                                 </td>
-                                                <td className="px-3 py-2 text-right text-sm text-zinc-600 dark:text-zinc-400 tabular-nums">
+                                                <td className="px-3 py-2 text-center text-sm text-zinc-600 dark:text-zinc-400 tabular-nums font-semibold">
                                                     {isImport ? formatCurrency(it.total) : '—'}
                                                 </td>
                                             </tr>
@@ -134,9 +134,9 @@ export default function StockVoucherDetail({ voucher, items, total }: VoucherDet
                                         {isImport && total != null && (
                                             <tr className="bg-zinc-50 dark:bg-zinc-800/40">
                                                 <td colSpan={4} className="px-3 py-2.5 text-right text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                                                    Tổng giá trị
+                                                    Tổng giá trị:
                                                 </td>
-                                                <td className="px-3 py-2.5 text-right text-sm font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                                                <td className="px-3 py-2.5 text-center text-sm font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
                                                     {formatCurrency(total)}
                                                 </td>
                                             </tr>

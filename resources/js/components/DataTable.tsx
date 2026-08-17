@@ -132,14 +132,12 @@ export default function DataTable<T>({
                                             ? () => handleSort(col.key)
                                             : undefined
                                     }
-                                    className={`relative px-4 ${isCompact ? 'py-2 text-xs' : 'py-3.5'} ${alignClass(col.align)} ${col.headerClassName ?? ''} ${col.sortable ? 'cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800' : ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
+                                    className={`relative px-4 ${isCompact ? 'py-2 text-xs' : 'py-3.5'} text-center ${col.headerClassName ?? ''} ${col.sortable ? 'cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800' : ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
                                 >
-                                    <div
-                                        className={`flex items-center ${col.align === 'right' ? 'justify-end' : col.align === 'center' ? 'justify-center' : ''}`}
-                                    >
+                                    <div className="flex items-center justify-center gap-1">
                                         <span>{col.header}</span>
                                         {col.sortable && (
-                                            <span className={`shrink-0 ${col.align === 'center' ? 'absolute right-2' : ''}`}>
+                                            <span className="shrink-0">
                                                 {renderSortIcon(col.key)}
                                             </span>
                                         )}
@@ -228,7 +226,7 @@ export default function DataTable<T>({
                                     }}
                                     className={`rounded-md px-2 py-1 font-semibold transition-colors ${
                                         pageSize === size
-                                            ? 'bg-blue-600 text-white'
+                                            ? 'bg-sky-600 text-white'
                                             : 'text-zinc-600 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:bg-zinc-700'
                                     }`}
                                 >

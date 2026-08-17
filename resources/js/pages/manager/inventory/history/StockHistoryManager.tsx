@@ -47,12 +47,14 @@ const columns: DataTableColumn<HistoryRow>[] = [
     {
         key: 'transacted_at',
         header: 'Thời gian',
+        align: 'center',
         sortable: true,
         render: (r) => <span className="text-xs tabular-nums">{r.transacted_at ?? '—'}</span>,
     },
     {
         key: 'voucher_code',
         header: 'Phiếu',
+        align: 'center',
         sortable: true,
         render: (r) => (
             <span className="font-mono text-xs font-medium text-sky-600 dark:text-sky-400">
@@ -63,6 +65,7 @@ const columns: DataTableColumn<HistoryRow>[] = [
     {
         key: 'type',
         header: 'Loại',
+        align: 'center',
         sortable: true,
         render: (r) => (
             <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${typeClass[r.type ?? ''] ?? 'bg-zinc-100 text-zinc-600'}`}>
@@ -73,7 +76,7 @@ const columns: DataTableColumn<HistoryRow>[] = [
     {
         key: 'quantity',
         header: 'Số lượng',
-        align: 'right',
+        align: 'center',
         sortable: true,
         render: (r) => {
             const q = Number(r.quantity);
@@ -90,12 +93,13 @@ const columns: DataTableColumn<HistoryRow>[] = [
     {
         key: 'note',
         header: 'Ghi chú',
+        align: 'left',
         render: (r) => <span className="text-xs text-zinc-500 dark:text-zinc-400">{r.note || '—'}</span>,
     },
     {
         key: 'balance',
         header: 'Số dư',
-        align: 'right',
+        align: 'center',
         sortable: true,
         render: (r) => (
             <span className="tabular-nums font-semibold text-zinc-900 dark:text-zinc-100">

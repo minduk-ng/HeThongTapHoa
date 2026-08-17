@@ -354,9 +354,9 @@ export default function UsersPermission({ users, roles, filters }: Props) {
                 <div className="overflow-x-auto">
                     <table className="data-table">
                         <thead>
-                            <tr>
+                            <tr className="text-center">
                                 {isBulkMode && (
-                                    <th className="w-12">
+                                    <th className="w-12 text-center">
                                         <input
                                             type="checkbox"
                                             checked={isAllOnPageSelected}
@@ -365,12 +365,12 @@ export default function UsersPermission({ users, roles, filters }: Props) {
                                         />
                                     </th>
                                 )}
-                                {visibleColumns.includes('stt') && <th>STT</th>}
-                                {visibleColumns.includes('user') && <th>Người dùng</th>}
-                                {visibleColumns.includes('email') && <th>Email</th>}
-                                {visibleColumns.includes('roles') && <th>Nhóm quyền (Roles)</th>}
-                                {visibleColumns.includes('created_at') && <th>Ngày tạo</th>}
-                                <th className="text-right">Hành động</th>
+                                {visibleColumns.includes('stt') && <th className="text-center">STT</th>}
+                                {visibleColumns.includes('user') && <th className="text-center">Người dùng</th>}
+                                {visibleColumns.includes('email') && <th className="text-center">Email</th>}
+                                {visibleColumns.includes('roles') && <th className="text-center">Nhóm quyền (Roles)</th>}
+                                {visibleColumns.includes('created_at') && <th className="text-center">Ngày tạo</th>}
+                                <th className="text-center">Hành động</th>
                             </tr>
                         </thead>
                         <tbody className="table-body">
@@ -395,7 +395,7 @@ export default function UsersPermission({ users, roles, filters }: Props) {
                                         className={`data-table-row ${isBulkMode && !isSuperAdmin ? 'cursor-pointer select-none' : ''}`}
                                     >
                                         {isBulkMode && (
-                                            <td>
+                                            <td className="text-center">
                                                 <input
                                                     type="checkbox"
                                                     disabled={isSuperAdmin}
@@ -406,10 +406,10 @@ export default function UsersPermission({ users, roles, filters }: Props) {
                                             </td>
                                         )}
                                         {visibleColumns.includes('stt') && (
-                                            <td className="text-gray-500 dark:text-gray-400 font-mono text-sm">{absoluteIndex}</td>
+                                            <td className="text-center text-gray-500 dark:text-gray-400 font-mono text-sm">{absoluteIndex}</td>
                                         )}
                                         {visibleColumns.includes('user') && (
-                                            <td className="font-medium text-gray-900 dark:text-gray-100">
+                                            <td className="text-left font-medium text-gray-900 dark:text-gray-100">
                                                 <div className="flex items-center gap-3">
                                                     {user.avatar ? (
                                                         <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
@@ -423,11 +423,11 @@ export default function UsersPermission({ users, roles, filters }: Props) {
                                             </td>
                                         )}
                                         {visibleColumns.includes('email') && (
-                                            <td className="text-gray-500 dark:text-gray-400">{user.email}</td>
+                                            <td className="text-left text-gray-500 dark:text-gray-400">{user.email}</td>
                                         )}
                                         {visibleColumns.includes('roles') && (
-                                            <td>
-                                                <div className="flex flex-wrap gap-1 max-w-xs">
+                                            <td className="text-center">
+                                                <div className="flex flex-wrap gap-1 justify-center max-w-xs mx-auto">
                                                     {user.roles.map((role) => (
                                                         <span 
                                                             key={role.id} 
@@ -443,11 +443,11 @@ export default function UsersPermission({ users, roles, filters }: Props) {
                                             </td>
                                         )}
                                         {visibleColumns.includes('created_at') && (
-                                            <td className="text-gray-500 dark:text-gray-400 font-mono text-sm">{createdDate}</td>
+                                            <td className="text-center text-gray-500 dark:text-gray-400 font-mono text-sm">{createdDate}</td>
                                         )}
-                                        <td className="text-right">
+                                        <td className="text-center">
                                             {!isSuperAdmin ? (
-                                                <div className="flex gap-2 justify-end">
+                                                <div className="flex gap-2 justify-center">
                                                     <button onClick={() => openEditModal(user)} className="btn-sm btn-edit">
                                                         Sửa quyền
                                                     </button>

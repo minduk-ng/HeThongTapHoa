@@ -418,50 +418,50 @@ export default function OrderList({
                 <div className="min-h-0 flex-1 overflow-auto">
                     <table className="w-full text-left">
                         <thead className="sticky top-0 z-10 bg-zinc-50 backdrop-blur-sm dark:bg-zinc-800/90">
-                            <tr className="text-[11px] font-medium tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
+                            <tr className="text-[11px] font-medium tracking-wider text-zinc-500 uppercase dark:text-zinc-400 text-center">
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 select-none"
+                                    className="cursor-pointer px-4 py-2.5 select-none text-center"
                                     onClick={() => handleSort('order_code')}
                                 >
-                                    <span className="flex items-center space-x-1">
+                                    <span className="flex items-center justify-center space-x-1">
                                         <span>Mã order</span>
                                         {renderSortIcon('order_code')}
                                     </span>
                                 </th>
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 select-none"
+                                    className="cursor-pointer px-4 py-2.5 select-none text-center"
                                     onClick={() => handleSort('table_number')}
                                 >
-                                    <span className="flex items-center space-x-1">
+                                    <span className="flex items-center justify-center space-x-1">
                                         <span>Bàn</span>
                                         {renderSortIcon('table_number')}
                                     </span>
                                 </th>
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 select-none"
+                                    className="cursor-pointer px-4 py-2.5 select-none text-center"
                                     onClick={() => handleSort('status')}
                                 >
-                                    <span className="flex items-center space-x-1">
+                                    <span className="flex items-center justify-center space-x-1">
                                         <span>Trạng thái</span>
                                         {renderSortIcon('status')}
                                     </span>
                                 </th>
-                                <th className="px-4 py-2.5 text-right">Món</th>
+                                <th className="px-4 py-2.5 text-center">Món</th>
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 text-right select-none"
+                                    className="cursor-pointer px-4 py-2.5 select-none text-center"
                                     onClick={() => handleSort('total')}
                                 >
-                                    <span className="flex items-center justify-end space-x-1">
+                                    <span className="flex items-center justify-center space-x-1">
                                         <span>Tổng tiền</span>
                                         {renderSortIcon('total')}
                                     </span>
                                 </th>
-                                <th className="px-4 py-2.5">Thanh toán</th>
+                                <th className="px-4 py-2.5 text-center">Thanh toán</th>
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 select-none"
+                                    className="cursor-pointer px-4 py-2.5 select-none text-center"
                                     onClick={() => handleSort('created_at')}
                                 >
-                                    <span className="flex items-center space-x-1">
+                                    <span className="flex items-center justify-center space-x-1">
                                         <span>Thời gian</span>
                                         {renderSortIcon('created_at')}
                                     </span>
@@ -499,21 +499,21 @@ export default function OrderList({
                                                     `/manager/orders/${order.id}`,
                                                 )
                                             }
-                                            className={`cursor-pointer transition-colors hover:bg-sky-50/50 dark:hover:bg-sky-900/10 ${isCompact ? '' : ''}`}
+                                            className="cursor-pointer transition-colors hover:bg-sky-50/50 dark:hover:bg-sky-900/10"
                                         >
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-xs font-medium text-zinc-900 tabular-nums dark:text-zinc-100`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs font-mono font-medium text-sky-600 dark:text-sky-400 tabular-nums`}
                                             >
                                                 {order.order_code}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-xs text-zinc-600 dark:text-zinc-400`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs font-medium text-zinc-700 dark:text-zinc-300`}
                                             >
                                                 {order.table_number ??
                                                     'Mang đi'}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'}`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center`}
                                             >
                                                 <span
                                                     className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${statusInfo.className}`}
@@ -522,26 +522,26 @@ export default function OrderList({
                                                 </span>
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-right text-xs text-zinc-600 tabular-nums dark:text-zinc-400`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs text-zinc-600 tabular-nums dark:text-zinc-400`}
                                             >
                                                 {order.item_count}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-right text-xs font-medium text-zinc-900 tabular-nums dark:text-zinc-100`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs font-semibold text-zinc-900 tabular-nums dark:text-zinc-100`}
                                             >
                                                 {formatCurrency(order.total)}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-xs text-zinc-600 dark:text-zinc-400`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs text-zinc-600 dark:text-zinc-400`}
                                             >
                                                 {order.payment_method
                                                     ? (PAYMENT_LABELS[
-                                                          order.payment_method
-                                                      ] ?? order.payment_method)
+                                                           order.payment_method
+                                                       ] ?? order.payment_method)
                                                     : '—'}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-xs text-zinc-500 tabular-nums dark:text-zinc-400`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs text-zinc-500 tabular-nums dark:text-zinc-400`}
                                             >
                                                 {formatDateTime(
                                                     order.created_at,

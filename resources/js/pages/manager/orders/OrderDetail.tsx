@@ -248,20 +248,20 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                     <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden">
                                         <table className="w-full text-left">
                                             <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-800/90">
-                                                <tr className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                                                    <th className="px-3 py-2">Món</th>
+                                                <tr className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-center">
+                                                    <th className="px-3 py-2 text-center">Món</th>
                                                     <th className="px-3 py-2 text-center">SL</th>
-                                                    <th className="px-3 py-2 text-right">Đơn giá</th>
-                                                    <th className="px-3 py-2 text-right">Thành tiền</th>
-                                                    <th className="px-3 py-2 text-right">Giảm giá</th>
-                                                    <th className="px-3 py-2">Trạng thái</th>
-                                                    <th className="px-3 py-2">Thời gian</th>
+                                                    <th className="px-3 py-2 text-center">Đơn giá</th>
+                                                    <th className="px-3 py-2 text-center">Thành tiền</th>
+                                                    <th className="px-3 py-2 text-center">Giảm giá</th>
+                                                    <th className="px-3 py-2 text-center">Trạng thái</th>
+                                                    <th className="px-3 py-2 text-center">Thời gian</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
                                                 {safeItems.map((item) => (
                                                     <tr key={item.id} className={item.status === 'cancelled' ? 'opacity-50' : ''}>
-                                                        <td className="px-3 py-2">
+                                                        <td className="px-3 py-2 text-left">
                                                             <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 leading-tight">{item.name}</p>
                                                             {item.note && <p className="text-[11px] text-zinc-400 leading-tight">{item.note}</p>}
                                                             {item.cancellation_reason && (
@@ -269,9 +269,9 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                                             )}
                                                         </td>
                                                         <td className="px-3 py-2 text-center text-sm text-zinc-600 dark:text-zinc-400 tabular-nums">{item.quantity}</td>
-                                                        <td className="px-3 py-2 text-right text-sm text-zinc-600 dark:text-zinc-400 tabular-nums">{formatCurrency(item.unit_price)}</td>
-                                                        <td className="px-3 py-2 text-right text-sm font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(item.subtotal)}</td>
-                                                        <td className="px-3 py-2 text-right text-sm tabular-nums">
+                                                        <td className="px-3 py-2 text-center text-sm text-zinc-600 dark:text-zinc-400 tabular-nums">{formatCurrency(item.unit_price)}</td>
+                                                        <td className="px-3 py-2 text-center text-sm font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(item.subtotal)}</td>
+                                                        <td className="px-3 py-2 text-center text-sm tabular-nums">
                                                             {item.discount_amount > 0 ? (
                                                                 <span className="font-medium text-rose-600 dark:text-rose-400">
                                                                     −{formatCurrency(item.discount_amount)}
@@ -280,7 +280,7 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                                                 <span className="text-zinc-300 dark:text-zinc-600">—</span>
                                                             )}
                                                         </td>
-                                                        <td className="px-3 py-2">
+                                                        <td className="px-3 py-2 text-center">
                                                             <span className={`text-xs font-medium ${
                                                                 item.status === 'cancelled' ? 'text-rose-500'
                                                                 : item.served_at ? 'text-emerald-600'
@@ -293,7 +293,7 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                                                     : 'Đang chờ'}
                                                             </span>
                                                         </td>
-                                                        <td className="px-3 py-2 text-xs text-zinc-400 tabular-nums">
+                                                        <td className="px-3 py-2 text-center text-xs text-zinc-400 tabular-nums">
                                                             {item.served_at ? formatDateTime(item.served_at) : '—'}
                                                         </td>
                                                     </tr>

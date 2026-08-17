@@ -104,14 +104,14 @@ export default function PromotionCodesModal({ isOpen, onClose, promotion }: Prop
     if (!isOpen) return null;
 
     const columns: DataTableColumn<CodeRow>[] = [
-        { key: 'code', header: 'Mã', render: (c) => <span className="font-mono font-medium">{c.code}</span> },
+        { key: 'code', header: 'Mã', align: 'center', render: (c) => <span className="font-mono font-medium text-sky-600 dark:text-sky-400">{c.code}</span> },
         { key: 'status', header: 'Trạng thái', align: 'center', render: (c) => (
             <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${c.status === 'used' ? 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800' : c.status === 'disabled' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
                 {c.status === 'used' ? 'Đã dùng' : c.status === 'disabled' ? 'Vô hiệu hoá' : 'Chưa dùng'}
             </span>
         )},
-        { key: 'used_at', header: 'Thời gian dùng', render: (c) => c.used_at ? new Date(c.used_at).toLocaleString('vi-VN') : '—' },
-        { key: 'invoice_code', header: 'Hoá đơn', render: (c) => c.invoice_code || '—' },
+        { key: 'used_at', header: 'Thời gian dùng', align: 'center', render: (c) => c.used_at ? <span className="tabular-nums">{new Date(c.used_at).toLocaleString('vi-VN')}</span> : '—' },
+        { key: 'invoice_code', header: 'Hoá đơn', align: 'center', render: (c) => c.invoice_code ? <span className="font-mono tabular-nums">{c.invoice_code}</span> : '—' },
     ];
 
     return (

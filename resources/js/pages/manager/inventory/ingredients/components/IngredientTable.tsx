@@ -28,12 +28,14 @@ export default function IngredientTable({ ingredients, onEdit, onDelete }: Ingre
             key: 'code',
             header: 'Mã NVL',
             sortable: true,
+            align: 'center',
             className: 'w-32 font-mono text-xs text-sky-600 dark:text-sky-400 font-medium tabular-nums',
             render: (item) => item.code || `NVL${String(item.id).padStart(5, '0')}`,
         },
         {
             key: 'name',
             header: 'Tên nguyên liệu',
+            align: 'left',
             sortable: true,
             render: (item) => <span className="font-medium text-zinc-900 dark:text-zinc-100">{item.name}</span>,
         },
@@ -52,7 +54,7 @@ export default function IngredientTable({ ingredients, onEdit, onDelete }: Ingre
             key: 'stock_quantity',
             header: 'Tồn kho',
             sortable: true,
-            align: 'right',
+            align: 'center',
             render: (item) => (
                 <span className={`font-bold tabular-nums ${item.stock_quantity <= item.min_stock_alert ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100'}`}>
                     {item.stock_quantity.toLocaleString('vi-VN')} {item.unit}
@@ -63,7 +65,7 @@ export default function IngredientTable({ ingredients, onEdit, onDelete }: Ingre
             key: 'cost_price',
             header: 'Giá vốn đơn vị',
             sortable: true,
-            align: 'right',
+            align: 'center',
             render: (item) => <span className="font-medium text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(item.cost_price)}/{item.unit}</span>,
         },
         {

@@ -22,16 +22,17 @@ const staticColumns: DataTableColumn<Ingredient>[] = [
     {
         key: 'name',
         header: 'Nguyên liệu',
+        align: 'left',
         sortable: true,
         render: (r) => <span className="font-medium">{r.name}</span>,
     },
-    { key: 'code', header: 'Mã', sortable: true, render: (r) => r.code },
-    { key: 'unit', header: 'Đơn vị', sortable: true, render: (r) => r.unit },
+    { key: 'code', header: 'Mã', align: 'center', sortable: true, render: (r) => r.code },
+    { key: 'unit', header: 'Đơn vị', align: 'center', sortable: true, render: (r) => r.unit },
     {
         key: 'stock_quantity',
         header: 'Tồn lý thuyết',
         sortable: true,
-        align: 'right',
+        align: 'center',
         render: (r) => (
             <span className="tabular-nums">
                 {Number(r.stock_quantity).toLocaleString('vi-VN')}
@@ -56,7 +57,7 @@ export default function StocktakeManager({ ingredients }: StocktakeManagerProps)
             {
                 key: 'actual_qty',
                 header: 'Số thực tế',
-                align: 'right',
+                align: 'center',
                 render: (r) => (
                     <input
                         type="number"
@@ -67,14 +68,14 @@ export default function StocktakeManager({ ingredients }: StocktakeManagerProps)
                             setValues((prev) => ({ ...prev, [r.id]: e.target.value }))
                         }
                         placeholder="—"
-                        className="w-28 px-3 py-1.5 text-right text-sm tabular-nums rounded-lg border bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-sky-500"
+                        className="w-28 px-2.5 py-1.5 text-center text-sm tabular-nums rounded-lg border bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-sky-500 mx-auto block"
                     />
                 ),
             },
             {
                 key: 'diff',
                 header: 'Chênh lệch',
-                align: 'right',
+                align: 'center',
                 render: (r) => {
                     const v = values[r.id];
 

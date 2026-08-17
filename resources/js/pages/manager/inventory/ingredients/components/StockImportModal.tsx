@@ -149,13 +149,13 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
                         {/* Table of Import Lines */}
                         <div className="space-y-2">
                             {/* Column Headers */}
-                            <div className="grid grid-cols-[1fr_110px_140px_130px_160px_40px] gap-2.5 px-3 py-2 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                            <div className="grid grid-cols-[1fr_110px_140px_130px_160px_40px] gap-2.5 px-3 py-2 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
                                 <div>Nguyên liệu</div>
-                                <div className="text-right">Số lượng</div>
-                                <div className="text-right">Đơn giá nhập</div>
-                                <div className="text-right">Thành tiền</div>
+                                <div>Số lượng</div>
+                                <div>Đơn giá nhập</div>
+                                <div>Thành tiền</div>
                                 <div>Hạn sử dụng</div>
-                                <div className="text-center">Xóa</div>
+                                <div>Xóa</div>
                             </div>
 
                             {/* Line Rows */}
@@ -171,8 +171,8 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
                                             key={idx}
                                             className="grid grid-cols-[1fr_110px_140px_130px_160px_40px] items-center gap-2.5 p-1 bg-zinc-50/50 dark:bg-zinc-800/20 rounded-xl border border-zinc-200/60 dark:border-zinc-800/60 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
                                         >
-                                            {/* 1. Ingredient Select */}
-                                            <div className="min-w-0">
+                                            {/* 1. Ingredient Select (Text dài -> Căn trái) */}
+                                            <div className="min-w-0 text-left">
                                                 <select
                                                     value={line.ingredient_id}
                                                     onChange={(e) => {
@@ -197,7 +197,7 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
                                                 </select>
                                             </div>
 
-                                            {/* 2. Quantity Input */}
+                                            {/* 2. Quantity Input (Số -> Căn giữa) */}
                                             <div className="relative">
                                                 <input
                                                     type="number"
@@ -206,11 +206,11 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
                                                     value={line.quantity}
                                                     onChange={(e) => updateLine(idx, 'quantity', e.target.value)}
                                                     placeholder={unit ? `0 ${unit}` : '0'}
-                                                    className="w-full px-2.5 py-2 text-right text-xs tabular-nums font-semibold border rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:border-sky-500 outline-none transition-colors"
+                                                    className="w-full px-2 py-2 text-center text-xs tabular-nums font-semibold border rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:border-sky-500 outline-none transition-colors"
                                                 />
                                             </div>
 
-                                            {/* 3. Unit Price Input */}
+                                            {/* 3. Unit Price Input (Số -> Căn giữa) */}
                                             <div className="relative">
                                                 <input
                                                     type="number"
@@ -219,32 +219,32 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
                                                     value={line.unit_price}
                                                     onChange={(e) => updateLine(idx, 'unit_price', e.target.value)}
                                                     placeholder="0"
-                                                    className="w-full px-2.5 py-2 pr-6 text-right text-xs tabular-nums border rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:border-sky-500 outline-none transition-colors"
+                                                    className="w-full px-2 py-2 pr-5 text-center text-xs tabular-nums border rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:border-sky-500 outline-none transition-colors"
                                                 />
-                                                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-medium text-zinc-400">
+                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-zinc-400">
                                                     đ
                                                 </span>
                                             </div>
 
-                                            {/* 4. Line Subtotal (Readonly) */}
-                                            <div className="px-2 text-right">
+                                            {/* 4. Line Subtotal (Số -> Căn giữa) */}
+                                            <div className="px-1 text-center">
                                                 <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums truncate block">
                                                     {lineSubtotal > 0 ? formatCurrency(lineSubtotal) : '—'}
                                                 </span>
                                             </div>
 
-                                            {/* 5. Expiry DatePicker */}
+                                            {/* 5. Expiry DatePicker (Ngày -> Căn giữa) */}
                                             <div className="min-w-0">
                                                 <DatePicker
                                                     mode="single"
                                                     value={line.expiry_date || null}
                                                     onChange={(val) => updateLine(idx, 'expiry_date', val ?? '')}
                                                     placeholder="Hạn dùng..."
-                                                    className="w-full text-xs py-1.5"
+                                                    className="w-full text-xs py-1.5 text-center"
                                                 />
                                             </div>
 
-                                            {/* 6. Remove Button */}
+                                            {/* 6. Remove Button (Nút -> Căn giữa) */}
                                             <div className="flex justify-center">
                                                 <button
                                                     type="button"

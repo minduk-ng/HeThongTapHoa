@@ -9,6 +9,7 @@ export interface ReportTableColumn {
     sortable?: boolean;
     width?: number;
     visible?: boolean;
+    align?: 'left' | 'center' | 'right';
 }
 
 export const ReportColumnsContext = createContext<{
@@ -102,12 +103,12 @@ export default function ReportTable<T>({
 
         const onUp = () => {
             resizeRef.current = null;
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onUp);
         };
 
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
     };
 
     const sortedRows = useMemo(() => {
@@ -115,18 +116,19 @@ export default function ReportTable<T>({
             return rows;
         }
 
-        const col = columns.find((c) => c.key === sortKey);
         const sorted = [...rows];
+        const col = columns.find((c) => c.key === sortKey);
+        const isNum = col?.numeric;
 
         sorted.sort((a, b) => {
-            const va = sortValueOf(a, sortKey, col?.numeric);
-            const vb = sortValueOf(b, sortKey, col?.numeric);
+            const vA = sortValueOf(a, sortKey, isNum);
+            const vB = sortValueOf(b, sortKey, isNum);
 
-            if (va < vb) {
+            if (vA < vB) {
                 return sortDir === 'asc' ? -1 : 1;
             }
 
-            if (va > vb) {
+            if (vA > vB) {
                 return sortDir === 'asc' ? 1 : -1;
             }
 
@@ -195,6 +197,16 @@ export default function ReportTable<T>({
         );
     };
 
+    const getCellAlignClass = (c: ReportTableColumn) => {
+        if (c.align) {
+            if (c.align === 'center') return 'text-center';
+            if (c.align === 'right') return 'text-right';
+            return 'text-left';
+        }
+        if (c.numeric) return 'text-center';
+        return 'text-left';
+    };
+
     return (
         <div className="flex min-h-0 flex-1 flex-col">
             <div className="min-h-0 flex-1 overflow-auto">
@@ -220,10 +232,10 @@ export default function ReportTable<T>({
                                         c.sortable !== false &&
                                         handleSort(c.key)
                                     }
-                                    className={`relative px-4 py-2.5 select-none ${c.numeric ? 'text-right' : ''} ${c.sortable !== false ? 'cursor-pointer' : ''}`}
+                                    className={`relative px-4 py-2.5 select-none text-center ${c.sortable !== false ? 'cursor-pointer' : ''}`}
                                 >
                                     <span
-                                        className={`flex items-center space-x-1 ${c.numeric ? 'justify-end' : ''}`}
+                                        className="flex items-center justify-center space-x-1"
                                     >
                                         <span>{c.label}</span>
                                         {c.sortable !== false &&
@@ -266,7 +278,7 @@ export default function ReportTable<T>({
                                     {visibleColumns.map((c) => (
                                         <td
                                             key={c.key}
-                                            className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-sm tabular-nums ${c.numeric ? 'text-right' : ''} text-zinc-700 dark:text-zinc-300`}
+                                            className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-sm tabular-nums ${getCellAlignClass(c)} text-zinc-700 dark:text-zinc-300`}
                                         >
                                             {renderCell(row, c.key)}
                                         </td>

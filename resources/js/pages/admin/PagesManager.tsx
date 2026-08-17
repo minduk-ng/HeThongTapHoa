@@ -411,12 +411,12 @@ export default function PagesManager({ pages }: Props) {
                     <div className="overflow-x-auto">
                         <table className="data-table">
                         <thead>
-                            <tr>
-                                <th>Tên hiển thị</th>
-                                <th>Đường dẫn</th>
-                                <th>Nhóm chức năng</th>
-                                <th>Người truy cập</th>
-                                <th className="text-right">Hành động</th>
+                            <tr className="text-center">
+                                <th className="text-center">Tên hiển thị</th>
+                                <th className="text-center">Đường dẫn</th>
+                                <th className="text-center">Nhóm chức năng</th>
+                                <th className="text-center">Người truy cập</th>
+                                <th className="text-center">Hành động</th>
                             </tr>
                         </thead>
                         <tbody className="table-body">
@@ -452,16 +452,16 @@ export default function PagesManager({ pages }: Props) {
                                         </tr>
                                         {!isCollapsed && groupPages.map((page) => (
                                             <tr key={page.id} className="data-table-row bg-slate-50/30 dark:bg-slate-800/10">
-                                                <td className="font-medium text-gray-900 dark:text-gray-100 pl-10">{page.name}</td>
-                                                <td><code className="rounded bg-gray-100 px-1.5 py-0.5 text-sm dark:bg-slate-700 text-pink-600 dark:text-pink-400">{page.route_path}</code></td>
-                                                <td>
+                                                <td className="text-left font-medium text-gray-900 dark:text-gray-100 pl-10">{page.name}</td>
+                                                <td className="text-center"><code className="rounded bg-gray-100 px-1.5 py-0.5 text-sm dark:bg-slate-700 text-pink-600 dark:text-pink-400">{page.route_path}</code></td>
+                                                <td className="text-center">
                                                     <span className="badge badge-indigo">{page.group_name}</span>
                                                     {page.sub_group && (
                                                         <p className="text-xs text-zinc-500 mt-1">{page.sub_group}</p>
                                                     )}
                                                 </td>
-                                                <td className="font-semibold text-gray-700 dark:text-gray-300 font-mono text-sm">{page.user_count} người</td>
-                                                <td className="text-right space-x-2">
+                                                <td className="text-center font-semibold text-gray-700 dark:text-gray-300 font-mono text-sm">{page.user_count} người</td>
+                                                <td className="text-center space-x-2">
                                                     <button onClick={() => openEditModal(page)} className="btn-sm btn-edit">
                                                         Sửa
                                                     </button>

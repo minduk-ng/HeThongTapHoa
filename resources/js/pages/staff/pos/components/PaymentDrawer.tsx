@@ -51,6 +51,7 @@ export default function PaymentDrawer({
     const [promotionInput, setPromotionInput] = useState('');
     const [promotionError, setPromotionError] = useState<string | null>(null);
     const [promotionLoading, setPromotionLoading] = useState(false);
+    const [showCouponInput, setShowCouponInput] = useState(false);
     const { isSubmitting, guard } = useSubmitGuard();
 
     const subtotal = cartItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
@@ -78,6 +79,7 @@ export default function PaymentDrawer({
             setPaymentMethod('cash');
             setPromotionInput('');
             setPromotionError(null);
+            setShowCouponInput(false);
             if (mode === 'payment') {
                 setAmountReceived(payable);
             } else if (mode === 'deposit') {
@@ -166,21 +168,24 @@ export default function PaymentDrawer({
                 onClick={onClose}
             />
 
-            {/* Sliding Drawer */}
-            <div className="relative w-full max-w-4xl bg-white dark:bg-zinc-900 h-full border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl flex flex-col justify-between z-10 animate-in slide-in-from-right duration-300">
+            {/* Sliding Drawer - Expanded Width */}
+            <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 h-full border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl flex flex-col justify-between z-10 animate-in slide-in-from-right duration-300">
                 {/* Header */}
-                <div className="px-6 py-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between">
+                <div className="px-6 py-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-800/40 flex items-center justify-between shrink-0">
                     <div>
-                        <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 block">
+                        <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider block">
                             {mode === 'payment' && 'Thanh toán đơn hàng'}
                             {mode === 'deposit' && 'Đặt cọc đơn hàng'}
                             {mode === 'reservation' && 'Đặt bàn mới'}
                         </span>
-                        <h2 className="font-display text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                            {selectedTable.table_number} ({selectedTable.area || 'Trong nhà'})
+                        <h2 className="font-display text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                            <span>{selectedTable.table_number}</span>
+                            <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                                ({selectedTable.area || 'Trong nhà'})
+                            </span>
                             {orderCodes.length > 0 && mode !== 'reservation' && (
-                                <span className="text-sm font-semibold text-zinc-500">
-                                    — {orderCodes.join(', ')}
+                                <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-700">
+                                    {orderCodes.join(', ')}
                                 </span>
                             )}
                         </h2>
@@ -188,41 +193,54 @@ export default function PaymentDrawer({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 flex items-center justify-center transition-colors duration-150"
+                        className="p-2 rounded-xl text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors"
                     >
-                        <X className="w-5 h-5" />
+                        <X className="w-5 h-5 stroke-[1.5]" />
                     </button>
                 </div>
 
                 {/* Main Content Area */}
                 <div className="flex-1 overflow-hidden">
-                    <div className="grid grid-cols-2 h-full">
-                        {/* Cột trái: Danh sách món */}
-                        <div className="border-r border-zinc-200 dark:border-zinc-800 flex flex-col min-h-0 bg-zinc-50/50 dark:bg-zinc-900/50">
-                            <div className="flex-1 min-h-0 overflow-y-auto">
+                    <div className="grid grid-cols-12 h-full">
+                        {/* Cột trái: CHỈ HIỂN THỊ DANH SÁCH MÓN (Full Height - 6/12) */}
+                        <div className="col-span-6 border-r border-zinc-200/80 dark:border-zinc-800/80 flex flex-col min-h-0 bg-zinc-50/40 dark:bg-zinc-900/40">
+                            {/* Column Subheader */}
+                            <div className="px-5 py-2.5 border-b border-zinc-200/60 dark:border-zinc-800/60 flex items-center justify-between text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider shrink-0 bg-zinc-100/50 dark:bg-zinc-800/30">
+                                <span>Món đã chọn ({cartItems.reduce((s, i) => s + i.quantity, 0)})</span>
+                                <span>Thành tiền</span>
+                            </div>
+
+                            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
                                 {cartItems.length === 0 ? (
-                                    <div className="px-6 text-center text-sm text-zinc-500 dark:text-zinc-400 py-10">
-                                        Chưa chọn món
+                                    <div className="text-center text-sm text-zinc-400 dark:text-zinc-500 py-16">
+                                        Chưa có món nào được chọn
                                     </div>
                                 ) : (
-                                    <div className="px-6 pb-4 space-y-1">
+                                    <div className="space-y-4">
                                         {Object.entries(itemsByOrder).map(([code, items]) => (
-                                            <div key={code} className="space-y-1">
+                                            <div key={code} className="space-y-2">
                                                 {orderCodes.length > 1 && (
-                                                    <div className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase pt-2">
+                                                    <div className="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
                                                         {code}
                                                     </div>
                                                 )}
-                                                <div className="divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
+                                                <div className="divide-y divide-zinc-200/70 dark:divide-zinc-800/70 bg-white dark:bg-zinc-850 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 overflow-hidden shadow-xs">
                                                     {items.map((item, idx) => (
-                                                        <div key={idx} className="flex justify-between items-center py-3">
-                                                            <div className="flex-1 pr-2">
-                                                                <div className="font-medium text-zinc-800 dark:text-zinc-200">{item.name}</div>
-                                                                <div className="text-xs text-zinc-500 tabular-nums">
-                                                                    {item.quantity} × {item.unit_price.toLocaleString('vi-VN')} đ
+                                                        <div key={idx} className="flex justify-between items-center px-4 py-3.5 transition-colors hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
+                                                            <div className="flex-1 pr-3 min-w-0">
+                                                                <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                                                                    {item.name}
+                                                                </div>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 font-bold tabular-nums text-xs border border-sky-200/60 dark:border-sky-800/60">
+                                                                        x{item.quantity}
+                                                                    </span>
+                                                                    <span className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">
+                                                                        {item.unit_price.toLocaleString('vi-VN')} đ
+                                                                    </span>
                                                                 </div>
                                                             </div>
-                                                            <div className="font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                                                            <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tabular-nums shrink-0">
                                                                 {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
                                                             </div>
                                                         </div>
@@ -233,22 +251,116 @@ export default function PaymentDrawer({
                                     </div>
                                 )}
                             </div>
+                        </div>
 
-                            {/* Promotions & Coupon — cố định dưới */}
-                            {mode === 'payment' && onApplyPromotion && (
-                                <div className="shrink-0 px-6 py-4 bg-white dark:bg-zinc-800/40 border-t border-zinc-200/80 dark:border-zinc-800 space-y-3">
-                                    <div>
-                                        <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-                                            <Ticket className="h-3.5 w-3.5 text-sky-600 stroke-[1.5]" />
-                                            Chương trình khuyến mãi
-                                        </label>
+                        {/* Cột phải: Tài chính, Khuyến mãi/Voucher, Phương thức & Thanh toán (6/12) */}
+                        <div className="col-span-6 px-6 py-4 flex flex-col justify-between overflow-y-auto space-y-4 bg-white dark:bg-zinc-900">
+                            <div className="space-y-3.5">
+                                {/* Reservation info if mode === reservation */}
+                                {mode === 'reservation' && reservationDraft && (
+                                    <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/60 rounded-xl p-3.5 space-y-1 text-xs">
+                                        <div className="flex items-center gap-1.5 text-purple-700 dark:text-purple-300 font-bold mb-1">
+                                            <CalendarClock className="w-4 h-4 stroke-[1.5]" />
+                                            <span>Thông tin đặt trước</span>
+                                        </div>
+                                        <div className="text-zinc-700 dark:text-zinc-300">
+                                            <span className="font-semibold">Khách:</span> {reservationDraft.name} ({reservationDraft.phone})
+                                        </div>
+                                        <div className="text-zinc-700 dark:text-zinc-300">
+                                            <span className="font-semibold">Thời gian:</span> {reservationDraft.time.replace('T', ' ')}
+                                        </div>
+                                        {reservationDraft.note && (
+                                            <div className="text-zinc-500 dark:text-zinc-400 italic">
+                                                Ghi chú: {reservationDraft.note}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Financial Summary Card */}
+                                {mode !== 'reservation' && (
+                                    <div className="p-4 rounded-2xl bg-gradient-to-br from-sky-50 to-sky-100/40 dark:from-sky-950/40 dark:to-sky-900/20 border border-sky-200/80 dark:border-sky-800/60 space-y-2.5">
+                                        <div className="grid grid-cols-2 gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+                                            <div className="flex justify-between">
+                                                <span>Tiền món:</span>
+                                                <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                                                    {subtotal.toLocaleString('vi-VN')} đ
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>VAT (gồm):</span>
+                                                <span className="tabular-nums font-medium">
+                                                    {vatInTotal.toLocaleString('vi-VN')} đ
+                                                </span>
+                                            </div>
+                                            {mode === 'payment' && totalDiscount > 0 && (
+                                                <div className="flex justify-between text-rose-600 dark:text-rose-400 col-span-2">
+                                                    <span>Giảm giá khuyến mãi:</span>
+                                                    <span className="font-bold tabular-nums">
+                                                        −{totalDiscount.toLocaleString('vi-VN')} đ
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {mode === 'payment' && depositTotal > 0 && (
+                                                <div className="flex justify-between text-purple-600 dark:text-purple-400 col-span-2">
+                                                    <span>Đã đặt cọc trước:</span>
+                                                    <span className="font-bold tabular-nums">
+                                                        −{depositTotal.toLocaleString('vi-VN')} đ
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="pt-2.5 border-t border-sky-200/60 dark:border-sky-800/50 flex items-baseline justify-between">
+                                            <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+                                                Khách cần trả:
+                                            </span>
+                                            <span className="font-display text-3xl font-bold text-sky-600 dark:text-sky-400 tabular-nums">
+                                                {payable.toLocaleString('vi-VN')} đ
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {mode === 'payment' && depositRefund > 0 && (
+                                    <div className="flex justify-between items-center py-2.5 px-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/70 rounded-xl text-xs">
+                                        <span className="font-bold text-emerald-700 dark:text-emerald-300">
+                                            Hoàn tiền cọc thừa:
+                                        </span>
+                                        <span className="font-display text-base font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                                            {depositRefund.toLocaleString('vi-VN')} đ
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* Khuyến mãi & Voucher ở Cột Phải */}
+                                {mode === 'payment' && onApplyPromotion && (
+                                    <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/80 dark:border-zinc-800 space-y-2.5">
+                                        <div className="flex items-center justify-between">
+                                            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                                <Ticket className="h-3.5 w-3.5 text-sky-600 stroke-[1.5]" />
+                                                <span>Chương trình khuyến mãi</span>
+                                            </label>
+                                            {!showCouponInput && !promotionApplied && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowCouponInput(true)}
+                                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors"
+                                                >
+                                                    <Tag className="w-3 h-3 stroke-[1.5]" />
+                                                    <span>+ Thêm mã coupon/voucher</span>
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Dropdown chương trình khuyến mãi tự động (Mặc định hiển thị) */}
                                         <div className="relative">
                                             <select
                                                 value={selectedAutoId ?? 0}
                                                 onChange={(e) => onSelectAuto(e.target.value ? Number(e.target.value) : 0)}
-                                                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm appearance-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none dark:border-zinc-700 dark:bg-zinc-800"
+                                                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs appearance-none focus:border-sky-500 outline-none text-zinc-900 dark:text-zinc-100 transition-colors"
                                             >
-                                                <option value={0}>Không áp dụng</option>
+                                                <option value={0}>Không áp dụng chương trình</option>
                                                 {promotions.map((p) => (
                                                     <option key={p.id} value={p.id}>
                                                         {p.name} {p.estimated_discount > 0 ? `(−${p.estimated_discount.toLocaleString('vi-VN')}đ)` : ''}
@@ -256,271 +368,232 @@ export default function PaymentDrawer({
                                                 ))}
                                             </select>
                                             <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
-                                                <ChevronDown className="w-4 h-4" />
+                                                <ChevronDown className="w-4 h-4 stroke-[1.5]" />
                                             </span>
                                         </div>
-                                    </div>
-                                    <div>
-                                        <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-                                            <Tag className="h-3.5 w-3.5 text-sky-600 stroke-[1.5]" />
-                                            Mã coupon / voucher
-                                        </label>
-                                        <div className="flex gap-2">
-                                            <input value={promotionInput} onChange={(e) => setPromotionInput(e.target.value.toUpperCase())} disabled={promotionApplied}
-                                                placeholder="NHẬP MÃ..."
-                                                className="min-w-0 flex-1 rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm font-semibold uppercase placeholder:normal-case placeholder:font-normal outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 dark:border-zinc-700 dark:bg-zinc-800" />
-                                            {promotionApplied ? (
-                                                <button type="button" onClick={() => { onClearPromotion?.(); setPromotionInput(''); setPromotionError(null); }} className="rounded-xl border border-zinc-300 px-3 py-2 text-xs font-semibold dark:border-zinc-700">Hủy mã</button>
-                                            ) : (
-                                                <button type="button" onClick={handlePromotion} disabled={promotionLoading || promotionInput.trim() === ''} className="rounded-xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 hover:bg-sky-700 transition-colors active:scale-95">
-                                                    {promotionLoading ? 'Đang áp…' : 'Áp dụng'}
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                    {promotionError && <p className="text-xs text-rose-500">{promotionError}</p>}
 
-                                    {appliedPromotions.length > 0 && (
-                                        <div className="space-y-1 border-t border-zinc-200 pt-2 dark:border-zinc-800">
-                                            {appliedPromotions.map((ap, i) => (
-                                                <div key={i} className="flex justify-between text-xs text-rose-600 dark:text-rose-400">
-                                                    <span>{ap.name}</span>
-                                                    <span className="tabular-nums">−{ap.discount_amount.toLocaleString('vi-VN')} đ</span>
+                                        {/* Ô nhập mã Voucher khi mở rộng hoặc khi đã áp dụng */}
+                                        {(showCouponInput || promotionApplied) && (
+                                            <div className="space-y-1.5 pt-1 animate-in fade-in duration-150">
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        value={promotionInput}
+                                                        onChange={(e) => setPromotionInput(e.target.value.toUpperCase())}
+                                                        disabled={promotionApplied}
+                                                        placeholder="NHẬP MÃ VOUCHER..."
+                                                        className="min-w-0 flex-1 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs font-semibold uppercase placeholder:normal-case placeholder:font-normal outline-none focus:border-sky-500 text-zinc-900 dark:text-zinc-100"
+                                                    />
+                                                    {promotionApplied ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                onClearPromotion?.();
+                                                                setPromotionInput('');
+                                                                setPromotionError(null);
+                                                                setShowCouponInput(false);
+                                                            }}
+                                                            className="rounded-xl border border-zinc-200 dark:border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shrink-0"
+                                                        >
+                                                            Hủy mã
+                                                        </button>
+                                                    ) : (
+                                                        <div className="flex gap-1.5 shrink-0">
+                                                            <button
+                                                                type="button"
+                                                                onClick={handlePromotion}
+                                                                disabled={promotionLoading || promotionInput.trim() === ''}
+                                                                className="rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-50 hover:bg-sky-700 transition-colors"
+                                                            >
+                                                                {promotionLoading ? '...' : 'Áp dụng'}
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setShowCouponInput(false);
+                                                                    setPromotionError(null);
+                                                                }}
+                                                                className="p-2 rounded-xl text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/60 dark:hover:bg-zinc-700 transition-colors"
+                                                                title="Đóng ô nhập mã"
+                                                            >
+                                                                <X className="w-3.5 h-3.5 stroke-[1.5]" />
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Cột phải: Thông tin theo mode */}
-                        <div className="px-6 py-5 flex flex-col space-y-5 overflow-y-auto bg-white dark:bg-zinc-900">
-                            {mode === 'reservation' && reservationDraft && (
-                                <div className="bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-800 rounded-2xl p-4 space-y-2">
-                                    <div className="flex items-center gap-2 text-violet-700 dark:text-violet-300 font-bold mb-2">
-                                        <CalendarClock className="w-4 h-4" />
-                                        <span>Thông tin người đặt</span>
-                                    </div>
-                                    <div className="text-sm text-zinc-800 dark:text-zinc-200">
-                                        <span className="font-semibold">Khách hàng:</span> {reservationDraft.name}
-                                    </div>
-                                    <div className="text-sm text-zinc-800 dark:text-zinc-200">
-                                        <span className="font-semibold">Số điện thoại:</span> {reservationDraft.phone}
-                                    </div>
-                                    <div className="text-sm text-zinc-800 dark:text-zinc-200">
-                                        <span className="font-semibold">Thời gian:</span> {reservationDraft.time.replace('T', ' ')}
-                                    </div>
-                                    {reservationDraft.note && (
-                                        <div className="text-sm text-zinc-800 dark:text-zinc-200">
-                                            <span className="font-semibold">Ghi chú:</span> {reservationDraft.note}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Financial Summary */}
-                            {mode !== 'reservation' && (
-                                <div className="flex flex-col gap-3 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm text-zinc-500 dark:text-zinc-400">Tổng tiền món</span>
-                                        <span className="text-sm font-bold tabular-nums">{subtotal.toLocaleString('vi-VN')} đ</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs text-zinc-500 dark:text-zinc-400">
-                                        <span>Trong đó VAT</span>
-                                        <span className="font-semibold tabular-nums">{vatInTotal.toLocaleString('vi-VN')} đ</span>
-                                    </div>
-                                    {mode === 'payment' && totalDiscount > 0 && (
-                                        <div className="flex justify-between items-center text-rose-600 dark:text-rose-400">
-                                            <span className="text-sm font-semibold">Giảm giá khuyến mãi</span>
-                                            <span className="text-sm font-bold tabular-nums">−{totalDiscount.toLocaleString('vi-VN')} đ</span>
-                                        </div>
-                                    )}
-                                    {mode === 'payment' && depositTotal > 0 && (
-                                        <div className="flex justify-between items-center text-violet-600 dark:text-violet-400">
-                                            <span className="text-sm font-semibold">Đã đặt cọc</span>
-                                            <span className="text-sm font-bold tabular-nums">−{depositTotal.toLocaleString('vi-VN')} đ</span>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Total to Pay */}
-                            {mode !== 'reservation' && (
-                                <div className="flex flex-col items-center justify-center py-5 bg-sky-50/60 dark:bg-sky-950/30 rounded-2xl border border-sky-100 dark:border-sky-900/40">
-                                    <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Khách cần trả</span>
-                                    <span className="font-display text-4xl font-bold text-sky-600 dark:text-sky-400 tabular-nums tracking-tight">
-                                        {payable.toLocaleString('vi-VN')} đ
-                                    </span>
-                                </div>
-                            )}
-                            {mode === 'payment' && depositRefund > 0 && (
-                                <div className="flex justify-between items-center py-3 px-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/70 rounded-xl">
-                                    <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">Hoàn khách (cọc thừa)</span>
-                                    <span className="font-display text-lg font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                                        {depositRefund.toLocaleString('vi-VN')} đ
-                                    </span>
-                                </div>
-                            )}
-
-                            {/* Payment Method Cards */}
-                            <div className="space-y-3">
-                                <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 block">
-                                    Phương thức thanh toán / cọc
-                                </label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setPaymentMethod('cash');
-                                            if (mode === 'payment') setAmountReceived(payable);
-                                            else if (mode === 'deposit') setAmountReceived(totalAmount);
-                                        }}
-                                        className={`h-20 rounded-xl border-2 flex flex-col items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${paymentMethod === 'cash'
-                                                ? 'border-sky-600 bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
-                                                : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                                            }`}
-                                    >
-                                        <Banknote className="w-7 h-7 stroke-[1.5]" />
-                                        <span className="text-xs font-semibold">Tiền mặt</span>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setPaymentMethod('bank_transfer')}
-                                        className={`h-20 rounded-xl border-2 flex flex-col items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${paymentMethod === 'bank_transfer'
-                                                ? 'border-sky-600 bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
-                                                : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                                            }`}
-                                    >
-                                        <QrCode className="w-7 h-7 stroke-[1.5]" />
-                                        <span className="text-xs font-semibold">Chuyển khoản</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Tab 1 Content: Cash */}
-                            {paymentMethod === 'cash' && (
-                                <div className="space-y-4 animate-in fade-in duration-150">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 block">
-                                            {mode === 'reservation' ? 'Đặt cọc giữ bàn (đ) (Tùy chọn):' : 'Số tiền khách đưa (đ)'}
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={amountReceived || ''}
-                                            onChange={(e) => setAmountReceived(Number(e.target.value))}
-                                            placeholder="Nhập số tiền..."
-                                            className="w-full px-3.5 py-3 text-lg font-bold text-center border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:ring-2 focus:ring-sky-500 outline-none tabular-nums"
-                                        />
-                                    </div>
-
-                                    {(mode === 'payment' || mode === 'deposit') && (
-                                        <div className="grid grid-cols-4 gap-2">
-                                            {cashPresets.map((preset, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    type="button"
-                                                    onClick={() => setAmountReceived(preset)}
-                                                    className={`py-2.5 px-1 border rounded-xl text-xs font-bold transition-all text-center tabular-nums active:scale-95 ${amountReceived === preset
-                                                            ? 'border-sky-600 bg-sky-600 text-white shadow-sm'
-                                                            : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700'
-                                                        }`}
-                                                >
-                                                    {(preset / 1000).toFixed(0)}k
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {mode === 'payment' && (
-                                        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/80 flex justify-between items-center">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                                                    Tiền thừa trả lại
-                                                </span>
+                                                {promotionError && (
+                                                    <p className="text-xs text-rose-500">{promotionError}</p>
+                                                )}
                                             </div>
-                                            <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                                                {changeAmount.toLocaleString('vi-VN')} đ
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                                        )}
 
-                            {/* Tab 2 Content: Bank Transfer QR */}
-                            {paymentMethod === 'bank_transfer' && (
-                                <div className="space-y-4 animate-in fade-in duration-150 text-center">
-                                    {mode === 'reservation' && (
-                                        <div className="space-y-1.5 text-left mb-4">
-                                            <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 block">
-                                                Đặt cọc giữ bàn qua chuyển khoản (đ):
+                                        {appliedPromotions.length > 0 && (
+                                            <div className="space-y-1 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60">
+                                                {appliedPromotions.map((ap, i) => (
+                                                    <div key={i} className="flex justify-between text-xs text-rose-600 dark:text-rose-400">
+                                                        <span className="truncate pr-1">{ap.name}</span>
+                                                        <span className="tabular-nums font-semibold shrink-0">−{ap.discount_amount.toLocaleString('vi-VN')} đ</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Payment Method Segmented Buttons */}
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block uppercase tracking-wider">
+                                        Phương thức thanh toán
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setPaymentMethod('cash');
+                                                if (mode === 'payment') setAmountReceived(payable);
+                                                else if (mode === 'deposit') setAmountReceived(totalAmount);
+                                            }}
+                                            className={`py-2.5 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all ${
+                                                paymentMethod === 'cash'
+                                                    ? 'border-sky-600 bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 shadow-xs ring-1 ring-sky-600'
+                                                    : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                                            }`}
+                                        >
+                                            <Banknote className="w-4 h-4 stroke-[1.5]" />
+                                            <span>Tiền mặt</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setPaymentMethod('bank_transfer')}
+                                            className={`py-2.5 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all ${
+                                                paymentMethod === 'bank_transfer'
+                                                    ? 'border-sky-600 bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 shadow-xs ring-1 ring-sky-600'
+                                                    : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                                            }`}
+                                        >
+                                            <QrCode className="w-4 h-4 stroke-[1.5]" />
+                                            <span>Chuyển khoản</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Content: Cash */}
+                                {paymentMethod === 'cash' && (
+                                    <div className="space-y-3 animate-in fade-in duration-150">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 block">
+                                                {mode === 'reservation' ? 'Tiền cọc giữ bàn (đ):' : 'Số tiền khách đưa (đ):'}
                                             </label>
                                             <input
                                                 type="number"
                                                 value={amountReceived || ''}
                                                 onChange={(e) => setAmountReceived(Number(e.target.value))}
-                                                placeholder="Nhập số tiền cọc..."
-                                                className="w-full px-3.5 py-2.5 text-base font-bold border rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:ring-2 focus:ring-sky-500 outline-none tabular-nums"
+                                                placeholder="Nhập số tiền..."
+                                                className="w-full px-3.5 py-2.5 text-lg font-bold text-center border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:border-sky-500 outline-none tabular-nums"
                                             />
                                         </div>
-                                    )}
 
-                                    {((mode === 'reservation' && amountReceived > 0) || mode !== 'reservation') && (() => {
-                                        const qrAmount = Math.max(0, Math.round(mode === 'payment' ? payable : amountReceived));
-                                        const tableLabel = selectedTable ? selectedTable.table_number : '';
-                                        const addInfo = `${mode === 'payment' ? 'Thanh toan' : 'Dat coc'} ${tableLabel}`.trim();
-                                        const vietQrUrl = `https://img.vietqr.io/image/970422-0368192905-qr_only.png?amount=${qrAmount}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent('NGUYEN MINH DUC')}`;
-
-                                        return (
-                                            <div className="p-4 border border-zinc-200 dark:border-zinc-700 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 flex flex-col items-center">
-                                                <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2">
-                                                    Quét mã QR Ngân hàng (VietQR)
-                                                </span>
-                                                <div className="p-2 bg-white rounded-xl shadow-md border border-zinc-200">
-                                                    <img
-                                                        key={vietQrUrl}
-                                                        src={vietQrUrl}
-                                                        alt="Mã VietQR Chuyển Khoản"
-                                                        className="w-48 h-48 object-contain rounded-lg"
-                                                        onError={(e) => {
-                                                            (e.target as HTMLElement).style.display = 'none';
-                                                        }}
-                                                    />
-                                                </div>
-                                                <div className="mt-3 text-xs space-y-1 text-zinc-700 dark:text-zinc-300 font-medium text-center">
-                                                    <p><span className="font-bold">Chủ TK:</span> NGUYEN MINH DUC</p>
-                                                    <p><span className="font-bold">Ngân hàng:</span> MBBank (970422) — 0368192905</p>
-                                                    <p><span className="font-bold">Số tiền:</span> <span className="font-black text-sky-600 dark:text-sky-400 tabular-nums">{qrAmount.toLocaleString('vi-VN')} đ</span></p>
-                                                    <p><span className="font-bold">Nội dung:</span> {addInfo}</p>
-                                                </div>
+                                        {(mode === 'payment' || mode === 'deposit') && (
+                                            <div className="grid grid-cols-4 gap-2">
+                                                {cashPresets.map((preset, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        type="button"
+                                                        onClick={() => setAmountReceived(preset)}
+                                                        className={`py-2 px-1 border rounded-xl text-xs font-bold transition-all text-center tabular-nums ${
+                                                            amountReceived === preset
+                                                                ? 'border-sky-600 bg-sky-600 text-white shadow-xs'
+                                                                : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700'
+                                                        }`}
+                                                    >
+                                                        {(preset / 1000).toFixed(0)}k
+                                                    </button>
+                                                ))}
                                             </div>
-                                        );
-                                    })()}
-                                </div>
-                            )}
+                                        )}
+
+                                        {mode === 'payment' && (
+                                            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 flex justify-between items-center text-xs font-semibold">
+                                                <span className="text-emerald-800 dark:text-emerald-300">
+                                                    Tiền thừa trả khách:
+                                                </span>
+                                                <span className="text-base font-bold text-emerald-600 dark:text-emerald-400 tabular-nums font-display">
+                                                    {changeAmount.toLocaleString('vi-VN')} đ
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Content: Bank Transfer */}
+                                {paymentMethod === 'bank_transfer' && (
+                                    <div className="space-y-3 animate-in fade-in duration-150 text-center">
+                                        {mode === 'reservation' && (
+                                            <div className="space-y-1 text-left mb-2">
+                                                <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 block">
+                                                    Tiền cọc chuyển khoản (đ):
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={amountReceived || ''}
+                                                    onChange={(e) => setAmountReceived(Number(e.target.value))}
+                                                    placeholder="Nhập số tiền cọc..."
+                                                    className="w-full px-3 py-2 text-sm font-bold border rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:border-sky-500 outline-none tabular-nums"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {((mode === 'reservation' && amountReceived > 0) || mode !== 'reservation') && (() => {
+                                            const qrAmount = Math.max(0, Math.round(mode === 'payment' ? payable : amountReceived));
+                                            const tableLabel = selectedTable ? selectedTable.table_number : '';
+                                            const addInfo = `${mode === 'payment' ? 'Thanh toan' : 'Dat coc'} ${tableLabel}`.trim();
+                                            const vietQrUrl = `https://img.vietqr.io/image/970422-0368192905-qr_only.png?amount=${qrAmount}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent('NGUYEN MINH DUC')}`;
+
+                                            return (
+                                                <div className="p-3.5 border border-zinc-200/80 dark:border-zinc-700/80 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 flex flex-col items-center">
+                                                    <div className="p-2 bg-white rounded-xl shadow-xs border border-zinc-200 mb-2">
+                                                        <img
+                                                            key={vietQrUrl}
+                                                            src={vietQrUrl}
+                                                            alt="Mã VietQR"
+                                                            className="w-44 h-44 object-contain rounded-lg"
+                                                            onError={(e) => {
+                                                                (e.target as HTMLElement).style.display = 'none';
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div className="text-xs space-y-1 text-zinc-600 dark:text-zinc-300 font-medium text-center">
+                                                        <p><span className="text-zinc-400">MBBank:</span> <strong className="tabular-nums">0368192905</strong> — NGUYEN MINH DUC</p>
+                                                        <p><span className="text-zinc-400">Số tiền:</span> <strong className="text-sky-600 dark:text-sky-400 tabular-nums">{qrAmount.toLocaleString('vi-VN')} đ</strong></p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Footer Action Buttons */}
-                <div className="px-6 py-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60">
+                <div className="px-6 py-4 border-t border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-800/40 shrink-0">
                     {mode === 'payment' && (
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 type="button"
                                 disabled={submitting || isSubmitting || (paymentMethod === 'cash' && amountReceived < payable)}
                                 onClick={() => handleConfirm(true)}
-                                className="py-3 px-4 text-sm font-bold text-sky-600 dark:text-sky-400 bg-white dark:bg-zinc-800 border-2 border-sky-600 dark:border-sky-500 rounded-xl hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2 active:scale-95"
+                                className="py-3 px-4 text-xs font-bold text-sky-600 dark:text-sky-400 bg-white dark:bg-zinc-800 border border-sky-300 dark:border-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center space-x-1.5 active:scale-95"
                             >
                                 <Printer className="w-4 h-4 stroke-[1.5]" />
-                                <span>{submitting ? 'Đang lưu...' : 'In K80'}</span>
+                                <span>{submitting ? 'Đang lưu...' : 'In phiếu K80'}</span>
                             </button>
                             <button
                                 type="button"
                                 disabled={submitting || isSubmitting || (paymentMethod === 'cash' && amountReceived < payable)}
                                 onClick={() => handleConfirm(false)}
-                                className="py-3 px-4 text-sm font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-md disabled:opacity-50 transition-colors flex items-center justify-center space-x-2 active:scale-95"
+                                className="py-3 px-4 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs disabled:opacity-40 transition-colors flex items-center justify-center space-x-1.5 active:scale-95"
                             >
                                 <Check className="w-4 h-4 stroke-2" />
                                 <span>{submitting ? 'Đang lưu...' : 'Xác nhận thanh toán'}</span>
@@ -533,7 +606,7 @@ export default function PaymentDrawer({
                             type="button"
                             disabled={submitting || isSubmitting || amountReceived <= 0}
                             onClick={() => handleConfirm(false)}
-                            className="w-full py-3 px-4 text-sm font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl shadow-md disabled:opacity-50 transition-colors flex items-center justify-center space-x-2 active:scale-95"
+                            className="w-full py-3 px-4 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-xs disabled:opacity-40 transition-colors flex items-center justify-center space-x-1.5 active:scale-95"
                         >
                             <Banknote className="w-4 h-4 stroke-[1.5]" />
                             <span>{submitting ? 'Đang lưu...' : 'Xác nhận đặt cọc'}</span>
@@ -545,7 +618,7 @@ export default function PaymentDrawer({
                             type="button"
                             disabled={submitting || isSubmitting}
                             onClick={() => handleConfirm(false)}
-                            className="w-full py-3 px-4 text-sm font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl shadow-md disabled:opacity-50 transition-colors flex items-center justify-center space-x-2 active:scale-95"
+                            className="w-full py-3 px-4 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-xs disabled:opacity-40 transition-colors flex items-center justify-center space-x-1.5 active:scale-95"
                         >
                             <CalendarClock className="w-4 h-4 stroke-[1.5]" />
                             <span>{submitting ? 'Đang lưu...' : 'Hoàn tất đặt bàn'}</span>

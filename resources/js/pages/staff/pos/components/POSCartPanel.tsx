@@ -272,46 +272,107 @@ export default function POSCartPanel({
                 tables={tables}
             />
             {/* Header (Fixed Top) */}
-            <div className="shrink-0 border-b border-zinc-200/80 bg-zinc-50/60 px-4 py-3 dark:border-zinc-800/80 dark:bg-zinc-800/40">
-                <div className="flex items-center justify-between">
-                    <div className="flex min-w-0 items-center space-x-2">
-                        <h2 className="font-display text-2xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100">
+            {/* Header (Fixed Top - Ultra Compact 1-Row) */}
+            <div className="shrink-0 border-b border-zinc-200/80 bg-zinc-50/70 px-3.5 py-2 select-none dark:border-zinc-800/80 dark:bg-zinc-800/40">
+                <div className="flex items-center justify-between gap-2">
+                    {/* Left: Table Name & Subtle Status Dot */}
+                    <div className="flex items-center gap-1.5 shrink-0 min-w-0">
+                        <span
+                            className={`h-2.5 w-2.5 rounded-full shrink-0 ${
+                                selectedTable.status === 'occupied'
+                                    ? 'bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900/50'
+                                    : selectedTable.status === 'reserved'
+                                    ? 'bg-purple-500 ring-2 ring-purple-200 dark:ring-purple-900/50'
+                                    : 'bg-zinc-400'
+                            }`}
+                            title={
+                                selectedTable.status === 'occupied'
+                                    ? 'Đang phục vụ'
+                                    : selectedTable.status === 'reserved'
+                                    ? 'Đã đặt trước'
+                                    : 'Bàn trống'
+                            }
+                        />
+                        <h2 className="font-display text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-100 truncate">
                             {selectedTable.table_number}
                         </h2>
                         {(selectedTable.merged_into_table ||
                             selectedTable.merged_into_table_id) && (
-                            <span className="shrink-0 rounded-md border border-amber-200 bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-300">
-                                Gộp với{' '}
-                                {selectedTable.merged_into_table
-                                    ?.table_number ||
-                                    `Bàn #${selectedTable.merged_into_table_id}`}
+                            <span className="shrink-0 rounded-md bg-amber-100 border border-amber-200 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-300">
+                                Gộp {selectedTable.merged_into_table?.table_number || `#${selectedTable.merged_into_table_id}`}
                             </span>
                         )}
-                        <span
-                            className={`shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
-                                selectedTable.status === 'occupied'
-                                    ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/60 dark:text-amber-300'
-                                    : selectedTable.status === 'reserved'
-                                    ? 'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-900/60 dark:bg-violet-950/60 dark:text-violet-300'
-                                    : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/60 dark:text-emerald-300'
-                            }`}
-                        >
-                            {selectedTable.status === 'occupied'
-                                ? 'Đang phục vụ'
-                                : selectedTable.status === 'reserved'
-                                ? 'Đã đặt trước'
-                                : 'Bàn trống'}
-                        </span>
                     </div>
 
-                    {/* Actions Menu Dropdown */}
+                    {/* Middle: Compact Invoice Tabs */}
+                    <div className="flex flex-1 items-center space-x-1 overflow-x-auto scrollbar-none min-w-0 px-1">
+                        {Object.keys(tableCarts).map((invoiceId, idx) => {
+                            const isDraft = invoiceId.startsWith('draft_');
+                            const isActive = activeInvoiceId === invoiceId;
+                            const invoiceCart = tableCarts[invoiceId] || [];
+                            const isCompleted =
+                                invoiceCart.length > 0 &&
+                                invoiceCart.every((i) => i.isKitchenCompleted);
+
+                            let label = invoiceId;
+                            if (isDraft) {
+                                label = `Đơn #${idx + 1}`;
+                            }
+
+                            return (
+                                <button
+                                    key={invoiceId}
+                                    type="button"
+                                    onClick={() => onSelectInvoice(invoiceId)}
+                                    className={`group flex shrink-0 items-center space-x-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all duration-150 ${
+                                        isActive
+                                            ? isDraft
+                                                ? 'bg-sky-600 text-white shadow-xs'
+                                                : isCompleted
+                                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                                  : 'bg-amber-600 text-white shadow-xs'
+                                            : 'border border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700/80 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800'
+                                    } ${isDraft && !isActive ? 'border-dashed' : ''}`}
+                                >
+                                    <span className="truncate max-w-[90px]">{label}</span>
+                                    {isDraft && invoiceCart.length === 0 && (
+                                        <span
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onRemoveInvoice(invoiceId);
+                                            }}
+                                            className={`rounded p-0.5 transition-colors ${
+                                                isActive
+                                                    ? 'text-white/80 hover:bg-white/20 hover:text-white'
+                                                    : 'text-zinc-400 hover:bg-zinc-200 hover:text-rose-600 dark:hover:bg-zinc-700'
+                                            }`}
+                                            title="Xóa hóa đơn nháp này"
+                                        >
+                                            <X className="h-3 w-3 stroke-[1.5]" />
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+
+                        <button
+                            type="button"
+                            onClick={onAddInvoice}
+                            className="shrink-0 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 p-1 text-zinc-500 hover:border-sky-500 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
+                            title="Thêm hóa đơn mới"
+                        >
+                            <Plus className="h-3.5 w-3.5 stroke-2" />
+                        </button>
+                    </div>
+
+                    {/* Right: Actions Menu Dropdown */}
                     <div className="relative shrink-0">
                         <button
                             type="button"
                             onClick={() =>
                                 setIsActionsMenuOpen(!isActionsMenuOpen)
                             }
-                            className="flex items-center justify-center rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                            className="flex items-center justify-center rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-200/70 hover:text-zinc-700 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
                             title="Thao tác khác"
                         >
                             <Menu className="h-4 w-4 stroke-[1.5]" />
@@ -369,63 +430,6 @@ export default function POSCartPanel({
                             </>
                         )}
                     </div>
-                </div>
-
-                {/* Tabs bar: Dòng 2 chứa danh sách các hóa đơn */}
-                <div className="mt-3 flex shrink-0 scrollbar-none items-center space-x-1.5 overflow-x-auto border-t border-zinc-200/50 pt-2 select-none dark:border-zinc-800/50">
-                    {Object.keys(tableCarts).map((invoiceId, idx) => {
-                        const isDraft = invoiceId.startsWith('draft_');
-                        const isActive = activeInvoiceId === invoiceId;
-                        const invoiceCart = tableCarts[invoiceId] || [];
-                        const isCompleted =
-                            invoiceCart.length > 0 &&
-                            invoiceCart.every((i) => i.isKitchenCompleted);
-
-                        let label = invoiceId;
-                        if (isDraft) {
-                            label = `Đơn mới #${idx + 1}`;
-                        }
-
-                        return (
-                            <div
-                                key={invoiceId}
-                                onClick={() => onSelectInvoice(invoiceId)}
-                                className={`group flex shrink-0 cursor-pointer items-center space-x-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all duration-150 ${
-                                    isActive
-                                        ? isDraft
-                                            ? 'border-zinc-300 bg-zinc-100 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100'
-                                            : isCompleted
-                                              ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                              : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300'
-                                        : 'border-zinc-200 bg-white text-zinc-500 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50'
-                                } ${isDraft ? 'border-dashed' : ''}`}
-                            >
-                                <span>{label}</span>
-                                {isDraft && invoiceCart.length === 0 && (
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onRemoveInvoice(invoiceId);
-                                        }}
-                                        className="rounded-full p-0.5 text-zinc-400 transition-colors hover:text-rose-600 dark:hover:text-rose-400"
-                                        title="Xóa hóa đơn nháp này"
-                                    >
-                                        <X className="h-3 w-3 stroke-[1.5]" />
-                                    </button>
-                                )}
-                            </div>
-                        );
-                    })}
-
-                    <button
-                        type="button"
-                        onClick={onAddInvoice}
-                        className="shrink-0 rounded-lg border border-zinc-200 p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                        title="Thêm hóa đơn mới"
-                    >
-                        <Plus className="h-3.5 w-3.5 stroke-2" />
-                    </button>
                 </div>
             </div>
 

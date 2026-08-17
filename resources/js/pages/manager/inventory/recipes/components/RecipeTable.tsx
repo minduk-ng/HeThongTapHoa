@@ -53,10 +53,11 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
         {
             key: 'image',
             header: 'Ảnh',
+            align: 'center',
             hideWhenCompact: true,
             className: 'w-20',
             render: (product) => (
-                <div className="w-10 h-10 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto">
                     {product.image ? (
                         <img src={cdnAsset(product.image, { w: 96, format: 'webp' })} alt={product.name} className="w-full h-full object-cover" />
                     ) : (
@@ -68,6 +69,7 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
         {
             key: 'name',
             header: 'Sản phẩm',
+            align: 'left',
             sortable: true,
             render: (product) => {
                 const hasRecipes = product.recipes && product.recipes.length > 0;
@@ -84,6 +86,7 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
         {
             key: 'category',
             header: 'Danh mục',
+            align: 'center',
             sortable: true,
             render: (product) => <span className="text-zinc-600 dark:text-zinc-400">{product.category?.name ?? '—'}</span>,
         },
@@ -91,14 +94,14 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
             key: 'price',
             header: 'Giá bán',
             sortable: true,
-            align: 'right',
+            align: 'center',
             render: (product) => <span className="font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(product.price)}</span>,
         },
         {
             key: 'cogs',
             header: 'Giá vốn ước tính (COGS)',
             sortable: true,
-            align: 'right',
+            align: 'center',
             render: (product) => {
                 const hasRecipes = product.recipes && product.recipes.length > 0;
                 return hasRecipes

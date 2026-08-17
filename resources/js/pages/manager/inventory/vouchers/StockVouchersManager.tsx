@@ -24,11 +24,12 @@ interface StockVouchersManagerProps {
 }
 
 const columns: DataTableColumn<VoucherData>[] = [
-    { key: 'voucher_code', header: 'Mã phiếu', sortable: true, className: 'font-mono text-xs font-medium text-sky-600 dark:text-sky-400', render: (v) => v.voucher_code },
+    { key: 'voucher_code', header: 'Mã phiếu', sortable: true, align: 'center', className: 'font-mono text-xs font-medium text-sky-600 dark:text-sky-400', render: (v) => v.voucher_code },
     {
         key: 'type',
         header: 'Loại',
         sortable: true,
+        align: 'center',
         render: (v) => {
             if (v.type === 'adjustment') {
                 return (
@@ -48,9 +49,9 @@ const columns: DataTableColumn<VoucherData>[] = [
             );
         },
     },
-    { key: 'transacted_at', header: 'Thời điểm', sortable: true, render: (v) => <span className="text-xs tabular-nums">{v.transacted_at}</span> },
-    { key: 'note', header: 'Ghi chú', render: (v) => <span className="text-xs text-zinc-500 dark:text-zinc-400">{v.note || '—'}</span> },
-    { key: 'employee_name', header: 'Người tạo', render: (v) => <span className="text-xs">{v.employee_name || '—'}</span> },
+    { key: 'transacted_at', header: 'Thời điểm', sortable: true, align: 'center', render: (v) => <span className="text-xs tabular-nums">{v.transacted_at}</span> },
+    { key: 'note', header: 'Ghi chú', align: 'left', render: (v) => <span className="text-xs text-zinc-500 dark:text-zinc-400">{v.note || '—'}</span> },
+    { key: 'employee_name', header: 'Người tạo', align: 'center', render: (v) => <span className="text-xs">{v.employee_name || '—'}</span> },
 ];
 
 export default function StockVouchersManager({ vouchers, filters, ingredients = [] }: StockVouchersManagerProps) {

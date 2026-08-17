@@ -121,11 +121,11 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                             </th>
                             <th
                                 onClick={() => handleSort('name')}
-                                className={`px-4 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+                                className={`px-4 text-center cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
                                     isCompact ? 'py-2.5' : 'py-4'
                                 }`}
                             >
-                                <div className="flex items-center">
+                                <div className="flex items-center justify-center">
                                     <span>Tên danh mục</span>
                                     {renderSortIcon('name')}
                                 </div>
@@ -143,11 +143,11 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                             </th>
                             <th
                                 onClick={() => handleSort('items_sum_price')}
-                                className={`px-4 text-right cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+                                className={`px-4 text-center cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
                                     isCompact ? 'py-2.5' : 'py-4'
                                 }`}
                             >
-                                <div className="flex items-center justify-end">
+                                <div className="flex items-center justify-center">
                                     <span>Tổng đơn giá</span>
                                     {renderSortIcon('items_sum_price')}
                                 </div>
@@ -189,8 +189,8 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                                             }`}
                                             onClick={() => toggleExpand(category.id)}
                                         >
-                                            <td className={`px-4 ${isCompact ? 'py-2.5' : 'py-5'}`}>
-                                                <div className="flex items-center space-x-2">
+                                            <td className={`px-4 text-center ${isCompact ? 'py-2.5' : 'py-5'}`}>
+                                                <div className="flex items-center justify-center space-x-2">
                                                     <button
                                                         type="button"
                                                         onClick={(e) => {
@@ -209,7 +209,7 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                                                 </div>
                                             </td>
 
-                                            <td className={`px-4 font-semibold text-zinc-900 dark:text-zinc-100 ${isCompact ? 'py-2.5' : 'py-5'}`}>
+                                            <td className={`px-4 text-left font-semibold text-zinc-900 dark:text-zinc-100 ${isCompact ? 'py-2.5' : 'py-5'}`}>
                                                 <div className="flex items-center space-x-2">
                                                     <Folder className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0 stroke-[1.5]" />
                                                     <span>{category.name}</span>
@@ -227,7 +227,7 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                                                 </span>
                                             </td>
 
-                                            <td className={`px-4 text-right font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums ${isCompact ? 'py-2.5' : 'py-5'}`}>
+                                            <td className={`px-4 text-center font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums ${isCompact ? 'py-2.5' : 'py-5'}`}>
                                                 {formatCurrency(category.items_sum_price)}
                                             </td>
 
@@ -272,10 +272,10 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                                                         ) : (
                                                             <table className="w-full text-left text-xs">
                                                                 <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 font-medium">
-                                                                    <tr>
-                                                                        <th className="py-2 px-4 w-28">Mã SP</th>
-                                                                        <th className="py-2 px-4">Tên sản phẩm</th>
-                                                                        <th className="py-2 px-4 text-right">Giá bán</th>
+                                                                    <tr className="text-center">
+                                                                        <th className="py-2 px-4 w-28 text-center">Mã SP</th>
+                                                                        <th className="py-2 px-4 text-center">Tên sản phẩm</th>
+                                                                        <th className="py-2 px-4 text-center">Giá bán</th>
                                                                         <th className="py-2 px-4 text-center">Trạng thái</th>
                                                                     </tr>
                                                                 </thead>
@@ -285,13 +285,13 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                                                                             key={child.id}
                                                                             className="hover:bg-zinc-100/80 dark:hover:bg-zinc-800/90 transition-colors"
                                                                         >
-                                                                            <td className="py-2 px-4 font-mono text-blue-600 dark:text-blue-400 font-medium">
+                                                                            <td className="py-2 px-4 text-center font-mono text-sky-600 dark:text-sky-400 font-medium">
                                                                                 SP{String(child.id).padStart(5, '0')}
                                                                             </td>
-                                                                            <td className="py-2 px-4 font-medium text-zinc-900 dark:text-zinc-100">
+                                                                            <td className="py-2 px-4 text-left font-medium text-zinc-900 dark:text-zinc-100">
                                                                                 {child.name}
                                                                             </td>
-                                                                            <td className="py-2 px-4 text-right font-medium text-emerald-600 dark:text-emerald-400">
+                                                                            <td className="py-2 px-4 text-center font-medium text-emerald-600 dark:text-emerald-400 tabular-nums">
                                                                                 {formatCurrency(child.price)}
                                                                             </td>
                                                                             <td className="py-2 px-4 text-center">
@@ -330,7 +330,7 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                         onClick={() => setIsCompact(!isCompact)}
                         className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border font-medium transition-colors ${
                             isCompact
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
                                 : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700'
                         }`}
                         title="Bật/Tắt chế độ hiển thị thu gọn"
@@ -352,7 +352,7 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                                 }}
                                 className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${
                                     pageSize === size
-                                        ? 'bg-blue-600 text-white'
+                                        ? 'bg-sky-600 text-white'
                                         : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                                 }`}
                             >

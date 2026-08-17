@@ -39,10 +39,11 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
         {
             key: 'image',
             header: 'Ảnh',
+            align: 'center',
             hideWhenCompact: true,
             className: 'w-20',
             render: (item) => (
-                <div className="w-10 h-10 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto">
                     {item.image ? (
                         <img src={cdnAsset(item.image, { w: 96, format: 'webp' })} alt={item.name} className="w-full h-full object-cover" />
                     ) : (
@@ -54,6 +55,7 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
         {
             key: 'code',
             header: 'Mã SP',
+            align: 'center',
             sortable: true,
             className: 'font-mono text-xs text-sky-600 dark:text-sky-400 font-medium tabular-nums',
             render: (item) => formatProductCode(item.id),
@@ -61,12 +63,14 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
         {
             key: 'name',
             header: 'Tên sản phẩm',
+            align: 'left',
             sortable: true,
             render: (item) => <span className="font-medium text-zinc-900 dark:text-zinc-100">{item.name}</span>,
         },
         {
             key: 'category',
             header: 'Danh mục',
+            align: 'center',
             sortable: true,
             render: (item) => <span className="text-zinc-600 dark:text-zinc-400">{item.category?.name ?? '—'}</span>,
         },
@@ -74,7 +78,7 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
             key: 'price',
             header: 'Giá bán',
             sortable: true,
-            align: 'right',
+            align: 'center',
             render: (item) => <span className="font-medium text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(item.price)}</span>,
         },
         {

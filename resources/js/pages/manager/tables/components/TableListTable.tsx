@@ -60,9 +60,10 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
         {
             key: 'table_number',
             header: 'Mã / Số bàn',
+            align: 'center',
             sortable: true,
             render: (item) => (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-center space-x-2">
                     <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">
                         <Armchair className="w-4 h-4 stroke-[1.5]" />
                     </div>
@@ -73,6 +74,7 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
         {
             key: 'area',
             header: 'Khu vực / Tầng',
+            align: 'center',
             sortable: true,
             render: (item) => <span className="text-zinc-600 dark:text-zinc-400 font-medium">{item.area || '—'}</span>,
         },

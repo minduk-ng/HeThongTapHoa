@@ -242,32 +242,32 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
                 <div className="overflow-x-auto">
                     <table className="data-table">
                     <thead>
-                        <tr>
-                            <th>Tên Role</th>
-                            <th>Mô tả</th>
-                            <th>Hệ thống</th>
-                            <th>Số quyền</th>
-                            <th className="text-right">Hành động</th>
+                        <tr className="text-center">
+                            <th className="text-center">Tên Role</th>
+                            <th className="text-center">Mô tả</th>
+                            <th className="text-center">Hệ thống</th>
+                            <th className="text-center">Số quyền</th>
+                            <th className="text-center">Hành động</th>
                         </tr>
                     </thead>
                     <tbody className="table-body">
                         {roles.map((role) => (
                             <tr key={role.id} className="data-table-row">
-                                <td className="font-bold text-indigo-600 dark:text-indigo-400">{role.name}</td>
-                                <td className="text-gray-600 dark:text-gray-300">{role.description}</td>
-                                <td>
+                                <td className="text-left font-bold text-indigo-600 dark:text-indigo-400">{role.name}</td>
+                                <td className="text-left text-gray-600 dark:text-gray-300">{role.description}</td>
+                                <td className="text-center">
                                     {role.is_system ? (
                                         <span className="badge badge-danger">Hệ thống</span>
                                     ) : (
                                         <span className="badge badge-secondary">Tùy chỉnh</span>
                                     )}
                                 </td>
-                                <td>
+                                <td className="text-center">
                                     <span className="badge badge-info">
                                         {role.permissions ? role.permissions.length : 0} quyền
                                     </span>
                                 </td>
-                                <td className="text-right space-x-2">
+                                <td className="text-center space-x-2">
                                     <button onClick={() => openEditModal(role)} className="btn-sm btn-edit">
                                         Sửa
                                     </button>
