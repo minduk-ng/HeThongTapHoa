@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Box, ArrowDownToLine, ArrowUpFromLine, Plus, CalendarDays, RotateCcw, Filter } from 'lucide-react';
+import { Box, ArrowDownToLine, ArrowUpFromLine, Plus, CalendarDays, RotateCcw, Filter, SlidersHorizontal } from 'lucide-react';
 import DashboardLayout from '../../../../layouts/DashboardLayout';
 import ManagerPageLayout from '../../../../components/ManagerPageLayout';
 import StockImportModal from '../ingredients/components/StockImportModal';
@@ -10,7 +10,7 @@ import DatePicker from '../../../../components/DatePicker';
 interface VoucherData {
     id: number;
     voucher_code: string;
-    type: 'import' | 'export';
+    type: 'import' | 'export' | 'adjustment';
     transacted_at: string;
     sort_key?: string;
     note: string | null;
@@ -29,14 +29,24 @@ const columns: DataTableColumn<VoucherData>[] = [
         key: 'type',
         header: 'Loại',
         sortable: true,
-        render: (v) => (
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                v.type === 'import' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
-            }`}>
-                {v.type === 'import' ? <ArrowDownToLine className="w-3 h-3 stroke-[1.5]" /> : <ArrowUpFromLine className="w-3 h-3 stroke-[1.5]" />}
-                {v.type === 'import' ? 'Nhập' : 'Xuất'}
-            </span>
-        ),
+        render: (v) => {
+            if (v.type === 'adjustment') {
+                return (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+                        <SlidersHorizontal className="w-3 h-3 stroke-[1.5]" />
+                        Điều chỉnh
+                    </span>
+                );
+            }
+            return (
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                    v.type === 'import' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                }`}>
+                    {v.type === 'import' ? <ArrowDownToLine className="w-3 h-3 stroke-[1.5]" /> : <ArrowUpFromLine className="w-3 h-3 stroke-[1.5]" />}
+                    {v.type === 'import' ? 'Nhập' : 'Xuất'}
+                </span>
+            );
+        },
     },
     { key: 'transacted_at', header: 'Thời điểm', sortable: true, render: (v) => <span className="text-xs tabular-nums">{v.transacted_at}</span> },
     { key: 'note', header: 'Ghi chú', render: (v) => <span className="text-xs text-zinc-500 dark:text-zinc-400">{v.note || '—'}</span> },
@@ -102,6 +112,7 @@ export default function StockVouchersManager({ vouchers, filters, ingredients = 
                                         <option value="all">Tất cả loại phiếu</option>
                                         <option value="import">Phiếu nhập</option>
                                         <option value="export">Phiếu xuất</option>
+                                        <option value="adjustment">Phiếu điều chỉnh</option>
                                     </select>
                                 </div>
 

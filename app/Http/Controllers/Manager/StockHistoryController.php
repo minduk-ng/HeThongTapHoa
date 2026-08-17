@@ -30,7 +30,14 @@ class StockHistoryController extends Controller
             ->orderBy('stock_voucher_items.id')
             ->get();
 
-        $running = 0.0;
+        $initialBalance = 0.0;
+        if (request('from')) {
+            $initialBalance = (float) StockVoucherItem::where('ingredient_id', $ingredientId)
+                ->whereHas('voucher', fn ($q) => $q->where('transacted_at', '<', Carbon::parse(request('from'))->startOfDay()))
+                ->sum('quantity');
+        }
+
+        $running = $initialBalance;
         $rows = $items->map(function ($it) use (&$running) {
             $running += (float) $it->quantity;
             return [

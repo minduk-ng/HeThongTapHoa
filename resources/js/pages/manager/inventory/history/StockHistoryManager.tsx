@@ -1,10 +1,11 @@
 import { Head, router } from '@inertiajs/react';
-import { Box, History } from 'lucide-react';
+import { Box, History, CalendarDays, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import DataTable from '../../../../components/DataTable';
 import type { DataTableColumn } from '../../../../components/DataTable';
 import ManagerPageLayout from '../../../../components/ManagerPageLayout';
 import DashboardLayout from '../../../../layouts/DashboardLayout';
+import DatePicker from '../../../../components/DatePicker';
 
 interface Ingredient {
     id: number;
@@ -120,6 +121,19 @@ export default function StockHistoryManager({ ingredients, ingredientId, rows, f
         });
     };
 
+    const handleReset = () => {
+        setFrom('');
+        setTo('');
+        if (selIngredient) {
+            router.reload({
+                only: ['rows', 'ingredientId'],
+                data: {
+                    ingredient_id: selIngredient,
+                },
+            });
+        }
+    };
+
     return (
         <DashboardLayout fullWidth={true}>
             <Head title="Lịch sử tồn kho" />
@@ -133,40 +147,57 @@ export default function StockHistoryManager({ ingredients, ingredientId, rows, f
                         <h1 className="font-display text-xl font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">Lịch sử tồn kho</h1>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Giao dịch nhập / xuất / điều chỉnh theo nguyên liệu</p>
 
-                        <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2 mt-4">
-                            <div className="space-y-2">
+                        <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800/80 space-y-3 mt-4">
+                            <div>
+                                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Nguyên liệu</label>
                                 <select
                                     value={selIngredient}
                                     onChange={(e) => setSelIngredient(Number(e.target.value))}
-                                    className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700"
+                                    className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 transition-colors focus:border-sky-500 outline-none"
                                 >
-                                    <option value={0}>Chọn nguyên liệu</option>
+                                    <option value={0}>Chọn nguyên liệu...</option>
                                     {ingredients.map((ing) => (
                                         <option key={ing.id} value={ing.id}>
-                                            {ing.name} ({ing.code})
+                                             {ing.name} ({ing.code})
                                         </option>
                                     ))}
                                 </select>
-                                <input
-                                    type="date"
-                                    value={from}
-                                    onChange={(e) => setFrom(e.target.value)}
-                                    className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700"
+                            </div>
+
+                            <div>
+                                <label className="flex items-center space-x-1 text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                                    <CalendarDays className="w-3.5 h-3.5 stroke-[1.5]" />
+                                    <span>Khoảng thời gian</span>
+                                </label>
+                                <DatePicker
+                                    mode="range"
+                                    startDate={from}
+                                    endDate={to}
+                                    onChange={(s, e) => {
+                                        setFrom(s ?? '');
+                                        setTo(e ?? '');
+                                    }}
+                                    className="w-full justify-start text-xs"
                                 />
-                                <input
-                                    type="date"
-                                    value={to}
-                                    onChange={(e) => setTo(e.target.value)}
-                                    className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700"
-                                />
+                            </div>
+
+                            <div className="flex items-center space-x-2 pt-1">
                                 <button
                                     type="button"
                                     onClick={applyFilters}
                                     disabled={!selIngredient}
-                                    className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl"
+                                    className="flex-1 flex items-center justify-center space-x-1.5 px-3 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-colors"
                                 >
-                                    <History className="w-4 h-4" />
-                                    <span>Xem lịch sử</span>
+                                    <History className="w-3.5 h-3.5 stroke-[1.5]" />
+                                    <span>Xem</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleReset}
+                                    className="flex items-center justify-center space-x-1 px-3 py-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                                >
+                                    <RotateCcw className="w-3.5 h-3.5 stroke-[1.5]" />
+                                    <span>Đặt lại</span>
                                 </button>
                             </div>
                         </div>

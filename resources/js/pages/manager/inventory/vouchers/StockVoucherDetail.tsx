@@ -1,6 +1,6 @@
 import React from 'react';
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Box, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
+import { ArrowLeft, Box, ArrowDownToLine, ArrowUpFromLine, SlidersHorizontal } from 'lucide-react';
 import DashboardLayout from '../../../../layouts/DashboardLayout';
 
 interface VoucherItemData {
@@ -17,7 +17,7 @@ interface VoucherDetailProps {
     voucher: {
         id: number;
         voucher_code: string;
-        type: 'import' | 'export';
+        type: 'import' | 'export' | 'adjustment';
         transacted_at: string;
         note: string | null;
         employee_name: string | null;
@@ -31,6 +31,13 @@ const formatCurrency = (val: number) =>
 
 export default function StockVoucherDetail({ voucher, items, total }: VoucherDetailProps) {
     const isImport = voucher.type === 'import';
+    const typeLabel =
+        voucher.type === 'adjustment'
+            ? 'Phiếu điều chỉnh'
+            : isImport
+              ? 'Phiếu nhập'
+              : 'Phiếu xuất';
+    const isAdjustment = voucher.type === 'adjustment';
 
     return (
         <DashboardLayout fullWidth={true}>
@@ -53,12 +60,14 @@ export default function StockVoucherDetail({ voucher, items, total }: VoucherDet
                                         {voucher.voucher_code}
                                     </h1>
                                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full ${
-                                        isImport
-                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                        isAdjustment
+                                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                                            : isImport
+                                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                              : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                                     }`}>
-                                        {isImport ? <ArrowDownToLine className="w-3.5 h-3.5" /> : <ArrowUpFromLine className="w-3.5 h-3.5" />}
-                                        {isImport ? 'Phiếu nhập' : 'Phiếu xuất'}
+                                        {isAdjustment ? <SlidersHorizontal className="w-3.5 h-3.5" /> : isImport ? <ArrowDownToLine className="w-3.5 h-3.5" /> : <ArrowUpFromLine className="w-3.5 h-3.5" />}
+                                        {typeLabel}
                                     </span>
                                 </div>
                             </div>
@@ -73,7 +82,7 @@ export default function StockVoucherDetail({ voucher, items, total }: VoucherDet
                             </div>
                             <div>
                                 <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Loại phiếu</span>
-                                <span className="font-semibold text-zinc-900 dark:text-zinc-100">{isImport ? 'Phiếu nhập' : 'Phiếu xuất'}</span>
+                                <span className="font-semibold text-zinc-900 dark:text-zinc-100">{typeLabel}</span>
                             </div>
                             <div>
                                 <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Thời điểm</span>

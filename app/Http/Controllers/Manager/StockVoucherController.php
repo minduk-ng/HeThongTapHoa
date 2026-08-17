@@ -20,7 +20,7 @@ class StockVoucherController extends Controller
     {
         $query = StockVoucher::with('employee', 'creator')->orderByDesc('transacted_at');
 
-        if ($request->filled('type') && in_array($request->type, ['import', 'export'], true)) {
+        if ($request->filled('type') && in_array($request->type, ['import', 'export', 'adjustment'], true)) {
             $query->where('type', $request->type);
         }
         if ($request->filled('from')) {
@@ -44,7 +44,7 @@ class StockVoucherController extends Controller
             'transacted_at' => $v->transacted_at?->format('d/m/Y H:i'),
             'sort_key' => $v->transacted_at?->toDateTimeString() ?? '',
             'note' => $v->note,
-            'employee_name' => $v->employee?->full_name,
+            'employee_name' => $v->creator?->name ?? $v->employee?->full_name ?? '—',
         ]);
 
         return Inertia::render('manager/inventory/vouchers/StockVouchersManager', [
@@ -145,7 +145,7 @@ class StockVoucherController extends Controller
                 'type' => $voucher->type,
                 'transacted_at' => $voucher->transacted_at?->format('d/m/Y H:i'),
                 'note' => $voucher->note,
-                'employee_name' => $voucher->employee?->full_name,
+                'employee_name' => $voucher->creator?->name ?? $voucher->employee?->full_name ?? '—',
             ],
             'items' => $items,
             'total' => $total,
