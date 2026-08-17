@@ -17,6 +17,7 @@ use App\Http\Controllers\Manager\ProductController;
 use App\Http\Controllers\Manager\PromotionController;
 use App\Http\Controllers\Manager\RecipeController;
 use App\Http\Controllers\Manager\StockVoucherController;
+use App\Http\Controllers\Manager\StockHistoryController;
 use App\Http\Controllers\Manager\StocktakeController;
 use App\Http\Controllers\Manager\TableController;
 use App\Http\Controllers\Reports\CancelledReportController;
@@ -161,6 +162,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/orders', [OrderListController::class, 'index'])->middleware('permission:orders.view');
         Route::get('/orders/{order}', [OrderListController::class, 'show'])->middleware('permission:orders.view');
     });
+
+    // Lịch sử tồn kho
+    Route::get('/inventory/history', [StockHistoryController::class, 'index'])->middleware('permission:inventory.history.view');
 
     // Reports Management
     Route::prefix('reports')->middleware(CheckPageAccess::class)->group(function () {
