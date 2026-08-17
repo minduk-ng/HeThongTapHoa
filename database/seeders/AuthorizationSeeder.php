@@ -205,7 +205,7 @@ class AuthorizationSeeder extends Seeder
             'inventory.vouchers.view', 'inventory.vouchers.create',
             'recipes.view', 'recipes.edit',
             'tables.view', 'tables.create', 'tables.edit', 'tables.delete',
-            'pos.view', 'pos.create', 'pos.bypass_kitchen_lock', 'pos.cancel_item',
+            'pos.view', 'pos.create', 'pos.cancel_item',
             'kitchen.view', 'kitchen.update', 'kitchen.cancel_item',
             'serving.view', 'serving.update',
             'shifts.open', 'shifts.view', 'shifts.close',

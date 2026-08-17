@@ -80,7 +80,7 @@ function posAdmin(): User
 
 /**
  * Tạo user Nhân viên (non-admin) với danh sách permission và page access cụ thể.
- * Dùng để kiểm thử các ràng buộc phân quyền (ví dụ thiếu pos.bypass_kitchen_lock).
+ * Dùng để kiểm thử các ràng buộc phân quyền (ví dụ thiếu pos.cancel_item).
  */
 function posStaff(array $permissions = ['pos.view', 'pos.create'], array $pagePaths = ['/staff/pos']): User
 {

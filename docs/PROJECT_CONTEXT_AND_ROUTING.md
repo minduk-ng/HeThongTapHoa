@@ -156,7 +156,7 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
 - **`auth`**: Bắt buộc tài khoản đã đăng nhập mới được truy cập các đường dẫn nội bộ.
 - **`guest`**: Giới hạn chỉ dành cho người dùng chưa đăng nhập (Trang Đăng nhập, Đăng ký, Quên mật khẩu).
 - **`CheckPageAccess`**: Middleware kiểm tra xem nhóm quyền (Role) của người dùng hiện tại có được phép truy cập vào trang này hay không dựa trên bảng `pages`.
-- **`permission:{name}`**: Kiểm tra phân quyền chi tiết cho từng hành động cụ thể (ví dụ `permission:pos.bypass_kitchen_lock`, `permission:products.export`).
+- **`permission:{name}`**: Kiểm tra phân quyền chi tiết cho từng hành động cụ thể (ví dụ `permission:products.export`).
 
 ---
 
@@ -164,7 +164,7 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
 
 ### 6.1 Quy Tắc Đặt Tên (Naming Convention)
 - Quyền có cấu trúc: `{page_prefix}.{action_name}`.
-- Ví dụ: `pos.view`, `pos.create`, `pos.bypass_kitchen_lock`, `pos.cancel_item`, `kitchen.cancel_item`, `products.export`, `users.edit`.
+- Ví dụ: `pos.view`, `pos.create`, `pos.cancel_item`, `kitchen.cancel_item`, `products.export`, `users.edit`.
 - `page_prefix` trùng khớp với segment đường dẫn trang để `RolesManager.tsx` tự động gom nhóm hiển thị.
 
 ### 6.2 Cơ Chế Tự Động Đăng Ký (Auto-Registration)
@@ -175,7 +175,7 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
 
 ### 6.3 Dịch Nhãn Thân Thiện & Fallback Title Case (`RolesManager.tsx`)
 - Từ khóa chuẩn (`view`, `create`, `edit`, `update`, `delete`, `import`, `export`, `cancel`, `approve`) được tự động chuyển Tiếng Việt.
-- Tính năng riêng khai báo trong `PERMISSION_LABEL_DICTIONARY` (ví dụ `bypass_kitchen_lock` $\rightarrow$ **"Duyệt khẩn cấp thanh toán"**, `cancel_item` $\rightarrow$ **"Hủy món đã gửi bếp kèm lý do"**).
+- Tính năng riêng khai báo trong `PERMISSION_LABEL_DICTIONARY` (ví dụ `cancel_item` $\rightarrow$ **"Hủy món đã gửi bếp kèm lý do"**).
 - Tên mới dạng `snake_case` chưa khai báo từ điển sẽ tự động chuyển sang **Title Case** (ví dụ `force_unlock` $\rightarrow$ **"Force Unlock"**).
 
 ---
@@ -220,7 +220,7 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
 
 ### 8.4 Khóa nút Thanh toán (`POSCartPanel.tsx` & `usePOSCheckout.ts`)
 - **Khóa khi có giỏ nháp chưa gửi Bếp**: Khi có món nháp (`hasUnconfirmedChanges`), nút Thanh toán bị khóa hoàn toàn (kể cả với Manager/Admin), bắt buộc phải bấm "Gửi bếp chế biến" để lưu đơn xuống Bếp trước.
-- **Khóa khi món đang chế biến**: Khi đơn hàng có món đang chờ Bếp làm (`hasKitchenPendingOrders`), nút Thanh toán bị khóa trừ khi Quản lý/Admin bấm "Duyệt khẩn cấp".
+- **Thanh toán khi món đang chế biến**: Đơn có món đang chờ Bếp làm (`hasKitchenPendingOrders`) VẪN thanh toán được. Sau khi thanh toán (`paid`), Bếp/Phục vụ tiếp tục hoàn thành món bình thường.
 
 ### 8.5 Đồng bộ Realtime Bếp ↔ POS qua Reverb (`POSManager.tsx`)
 - `POSManager.tsx` đăng ký đầy đủ các sự kiện `.OrderSentToKitchen`, `.OrderCompleted`, `.ItemsReadyToServe`, `.TableStatusUpdated`, `.TableTransferred` trên `pos-channel`.

@@ -15,7 +15,7 @@
   - Giảm món đã gửi Bếp: Mở **Modal chọn lý do giảm món** (`Khách đổi ý`, `Món bị hỏng`, `Hết nguyên liệu`,...) và lưu trạng thái **chờ giảm (Staged Reduction)**.
 - **Khóa Nút Thanh Toán Bảo Vệ**:
   - Tự động khóa nút Thanh toán khi có giỏ hàng nháp chưa gửi Bếp (bắt buộc phải gửi Bếp trước).
-  - Tự động khóa nút Thanh toán khi bàn có món đang chế biến tại Bếp trừ khi Admin/Quản lý mở nút **"Duyệt khẩn cấp"** (`pos.bypass_kitchen_lock`).
+  - Thanh toán được ngay cả khi đơn còn món đang chế biến tại Bếp; Bếp/Phục vụ vẫn hoàn thành món sau khi thanh toán.
 - **In Hóa Đơn & Đa Phương Thức Thanh Toán**: Hỗ trợ Tiền mặt, Chuyển khoản QR, Thẻ ngân hàng, tính tiền thừa tự động.
 
 ---
@@ -52,7 +52,7 @@
 ---
 
 ### 🛡️ 6. Phân Quyền Vai Trò & Bảo Mật OTP (`/admin/roles`, `/admin/permissions`)
-- **Phân Quyền Đa Vai Trò (RBAC)**: Tự động gom nhóm quyền theo từng trang, phân quyền chi tiết cho từng hành động (`pos.bypass_kitchen_lock`, `products.export`, `users.edit`).
+- **Phân Quyền Đa Vai Trò (RBAC)**: Tự động gom nhóm quyền theo từng trang, phân quyền chi tiết cho từng hành động (`products.export`, `users.edit`).
 - **Xác Thực Bảo Mật**: Đăng nhập Email/Mật khẩu, Google OAuth, mã OTP 6 số qua Email, chống dò quét Brute-force reCAPTCHA v2.
 
 ---
