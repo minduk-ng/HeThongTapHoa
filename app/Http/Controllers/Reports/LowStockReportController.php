@@ -34,6 +34,8 @@ class LowStockReportController extends Controller
 
         return Inertia::render('reports/LowStockReport', [
             'rows' => $rows,
+            'startDate' => now()->toDateString(),
+            'endDate' => now()->toDateString(),
             'filters' => request()->only(['search']),
         ]);
     }

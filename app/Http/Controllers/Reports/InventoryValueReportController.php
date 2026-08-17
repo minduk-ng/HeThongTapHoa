@@ -32,6 +32,8 @@ class InventoryValueReportController extends Controller
         return Inertia::render('reports/InventoryValueReport', [
             'rows' => $rows,
             'totalValue' => $totalValue,
+            'startDate' => now()->toDateString(),
+            'endDate' => now()->toDateString(),
             'filters' => request()->only(['search']),
         ]);
     }

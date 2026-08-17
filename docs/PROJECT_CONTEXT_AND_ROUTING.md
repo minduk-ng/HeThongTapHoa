@@ -104,9 +104,11 @@
 
 ### 2.6 Navigation Sidebar & Nhóm Báo Cáo (Menu `__subs` + Sidebar Flyout)
 - **Nguồn dữ liệu menu**: bảng `pages` (group_name, sub_group, sort_order) → `HandleInertiaRequests.php` build `navigation`. Group có `sub_group` trở thành object `{ __subs: { <sub_group>: [...] } }`; group không có là mảng phẳng. `RolesManager` / `PagesManager` chỉnh nhóm trang.
-- **Nhóm Báo cáo** gồm 2 sub_group:
-  - **Doanh thu**: `/reports/sales-invoices`, `/reports/invoice-items`, `/reports/product-details`, `/reports/profit`.
-  - **Hoạt động**: `/reports/cancelled`, `/reports/reservations`, `/reports/payments`.
+- **Nhóm Báo cáo** gồm 4 sub_group chuyên biệt:
+  - **Kho**: `/reports/inventory-value`, `/reports/low-stock`, `/reports/expiring`, `/reports/stock-movement`, `/reports/consumption`.
+  - **Bán hàng**: `/reports/sales-invoices`, `/reports/invoice-items`, `/reports/product-details`.
+  - **Tài chính**: `/reports/profit`, `/reports/payments`.
+  - **Vận hành**: `/reports/cancelled`, `/reports/reservations`, `/reports/shifts`.
 - **Sidebar (menu header)**: `resources/js/components/Sidebar.tsx` — group có `__subs` render **flyout 2 cấp kiểu file-tree** (cấp 1 danh sách sub_group dọc, cấp 2 mở sang phải ngang hàng mục cha, chỉ hiện khi hover/click mục cha — xem quy tắc mục 15 trong `AGENTS.md`). Group phẳng giữ dropdown 1 cột cũ.
 - **Trang chủ** là group riêng đứng đầu sidebar (`group_name = "Trang chủ"`, `sort_order = 1`, route `/`).
 

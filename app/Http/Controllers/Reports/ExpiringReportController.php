@@ -28,6 +28,8 @@ class ExpiringReportController extends Controller
 
         return Inertia::render('reports/ExpiringReport', [
             'rows' => $rows,
+            'startDate' => now()->toDateString(),
+            'endDate' => now()->toDateString(),
         ]);
     }
 }

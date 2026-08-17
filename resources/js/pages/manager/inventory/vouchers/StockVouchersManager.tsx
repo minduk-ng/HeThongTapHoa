@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Box, ArrowDownToLine, ArrowUpFromLine, Plus } from 'lucide-react';
+import { Box, ArrowDownToLine, ArrowUpFromLine, Plus, CalendarDays, RotateCcw, Filter } from 'lucide-react';
 import DashboardLayout from '../../../../layouts/DashboardLayout';
 import ManagerPageLayout from '../../../../components/ManagerPageLayout';
 import StockImportModal from '../ingredients/components/StockImportModal';
 import DataTable, { DataTableColumn } from '../../../../components/DataTable';
+import DatePicker from '../../../../components/DatePicker';
 
 interface VoucherData {
     id: number;
@@ -30,15 +31,15 @@ const columns: DataTableColumn<VoucherData>[] = [
         sortable: true,
         render: (v) => (
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                v.type === 'import' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                v.type === 'import' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
             }`}>
-                {v.type === 'import' ? <ArrowDownToLine className="w-3 h-3" /> : <ArrowUpFromLine className="w-3 h-3" />}
+                {v.type === 'import' ? <ArrowDownToLine className="w-3 h-3 stroke-[1.5]" /> : <ArrowUpFromLine className="w-3 h-3 stroke-[1.5]" />}
                 {v.type === 'import' ? 'Nhập' : 'Xuất'}
             </span>
         ),
     },
-    { key: 'transacted_at', header: 'Thời điểm', sortable: true, render: (v) => <span className="text-xs">{v.transacted_at}</span> },
-    { key: 'note', header: 'Ghi chú', render: (v) => <span className="text-xs text-zinc-500">{v.note || '—'}</span> },
+    { key: 'transacted_at', header: 'Thời điểm', sortable: true, render: (v) => <span className="text-xs tabular-nums">{v.transacted_at}</span> },
+    { key: 'note', header: 'Ghi chú', render: (v) => <span className="text-xs text-zinc-500 dark:text-zinc-400">{v.note || '—'}</span> },
     { key: 'employee_name', header: 'Người tạo', render: (v) => <span className="text-xs">{v.employee_name || '—'}</span> },
 ];
 
@@ -58,6 +59,14 @@ export default function StockVouchersManager({ vouchers, filters, ingredients = 
         }, { preserveState: true });
     };
 
+    const handleReset = () => {
+        setTypeFilter('all');
+        setFrom('');
+        setTo('');
+        setSearch('');
+        router.get('/manager/inventory/vouchers', {}, { preserveState: true });
+    };
+
     return (
         <DashboardLayout fullWidth={true}>
             <Head title="Phiếu nhập / xuất kho" />
@@ -75,33 +84,73 @@ export default function StockVouchersManager({ vouchers, filters, ingredients = 
                             <button
                                 type="button"
                                 onClick={() => setIsImportOpen(true)}
-                                className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl"
+                                className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors"
                             >
-                                <Plus className="w-4 h-4" />
+                                <Plus className="w-4 h-4 stroke-[1.5]" />
                                 <span>Tạo phiếu nhập</span>
                             </button>
 
                             {/* Filters */}
-                            <div className="space-y-2 pt-2">
-                                <select
-                                    value={typeFilter}
-                                    onChange={(e) => { setTypeFilter(e.target.value); }}
-                                    className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700"
-                                >
-                                    <option value="all">Tất cả loại phiếu</option>
-                                    <option value="import">Phiếu nhập</option>
-                                    <option value="export">Phiếu xuất</option>
-                                </select>
-                                <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700" />
-                                <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700" />
-                                <input
-                                    type="text"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Tìm theo mã / ghi chú..."
-                                    className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700"
-                                />
-                                <button type="button" onClick={applyFilters} className="w-full px-3 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl">Lọc</button>
+                            <div className="space-y-3 pt-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Loại phiếu</label>
+                                    <select
+                                        value={typeFilter}
+                                        onChange={(e) => { setTypeFilter(e.target.value); }}
+                                        className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 transition-colors focus:border-sky-500 outline-none"
+                                    >
+                                        <option value="all">Tất cả loại phiếu</option>
+                                        <option value="import">Phiếu nhập</option>
+                                        <option value="export">Phiếu xuất</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="flex items-center space-x-1 text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                                        <CalendarDays className="w-3.5 h-3.5 stroke-[1.5]" />
+                                        <span>Khoảng thời gian</span>
+                                    </label>
+                                    <DatePicker
+                                        mode="range"
+                                        startDate={from}
+                                        endDate={to}
+                                        onChange={(s, e) => {
+                                            setFrom(s ?? '');
+                                            setTo(e ?? '');
+                                        }}
+                                        className="w-full justify-start text-xs"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Tìm kiếm</label>
+                                    <input
+                                        type="text"
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        placeholder="Tìm theo mã / ghi chú..."
+                                        className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 transition-colors focus:border-sky-500 outline-none"
+                                    />
+                                </div>
+
+                                <div className="flex items-center space-x-2 pt-1">
+                                    <button
+                                        type="button"
+                                        onClick={applyFilters}
+                                        className="flex-1 flex items-center justify-center space-x-1.5 px-3 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl transition-colors"
+                                    >
+                                        <Filter className="w-3.5 h-3.5 stroke-[1.5]" />
+                                        <span>Lọc</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleReset}
+                                        className="flex items-center justify-center space-x-1 px-3 py-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                                    >
+                                        <RotateCcw className="w-3.5 h-3.5 stroke-[1.5]" />
+                                        <span>Đặt lại</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
