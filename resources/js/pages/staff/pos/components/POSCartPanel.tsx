@@ -84,15 +84,11 @@ export default function POSCartPanel({
     onOpenDeposit,
 }: POSCartPanelProps) {
     const { auth } = usePage<any>().props;
-    const canBypassKitchen = !!(
-        auth?.is_admin || auth?.permissions?.includes('pos.bypass_kitchen_lock')
-    );
     const canCancel = !!(
         auth?.is_admin ||
         auth?.permissions?.includes('pos.cancel_item') ||
         auth?.permissions?.includes('kitchen.cancel_item')
     );
-    const [managerBypass, setManagerBypass] = useState(false);
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
     const [isCheckoutDropUpOpen, setIsCheckoutDropUpOpen] = useState(false);
@@ -180,14 +176,8 @@ export default function POSCartPanel({
         unconfirmedItems.length > 0 || hasStagedReductions;
 
     const confirmedItems = cartItems.filter((i) => i.isConfirmed);
-    const hasKitchenPendingOrders = confirmedItems.some(
-        (i) => !i.isKitchenCompleted,
-    );
-
-    const isKitchenBlocked = hasKitchenPendingOrders && !managerBypass;
     const isPaymentBlocked =
         hasUnconfirmedChanges ||
-        isKitchenBlocked ||
         activeInvoiceId.startsWith('draft_');
 
     // Virtual "Mang đi" table (id = 0): orders belong to independent customers,
@@ -747,24 +737,6 @@ export default function POSCartPanel({
 
             {/* Financial Summary & Actions Footer (Fixed Bottom) */}
             <div className="shrink-0 space-y-3 border-t border-zinc-200/80 bg-zinc-50/60 p-4 dark:border-zinc-800/80 dark:bg-zinc-800/40">
-                {/* Kitchen completion status notice */}
-                {hasKitchenPendingOrders && (
-                    <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/80 p-2.5 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
-                        <span>Đang chờ Bếp hoàn tất món ăn...</span>
-                        {canBypassKitchen && (
-                            <button
-                                type="button"
-                                onClick={() => setManagerBypass(!managerBypass)}
-                                className="ml-2 font-semibold text-amber-700 hover:underline dark:text-amber-300"
-                            >
-                                {managerBypass
-                                    ? 'Bắt buộc khóa'
-                                    : 'Duyệt khẩn cấp'}
-                            </button>
-                        )}
-                    </div>
-                )}
-
                 <div className="space-y-1 text-xs">
                     <div className="flex justify-between text-zinc-500 dark:text-zinc-400">
                         <span>
@@ -901,9 +873,7 @@ export default function POSCartPanel({
                                                     ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}`
                                                     : hasUnconfirmedChanges
                                                     ? 'Vui lòng bấm "Gửi bếp chế biến" để lưu giỏ hàng trước khi thanh toán'
-                                                    : isKitchenBlocked
-                                                        ? 'Cần gửi toàn bộ món xuống Bếp và chờ Bếp làm xong mới được thanh toán'
-                                                        : isTakeaway
+                                                    : isTakeaway
                                                         ? 'Thanh toán đơn hiện tại'
                                                         : 'Thanh toán tất cả đơn'
                                             }
