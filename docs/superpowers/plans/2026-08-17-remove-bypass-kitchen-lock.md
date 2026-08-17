@@ -26,11 +26,12 @@
 **Files:**
 - Create: `database/migrations/2026_08_17_000001_remove_bypass_kitchen_lock_permission.php`
 - Modify: `app/Http/Controllers/Staff/PaymentController.php`
-- Test: `tests/Feature/POSCheckoutTest.php`, `tests/Feature/POSBulkCheckoutTest.php`
+- Modify: `app/Http/Controllers/Staff/KitchenController.php`
+- Test: `tests/Feature/POSCheckoutTest.php`, `tests/Feature/POSBulkCheckoutTest.php`, `tests/Feature/KitchenPaidGuardTest.php`
 
 **Interfaces:**
-- Consumes: `PaymentController@checkout`, `@bulkCheckout` — giữ nguyên signature/route.
-- Produces: thanh toán không còn phụ thuộc trạng thái món; bảng `permissions` không còn dòng `pos.bypass_kitchen_lock`.
+- Consumes: `PaymentController@checkout`, `@bulkCheckout`, `KitchenController@completeItems` — giữ nguyên signature/route.
+- Produces: thanh toán không còn phụ thuộc trạng thái món; bảng `permissions` không còn dòng `pos.bypass_kitchen_lock`; món của đơn `paid` vẫn được bếp đánh dấu `completed` (đơn giữ `paid`).
 
 - [ ] **Step 1: Ghi nhận số bản ghi trước khi migrate**
 
@@ -95,6 +96,36 @@ return new class extends Migration
                     }
                 }
 ```
+
+- [ ] **Step 4b: Bỏ paid-guard trong KitchenController `completeItems`**
+
+`app/Http/Controllers/Staff/KitchenController.php` — `completeItems()` (dòng ~180), đổi:
+
+```php
+                if (! $order || in_array($order->status, ['paid', 'cancelled'], true)) {
+                    $skipped = true;
+
+                    return;
+                }
+```
+
+thành:
+
+```php
+                if (! $order || $order->status === 'cancelled') {
+                    $skipped = true;
+
+                    return;
+                }
+```
+
+→ Món của đơn `paid` vẫn được `completed`. Đơn `cancelled` vẫn chặn.
+
+**GIỮ NGUYÊN** guard flip status đơn (dòng ~201): `! in_array($order->status, ['paid', 'cancelled'], true)` — đơn `paid` không bị đổi thành `completed`.
+
+Cập nhật `tests/Feature/KitchenPaidGuardTest.php`:
+- Test `kitchen completeItems khong un-pay don da paid` (dòng 15-27): giữ assert đơn vẫn `paid`; THÊM assert món `completed` (hành vi mới cho phép hoàn thành món của đơn paid).
+- Các test còn lại (`completeOrder khong un-pay`, `khong resurrect cancelled`, `cancelItem khong huy paid`) — giữ nguyên.
 
 - [ ] **Step 5: Chạy migration**
 
@@ -197,10 +228,10 @@ test('bếp vẫn hoàn thành món sau khi đơn đã thanh toán', function ()
 - [ ] **Step 10: Chạy test + commit**
 
 ```bash
-php artisan test --filter="POSCheckoutTest|POSBulkCheckoutTest"
+php artisan test --filter="POSCheckoutTest|POSBulkCheckoutTest|KitchenPaidGuardTest"
 php artisan test
-git add database/migrations/2026_08_17_000001_remove_bypass_kitchen_lock_permission.php app/Http/Controllers/Staff/PaymentController.php tests/Feature/POSCheckoutTest.php tests/Feature/POSBulkCheckoutTest.php
-git commit -m "feat: bo chan kitchen lock - thanh toan duoc khi mon dang o bep, bep van hoan thanh sau paid"
+git add database/migrations/2026_08_17_000001_remove_bypass_kitchen_lock_permission.php app/Http/Controllers/Staff/PaymentController.php app/Http/Controllers/Staff/KitchenController.php tests/Feature/POSCheckoutTest.php tests/Feature/POSBulkCheckoutTest.php tests/Feature/KitchenPaidGuardTest.php
+git commit -m "feat: bo chan kitchen lock - thanh toan duoc khi mon dang o bep, bep van hoan thanh mon sau paid"
 ```
 Expected: toàn bộ xanh.
 
@@ -384,4 +415,5 @@ Expected: tất cả xanh.
 - **Không placeholder:** mọi bước có code/lệnh cụ thể.
 - **Type consistency:** không thêm tên mới; chỉ xoá `canBypassKitchen`/`managerBypass`/`isKitchenBlocked`/`hasKitchenPendingOrders` đồng bộ. `auth` giữ (dùng cho `canCancel`).
 - **An toàn DB:** migration Task 1 Step 5-6 — chỉ DELETE có WHERE, verify count trước/sau, không đụng bảng khác.
+- **Kitchen paid-guard (quyết định user):** món của đơn `paid` vẫn được bếp đánh dấu `completed`; đơn GIỮ `paid` (không flip). Điều chỉnh `KitchenController@completeItems` + `KitchenPaidGuardTest`.
 - **Lưu ý:** route kitchen là `/staff/kitchen/complete-items` (đã xác minh trong KitchenFlowTest). Nếu `confirmedItems` còn dùng chỗ khác thì giữ.
