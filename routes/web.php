@@ -19,6 +19,7 @@ use App\Http\Controllers\Manager\RecipeController;
 use App\Http\Controllers\Manager\StockVoucherController;
 use App\Http\Controllers\Manager\TableController;
 use App\Http\Controllers\Reports\CancelledReportController;
+use App\Http\Controllers\Reports\ConsumptionReportController;
 use App\Http\Controllers\Reports\ExpiringReportController;
 use App\Http\Controllers\Reports\InventoryValueReportController;
 use App\Http\Controllers\Reports\InvoiceItemsReportController;
@@ -29,6 +30,7 @@ use App\Http\Controllers\Reports\ProfitReportController;
 use App\Http\Controllers\Reports\ReservationsReportController;
 use App\Http\Controllers\Reports\SalesInvoiceReportController;
 use App\Http\Controllers\Reports\ShiftReportController;
+use App\Http\Controllers\Reports\StockMovementReportController;
 use App\Http\Controllers\Staff\KitchenController;
 use App\Http\Controllers\Staff\PaymentController;
 use App\Http\Controllers\Staff\POSController;
@@ -168,6 +170,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventory-value', [InventoryValueReportController::class, 'index'])->middleware('permission:reports.view');
         Route::get('/low-stock', [LowStockReportController::class, 'index'])->middleware('permission:reports.view');
         Route::get('/expiring', [ExpiringReportController::class, 'index'])->middleware('permission:reports.view');
+        Route::get('/stock-movement', [StockMovementReportController::class, 'index'])->middleware('permission:reports.view');
+        Route::get('/consumption', [ConsumptionReportController::class, 'index'])->middleware('permission:reports.view');
     });
 
     // Staff Features (POS & Kitchen Display)
