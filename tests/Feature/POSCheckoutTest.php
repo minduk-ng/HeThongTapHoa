@@ -10,8 +10,7 @@ use App\Models\OrderPromotion;
 | POS — Thanh toán đơn lẻ (checkout)
 |--------------------------------------------------------------------------
 | Bao phủ:
-| - Khóa bếp: không cho thanh toán khi món chưa hoàn tất (thiếu quyền bypass)
-| - Quyền pos.bypass_kitchen_lock cho phép duyệt khẩn cấp
+| - Thanh toán được ngay khi đơn còn món ở bếp; sau khi paid bếp vẫn hoàn thành món
 | - Tạo hóa đơn đúng tổng tiền, nhả bàn khi hết đơn
 | - Bàn KHÔNG được nhả khi vẫn còn đơn khác đang hoạt động
 | - Chặn thanh toán lại đơn đã paid/cancelled
@@ -20,28 +19,8 @@ use App\Models\OrderPromotion;
 | - Idempotency chống tạo hóa đơn trùng
 */
 
-test('nhân viên thường không thể thanh toán khi món chưa được bếp hoàn tất', function () {
+test('thanh toán được khi đơn còn món pending/processing ở bếp', function () {
     $staff = posStaff(['pos.view', 'pos.create']);
-    $this->actingAs($staff);
-    $table = posTable(['status' => 'occupied']);
-    $item = posMenuItem();
-    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 20000, 'status' => 'pending']]);
-
-    $response = $this->post('/staff/pos/checkout', [
-        'order_id' => $order->id,
-        'payment_method' => 'cash',
-        'amount_received' => 20000,
-        'change_amount' => 0,
-    ]);
-
-    $response->assertSessionHasErrors(['error']);
-    expect($order->fresh()->status)->toBe('pending');
-    expect(Invoice::count())->toBe(0);
-    expect($table->fresh()->status)->toBe('occupied');
-});
-
-test('người có quyền bypass_kitchen_lock được duyệt khẩn cấp thanh toán món chưa hoàn tất', function () {
-    $staff = posStaff(['pos.view', 'pos.create', 'pos.bypass_kitchen_lock']);
     $this->actingAs($staff);
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem();
@@ -479,4 +458,27 @@ test('checkout: voucher disabled bi tu choi', function () {
         'amount_received' => 20000,
         'promotion_code' => $pc->code,
     ])->assertStatus(422);
+});
+
+test('bếp vẫn hoàn thành món sau khi đơn đã thanh toán', function () {
+    $this->actingAs(posAdmin());
+    $table = posTable(['status' => 'occupied']);
+    $item = posMenuItem();
+    $order = posOrder($table, [['item' => $item, 'status' => 'pending']]);
+
+    $this->post('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 20000,
+        'change_amount' => 0,
+    ])->assertSessionHasNoErrors();
+    expect($order->fresh()->status)->toBe('paid');
+
+    $orderItem = $order->items()->first();
+    $this->actingAs(posAdmin())->postJson('/staff/kitchen/complete-items', [
+        'order_id' => $order->id,
+        'item_ids' => [$orderItem->id],
+    ])->assertOk();
+
+    expect($orderItem->fresh()->status)->toBe('completed');
 });

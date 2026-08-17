@@ -14,7 +14,7 @@ use App\Models\OrderActivity;
 |   các đơn mang đi khác của khách khác KHÔNG bị thanh toán ké
 | - REGRESSION (bàn gộp): tổng tiền hóa đơn = tổng của TẤT CẢ đơn trong nhóm
 | - Từ chối khi có đơn đã paid/cancelled trong danh sách
-| - Khóa bếp áp dụng cho từng đơn trong danh sách
+| - Thanh toán gộp được khi đơn còn món pending/processing ở bếp
 | - Nhả bàn cả nhóm sau khi thanh toán hết
 | - Idempotency chống tạo hóa đơn trùng
 */
@@ -138,7 +138,7 @@ test('thanh toán gộp bị từ chối nếu danh sách chứa đơn đã than
     expect($validOrder->fresh()->status)->toBe('completed');
 });
 
-test('khóa bếp: thanh toán gộp bị chặn nếu bất kỳ đơn nào còn món chưa hoàn tất (không có quyền bypass)', function () {
+test('thanh toán gộp được khi đơn còn món pending/processing', function () {
     $staff = posStaff(['pos.view', 'pos.create']);
     $this->actingAs($staff);
     $table = posTable(['status' => 'occupied']);
@@ -154,10 +154,8 @@ test('khóa bếp: thanh toán gộp bị chặn nếu bất kỳ đơn nào cò
         'change_amount' => 0,
     ]);
 
-    $response->assertSessionHasErrors(['error']);
-    expect(Invoice::count())->toBe(0);
-    expect($doneOrder->fresh()->status)->toBe('completed');
-    expect($cookingOrder->fresh()->status)->toBe('pending');
+    $response->assertSessionHasNoErrors();
+    expect(Invoice::count())->toBe(1);
 });
 
 test('bàn không được nhả nếu sau thanh toán gộp vẫn còn đơn khác hoạt động', function () {

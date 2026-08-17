@@ -186,16 +186,6 @@ class PaymentController extends Controller
                     throw new \Exception('Đơn đặt bàn chưa check-in, không thể thanh toán', 422);
                 }
 
-                // Check if this order is still pending/processing in kitchen
-                $hasUncompletedItems = $order->items->contains(function ($item) {
-                    return in_array($item->status, ['pending', 'processing']);
-                });
-
-                $canBypass = $request->user()->hasPermission('pos.bypass_kitchen_lock');
-                if ($hasUncompletedItems && ! $canBypass) {
-                    throw new \Exception('Bạn không có quyền duyệt khẩn cấp thanh toán khi món chưa được Bếp hoàn tất.');
-                }
-
                 $targetTable = $order->table_id ? Table::findOrFail($order->table_id) : null;
 
                 // Determine primary group table ID and all tables in this merged group
@@ -355,17 +345,6 @@ class PaymentController extends Controller
                 $reservedOrder = $orders->first(fn ($o) => $o->status === 'reserved');
                 if ($reservedOrder) {
                     throw new \Exception("Đơn {$reservedOrder->order_code} là đơn đặt bàn chưa check-in, không thể thanh toán", 422);
-                }
-
-                // Kitchen lock check
-                $canBypass = $request->user()->hasPermission('pos.bypass_kitchen_lock');
-                if (! $canBypass) {
-                    foreach ($orders as $ord) {
-                        $hasUncompleted = $ord->items->contains(fn ($item) => in_array($item->status, ['pending', 'processing']));
-                        if ($hasUncompleted) {
-                            throw new \Exception("Đơn {$ord->order_code} còn món chưa được Bếp hoàn tất.");
-                        }
-                    }
                 }
 
                 // Determine table name

@@ -177,7 +177,7 @@ class KitchenController extends Controller
 
             DB::transaction(function () use ($validated, $order, $request, &$completedItems, &$skipped) {
                 $order = Order::where('id', $order->id)->lockForUpdate()->first();
-                if (! $order || in_array($order->status, ['paid', 'cancelled'], true)) {
+                if (! $order || $order->status === 'cancelled') {
                     $skipped = true;
 
                     return;
