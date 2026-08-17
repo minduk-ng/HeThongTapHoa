@@ -25,6 +25,7 @@ class RoleController extends Controller
             'promotions.view', 'promotions.create', 'promotions.edit', 'promotions.delete',
             'ingredients.view', 'ingredients.create', 'ingredients.edit', 'ingredients.delete', 'ingredients.import',
             'inventory.vouchers.view', 'inventory.vouchers.create',
+            'inventory.stocktake.view', 'inventory.stocktake.create',
             'recipes.view', 'recipes.edit',
             'tables.view', 'tables.create', 'tables.edit', 'tables.delete',
             'pos.view', 'pos.create', 'pos.cancel_item',

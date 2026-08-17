@@ -17,6 +17,7 @@ use App\Http\Controllers\Manager\ProductController;
 use App\Http\Controllers\Manager\PromotionController;
 use App\Http\Controllers\Manager\RecipeController;
 use App\Http\Controllers\Manager\StockVoucherController;
+use App\Http\Controllers\Manager\StocktakeController;
 use App\Http\Controllers\Manager\TableController;
 use App\Http\Controllers\Reports\CancelledReportController;
 use App\Http\Controllers\Reports\ConsumptionReportController;
@@ -140,6 +141,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventory/vouchers', [StockVoucherController::class, 'index'])->middleware('permission:inventory.vouchers.view');
         Route::post('/inventory/vouchers', [StockVoucherController::class, 'store'])->middleware('permission:inventory.vouchers.create');
         Route::get('/inventory/vouchers/{id}', [StockVoucherController::class, 'show'])->middleware('permission:inventory.vouchers.view');
+
+        // Kiểm kê kho
+        Route::get('/inventory/stocktake', [StocktakeController::class, 'index'])->middleware('permission:inventory.stocktake.view');
+        Route::post('/inventory/stocktake', [StocktakeController::class, 'store'])->middleware('permission:inventory.stocktake.create');
 
         // Recipes Management
         Route::get('/inventory/recipes', [RecipeController::class, 'index'])->middleware('permission:recipes.view');

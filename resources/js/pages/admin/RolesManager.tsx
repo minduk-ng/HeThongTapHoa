@@ -22,6 +22,7 @@ const PERMISSION_LABEL_DICTIONARY: Record<string, string> = {
     cancel_item: 'Hủy món đã gửi bếp kèm lý do',
     cancel: 'Hủy bỏ',
     approve: 'Phê duyệt',
+    stocktake: 'Kiểm kê',
 };
 
 function formatPermissionLabel(permName: string): string {

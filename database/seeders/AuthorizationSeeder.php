@@ -81,6 +81,12 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 27,
             ],
             [
+                'name' => 'Kiểm kê',
+                'route_path' => '/manager/inventory/stocktake',
+                'group_name' => 'Kho',
+                'sort_order' => 28,
+            ],
+            [
                 'name' => 'Danh sách Order',
                 'route_path' => '/manager/orders',
                 'group_name' => 'Quản lý',
@@ -238,6 +244,7 @@ class AuthorizationSeeder extends Seeder
             'promotions.view', 'promotions.create', 'promotions.edit', 'promotions.delete',
             'ingredients.view', 'ingredients.create', 'ingredients.edit', 'ingredients.delete', 'ingredients.import',
             'inventory.vouchers.view', 'inventory.vouchers.create',
+            'inventory.stocktake.view', 'inventory.stocktake.create',
             'recipes.view', 'recipes.edit',
             'tables.view', 'tables.create', 'tables.edit', 'tables.delete',
             'pos.view', 'pos.create', 'pos.cancel_item',
