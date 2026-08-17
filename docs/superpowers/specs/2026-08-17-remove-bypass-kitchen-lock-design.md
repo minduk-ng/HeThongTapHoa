@@ -16,6 +16,9 @@ Nhu cầu: bỏ hẳn cơ chế chặn này — thanh toán được ngay khi đ
 - **Bỏ chặn kitchen lock** ở cả `checkout()` (đơn lẻ) và `bulkCheckout()` (gộp).
 - **Giữ nguyên chặn món nháp** chưa gửi bếp (`isConfirmed=false` / `hasUnconfirmedChanges`) — khách phải gửi toàn bộ món xuống bếp trước khi thanh toán.
 - **Sau thanh toán**: bếp/phục vụ vẫn hiển thị + hoàn thành món bình thường (không tự hủy, không thay đổi luồng bếp).
+- **Kitchen paid-guard điều chỉnh** (`KitchenController`):
+  - `completeItems` (dòng ~180): bỏ `'paid'` khỏi guard — món của đơn ĐÃ PAID vẫn được đánh dấu `completed` (bếp làm xong → phục vụ bưng). CHỈ chặn khi `cancelled`.
+  - Guard flip status đơn (dòng ~201): GIỮ NGUYÊN — đơn `paid` KHÔNG bị đổi thành `completed`/`cancelled` (không un-pay). Khi hết món active, đơn paid vẫn giữ trạng thái `paid`.
 - **Xoá hoàn toàn permission** `pos.bypass_kitchen_lock` khỏi hệ thống.
 
 ---
@@ -58,6 +61,36 @@ Nhu cầu: bỏ hẳn cơ chế chặn này — thanh toán được ngay khi đ
 → Xoá toàn bộ khối này.
 
 **Lưu ý:** trạng thái món không bị đổi — món vẫn `pending/processing/completed`. Chỉ là thanh toán không còn phụ thuộc trạng thái món.
+
+### 1b. KitchenController — cho phép hoàn thành món của đơn đã paid
+
+**`app/Http/Controllers/Staff/KitchenController.php`** — `completeItems()`:
+
+- Đổi guard dòng ~180:
+```php
+                if (! $order || in_array($order->status, ['paid', 'cancelled'], true)) {
+                    $skipped = true;
+
+                    return;
+                }
+```
+thành:
+```php
+                if (! $order || $order->status === 'cancelled') {
+                    $skipped = true;
+
+                    return;
+                }
+```
+→ Món của đơn `paid` vẫn được `completed` (bếp làm xong → phục vụ bưng). Đơn `cancelled` vẫn chặn.
+
+- **GIỮ NGUYÊN** guard flip status đơn (dòng ~201): `! in_array($order->status, ['paid', 'cancelled'], true)` — đơn `paid` không bị đổi thành `completed`. Khi hết món active, đơn paid giữ `paid`.
+
+**`tests/Feature/KitchenPaidGuardTest.php`:**
+- Test `kitchen completeItems khong un-pay don da paid` (dòng 15-27): giữ nguyên kỳ vọng đơn vẫn `paid` (assert không đổi). Nhưng món giờ ĐƯỢC completed — cập nhật/ thêm assert món `completed` để khớp hành vi mới.
+- Test `kitchen completeOrder khong un-pay don da paid` (dòng 3-13): giữ nguyên — `completeOrder` vẫn chặn đơn paid (flip status đơn vẫn không được).
+- Test `kitchen completeItems khong resurrect don da cancelled khi het mon` (dòng 29-41): giữ nguyên — cancelled vẫn chặn.
+- Test `kitchen cancelItem khong huy don da paid khi het mon` (dòng 43-55): giữ nguyên.
 
 ### 2. Frontend — `resources/js/pages/staff/pos/components/POSCartPanel.tsx`
 
@@ -216,7 +249,7 @@ Bỏ nhắc `pos.bypass_kitchen_lock` trong comment nếu có (dòng 83 nói "v�
 
 - `php artisan test` toàn bộ xanh.
 - `npx eslint`, `npm run types:check`, `npm run build` pass.
-- Kiểm tra thủ công POS: gửi đơn xuống bếp (món pending) → bấm Thanh toán được ngay; sau đó vào màn hình Bếp thấy món vẫn hiện và hoàn thành bình thường.
+- Kiểm tra thủ công POS: gửi đơn xuống bếp (món pending) → bấm Thanh toán được ngay; sau đó vào màn hình Bếp thấy món vẫn hiện và hoàn thành bình thường (đơn giữ `paid`, món thành `completed`).
 - **Kiểm tra DB an toàn:**
   - Trước migrate: `php artisan tinker --execute="echo DB::table('permissions')->where('name','pos.bypass_kitchen_lock')->count();"` — ghi nhận số bản ghi.
   - Sau migrate: `php artisan tinker --execute="echo DB::table('permissions')->where('name','pos.bypass_kitchen_lock')->count();"` → phải bằng 0.
@@ -228,8 +261,9 @@ Bỏ nhắc `pos.bypass_kitchen_lock` trong comment nếu có (dòng 83 nói "v�
 
 ## Không nằm trong phạm vi
 
-- Thay đổi luồng bếp/phục vụ (vẫn làm và hoàn thành món).
+- Thay đổi luồng phục vụ (vẫn làm và hoàn thành món).
 - Bỏ chặn món nháp chưa gửi bếp (giữ nguyên).
-- Thay đổi trạng thái món khi thanh toán (không tự hủy).
+- Flip status đơn `paid` → `completed` (GIỮ NGUYÊN chặn — không un-pay).
+- Thay đổi `completeOrder`/`cancelItem` paid-guard (giữ nguyên).
 - Các permission khác (`pos.cancel_item`, `kitchen.cancel_item`, ...).
 - **TUYỆT ĐỐI KHÔNG**: xoá sạch/toàn bộ DB, drop bảng, truncate, xoá dữ liệu bảng khác. Migration chỉ xoá 1 dòng `permissions` cụ thể (có WHERE).
