@@ -28,7 +28,13 @@ class KitchenController extends Controller
         $activeOrders = Order::with(['table', 'items' => function ($query) {
             $query->where('status', '!=', 'cancelled')->with('menuItem.category');
         }])
-            ->whereIn('status', ['pending', 'confirmed', 'processing'])
+            ->where(function ($q) {
+                $q->whereIn('status', ['pending', 'confirmed', 'processing'])
+                    ->orWhere(function ($q2) {
+                        $q2->where('status', 'paid')
+                            ->whereHas('items', fn ($i) => $i->whereIn('status', ['pending', 'processing']));
+                    });
+            })
             ->orderBy('created_at', 'asc')
             ->get();
 
