@@ -61,8 +61,10 @@ Hiện tại `promotions.code` là **unique** — mỗi mã là 1 row riêng tro
 | Route | Method | Chức năng |
 |---|---|---|
 | `/promotions` | POST | Thêm campaign; nếu có `code_prefix` + `code_quantity` → sau khi tạo campaign gọi `generate()` |
-| `/promotions/{promotion}/codes` | GET | Danh sách mã con (phân trang) + bộ đếm `unused`/`used`/tổng |
-| `/promotions/{promotion}/codes/export` | GET | Export Excel (exceljs — đã dùng ở báo cáo): cột Mã, Giá trị giảm, Hạn sử dụng, Trạng thái |
+| `/promotions/{promotion}/codes` | GET | Danh sách mã con (phân trang, hỗ trợ `per_page`) + bộ đếm `unused`/`used`/tổng |
+| `/promotions/{promotion}/codes` | GET | Tham số `?export=1` → trả **toàn bộ** mã con (no pagination) để frontend export Excel |
+
+**Export Excel:** dùng `exportXLSX` có sẵn tại `resources/js/components/reports/reportExport.ts` (exceljs lazy import). Frontend gọi `?export=1` lấy toàn bộ mã, rồi `exportXLSX` với cột Mã, Giá trị giảm, Hạn sử dụng, Trạng thái — tái dùng pattern báo cáo, không cần endpoint backend riêng.
 
 ---
 
@@ -72,7 +74,7 @@ Hiện tại `promotions.code` là **unique** — mỗi mã là 1 row riêng tro
   - Ô `code_prefix` (chuỗi cố định) + nút sinh random prefix.
   - Ô `code_quantity` (số lượng, 1–100.000).
   - Checkbox **"Mã ngẫu nhiên (voucher)"** → bật `code_random`.
-- Khi edit campaign đã có mã con: hiển thị bộ đếm (tổng / đã dùng / còn lại) + nút **"Export Excel"** + bảng danh sách mã (phân trang).
+- Khi edit campaign đã có mã con: hiển thị bộ đếm (tổng / đã dùng / còn lại) + nút **"Export Excel"** (gọi `?export=1` → `exportXLSX`) + bảng danh sách mã (phân trang).
 - Giữ nguyên các trường campaign hiện có (actions, conditions, dates, target_usage…).
 
 ---
@@ -93,8 +95,9 @@ Hiện tại `promotions.code` là **unique** — mỗi mã là 1 row riêng tro
 - `PromotionCodeServiceTest`: coupon số thứ tự đúng format; voucher không trùng + đủ số lượng; bulk insert nhanh.
 - `PromotionEngineTest`: mã con chưa dùng → ok; đã dùng → `already_used`; mã lẻ cũ vẫn ok.
 - `PaymentControllerTest`: checkout dùng mã con → 1 lần, `used_count` tăng; lần 2 reject.
-- `PromotionControllerTest`: store + prefix/quantity → tạo đủ mã; export Excel trả file; prefix trùng → 422.
+- `PromotionControllerTest`: store + prefix/quantity → tạo đủ mã; `?export=1` trả toàn bộ mã; prefix trùng → 422.
 - Race test: 2 checkout cùng mã con song song → 1 thắng 1 reject.
+- Frontend: `npm run types:check && npm run build` pass; nút Export gọi `exportXLSX` (test thủ công tải file).
 
 ---
 
