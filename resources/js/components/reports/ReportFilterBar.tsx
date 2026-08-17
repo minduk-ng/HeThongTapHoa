@@ -52,14 +52,14 @@ export default function ReportFilterBar({
                         value={searchValue}
                         onChange={(e) => onSearchChange(e.target.value)}
                         placeholder={searchPlaceholder ?? 'Tìm kiếm...'}
-                        className="w-56 rounded-lg border border-zinc-200 bg-white py-2 pr-3 pl-9 text-sm text-zinc-900 transition-colors outline-none placeholder:text-zinc-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                        className="w-56 rounded-xl border border-zinc-200/80 bg-zinc-50/50 py-2 pr-3 pl-9 text-xs text-zinc-900 transition-colors outline-none placeholder:text-zinc-400 focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-500/20 dark:border-zinc-700/80 dark:bg-zinc-800/50 dark:text-zinc-100 dark:focus:bg-zinc-800"
                     />
                 </div>
                 {extraFilters}
                 <button
                     type="button"
                     onClick={onReset}
-                    className="flex items-center space-x-1.5 rounded-lg bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
+                    className="flex items-center space-x-1.5 rounded-xl bg-zinc-100 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-200 hover:text-zinc-800 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
                 >
                     <RotateCcw className="h-3.5 w-3.5 stroke-[1.5]" />
                     <span>Đặt lại</span>

@@ -154,13 +154,13 @@ export default function ReportPage({
                 <button
                     type="button"
                     onClick={() => setColMenuOpen((v) => !v)}
-                    className="flex items-center space-x-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                    className="flex items-center space-x-1.5 rounded-xl border border-zinc-200/80 bg-zinc-50/50 px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700/80 dark:bg-zinc-800/50 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                     <Columns3 className="h-3.5 w-3.5 stroke-[1.5]" />
                     <span>Cột</span>
                 </button>
                 {colMenuOpen && (
-                    <div className="absolute right-0 z-20 mt-1 w-48 rounded-xl border border-zinc-200/80 bg-white p-2 shadow-xl dark:border-zinc-800/80 dark:bg-zinc-900">
+                    <div className="absolute right-0 z-20 mt-1.5 w-48 rounded-xl border border-zinc-200/80 bg-white p-2 shadow-xl dark:border-zinc-800/80 dark:bg-zinc-900">
                         {columns.map((c) => {
                             const isHidden = hidden.has(c.key);
                             const disabled =
@@ -169,7 +169,7 @@ export default function ReportPage({
                             return (
                                 <label
                                     key={c.key}
-                                    className={`flex items-center space-x-2 rounded-md px-2 py-1.5 text-sm text-zinc-700 dark:text-zinc-300 ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
+                                    className={`flex items-center space-x-2 rounded-lg px-2 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
                                 >
                                     <input
                                         type="checkbox"
@@ -189,21 +189,21 @@ export default function ReportPage({
                 <button
                     type="button"
                     onClick={() => setExportMenuOpen((v) => !v)}
-                    className="flex items-center space-x-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                    className="flex items-center space-x-1.5 rounded-xl border border-zinc-200/80 bg-zinc-50/50 px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700/80 dark:bg-zinc-800/50 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                     <FileDown className="h-3.5 w-3.5 stroke-[1.5]" />
                     <span>Xuất</span>
                     <ChevronDown className="h-3 w-3 text-zinc-400" />
                 </button>
                 {exportMenuOpen && (
-                    <div className="absolute right-0 z-20 mt-1 w-32 rounded-xl border border-zinc-200/80 bg-white p-1 shadow-xl dark:border-zinc-800/80 dark:bg-zinc-900">
+                    <div className="absolute right-0 z-20 mt-1.5 w-32 rounded-xl border border-zinc-200/80 bg-white p-1 shadow-xl dark:border-zinc-800/80 dark:bg-zinc-900">
                         <button
                             type="button"
                             onClick={() => {
                                 handleExportCSV();
                                 setExportMenuOpen(false);
                             }}
-                            className="flex w-full items-center space-x-2 rounded-lg px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                            className="flex w-full items-center space-x-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
                         >
                             <span>Xuất CSV</span>
                         </button>
@@ -213,7 +213,7 @@ export default function ReportPage({
                                 handleExportXLSX();
                                 setExportMenuOpen(false);
                             }}
-                            className="flex w-full items-center space-x-2 rounded-lg px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                            className="flex w-full items-center space-x-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
                         >
                             <span>Xuất Excel</span>
                         </button>
@@ -223,7 +223,7 @@ export default function ReportPage({
             <button
                 type="button"
                 onClick={() => window.print()}
-                className="flex items-center space-x-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                className="flex items-center space-x-1.5 rounded-xl border border-zinc-200/80 bg-zinc-50/50 px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700/80 dark:bg-zinc-800/50 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
                 <Printer className="h-3.5 w-3.5 stroke-[1.5]" />
                 <span>In</span>
