@@ -495,6 +495,24 @@ class CheckoutService
                 continue;
             }
             $ingredient->decrement('stock_quantity', $totalUsed);
+
+            // Trừ quantity_remaining theo lô FIFO (lô cũ nhất HSD trước)
+            $remaining = $totalUsed;
+            $lots = \App\Models\StockVoucherItem::where('ingredient_id', $ingredientId)
+                ->where('quantity_remaining', '>', 0)
+                ->whereNotNull('quantity_remaining')
+                ->orderBy('expiry_date', 'asc')
+                ->lockForUpdate()
+                ->get();
+            foreach ($lots as $lot) {
+                if ($remaining <= 0) {
+                    break;
+                }
+                $take = min((float) $lot->quantity_remaining, $remaining);
+                $lot->decrement('quantity_remaining', $take);
+                $remaining -= $take;
+            }
+
             $voucher->items()->create([
                 'ingredient_id' => $ingredientId,
                 'quantity' => -$totalUsed,

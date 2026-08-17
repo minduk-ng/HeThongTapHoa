@@ -61,6 +61,7 @@ class StockVoucherController extends Controller
             'items.*.ingredient_id' => 'required|exists:ingredients,id',
             'items.*.quantity' => 'required|numeric|gt:0',
             'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.expiry_date' => ['nullable', 'date'],
             'note' => 'nullable|string|max:255',
         ]);
 
@@ -106,6 +107,8 @@ class StockVoucherController extends Controller
                     'ingredient_id' => $ingredient->id,
                     'quantity' => $importQty,
                     'unit_price' => $importPrice,
+                    'expiry_date' => $item['expiry_date'] ?? null,
+                    'quantity_remaining' => $importQty,
                 ]);
             }
         });

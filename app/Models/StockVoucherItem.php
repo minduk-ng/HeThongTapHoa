@@ -8,12 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class StockVoucherItem extends Model
 {
     protected $fillable = [
-        'voucher_id', 'ingredient_id', 'quantity', 'unit_price',
+        'voucher_id', 'ingredient_id', 'quantity', 'unit_price', 'expiry_date', 'quantity_remaining',
     ];
 
     protected $casts = [
         'quantity' => 'float',
         'unit_price' => 'float',
+        'expiry_date' => 'date',
+        'quantity_remaining' => 'float',
     ];
 
     public function voucher(): BelongsTo

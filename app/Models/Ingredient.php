@@ -44,4 +44,15 @@ class Ingredient extends Model
     {
         return $this->hasMany(ProductRecipe::class, 'ingredient_id');
     }
+
+    public function getEffectiveExpiryDateAttribute(): ?string
+    {
+        $earliest = \App\Models\StockVoucherItem::where('ingredient_id', $this->id)
+            ->where('quantity_remaining', '>', 0)
+            ->whereNotNull('expiry_date')
+            ->orderBy('expiry_date', 'asc')
+            ->value('expiry_date');
+
+        return $earliest ? \Illuminate\Support\Carbon::parse($earliest)->toDateString() : null;
+    }
 }
