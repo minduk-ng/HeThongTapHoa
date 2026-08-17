@@ -25,6 +25,7 @@ class LowStockReportController extends Controller
             'name' => $i->name,
             'unit' => $i->unit,
             'stock_quantity' => round((float) $i->stock_quantity, 2),
+            'min_stock_alert' => round((float) $i->min_stock_alert, 2),
             'cost_price' => round((float) $i->cost_price, 2),
             'value' => round((float) $i->stock_quantity * (float) $i->cost_price, 2),
             'status' => $i->stock_quantity <= 0 ? 'out' : ($i->stock_quantity <= $i->min_stock_alert * 0.2 ? 'critical' : 'low'),

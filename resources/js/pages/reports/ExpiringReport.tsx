@@ -98,10 +98,8 @@ export default function ExpiringReport({ rows }: { rows: Row[] }) {
             <DataTable
                 columns={columns}
                 rows={rows}
-                rowKey={(r) =>
-                    `${r.ingredient_name}-${r.expiry_date}-${r.quantity_remaining}`
-                }
-                defaultSortKey="expiry_date"
+                rowKey={(r) => r.id}
+                defaultSortKey="days_left"
                 getSortValue={(r, k) => r[k as keyof Row] as string | number}
             />
         </div>

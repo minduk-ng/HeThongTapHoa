@@ -17,10 +17,11 @@ class ExpiringReportController extends Controller
             ->orderBy('expiry_date', 'asc')
             ->get()
             ->map(fn ($it) => [
+                'id' => $it->id,
                 'ingredient_name' => $it->ingredient?->name,
                 'unit' => $it->ingredient?->unit,
                 'expiry_date' => $it->expiry_date?->format('d/m/Y'),
-                'days_left' => now()->diffInDays($it->expiry_date, false),
+                'days_left' => (int) now()->diffInDays($it->expiry_date, false),
                 'quantity_remaining' => round((float) $it->quantity_remaining, 2),
                 'status' => $it->expiry_date->lt(now()) ? 'expired' : ($it->expiry_date->lte(now()->addDays(7)) ? 'soon' : 'ok'),
             ]);
