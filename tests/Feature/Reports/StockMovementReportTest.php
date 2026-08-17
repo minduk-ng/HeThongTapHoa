@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Models\Ingredient;
 use App\Models\StockVoucher;
@@ -6,7 +6,7 @@ use App\Models\User;
 
 test('report stock-movement tinh dung begin/import/export/end', function () {
     $this->actingAs(posAdmin());
-    $ing = Ingredient::create(['name' => 'Bột '.uniqid(), 'code' => 'bt'.uniqid(), 'unit' => 'kg', 'stock_quantity' => 8, 'min_stock_alert' => 2, 'cost_price' => 100]);
+    $ing = Ingredient::create(['name' => 'Bá»™t '.uniqid(), 'code' => 'bt'.uniqid(), 'unit' => 'kg', 'stock_quantity' => 8, 'min_stock_alert' => 2, 'cost_price' => 100]);
 
     $import = StockVoucher::create(['voucher_code' => 'PN-'.uniqid(), 'type' => 'import', 'transacted_at' => now()]);
     $import->items()->create(['ingredient_id' => $ing->id, 'quantity' => 5, 'unit_price' => 100]);
@@ -28,7 +28,7 @@ test('report stock-movement tinh dung begin/import/export/end', function () {
 
 test('report stock-movement loc theo from/to', function () {
     $this->actingAs(posAdmin());
-    $ing = Ingredient::create(['name' => 'Cà '.uniqid(), 'code' => 'ca'.uniqid(), 'unit' => 'g', 'stock_quantity' => 10, 'min_stock_alert' => 2, 'cost_price' => 100]);
+    $ing = Ingredient::create(['name' => 'CÃ  '.uniqid(), 'code' => 'ca'.uniqid(), 'unit' => 'g', 'stock_quantity' => 10, 'min_stock_alert' => 2, 'cost_price' => 100]);
 
     $old = StockVoucher::create(['voucher_code' => 'PN-'.uniqid(), 'type' => 'import', 'transacted_at' => '2026-06-01 10:00:00']);
     $old->items()->create(['ingredient_id' => $ing->id, 'quantity' => 4, 'unit_price' => 100]);
@@ -36,7 +36,7 @@ test('report stock-movement loc theo from/to', function () {
     $new = StockVoucher::create(['voucher_code' => 'PN-'.uniqid(), 'type' => 'import', 'transacted_at' => '2026-07-15 10:00:00']);
     $new->items()->create(['ingredient_id' => $ing->id, 'quantity' => 6, 'unit_price' => 100]);
 
-    $res = $this->get('/reports/stock-movement?from=2026-07-01&to=2026-07-31');
+    $res = $this->get('/reports/stock-movement?start_date=2026-07-01&end_date=2026-07-31');
     $res->assertOk();
     $res->assertInertia(fn ($page) => $page->where('rows.0.import_qty', 6));
 });
@@ -44,3 +44,4 @@ test('report stock-movement loc theo from/to', function () {
 test('report stock-movement nguoi dung khong co quyen bi tu choi', function () {
     $this->actingAs(User::factory()->create())->get('/reports/stock-movement')->assertStatus(403);
 });
+

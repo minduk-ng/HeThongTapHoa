@@ -12,8 +12,8 @@ class StockMovementReportController extends Controller
 {
     public function index(): Response
     {
-        $from = request('from') ? Carbon::parse(request('from'))->startOfDay() : now()->startOfMonth();
-        $to = request('to') ? Carbon::parse(request('to'))->endOfDay() : now();
+        $from = request('start_date') ? Carbon::parse(request('start_date'))->startOfDay() : now()->startOfMonth();
+        $to = request('end_date') ? Carbon::parse(request('end_date'))->endOfDay() : now();
 
         $items = StockVoucherItem::with(['voucher', 'ingredient'])
             ->whereHas('voucher', fn ($q) => $q->whereBetween('transacted_at', [$from, $to]))
@@ -41,7 +41,8 @@ class StockMovementReportController extends Controller
 
         return Inertia::render('reports/StockMovementReport', [
             'rows' => $rows,
-            'filters' => request()->only(['from', 'to']),
+            'startDate' => request('start_date') ? Carbon::parse(request('start_date'))->toDateString() : now()->startOfMonth()->toDateString(),
+            'endDate' => request('end_date') ? Carbon::parse(request('end_date'))->toDateString() : now()->toDateString(),
         ]);
     }
 }

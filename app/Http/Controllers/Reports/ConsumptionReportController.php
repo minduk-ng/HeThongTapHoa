@@ -13,8 +13,8 @@ class ConsumptionReportController extends Controller
 {
     public function index(): Response
     {
-        $from = request('from') ? Carbon::parse(request('from'))->startOfDay() : now()->startOfMonth();
-        $to = request('to') ? Carbon::parse(request('to'))->endOfDay() : now();
+        $from = request('start_date') ? Carbon::parse(request('start_date'))->startOfDay() : now()->startOfMonth();
+        $to = request('end_date') ? Carbon::parse(request('end_date'))->endOfDay() : now();
 
         $lines = InvoiceLine::whereBetween('created_at', [$from, $to])
             ->where('quantity', '>', 0)
@@ -30,6 +30,7 @@ class ConsumptionReportController extends Controller
         }
 
         $rows = $consume->map(fn ($qty, $ingId) => [
+            'id' => $ingId,
             'name' => $recipes->firstWhere('ingredient_id', $ingId)->ingredient->name,
             'unit' => $recipes->firstWhere('ingredient_id', $ingId)->ingredient->unit,
             'quantity' => round($qty, 2),
@@ -38,7 +39,8 @@ class ConsumptionReportController extends Controller
 
         return Inertia::render('reports/ConsumptionReport', [
             'rows' => $rows,
-            'filters' => request()->only(['from', 'to']),
+            'startDate' => request('start_date') ? Carbon::parse(request('start_date'))->toDateString() : now()->startOfMonth()->toDateString(),
+            'endDate' => request('end_date') ? Carbon::parse(request('end_date'))->toDateString() : now()->toDateString(),
         ]);
     }
 }
