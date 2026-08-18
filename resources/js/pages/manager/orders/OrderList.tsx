@@ -269,150 +269,105 @@ export default function OrderList({
         },
     ];
 
+    const hasActiveFilter = Boolean(searchQuery || typeFilter !== 'all' || statusFilter !== 'all' || startDateVal || endDateVal);
+
     return (
         <DashboardLayout fullWidth={true}>
             <Head title="Danh sách Order" />
 
             <ManagerPageLayout
-                sidebar={
-                    <>
-                        {/* Header */}
-                        <div>
-                            <div className="mb-1 flex items-center space-x-2 text-sky-600 dark:text-sky-400">
-                                <ReceiptText className="h-5 w-5 stroke-[1.5]" />
-                                <span className="text-xs font-semibold tracking-wider uppercase">
-                                    Phân hệ Quản lý
-                                </span>
-                            </div>
-                            <h1 className="font-display text-xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100">
-                                Danh sách Order
-                            </h1>
-                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                Xem lịch sử & chi tiết toàn bộ đơn hàng
-                            </p>
-                        </div>
-
-                        {/* Summary Cards */}
-                        <div className="grid grid-cols-2 gap-2">
-                            {summaryCards.map((card) => (
-                                <div
-                                    key={card.label}
-                                    className="rounded-xl border border-zinc-200/80 p-3 dark:border-zinc-800/80"
-                                >
-                                    <div
-                                        className={`flex items-center space-x-1.5 ${card.color}`}
-                                    >
-                                        <card.icon className="h-3.5 w-3.5" />
-                                        <span className="text-[10px] font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-                                            {card.label}
-                                        </span>
-                                    </div>
-                                    <p
-                                        className={`mt-1 text-lg font-semibold tabular-nums ${card.color}`}
-                                    >
-                                        {card.value}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Date Range Filter */}
-                        <div className="space-y-2">
-                            <label className="flex items-center space-x-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                                <CalendarDays className="h-3.5 w-3.5" />
-                                <span>Khoảng thời gian</span>
-                            </label>
-                            <DatePicker
-                                mode="range"
-                                startDate={startDateVal}
-                                endDate={endDateVal}
-                                onChange={handleRangeApply}
-                                className="w-full justify-start"
+                icon={ReceiptText}
+                title="Danh sách Đơn hàng"
+                subtitle="Xem lịch sử và chi tiết toàn bộ đơn hàng"
+                badge={
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+                            {summary.total_orders} đơn
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                            {summary.paid_orders} đã thanh toán
+                        </span>
+                    </div>
+                }
+                hasActiveFilter={hasActiveFilter}
+                filters={
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        {/* Search Input */}
+                        <div className="relative flex-1 min-w-[200px] max-w-xs">
+                            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                            <input
+                                type="text"
+                                placeholder="Tìm mã đơn / hóa đơn..."
+                                value={searchQuery}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                                className="w-full pl-8 pr-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 transition-colors"
                             />
-                            <button
-                                type="button"
-                                onClick={handleReset}
-                                className="flex w-full items-center justify-center space-x-1.5 rounded-xl bg-zinc-100 px-4 py-2 text-xs font-medium text-zinc-500 transition-colors duration-150 hover:bg-zinc-200 hover:text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
-                            >
-                                <RotateCcw className="h-3.5 w-3.5 stroke-[1.5]" />
-                                <span>Đặt lại</span>
-                            </button>
                         </div>
 
                         {/* Type Filter */}
-                        <div className="space-y-2">
-                            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                                Loại đơn
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
-                                {(
-                                    [
-                                        ['all', 'Tất cả'],
-                                        ['dine_in', 'Tại bàn'],
-                                        ['takeaway', 'Mang đi'],
-                                    ] as const
-                                ).map(([val, label]) => (
-                                    <button
-                                        key={val}
-                                        type="button"
-                                        onClick={() => {
-                                            setTypeFilter(val);
-                                            setCurrentPage(1);
-                                        }}
-                                        className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
-                                            typeFilter === val
-                                                ? 'bg-sky-600 text-white shadow-xs'
-                                                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
-                                        }`}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
-                            </div>
+                        <div className="w-36">
+                            <select
+                                value={typeFilter}
+                                onChange={(e) => {
+                                    setTypeFilter(e.target.value as any);
+                                    setCurrentPage(1);
+                                }}
+                                className="w-full px-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
+                            >
+                                <option value="all">Tất cả loại đơn</option>
+                                <option value="dine_in">Tại bàn</option>
+                                <option value="takeaway">Mang đi</option>
+                            </select>
                         </div>
 
                         {/* Status Filter */}
-                        <div className="space-y-2">
-                            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                                Trạng thái
-                            </span>
+                        <div className="w-40">
                             <select
                                 value={statusFilter}
                                 onChange={(e) => {
                                     setStatusFilter(e.target.value);
                                     setCurrentPage(1);
                                 }}
-                                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-900 transition-colors outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                className="w-full px-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
                             >
-                                <option value="all">Tất cả</option>
+                                <option value="all">Tất cả trạng thái</option>
                                 <option value="pending">Chờ xử lý</option>
-                                <option value="processing">
-                                    Đang chế biến
-                                </option>
+                                <option value="processing">Đang chế biến</option>
                                 <option value="completed">Hoàn thành</option>
                                 <option value="paid">Đã thanh toán</option>
                                 <option value="cancelled">Đã hủy</option>
                             </select>
                         </div>
-                    </>
+
+                        {/* Date Range */}
+                        <div className="w-60">
+                            <DatePicker
+                                mode="range"
+                                startDate={startDateVal}
+                                endDate={endDateVal}
+                                onChange={handleRangeApply}
+                                className="w-full justify-start text-xs rounded-xl"
+                            />
+                        </div>
+
+                        {/* Reset Filter Button */}
+                        {hasActiveFilter && (
+                            <button
+                                type="button"
+                                onClick={handleReset}
+                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                                title="Đặt lại bộ lọc"
+                            >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Đặt lại</span>
+                            </button>
+                        )}
+                    </div>
                 }
             >
-                {/* Search Bar */}
-                <div className="border-b border-zinc-100 px-4 pt-4 pb-3 dark:border-zinc-800">
-                    <div className="relative">
-                        <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-                        <input
-                            type="text"
-                            placeholder="Tìm theo mã order hoặc mã hóa đơn..."
-                            value={searchQuery}
-                            onChange={(e) => {
-                                setSearchQuery(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2 pr-4 pl-9 text-xs text-zinc-900 transition-colors outline-none placeholder:text-zinc-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-100"
-                        />
-                    </div>
-                </div>
 
                 {/* Table */}
                 <div className="min-h-0 flex-1 overflow-auto">

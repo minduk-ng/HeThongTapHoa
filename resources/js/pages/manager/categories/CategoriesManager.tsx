@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Plus, Search, FolderTree, Package, Layers } from 'lucide-react';
+import { Plus, Search, FolderTree, Package, Layers, RotateCcw } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import ManagerPageLayout from '../../../components/ManagerPageLayout';
 import CategoryTable, { CategoryData } from './components/CategoryTable';
@@ -97,85 +97,64 @@ export default function CategoriesManager({ categories, filters }: CategoriesMan
     const totalCategories = categories.length;
     const totalProducts = categories.reduce((sum, cat) => sum + (cat.items_count ?? cat.items?.length ?? 0), 0);
 
+    const hasActiveFilter = Boolean(searchQuery);
+
     return (
         <DashboardLayout fullWidth={true}>
             <Head title="Quản lý danh mục sản phẩm" />
 
             <ManagerPageLayout
-                sidebar={
-                    <>
-                        {/* Header */}
-                        <div>
-                            <div className="flex items-center space-x-2 text-sky-600 dark:text-sky-400 mb-1">
-                                <FolderTree className="w-5 h-5 stroke-[1.5]" />
-                                <span className="text-xs font-semibold uppercase tracking-wider">Phân hệ Quản lý</span>
-                            </div>
-                            <h1 className="font-display text-xl font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">
-                                Danh mục sản phẩm
-                            </h1>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                Phân loại & sắp xếp thực đơn hàng hóa
-                            </p>
+                icon={FolderTree}
+                title="Danh mục sản phẩm"
+                subtitle="Phân loại & sắp xếp thực đơn hàng hóa"
+                badge={
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+                            {totalCategories} danh mục
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                            {totalProducts} món
+                        </span>
+                    </div>
+                }
+                hasActiveFilter={hasActiveFilter}
+                actions={
+                    <button
+                        type="button"
+                        onClick={handleOpenAddDrawer}
+                        className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors shadow-xs"
+                    >
+                        <Plus className="w-3.5 h-3.5 stroke-2" />
+                        <span>Thêm danh mục</span>
+                    </button>
+                }
+                filters={
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        {/* Search Bar */}
+                        <div className="relative flex-1 min-w-[200px] max-w-xs">
+                            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => handleSearchChange(e.target.value)}
+                                placeholder="Tìm tên danh mục..."
+                                className="w-full pl-8 pr-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 transition-colors"
+                            />
                         </div>
 
-                        {/* Primary Fixed Action Button */}
-                        <div>
+                        {/* Reset Filter Button */}
+                        {hasActiveFilter && (
                             <button
                                 type="button"
-                                onClick={handleOpenAddDrawer}
-                                className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors duration-150 shadow-xs"
+                                onClick={() => handleSearchChange('')}
+                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                                title="Đặt lại bộ lọc"
                             >
-                                <Plus className="w-4 h-4 stroke-[2]" />
-                                <span>Thêm danh mục mới</span>
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Đặt lại</span>
                             </button>
-                        </div>
-
-                        {/* Quick Filter Controls */}
-                        <div className="space-y-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
-                            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block">
-                                Tìm kiếm & Bộ lọc
-                            </label>
-                            <div className="relative">
-                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => handleSearchChange(e.target.value)}
-                                    placeholder="Tìm tên danh mục..."
-                                    className="w-full pl-9 pr-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 transition-colors"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Mini Overview Stats */}
-                        <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2.5 mt-auto">
-                            <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block">
-                                Tổng quan danh mục
-                            </label>
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-800 rounded-xl">
-                                    <div className="flex items-center text-zinc-500 text-[11px] mb-1">
-                                        <Layers className="w-3.5 h-3.5 mr-1 text-sky-600" />
-                                        <span>Danh mục</span>
-                                    </div>
-                                    <span className="font-display text-lg font-normal text-zinc-900 dark:text-zinc-100">
-                                        {totalCategories}
-                                    </span>
-                                </div>
-
-                                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-800 rounded-xl">
-                                    <div className="flex items-center text-zinc-500 text-[11px] mb-1">
-                                        <Package className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                                        <span>Sản phẩm</span>
-                                    </div>
-                                    <span className="font-display text-lg font-normal text-zinc-900 dark:text-zinc-100">
-                                        {totalProducts}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </>
+                        )}
+                    </div>
                 }
             >
                 {/* Category Accordion Table with Instant Filtering */}

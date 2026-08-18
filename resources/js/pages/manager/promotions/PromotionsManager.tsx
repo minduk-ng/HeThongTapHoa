@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Plus, Search, SlidersHorizontal, Ticket, Pencil, Eye } from 'lucide-react';
+import { Plus, Search, SlidersHorizontal, Ticket, Pencil, Eye, Filter, RotateCcw } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import ManagerPageLayout from '../../../components/ManagerPageLayout';
 import DataTable, { DataTableColumn } from '../../../components/DataTable';
@@ -162,55 +162,94 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
         )},
     ];
 
+    const hasActiveFilter = Boolean(search || statusFilter !== 'all');
+
     return (
         <DashboardLayout fullWidth={true}>
             <Head title="Khuyến mãi" />
             <ManagerPageLayout
-                sidebar={
-                    <>
-                        <div>
-                            <div className="flex items-center space-x-2 text-sky-600 dark:text-sky-400 mb-1">
-                                <Ticket className="w-5 h-5 stroke-[1.5]" />
-                                <span className="text-xs font-semibold uppercase tracking-wider">Phân hệ Quản lý</span>
-                            </div>
-                            <h1 className="font-display text-xl font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">Khuyến mãi</h1>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Quản lý chiến dịch ưu đãi cho thanh toán POS</p>
+                icon={Ticket}
+                title="Khuyến mãi & Ưu đãi"
+                subtitle="Quản lý chiến dịch khuyến mãi tự động, coupon & voucher cho POS"
+                badge={
+                    <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+                        {stats?.total_campaigns ?? filteredPromotions.length} chiến dịch
+                    </span>
+                }
+                hasActiveFilter={hasActiveFilter}
+                actions={
+                    <button
+                        type="button"
+                        onClick={() => { setEditing(null); setDrawerOpen(true); }}
+                        className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors shadow-xs"
+                    >
+                        <Plus className="w-3.5 h-3.5 stroke-2" />
+                        <span>Tạo khuyến mãi</span>
+                    </button>
+                }
+                filters={
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        {/* Search Input */}
+                        <div className="relative flex-1 min-w-[200px] max-w-xs">
+                            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                            <input
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+                                placeholder="Tìm theo tên chiến dịch..."
+                                className="w-full pl-8 pr-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500"
+                            />
                         </div>
-                        <button type="button" onClick={() => { setEditing(null); setDrawerOpen(true); }}
-                            className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl">
-                            <Plus className="w-4 h-4" /><span>Chiến dịch mới</span>
-                        </button>
-                        <div className="space-y-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
-                            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                                <SlidersHorizontal className="w-3.5 h-3.5" /><span>Bộ lọc</span>
-                            </label>
-                            <div className="relative">
-                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm chiến dịch..."
-                                    className="w-full pl-9 pr-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500" />
-                            </div>
-                            <div>
-                                <label className="text-[11px] text-zinc-500 block mb-1">Trạng thái</label>
-                                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700">
-                                    <option value="all">Tất cả</option>
-                                    <option value="running">Đang chạy</option>
-                                    <option value="ended">Đã kết thúc</option>
-                                </select>
-                            </div>
-                            <button type="button" onClick={applyFilters}
-                                className="w-full px-3 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl transition-colors">Lọc</button>
+
+                        {/* Status Filter */}
+                        <div className="w-44">
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => {
+                                    setStatusFilter(e.target.value);
+                                    router.get('/manager/promotions', {
+                                        search: search || undefined,
+                                        status: e.target.value === 'all' ? undefined : e.target.value,
+                                    }, { preserveState: true });
+                                }}
+                                className="w-full px-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
+                            >
+                                <option value="all">Tất cả trạng thái</option>
+                                <option value="running">Đang chạy</option>
+                                <option value="ended">Đã kết thúc</option>
+                            </select>
                         </div>
-                        <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 mt-auto">
-                            <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-800 rounded-xl">
-                                <div className="text-[11px] text-zinc-500">Tổng chiến dịch</div>
-                                <div className="font-display text-2xl font-normal text-zinc-900 dark:text-zinc-100">{stats?.total_campaigns ?? 0}</div>
-                            </div>
+
+                        {/* Filter Buttons */}
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={applyFilters}
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl transition-colors shadow-2xs"
+                            >
+                                <Filter className="w-3.5 h-3.5" />
+                                <span>Lọc</span>
+                            </button>
+                            {hasActiveFilter && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSearch('');
+                                        setStatusFilter('all');
+                                        router.get('/manager/promotions', {}, { preserveState: true });
+                                    }}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                                    title="Đặt lại bộ lọc"
+                                >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    <span>Đặt lại</span>
+                                </button>
+                            )}
                         </div>
-                    </>
+                    </div>
                 }
             >
-                <div className="space-y-4 flex-1 min-h-0 overflow-y-auto">
+                <div className="space-y-4 flex-1 min-h-0 overflow-y-auto p-4">
                     <PromotionStatsCards stats={analytics?.kpis ?? stats} />
                     {analytics && <PromotionAnalyticsCharts daily={analytics.daily_chart} types={analytics.type_breakdown} />}
                     <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-xs overflow-hidden">

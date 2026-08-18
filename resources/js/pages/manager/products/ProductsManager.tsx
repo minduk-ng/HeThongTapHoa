@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Plus, Search, Upload, Download, UtensilsCrossed, Package, Layers, SlidersHorizontal } from 'lucide-react';
+import { Plus, Search, Upload, Download, UtensilsCrossed, Package, Layers, SlidersHorizontal, RotateCcw } from 'lucide-react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import ManagerPageLayout from '../../../components/ManagerPageLayout';
 import ProductTable, { MenuItemData } from './components/ProductTable';
@@ -144,138 +144,110 @@ export default function ProductsManager({
         window.location.href = '/manager/products/export';
     };
 
+    const hasActiveFilter = Boolean(searchQuery || selectedCategory !== 'all' || statusFilter !== 'all');
+
     return (
         <DashboardLayout fullWidth={true}>
             <Head title="Quản lý sản phẩm, hàng hóa" />
 
             <ManagerPageLayout
-                sidebar={
-                    <>
-                        {/* Header */}
-                        <div>
-                            <div className="flex items-center space-x-2 text-sky-600 dark:text-sky-400 mb-1">
-                                <UtensilsCrossed className="w-5 h-5 stroke-[1.5]" />
-                                <span className="text-xs font-semibold uppercase tracking-wider">Phân hệ Quản lý</span>
-                            </div>
-                            <h1 className="font-display text-xl font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">
-                                Sản phẩm & Thực đơn
-                            </h1>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                Quản lý danh sách món ăn, giá bán & định mức VAT
-                            </p>
+                icon={UtensilsCrossed}
+                title="Sản phẩm & Thực đơn"
+                subtitle="Quản lý danh sách món ăn, giá bán & định mức VAT"
+                badge={
+                    <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+                        {items.length} món
+                    </span>
+                }
+                hasActiveFilter={hasActiveFilter}
+                actions={
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setIsImportModalOpen(true)}
+                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                        >
+                            <Upload className="w-3.5 h-3.5 stroke-[1.5]" />
+                            <span>Nhập Excel</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleExportExcel}
+                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                        >
+                            <Download className="w-3.5 h-3.5 stroke-[1.5]" />
+                            <span>Xuất Excel</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleOpenAddDrawer}
+                            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors shadow-xs"
+                        >
+                            <Plus className="w-3.5 h-3.5 stroke-2" />
+                            <span>Thêm món</span>
+                        </button>
+                    </div>
+                }
+                filters={
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        {/* Search Bar */}
+                        <div className="relative flex-1 min-w-[200px] max-w-xs">
+                            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => handleSearchChange(e.target.value)}
+                                placeholder="Tìm tên món / mã SP..."
+                                className="w-full pl-8 pr-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 transition-colors"
+                            />
                         </div>
 
-                        {/* Primary Fixed Action Buttons */}
-                        <div className="space-y-2">
+                        {/* Category Filter */}
+                        <div className="w-48">
+                            <select
+                                value={selectedCategory}
+                                onChange={(e) => handleCategoryChange(e.target.value)}
+                                className="w-full px-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
+                            >
+                                <option value="all">Tất cả danh mục ({categories.length})</option>
+                                {categories.map((cat) => (
+                                    <option key={cat.id} value={String(cat.id)}>
+                                        {cat.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Status Filter */}
+                        <div className="w-44">
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => handleStatusChange(e.target.value)}
+                                className="w-full px-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
+                            >
+                                <option value="all">Tất cả trạng thái</option>
+                                <option value="active">Đang kinh doanh</option>
+                                <option value="inactive">Ngừng kinh doanh</option>
+                            </select>
+                        </div>
+
+                        {/* Reset Filter Button */}
+                        {hasActiveFilter && (
                             <button
                                 type="button"
-                                onClick={handleOpenAddDrawer}
-                                className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors duration-150 shadow-xs"
+                                onClick={() => {
+                                    handleSearchChange('');
+                                    handleCategoryChange('all');
+                                    handleStatusChange('all');
+                                }}
+                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                                title="Đặt lại bộ lọc"
                             >
-                                <Plus className="w-4 h-4 stroke-[2]" />
-                                <span>Thêm sản phẩm mới</span>
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Đặt lại</span>
                             </button>
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsImportModalOpen(true)}
-                                    className="flex items-center justify-center space-x-1.5 px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors"
-                                >
-                                    <Upload className="w-3.5 h-3.5 stroke-[1.5]" />
-                                    <span>Nhập Excel</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleExportExcel}
-                                    className="flex items-center justify-center space-x-1.5 px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors"
-                                >
-                                    <Download className="w-3.5 h-3.5 stroke-[1.5]" />
-                                    <span>Xuất Excel</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Filter Controls */}
-                        <div className="space-y-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
-                            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                                <SlidersHorizontal className="w-3.5 h-3.5 stroke-[1.5]" />
-                                <span>Bộ lọc tìm kiếm</span>
-                            </label>
-
-                            {/* Search Bar */}
-                            <div className="relative">
-                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => handleSearchChange(e.target.value)}
-                                    placeholder="Tìm tên món / mã SP..."
-                                    className="w-full pl-9 pr-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 transition-colors"
-                                />
-                            </div>
-
-                            {/* Category Filter */}
-                            <div>
-                                <label className="text-[11px] text-zinc-500 block mb-1">Danh mục</label>
-                                <select
-                                    value={selectedCategory}
-                                    onChange={(e) => handleCategoryChange(e.target.value)}
-                                    className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
-                                >
-                                    <option value="all">Tất cả danh mục ({categories.length})</option>
-                                    {categories.map((cat) => (
-                                        <option key={cat.id} value={String(cat.id)}>
-                                            {cat.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Status Filter */}
-                            <div>
-                                <label className="text-[11px] text-zinc-500 block mb-1">Trạng thái kinh doanh</label>
-                                <select
-                                    value={statusFilter}
-                                    onChange={(e) => handleStatusChange(e.target.value)}
-                                    className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
-                                >
-                                    <option value="all">Tất cả trạng thái</option>
-                                    <option value="active">Đang kinh doanh</option>
-                                    <option value="inactive">Ngừng kinh doanh</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Mini Overview Stats */}
-                        <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2.5 mt-auto">
-                            <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block">
-                                Thống kê tổng quan
-                            </label>
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-800 rounded-xl">
-                                    <div className="flex items-center text-zinc-500 text-[11px] mb-1">
-                                        <Package className="w-3.5 h-3.5 mr-1 text-sky-600" />
-                                        <span>Tổng món</span>
-                                    </div>
-                                    <span className="font-display text-lg font-normal text-zinc-900 dark:text-zinc-100">
-                                        {items.length}
-                                    </span>
-                                </div>
-
-                                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-800 rounded-xl">
-                                    <div className="flex items-center text-zinc-500 text-[11px] mb-1">
-                                        <Layers className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                                        <span>Danh mục</span>
-                                    </div>
-                                    <span className="font-display text-lg font-normal text-zinc-900 dark:text-zinc-100">
-                                        {categories.length}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </>
+                        )}
+                    </div>
                 }
             >
                 {/* Product Data Table with Instant Frontend Filtering */}

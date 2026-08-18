@@ -65,8 +65,12 @@
 | `/manager/tables` | `Manager\TableController` | `resources/js/pages/manager/tables/TableManager.tsx` | Quản lý khu vực & sơ đồ bàn, tạo hàng loạt bàn (batch), đặt bàn kiểu Manager (`TableFormDrawer` — chỉ ghi `tables.reservation_*`, không tạo đơn) |
 | `/manager/inventory/ingredients` | `Manager\IngredientController` | `resources/js/pages/manager/inventory/ingredients/IngredientsManager.tsx` | Quản lý kho nguyên liệu, tồn kho, đơn vị tính, nhập kho Excel |
 | `/manager/inventory/recipes` | `Manager\RecipeController` | `resources/js/pages/manager/inventory/recipes/RecipesManager.tsx` | Quản lý định lượng công thức món (chế biến) |
-| `/manager/orders` | `Manager\OrderListController` | `resources/js/pages/manager/orders/OrderList.tsx` / `OrderDetail.tsx` | Danh sách & chi tiết đơn hàng đã phát sinh |
+| `/manager/inventory/stocktake` | `Manager\StocktakeController` | `resources/js/pages/manager/inventory/stocktake/StocktakeManager.tsx` | Kiểm kê kho & đối soát tồn lý thuyết - thực tế |
+| `/manager/inventory/vouchers` | `Manager\StockVoucherController` | `resources/js/pages/manager/inventory/vouchers/StockVouchersManager.tsx` | Quản lý danh sách phiếu nhập / xuất / điều chỉnh kho |
+| `/manager/inventory/history` | `Manager\StockHistoryController` | `resources/js/pages/manager/inventory/history/StockHistoryManager.tsx` | Lịch sử biến động tồn kho chi tiết theo nguyên liệu |
 | `/manager/promotions` | `Manager\PromotionController` | `resources/js/pages/manager/promotions/PromotionsManager.tsx` | Quản lý chương trình khuyến mãi: chiến dịch (promotion tự động / coupon / voucher), điều kiện & giới hạn, mục tiêu (`target_usage`), analytics (KPI theo hoá đơn distinct), bảng Campaign Performance + modal danh sách hoá đơn đã dùng mã |
+
+> **Kiến trúc Layout Phân hệ Quản lý (`ManagerPageLayout.tsx`)**: Toàn bộ các trang `/manager/*` áp dụng chuẩn layout Top-Down Flow: Top Control Header (Icon, Title, Badge, Action buttons, Toggle thu gọn/mở rộng bộ lọc `defaultFiltersOpen = false`) kết hợp thanh Horizontal Filter Bar và khung bảng dữ liệu `DataTable` tràn viền full-width 100%.
 
 **API bổ trợ của Promotion** (prefix `/manager/promotions`, khai báo tại `routes/web.php`):
 | Route Path | Method | Chức Năng |

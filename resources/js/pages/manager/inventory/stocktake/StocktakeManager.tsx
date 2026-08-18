@@ -26,7 +26,7 @@ const staticColumns: DataTableColumn<Ingredient>[] = [
         sortable: true,
         render: (r) => <span className="font-medium">{r.name}</span>,
     },
-    { key: 'code', header: 'Mã', align: 'center', sortable: true, render: (r) => r.code },
+    { key: 'code', header: 'Mã NVL', align: 'center', sortable: true, render: (r) => <span className="font-mono text-xs text-sky-600 dark:text-sky-400">{r.code}</span> },
     { key: 'unit', header: 'Đơn vị', align: 'center', sortable: true, render: (r) => r.unit },
     {
         key: 'stock_quantity',
@@ -34,8 +34,8 @@ const staticColumns: DataTableColumn<Ingredient>[] = [
         sortable: true,
         align: 'center',
         render: (r) => (
-            <span className="tabular-nums">
-                {Number(r.stock_quantity).toLocaleString('vi-VN')}
+            <span className="tabular-nums font-semibold">
+                {Number(r.stock_quantity).toLocaleString('vi-VN')} {r.unit}
             </span>
         ),
     },
@@ -47,7 +47,6 @@ export default function StocktakeManager({ ingredients }: StocktakeManagerProps)
 
     const changedCount = ingredients.filter((ing) => {
         const v = values[ing.id];
-
         return v !== undefined && v.trim() !== '';
     }).length;
 
@@ -68,7 +67,7 @@ export default function StocktakeManager({ ingredients }: StocktakeManagerProps)
                             setValues((prev) => ({ ...prev, [r.id]: e.target.value }))
                         }
                         placeholder="—"
-                        className="w-28 px-2.5 py-1.5 text-center text-sm tabular-nums rounded-lg border bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-sky-500 mx-auto block"
+                        className="w-28 px-2.5 py-1 text-center text-xs tabular-nums rounded-lg border bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-sky-500 mx-auto block"
                     />
                 ),
             },
@@ -92,9 +91,9 @@ export default function StocktakeManager({ ingredients }: StocktakeManagerProps)
                               : 'text-zinc-500';
 
                     return (
-                        <span className={`tabular-nums font-semibold ${cls}`}>
+                        <span className={`tabular-nums font-semibold text-xs ${cls}`}>
                             {diff > 0 ? '+' : ''}
-                            {diff.toLocaleString('vi-VN')}
+                            {diff.toLocaleString('vi-VN')} {r.unit}
                         </span>
                     );
                 },
@@ -107,7 +106,6 @@ export default function StocktakeManager({ ingredients }: StocktakeManagerProps)
         const items = ingredients
             .filter((ing) => {
                 const v = values[ing.id];
-
                 return v !== undefined && v.trim() !== '';
             })
             .map((ing) => ({
@@ -115,9 +113,7 @@ export default function StocktakeManager({ ingredients }: StocktakeManagerProps)
                 actual_qty: Number(values[ing.id]),
             }));
 
-        if (items.length === 0) {
-return;
-}
+        if (items.length === 0) return;
 
         setSaving(true);
         router.post(
@@ -134,35 +130,30 @@ return;
         <DashboardLayout fullWidth={true}>
             <Head title="Kiểm kê kho" />
             <ManagerPageLayout
-                sidebar={
-                    <div className="space-y-4">
-                        <div>
-                            <div className="flex items-center space-x-2 text-sky-600 dark:text-sky-400 mb-1">
-                                <Box className="w-5 h-5 stroke-[1.5]" />
-                                <span className="text-xs font-semibold uppercase tracking-wider">Phân hệ Quản lý Kho</span>
-                            </div>
-                            <h1 className="font-display text-xl font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">Kiểm kê kho</h1>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                Nhập số lượng thực tế đếm được để đối soát với tồn lý thuyết
-                            </p>
-                        </div>
-
-                        <div>
-                            <button
-                                type="button"
-                                onClick={handleSave}
-                                disabled={saving || changedCount === 0}
-                                className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors duration-150 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <Save className="w-4 h-4 stroke-[1.5]" />
-                                <span>{saving ? 'Đang lưu...' : `Lưu kiểm kê (${changedCount})`}</span>
-                            </button>
-                            <p className="text-[11px] text-zinc-400 mt-1 text-center">
-                                {changedCount > 0
-                                    ? `${changedCount} nguyên liệu có thay đổi`
-                                    : 'Chưa có thay đổi nào'}
-                            </p>
-                        </div>
+                icon={Box}
+                title="Kiểm kê kho"
+                subtitle="Nhập số lượng thực tế đếm được để đối soát với tồn lý thuyết"
+                badge={
+                    <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+                        {ingredients.length} nguyên liệu
+                    </span>
+                }
+                actions={
+                    <div className="flex items-center gap-2">
+                        {changedCount > 0 && (
+                            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800/60">
+                                {changedCount} thay đổi
+                            </span>
+                        )}
+                        <button
+                            type="button"
+                            onClick={handleSave}
+                            disabled={saving || changedCount === 0}
+                            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors duration-150 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Save className="w-3.5 h-3.5 stroke-[1.5]" />
+                            <span>{saving ? 'Đang lưu...' : `Lưu kiểm kê (${changedCount})`}</span>
+                        </button>
                     </div>
                 }
             >
