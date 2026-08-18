@@ -158,7 +158,7 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
 
     useEffect(() => {
         if (typeof window !== 'undefined' && window.Echo) {
-            const channel = window.Echo.channel('pos-channel');
+            const channel = window.Echo.private('pos-channel');
 
             const handleItemsReady = (payload: any) => {
                 const eventKey = `ItemsReadyToServe_${payload?.order_id}`;

@@ -4,10 +4,8 @@ namespace App\Http\Controllers\Manager;
 
 use App\Events\IngredientStockUpdated;
 use App\Http\Controllers\Controller;
-use App\Models\Employee;
 use App\Models\Ingredient;
-use App\Models\StockVoucher;
-use App\Models\StockVoucherItem;
+use App\Services\Inventory\LotService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,71 +29,46 @@ class StocktakeController extends Controller
             'items.*.actual_qty' => 'required|numeric|min:0',
         ]);
 
-        $changes = collect($validated['items'])->filter(fn ($it) => abs($it['actual_qty'] - (float) Ingredient::find($it['ingredient_id'])->stock_quantity) > 0.0001);
+        $changes = collect($validated['items'])->filter(fn ($it) => abs((float) $it['actual_qty'] - LotService::totalRemaining((int) $it['ingredient_id'])) > 0.0001
+            || abs((float) $it['actual_qty'] - (float) Ingredient::find((int) $it['ingredient_id'])?->stock_quantity) > 0.0001);
 
         if ($changes->isEmpty()) {
             return back()->with('info', 'Không có thay đổi tồn kho nào.');
         }
 
-        $employeeId = Employee::idForUser($request->user()?->id);
-        $dateStr = now()->format('Ymd');
-        $prefix = "KK-{$dateStr}-";
-
-        DB::transaction(function () use ($changes, $employeeId, $request, $prefix) {
-            $maxSeq = StockVoucher::where('voucher_code', 'like', $prefix.'%')
-                ->lockForUpdate()->pluck('voucher_code')
-                ->map(fn ($c) => (int) substr($c, strlen($prefix)))->max() ?? 0;
-            $voucherCode = $prefix.str_pad((string) ($maxSeq + 1), 3, '0', STR_PAD_LEFT);
-
-            $voucher = StockVoucher::create([
-                'voucher_code' => $voucherCode,
-                'type' => 'adjustment',
-                'employee_id' => $employeeId,
-                'transacted_at' => now(),
-                'note' => 'Kiểm kê kho',
-                'created_by' => $request->user()?->id,
-            ]);
+        DB::transaction(function () use ($changes, $request) {
+            $voucher = LotService::createAdjustmentVoucher($request->user()?->id, 'Kiểm kê kho', []);
 
             foreach ($changes as $it) {
                 $ing = Ingredient::lockForUpdate()->find($it['ingredient_id']);
-                if (! $ing) continue;
-                $delta = (float) $it['actual_qty'] - (float) $ing->stock_quantity;
-                if (abs($delta) < 0.0001) continue;
+                if (! $ing) {
+                    continue;
+                }
+                $actual = (float) $it['actual_qty'];
+                $residual = round($actual - LotService::totalRemaining($ing->id), 2);
+                if (abs($residual) < 0.0001) {
+                    $ing->update(['stock_quantity' => $actual]);
+                    IngredientStockUpdated::dispatch(['ingredient_id' => $ing->id]);
 
+                    continue;
+                }
                 $lotFields = [];
-
-                // Cập nhật lô FIFO khi giảm
-                if ($delta < 0) {
-                    $remaining = abs($delta);
-                    $lots = StockVoucherItem::where('ingredient_id', $ing->id)
-                        ->where('quantity_remaining', '>', 0)->whereNotNull('quantity_remaining')
-                        ->orderBy('expiry_date', 'asc')->lockForUpdate()->get();
-                    foreach ($lots as $lot) {
-                        if ($remaining <= 0) break;
-                        $take = min((float) $lot->quantity_remaining, $remaining);
-                        $lot->decrement('quantity_remaining', $take);
-                        $remaining -= $take;
-                    }
-                } elseif ($delta > 0) {
-                    // Dư: cộng vào lô còn hàng HSD mới nhất; nếu không có lô, dòng adjustment kiêm lô không HSD
-                    $latest = StockVoucherItem::where('ingredient_id', $ing->id)
-                        ->where('quantity_remaining', '>', 0)->whereNotNull('quantity_remaining')
-                        ->orderByDesc('expiry_date')->lockForUpdate()->first();
-                    if ($latest) {
-                        $latest->increment('quantity_remaining', $delta);
-                    } else {
-                        $lotFields['quantity_remaining'] = $delta;
+                if ($residual < 0) {
+                    LotService::decrement($ing, abs($residual));
+                } else {
+                    $lot = LotService::increment($ing, $residual);
+                    if (! $lot) {
+                        $lotFields['quantity_remaining'] = $residual;
                     }
                 }
 
-                // Đúng MỘT dòng adjustment cho mỗi nguyên liệu (không tạo trùng)
                 $voucher->items()->create(array_merge([
                     'ingredient_id' => $ing->id,
-                    'quantity' => $delta,
+                    'quantity' => $residual,
                     'unit_price' => null,
                 ], $lotFields));
 
-                $ing->update(['stock_quantity' => $it['actual_qty']]);
+                $ing->update(['stock_quantity' => $actual]);
                 IngredientStockUpdated::dispatch(['ingredient_id' => $ing->id]);
             }
         });

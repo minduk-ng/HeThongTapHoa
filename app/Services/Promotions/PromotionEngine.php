@@ -48,11 +48,12 @@ class PromotionEngine
                 if ($reject !== null) {
                     return ['status' => 'rejected', 'reason' => $reject, 'code' => $code];
                 }
-                // Dedupe: 2 mã con cùng campaign → chỉ áp 1 lần (giữ mã đầu, tránh double discount)
+                // Dedupe: 2 mã con cùng campaign → chỉ áp 1 lần (tránh double discount),
+                // NHƯNG mọi mã con hợp lệ đều được theo dõi để tiêu thụ (đánh dấu used)
                 if (! collect($codePromotions)->contains(fn ($cp) => (int) $cp->id === (int) $promotion->id)) {
                     $codePromotions[] = $promotion;
-                    $promotionCodesById[$promotion->id] = $pc;
                 }
+                $promotionCodesById[$promotion->id][] = $pc;
 
                 continue;
             }
@@ -147,8 +148,8 @@ class PromotionEngine
             // Quota: increment trong lock (chỉ khi checkout/thanh toán thật)
             if ($lockForUpdate) {
                 $p->increment('used_count');
-                if (isset($promotionCodesById[$p->id])) {
-                    $promotionCodesById[$p->id]->forceFill([
+                foreach ($promotionCodesById[$p->id] ?? [] as $pc) {
+                    $pc->forceFill([
                         'status' => 'used',
                         'used_at' => now(),
                     ])->save();
@@ -158,7 +159,8 @@ class PromotionEngine
             $applied[] = [
                 'promotion' => $p,
                 'amount' => $amount,
-                'code' => $p->type === 'promotion' ? null : ($promotionCodesById[$p->id]->code ?? $p->code),
+                'code' => $p->type === 'promotion' ? null : (($promotionCodesById[$p->id][0] ?? null)?->code ?? $p->code),
+                'codes' => $promotionCodesById[$p->id] ?? [],
                 'actions_applied' => $actionsApplied,
             ];
         }

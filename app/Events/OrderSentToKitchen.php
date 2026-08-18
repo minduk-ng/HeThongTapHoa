@@ -3,7 +3,6 @@
 namespace App\Events;
 
 use App\Models\Order;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -23,8 +22,8 @@ class OrderSentToKitchen implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new Channel('kitchen-channel'),
-            new Channel('pos-channel'),
+            new PrivateChannel('kitchen-channel'),
+            new PrivateChannel('pos-channel'),
         ];
     }
 

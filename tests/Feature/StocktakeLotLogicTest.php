@@ -4,9 +4,12 @@ use App\Models\Ingredient;
 use App\Models\StockVoucher;
 use App\Models\StockVoucherItem;
 
-test('sanity: kiem ke duong tao 1 dong adjustment kem lo, report khong double count', function () {
+test('sanity: kiem ke duong tao 1 dong adjustment, cong vao lo co san, report khong double count', function () {
     $admin = posAdmin();
     $ing = Ingredient::create(['name' => 'KkP '.uniqid(), 'code' => 'kkp'.uniqid(), 'unit' => 'g', 'stock_quantity' => 10, 'min_stock_alert' => 5, 'cost_price' => 100]);
+    // Lô tồn đầu kỳ tháng trước (ngoài cửa sổ report) → giữ begin_qty = 10.
+    $v = StockVoucher::create(['voucher_code' => 'PN-BEG-'.uniqid(), 'type' => 'import', 'transacted_at' => now()->subMonth()]);
+    $v->items()->create(['ingredient_id' => $ing->id, 'quantity' => 10, 'unit_price' => 10, 'expiry_date' => '2026-12-01', 'quantity_remaining' => 10]);
 
     $this->actingAs($admin)->post('/manager/inventory/stocktake', [
         'items' => [['ingredient_id' => $ing->id, 'actual_qty' => 14]],
@@ -17,7 +20,8 @@ test('sanity: kiem ke duong tao 1 dong adjustment kem lo, report khong double co
     expect($v->items()->count())->toBe(1);
     $adj = $v->items()->first();
     expect((float) $adj->quantity)->toBe(4.0);
-    expect((float) $adj->quantity_remaining)->toBe(4.0);
+    // residual = 14 - tổng lô (10) = 4 → đã cộng vào lô sẵn có, dòng adjustment không kiêm lô.
+    expect($adj->quantity_remaining)->toBeNull();
 
     // StockMovementReport: adj phai = 4 (khong double count vi chi 1 dong quantity=4)
     $res = $this->actingAs($admin)->get('/reports/stock-movement');

@@ -284,9 +284,12 @@ class AuthorizationSeeder extends Seeder
         DB::table('role_permissions')->where('role_id', $adminRoleId)->delete();
         DB::table('role_permissions')->insert($rolePermissions);
 
-        // 5. Create or find admin user
-        $adminEmail = (string) config('services.admin.email', 'admin@admin.com');
-        $adminPassword = (string) config('services.admin.default_password', '244466666');
+        // 5. Create or find admin user — bắt buộc env, không có default
+        $adminEmail = (string) config('services.admin.email');
+        $adminPassword = (string) config('services.admin.default_password');
+        if ($adminEmail === '' || $adminPassword === '') {
+            throw new \RuntimeException('Thiếu ADMIN_EMAIL / ADMIN_DEFAULT_PASSWORD trong .env — không thể seed admin.');
+        }
         $adminUser = DB::table('users')->where('email', $adminEmail)->first();
 
         if (! $adminUser) {

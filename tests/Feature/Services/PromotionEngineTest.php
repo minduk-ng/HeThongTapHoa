@@ -3,6 +3,7 @@
 use App\Models\PromotionTimeSlot;
 use App\Services\Promotions\PromotionCodeService;
 use App\Services\Promotions\PromotionEngine;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 function engineLines(float $subtotal = 100000): Collection
@@ -169,7 +170,7 @@ test('resolveAll: ma con da dung tra already_used', function () {
     expect($r['reason'])->toBe('already_used');
 });
 
-test('resolveAll: 2 ma con cung campaign chi ap 1 lan, chi tieu 1 ma', function () {
+test('resolveAll: 2 ma con cung campaign chi ap 1 lan nhung tieu thu ca 2 ma', function () {
     $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'DEDUPE', 'code_quantity' => 2, 'code_random' => false]);
     addAction($p, 'discount_amount', 5000);
     PromotionCodeService::generate($p);
@@ -184,9 +185,9 @@ test('resolveAll: 2 ma con cung campaign chi ap 1 lan, chi tieu 1 ma', function 
     expect($r['promotions'][0]['code'])->toBe($codes[0]);
     expect($r['total_discount'])->toBe(5000.0);
 
-    // Chỉ 1 mã con được đánh dấu used, mã còn lại vẫn unused
-    expect($p->codes()->where('status', 'used')->count())->toBe(1);
-    expect($p->codes()->where('status', 'unused')->count())->toBe(1);
+    // Cả 2 mã con được đánh dấu used (không bỏ sót mã)
+    expect($p->codes()->where('status', 'used')->count())->toBe(2);
+    expect($p->codes()->where('status', 'unused')->count())->toBe(0);
     $p->refresh();
     expect($p->used_count)->toBe(1);
 });
@@ -269,24 +270,24 @@ test('resolveAll: boundary gio - dung trong khung khi co giay, dung ngoai khung 
     ]);
 
     // 12:30:00 — trong khung → áp dụng
-    \Illuminate\Support\Carbon::setTestNow(\Illuminate\Support\Carbon::createFromFormat('Y-m-d H:i:s', now()->format('Y-m-d').' 12:30:00'));
+    Carbon::setTestNow(Carbon::createFromFormat('Y-m-d H:i:s', now()->format('Y-m-d').' 12:30:00'));
     $rIn = PromotionEngine::resolveAll([$p->code], engineLines(100000), 100000);
     expect($rIn['status'])->toBe('ok');
     expect($rIn['total_discount'])->toBe(5000.0);
 
     // 13:00:00 — hết khung (end_time 13:00 nửa mở) → reject out_of_slot
-    \Illuminate\Support\Carbon::setTestNow(\Illuminate\Support\Carbon::createFromFormat('Y-m-d H:i:s', now()->format('Y-m-d').' 13:00:00'));
+    Carbon::setTestNow(Carbon::createFromFormat('Y-m-d H:i:s', now()->format('Y-m-d').' 13:00:00'));
     $rOut = PromotionEngine::resolveAll([$p->code], engineLines(100000), 100000);
     expect($rOut['status'])->toBe('rejected');
     expect($rOut['reason'])->toBe('out_of_slot');
 
     // 11:00:00 — đầu khung → áp dụng (>= start)
-    \Illuminate\Support\Carbon::setTestNow(\Illuminate\Support\Carbon::createFromFormat('Y-m-d H:i:s', now()->format('Y-m-d').' 11:00:00'));
+    Carbon::setTestNow(Carbon::createFromFormat('Y-m-d H:i:s', now()->format('Y-m-d').' 11:00:00'));
     $rStart = PromotionEngine::resolveAll([$p->code], engineLines(100000), 100000);
     expect($rStart['status'])->toBe('ok');
     expect($rStart['total_discount'])->toBe(5000.0);
 
-    \Illuminate\Support\Carbon::setTestNow(); // reset
+    Carbon::setTestNow(); // reset
 });
 
 test('resolveAll: campaign khong co time slot van ap dung binh thuong (backward compat)', function () {

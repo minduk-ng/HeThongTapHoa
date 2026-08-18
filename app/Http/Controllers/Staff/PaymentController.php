@@ -288,6 +288,10 @@ class PaymentController extends Controller
 
             return back()->with('success', 'Thanh toán hoàn tất thành công!');
         } catch (\Throwable $e) {
+            IdempotencyGuard::release($request, 'checkout', [
+                'order_id' => $validated['order_id'],
+                'amount_received' => $validated['amount_received'],
+            ]);
             Log::error('POS checkout DB error: '.$e->getMessage());
 
             if ($request->wantsJson()) {
@@ -345,6 +349,19 @@ class PaymentController extends Controller
                 $reservedOrder = $orders->first(fn ($o) => $o->status === 'reserved');
                 if ($reservedOrder) {
                     throw new \Exception("Đơn {$reservedOrder->order_code} là đơn đặt bàn chưa check-in, không thể thanh toán", 422);
+                }
+
+                // Các đơn trong bulk phải cùng một bàn (hoặc cùng nhóm gộp)
+                $tableIds = $orders->pluck('table_id')->filter()->unique()->values();
+                if (! empty($validated['table_id'])) {
+                    $primaryId = (int) (Table::find($validated['table_id'])?->merged_into_table_id ?? $validated['table_id']);
+                    $groupIds = Table::where('id', $primaryId)->orWhere('merged_into_table_id', $primaryId)->pluck('id');
+                    $foreign = $tableIds->reject(fn ($id) => $groupIds->contains((int) $id));
+                    if ($foreign->isNotEmpty()) {
+                        throw new \Exception('Các đơn hàng phải thuộc cùng một bàn hoặc nhóm bàn gộp.', 422);
+                    }
+                } elseif ($tableIds->count() > 1) {
+                    throw new \Exception('Các đơn hàng phải thuộc cùng một bàn hoặc nhóm bàn gộp.', 422);
                 }
 
                 // Determine table name
@@ -445,6 +462,10 @@ class PaymentController extends Controller
 
             return back()->with('success', 'Thanh toán gộp thành công!');
         } catch (\Throwable $e) {
+            IdempotencyGuard::release($request, 'bulk_checkout', [
+                'order_ids' => collect($validated['order_ids'])->sort()->values()->all(),
+                'amount_received' => $validated['amount_received'],
+            ]);
             Log::error('POS bulk checkout error: '.$e->getMessage());
 
             if ($request->wantsJson()) {

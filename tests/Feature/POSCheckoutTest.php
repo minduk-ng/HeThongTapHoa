@@ -408,6 +408,8 @@ test('validate-promotion ma con da dung tra loi ro rang', function () {
 test('free product: mon tang trong order bi set 0 va kho van tru', function () {
     $free = posMenuItem(['price' => 20000, 'vat_rate' => 0]);
     $ingredient = \App\Models\Ingredient::create(['name' => 'Ngl free '.uniqid(), 'stock_quantity' => 100, 'unit' => 'g']);
+    $vIng = \App\Models\StockVoucher::create(['voucher_code' => 'PN-FREE-'.uniqid(), 'type' => 'import', 'transacted_at' => now()]);
+    $vIng->items()->create(['ingredient_id' => $ingredient->id, 'quantity' => 100, 'unit_price' => 10000, 'quantity_remaining' => 100]);
     $free->recipes()->create(['ingredient_id' => $ingredient->id, 'amount' => 10, 'unit' => 'g']);
 
     $coupon = promoV2(['type' => 'coupon', 'code' => 'F'.substr(uniqid(), -5)]);

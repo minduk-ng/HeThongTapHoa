@@ -16,6 +16,7 @@ use App\Models\ProductRecipe;
 use App\Models\Promotion;
 use App\Models\StockVoucher;
 use App\Models\Table;
+use App\Services\Inventory\LotService;
 use App\Services\OrderActivityLogger;
 use App\Services\Promotions\PromotionEngine;
 use Illuminate\Support\Collection;
@@ -179,7 +180,7 @@ class CheckoutService
             $heldDeposits = [];
             /** @var Order $order */
             foreach ($orders as $order) {
-                $held = $order->deposits()->where('status', 'held')->get();
+                $held = $order->deposits()->where('status', 'held')->lockForUpdate()->get();
                 /** @var Deposit $d */
                 foreach ($held as $d) {
                     $heldDeposits[] = $d;
@@ -304,12 +305,11 @@ class CheckoutService
                         'discount_applied' => $allocated,
                     ]);
 
-                    // Truy vết invoice cho mã con đã dùng
-                    if ($pr['code']) {
-                        \App\Models\PromotionCode::where('code', $pr['code'])
-                            ->where('status', 'used')
-                            ->whereNull('used_invoice_id')
-                            ->update(['used_invoice_id' => $invoice->id]);
+                    // Truy vết invoice cho mọi mã con đã dùng
+                    foreach ($pr['codes'] ?? [] as $pc) {
+                        if ($pc->used_invoice_id === null) {
+                            $pc->forceFill(['used_invoice_id' => $invoice->id])->save();
+                        }
                     }
                 }
             }
@@ -359,28 +359,14 @@ class CheckoutService
                 }
             }
 
-            // 8. Cập nhật orders (1 nguồn duy nhất): phân bổ discount theo tỷ trọng, đơn cuối nhận phần dư
+            // 8. Cập nhật orders lấy trực tiếp từ $lineInputs đã phân bổ — đảm bảo order == invoice_lines
             $count = $orders->count();
-            $assignedDiscount = 0.0;
             /** @var Order $order */
-            foreach ($orders as $idx => $order) {
-                $activeItems = $order->items()->where('status', '!=', 'cancelled')->with('menuItem')->get();
-                $orderSubtotal = (float) $activeItems->sum('subtotal');
-                $orderDiscount = 0.0;
-                if ($totalDiscount > 0 && $subtotal > 0) {
-                    if ($idx === $count - 1) {
-                        $orderDiscount = round($totalDiscount - $assignedDiscount, 2);
-                    } else {
-                        $orderDiscount = floor($totalDiscount * $orderSubtotal / $subtotal);
-                        $assignedDiscount += $orderDiscount;
-                    }
-                }
-                // VAT thực thu trên giá sau discount (phân bổ theo tỷ trọng subtotal, khớp line-level)
-                $orderVat = (float) $activeItems->sum(fn ($item) => $item instanceof OrderItem
-                    ? OrderTotals::vatInPrice(
-                        max(0.0, (float) $item->subtotal - ($orderSubtotal > 0 ? $orderDiscount * (float) $item->subtotal / $orderSubtotal : 0.0)),
-                        (float) ($item->menuItem->vat_rate ?? 0))
-                    : 0.0);
+            foreach ($orders as $order) {
+                $orderLines = collect($lineInputs)->where('order_id', $order->id);
+                $orderSubtotal = round((float) $order->items()->where('status', '!=', 'cancelled')->sum('subtotal'), 2);
+                $orderDiscount = round((float) $orderLines->sum('discount_amount'), 2);
+                $orderVat = round((float) $orderLines->sum('vat_amount'), 2);
                 $orderTotal = round(max(0.0, $orderSubtotal - $orderDiscount), 2);
 
                 $order->update([
@@ -494,25 +480,15 @@ class CheckoutService
             if (! $ingredient) {
                 continue;
             }
-            $ingredient->decrement('stock_quantity', $totalUsed);
-
-            // Trừ quantity_remaining theo lô FIFO (lô cũ nhất HSD trước)
-            $remaining = $totalUsed;
-            $lots = \App\Models\StockVoucherItem::where('ingredient_id', $ingredientId)
-                ->where('quantity_remaining', '>', 0)
-                ->whereNotNull('quantity_remaining')
-                // Lô chưa có HSD (null expiry) được trừ TRƯỚC (NULLs-first trong MySQL ASC) — hợp lý: dùng hàng không hạn trước.
-                ->orderBy('expiry_date', 'asc')
-                ->lockForUpdate()
-                ->get();
-            foreach ($lots as $lot) {
-                if ($remaining <= 0) {
-                    break;
-                }
-                $take = min((float) $lot->quantity_remaining, $remaining);
-                $lot->decrement('quantity_remaining', $take);
-                $remaining -= $take;
+            $available = LotService::totalRemaining($ingredient->id);
+            if ($totalUsed - $available > 0.0001) {
+                throw new \Exception(
+                    "Không đủ nguyên liệu {$ingredient->name} (cần ".round($totalUsed, 2).', còn '.round($available, 2).').',
+                    422,
+                );
             }
+            $ingredient->decrement('stock_quantity', $totalUsed);
+            LotService::decrement($ingredient, $totalUsed);
 
             $voucher->items()->create([
                 'ingredient_id' => $ingredientId,

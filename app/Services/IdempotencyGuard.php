@@ -28,4 +28,14 @@ class IdempotencyGuard
 
         return ! Cache::add($fingerprintKey, true, 5);
     }
+
+    /** Xóa các key idempotency khi thao tác thất bại — cho phép retry chạy lại thật sự. */
+    public static function release(Request $request, string $action, array $fingerprint = []): void
+    {
+        $clientKey = $request->input('idempotency_key');
+        if ($clientKey) {
+            Cache::forget("idempotency:{$action}:{$clientKey}");
+        }
+        Cache::forget("idempotency:{$action}:".md5(json_encode($fingerprint) ?: ''));
+    }
 }
