@@ -55,6 +55,16 @@ class PaymentsReportController extends Controller
         $heldBank = (float) $heldDeposits->where('method', 'bank_transfer')->sum('amount');
         $heldTotal = (float) $heldDeposits->sum('amount');
 
+        // Cọc hoàn/trả trong kỳ (tiền đã ra khỏi máy)
+        $refundedDeposits = Deposit::query()
+            ->whereIn('status', ['refunded', 'forfeited'])
+            ->whereBetween('resolved_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
+            ->get();
+
+        $refundedCash = (float) $refundedDeposits->where('method', 'cash')->sum('amount');
+        $refundedBank = (float) $refundedDeposits->where('method', 'bank_transfer')->sum('amount');
+        $refundedTotal = (float) $refundedDeposits->sum('amount');
+
         // Kỳ liền trước cùng độ dài.
         $start = Carbon::parse($startDate);
         $end = Carbon::parse($endDate);
@@ -81,6 +91,10 @@ class PaymentsReportController extends Controller
                 'held_deposit_cash' => $heldCash,
                 'held_deposit_bank' => $heldBank,
                 'held_deposit_count' => $heldDeposits->count(),
+                'refunded_deposit_total' => $refundedTotal,
+                'refunded_deposit_cash' => $refundedCash,
+                'refunded_deposit_bank' => $refundedBank,
+                'refunded_deposit_count' => $refundedDeposits->count(),
             ],
             'comparison' => [
                 'prev_revenue' => $prevRevenue,

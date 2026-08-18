@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Services\OrderActivityLogger;
 
 class TableController extends Controller
 {
@@ -163,20 +164,36 @@ class TableController extends Controller
                         'reservation_note' => $validated['reservation_note'],
                     ]);
                 }
-            } else {
-                if ($reservedOrder) {
-                    // Giải phóng cọc đang giữ: hoàn tiền (refunded) trước khi hủy đặt bàn
-                    foreach ($reservedOrder->deposits()->where('status', 'held')->get() as $deposit) {
-                        $deposit->update([
-                            'status' => 'refunded',
-                            'resolved_at' => now(),
-                            'resolved_by_user_id' => $request->user()?->id,
-                        ]);
-                    }
-                    $reservedOrder->update(['status' => 'cancelled']);
+            } elseif ($validated['status'] === 'occupied' && $reservedOrder && $table->status === 'reserved') {
+                // Khách đã tới: đơn reserved → draft, giữ nguyên cọc, xóa thông tin đặt bàn
+                $reservedOrder->update(['status' => 'draft']);
+                OrderActivityLogger::log($reservedOrder, 'checked_in', $request->user()?->id);
+                $validated['reservation_name'] = null;
+                $validated['reservation_phone'] = null;
+                $validated['reservation_time'] = null;
+                $validated['reservation_note'] = null;
+            } elseif ($validated['status'] === 'available' && $reservedOrder) {
+                // Cố ý hủy đặt bàn: hoàn cọc + audit
+                foreach ($reservedOrder->deposits()->where('status', 'held')->get() as $deposit) {
+                    $deposit->update([
+                        'status' => 'refunded',
+                        'resolved_at' => now(),
+                        'resolved_by_user_id' => $request->user()?->id,
+                    ]);
+                    OrderActivityLogger::log($reservedOrder, 'deposit_refunded', $request->user()?->id, [
+                        'deposit_id' => $deposit->id,
+                        'amount' => (float) $deposit->amount,
+                        'method' => $deposit->method,
+                    ]);
                 }
+                $reservedOrder->update(['status' => 'cancelled']);
 
-                // If status changed away from reserved, clear reservation fields
+                $validated['reservation_name'] = null;
+                $validated['reservation_phone'] = null;
+                $validated['reservation_time'] = null;
+                $validated['reservation_note'] = null;
+            } else {
+                // Chuyển sang maintenance/trạng thái khác: không đụng cọc/đơn
                 $validated['reservation_name'] = null;
                 $validated['reservation_phone'] = null;
                 $validated['reservation_time'] = null;

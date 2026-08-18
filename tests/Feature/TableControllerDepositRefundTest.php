@@ -2,7 +2,7 @@
 
 use App\Models\Deposit;
 
-test('doi status ban tu reserved ve occupied refund duoc coi held', function () {
+test('doi status ban tu reserved ve occupied giu coc va don con draft', function () {
     $this->actingAs(posAdmin());
     $table = posTable(['table_number' => 'T1'.substr(uniqid(), -3), 'status' => 'reserved', 'area' => 'Trong nhà', 'capacity' => 4]);
     $item = posMenuItem(['price' => 100000]);
@@ -20,7 +20,7 @@ test('doi status ban tu reserved ve occupied refund duoc coi held', function () 
     ]);
     $response->assertSessionHasNoErrors();
 
-    expect($order->fresh()->status)->toBe('cancelled');
-    expect($order->deposits()->where('status', 'held')->count())->toBe(0);
-    expect($order->deposits()->where('status', 'refunded')->count())->toBe(1);
+    expect($order->fresh()->status)->toBe('draft');
+    expect($order->deposits()->where('status', 'held')->count())->toBe(1);
+    expect($order->deposits()->where('status', 'refunded')->count())->toBe(0);
 });
