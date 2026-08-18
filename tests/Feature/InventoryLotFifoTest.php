@@ -28,7 +28,7 @@ test('FIFO: ban dung 120g tru het lo cu truoc', function () {
     $admin = posAdmin();
     $ing = Ingredient::create([
         'name' => 'Sữa '.uniqid(), 'code' => 'su'.uniqid(),
-        'unit' => 'ml', 'stock_quantity' => 100, 'min_stock_alert' => 50, 'cost_price' => 10,
+        'unit' => 'ml', 'stock_quantity' => 200, 'min_stock_alert' => 50, 'cost_price' => 10,
     ]);
 
     // Tạo 2 phiếu nhập thật: lô cũ hạn 1/11 còn 100, lô mới hạn 1/12 còn 100
@@ -60,10 +60,10 @@ test('FIFO: ban dung 120g tru het lo cu truoc', function () {
         'change_amount' => 0,
     ])->assertSessionHasNoErrors();
 
-    // Lô cũ (1/11) hết, lô mới (1/12) còn 80; stock giảm 120 (100 - 120 → -20)
+    // Lô cũ (1/11) hết, lô mới (1/12) còn 80; stock giảm 120 (200 - 120 → 80)
     expect((float) $lot1->fresh()->quantity_remaining)->toBe(0.0);
     expect((float) $lot2->fresh()->quantity_remaining)->toBe(80.0);
-    expect((float) $ing->fresh()->stock_quantity)->toBe(-20.0);
+    expect((float) $ing->fresh()->stock_quantity)->toBe(80.0);
 });
 
 test('backfill: phieu nhap cu khong co quantity_remaining duoc gan bang quantity', function () {

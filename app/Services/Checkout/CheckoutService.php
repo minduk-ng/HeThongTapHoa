@@ -16,6 +16,7 @@ use App\Models\ProductRecipe;
 use App\Models\Promotion;
 use App\Models\StockVoucher;
 use App\Models\Table;
+use App\Services\Inventory\LotService;
 use App\Services\OrderActivityLogger;
 use App\Services\Promotions\PromotionEngine;
 use Illuminate\Support\Collection;
@@ -494,25 +495,15 @@ class CheckoutService
             if (! $ingredient) {
                 continue;
             }
-            $ingredient->decrement('stock_quantity', $totalUsed);
-
-            // Trừ quantity_remaining theo lô FIFO (lô cũ nhất HSD trước)
-            $remaining = $totalUsed;
-            $lots = \App\Models\StockVoucherItem::where('ingredient_id', $ingredientId)
-                ->where('quantity_remaining', '>', 0)
-                ->whereNotNull('quantity_remaining')
-                // Lô chưa có HSD (null expiry) được trừ TRƯỚC (NULLs-first trong MySQL ASC) — hợp lý: dùng hàng không hạn trước.
-                ->orderBy('expiry_date', 'asc')
-                ->lockForUpdate()
-                ->get();
-            foreach ($lots as $lot) {
-                if ($remaining <= 0) {
-                    break;
-                }
-                $take = min((float) $lot->quantity_remaining, $remaining);
-                $lot->decrement('quantity_remaining', $take);
-                $remaining -= $take;
+            $available = LotService::totalRemaining($ingredient->id);
+            if ($available < $totalUsed) {
+                throw new \Exception(
+                    "Không đủ nguyên liệu {$ingredient->name} (cần ".round($totalUsed, 2).', còn '.round($available, 2).').',
+                    422,
+                );
             }
+            $ingredient->decrement('stock_quantity', $totalUsed);
+            LotService::decrement($ingredient, $totalUsed);
 
             $voucher->items()->create([
                 'ingredient_id' => $ingredientId,

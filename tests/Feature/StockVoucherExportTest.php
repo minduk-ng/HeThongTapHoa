@@ -7,7 +7,11 @@ use App\Models\StockVoucher;
 test('checkout tao phieu xuat tu dong voi luong am aggregate', function () {
     $admin = posAdmin();
     $coffee = Ingredient::create(['code' => 'cafe', 'name' => 'Cà phê '.uniqid(), 'unit' => 'g', 'stock_quantity' => 1000, 'cost_price' => 10000]);
+    $vC = StockVoucher::create(['voucher_code' => 'PN-EXP-'.uniqid(), 'type' => 'import', 'transacted_at' => now()]);
+    $vC->items()->create(['ingredient_id' => $coffee->id, 'quantity' => 1000, 'unit_price' => 10000, 'quantity_remaining' => 1000]);
     $sugar = Ingredient::create(['code' => 'duong', 'name' => 'Đường '.uniqid(), 'unit' => 'g', 'stock_quantity' => 500, 'cost_price' => 5000]);
+    $vS = StockVoucher::create(['voucher_code' => 'PN-EXP-'.uniqid(), 'type' => 'import', 'transacted_at' => now()]);
+    $vS->items()->create(['ingredient_id' => $sugar->id, 'quantity' => 500, 'unit_price' => 5000, 'quantity_remaining' => 500]);
     $item = posMenuItem(['price' => 50000, 'vat_rate' => 0]);
     ProductRecipe::create(['menu_item_id' => $item->id, 'ingredient_id' => $coffee->id, 'amount' => 25, 'unit' => 'g']);
     ProductRecipe::create(['menu_item_id' => $item->id, 'ingredient_id' => $sugar->id, 'amount' => 10, 'unit' => 'g']);
