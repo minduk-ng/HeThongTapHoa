@@ -139,12 +139,27 @@ class StockVoucherController extends Controller
         $soldProductsMap = [];
 
         if ($voucher->type === 'export' && ! empty($voucher->note)) {
-            preg_match_all('/(HD-[A-Za-z0-9\-]+|ORD-[A-Za-z0-9\-]+)/', $voucher->note, $matches);
+            preg_match_all('/(INV-[A-Za-z0-9\-]+|HD-[A-Za-z0-9\-]+|ORD-[A-Za-z0-9\-]+)/i', $voucher->note, $matches);
             $codes = array_unique($matches[0] ?? []);
 
+            // Fallback: Nếu không match theo prefix trên, bóc tách các token trong note
+            if (empty($codes)) {
+                $tokens = array_filter(preg_split('/[\s,;]+/', $voucher->note));
+                $matchedInvoices = Invoice::whereIn('invoice_code', $tokens)->pluck('invoice_code')->all();
+                $matchedOrders = Order::whereIn('order_code', $tokens)->pluck('order_code')->all();
+                $codes = array_merge($matchedInvoices, $matchedOrders);
+            }
+
             if (! empty($codes)) {
-                $invoiceCodes = array_filter($codes, fn ($c) => str_starts_with($c, 'HD-'));
-                $orderCodes = array_filter($codes, fn ($c) => str_starts_with($c, 'ORD-'));
+                $invoiceCodes = array_filter($codes, fn ($c) => str_starts_with(strtoupper($c), 'INV-') || str_starts_with(strtoupper($c), 'HD-'));
+                $orderCodes = array_filter($codes, fn ($c) => str_starts_with(strtoupper($c), 'ORD-'));
+
+                $otherCodes = array_diff($codes, $invoiceCodes, $orderCodes);
+                if (! empty($otherCodes)) {
+                    $foundInv = Invoice::whereIn('invoice_code', $otherCodes)->pluck('invoice_code')->all();
+                    $invoiceCodes = array_merge($invoiceCodes, $foundInv);
+                    $orderCodes = array_merge($orderCodes, array_diff($otherCodes, $foundInv));
+                }
 
                 if (! empty($invoiceCodes)) {
                     $invoices = Invoice::whereIn('invoice_code', $invoiceCodes)->with(['lines', 'orders.items.menuItem'])->get();
