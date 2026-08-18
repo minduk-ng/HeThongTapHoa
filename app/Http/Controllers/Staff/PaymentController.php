@@ -47,7 +47,7 @@ class PaymentController extends Controller
                 'order_item_id' => null,
                 'menu_item_id' => (int) $it['menu_item_id'],
                 'quantity' => (int) ($it['quantity'] ?? 0),
-                'subtotal' => (float) $it['quantity'] * (float) ($mi?->price ?? 0),
+                'subtotal' => (float) $it['quantity'] * (float) ($mi->price ?? 0),
                 'category_id' => $mi?->category_id,
             ];
         });
@@ -125,7 +125,7 @@ class PaymentController extends Controller
                 'order_item_id' => null,
                 'menu_item_id' => (int) $it['menu_item_id'],
                 'quantity' => (int) ($it['quantity'] ?? 0),
-                'subtotal' => (float) $it['quantity'] * (float) ($mi?->price ?? 0),
+                'subtotal' => (float) $it['quantity'] * (float) ($mi->price ?? 0),
                 'category_id' => $mi?->category_id,
             ];
         });
@@ -354,7 +354,7 @@ class PaymentController extends Controller
                 // Các đơn trong bulk phải cùng một bàn (hoặc cùng nhóm gộp)
                 $tableIds = $orders->pluck('table_id')->filter()->unique()->values();
                 if (! empty($validated['table_id'])) {
-                    $primaryId = (int) (Table::find($validated['table_id'])?->merged_into_table_id ?? $validated['table_id']);
+                    $primaryId = (int) (Table::find($validated['table_id'])->merged_into_table_id ?? $validated['table_id']);
                     $groupIds = Table::where('id', $primaryId)->orWhere('merged_into_table_id', $primaryId)->pluck('id');
                     $foreign = $tableIds->reject(fn ($id) => $groupIds->contains((int) $id));
                     if ($foreign->isNotEmpty()) {

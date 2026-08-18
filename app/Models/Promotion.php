@@ -42,21 +42,25 @@ class Promotion extends Model
         'code_random' => 'bool',
     ];
 
+    /** @return HasMany<PromotionCondition, $this> */
     public function conditions(): HasMany
     {
         return $this->hasMany(PromotionCondition::class);
     }
 
+    /** @return HasMany<PromotionAction, $this> */
     public function actions(): HasMany
     {
         return $this->hasMany(PromotionAction::class);
     }
 
+    /** @return HasMany<PromotionCode, $this> */
     public function codes(): HasMany
     {
         return $this->hasMany(PromotionCode::class);
     }
 
+    /** @return HasMany<PromotionTimeSlot, $this> */
     public function timeSlots(): HasMany
     {
         return $this->hasMany(PromotionTimeSlot::class);

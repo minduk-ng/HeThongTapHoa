@@ -2,8 +2,13 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property int $id
@@ -14,13 +19,13 @@ use Illuminate\Database\Eloquent\Model;
  * @property int|null $merged_into_table_id
  * @property string|null $reservation_name
  * @property string|null $reservation_phone
- * @property \Carbon\Carbon|null $reservation_time
+ * @property Carbon|null $reservation_time
  * @property string|null $reservation_note
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Order> $orders
- * @property-read \App\Models\Order|null $activeOrder
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Order> $activeOrders
- * @property-read \App\Models\Table|null $mergedIntoTable
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Table> $mergedSubTables
+ * @property-read Collection<int, Order> $orders
+ * @property-read Order|null $activeOrder
+ * @property-read Collection<int, Order> $activeOrders
+ * @property-read Table|null $mergedIntoTable
+ * @property-read Collection<int, Table> $mergedSubTables
  */
 class Table extends Model
 {
@@ -47,27 +52,32 @@ class Table extends Model
         'reservation_time' => 'datetime',
     ];
 
-    public function orders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /** @return HasMany<Order, $this> */
+    public function orders(): HasMany
     {
         return $this->hasMany(Order::class, 'table_id');
     }
 
-    public function activeOrder(): \Illuminate\Database\Eloquent\Relations\HasOne
+    /** @return HasOne<Order, $this> */
+    public function activeOrder(): HasOne
     {
         return $this->hasOne(Order::class, 'table_id')->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed'])->latestOfMany();
     }
 
-    public function activeOrders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /** @return HasMany<Order, $this> */
+    public function activeOrders(): HasMany
     {
         return $this->hasMany(Order::class, 'table_id')->whereIn('status', ['draft', 'pending', 'confirmed', 'processing', 'completed']);
     }
 
-    public function mergedIntoTable(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    /** @return BelongsTo<Table, $this> */
+    public function mergedIntoTable(): BelongsTo
     {
         return $this->belongsTo(Table::class, 'merged_into_table_id');
     }
 
-    public function mergedSubTables(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /** @return HasMany<Table, $this> */
+    public function mergedSubTables(): HasMany
     {
         return $this->hasMany(Table::class, 'merged_into_table_id');
     }

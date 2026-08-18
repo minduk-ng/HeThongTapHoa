@@ -45,10 +45,10 @@ class StockVoucherController extends Controller
             'id' => $v->id,
             'voucher_code' => $v->voucher_code,
             'type' => $v->type,
-            'transacted_at' => $v->transacted_at?->format('d/m/Y H:i'),
-            'sort_key' => $v->transacted_at?->format('Y-m-d H:i:s') ?? '',
+            'transacted_at' => $v->transacted_at->format('d/m/Y H:i'),
+            'sort_key' => $v->transacted_at->format('Y-m-d H:i:s'),
             'note' => $v->note,
-            'employee_name' => $v->creator?->name ?? $v->employee?->full_name ?? '—',
+            'employee_name' => $v->creator->name ?? $v->employee->full_name ?? '—',
         ]);
 
         $ingredients = Ingredient::orderBy('name')->get(['id', 'code', 'name', 'unit', 'purchase_unit', 'unit_conversion', 'stock_quantity', 'min_stock_alert', 'cost_price']);
@@ -140,7 +140,7 @@ class StockVoucherController extends Controller
 
         if ($voucher->type === 'export' && ! empty($voucher->note)) {
             preg_match_all('/(INV-[A-Za-z0-9\-]+|HD-[A-Za-z0-9\-]+|ORD-[A-Za-z0-9\-]+)/i', $voucher->note, $matches);
-            $codes = array_unique($matches[0] ?? []);
+            $codes = array_unique($matches[0]);
 
             // Fallback: Nếu không match theo prefix trên, bóc tách các token trong note
             if (empty($codes)) {
@@ -172,7 +172,7 @@ class StockVoucherController extends Controller
                                     if (! isset($soldProductsMap[$mId])) {
                                         $soldProductsMap[$mId] = [
                                             'id' => $mId,
-                                            'name' => $line->name_snapshot ?: (MenuItem::find($mId)?->name ?? 'Món #'.$mId),
+                                            'name' => $line->name_snapshot ?: (MenuItem::find($mId)->name ?? 'Món #'.$mId),
                                             'quantity' => 0,
                                         ];
                                     }
@@ -188,7 +188,7 @@ class StockVoucherController extends Controller
                                         if (! isset($soldProductsMap[$mId])) {
                                             $soldProductsMap[$mId] = [
                                                 'id' => $mId,
-                                                'name' => $item->menuItem?->name ?? 'Món #'.$mId,
+                                                'name' => $item->menuItem->name ?? 'Món #'.$mId,
                                                 'quantity' => 0,
                                             ];
                                         }
@@ -210,7 +210,7 @@ class StockVoucherController extends Controller
                                 if (! isset($soldProductsMap[$mId])) {
                                     $soldProductsMap[$mId] = [
                                         'id' => $mId,
-                                        'name' => $item->menuItem?->name ?? 'Món #'.$mId,
+                                        'name' => $item->menuItem->name ?? 'Món #'.$mId,
                                         'quantity' => 0,
                                     ];
                                 }
@@ -245,10 +245,10 @@ class StockVoucherController extends Controller
                         $totalQty = $pQty * $amount;
                         $children[] = [
                             'product_id' => $pId,
-                            'product_name' => $recipe->menuItem?->name ?? $soldProductsMap[$pId]['name'],
+                            'product_name' => $recipe->menuItem->name ?? $soldProductsMap[$pId]['name'],
                             'product_quantity' => $pQty,
                             'recipe_amount' => $amount,
-                            'unit' => $recipe->unit ?: ($item->ingredient?->unit ?? ''),
+                            'unit' => $recipe->unit ?: ($item->ingredient->unit ?? ''),
                             'total_quantity' => $totalQty,
                         ];
                     }
@@ -276,9 +276,9 @@ class StockVoucherController extends Controller
                 'id' => $voucher->id,
                 'voucher_code' => $voucher->voucher_code,
                 'type' => $voucher->type,
-                'transacted_at' => $voucher->transacted_at?->format('d/m/Y H:i'),
+                'transacted_at' => $voucher->transacted_at->format('d/m/Y H:i'),
                 'note' => $voucher->note,
-                'employee_name' => $voucher->creator?->name ?? $voucher->employee?->full_name ?? '—',
+                'employee_name' => $voucher->creator->name ?? $voucher->employee->full_name ?? '—',
             ],
             'products' => $products,
             'items' => $items,

@@ -4,7 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 class Ingredient extends Model
@@ -40,6 +42,7 @@ class Ingredient extends Model
         });
     }
 
+    /** @return HasMany<ProductRecipe, $this> */
     public function recipes()
     {
         return $this->hasMany(ProductRecipe::class, 'ingredient_id');
@@ -47,12 +50,12 @@ class Ingredient extends Model
 
     public function getEffectiveExpiryDateAttribute(): ?string
     {
-        $earliest = \App\Models\StockVoucherItem::where('ingredient_id', $this->id)
+        $earliest = StockVoucherItem::where('ingredient_id', $this->id)
             ->where('quantity_remaining', '>', 0)
             ->whereNotNull('expiry_date')
             ->orderBy('expiry_date', 'asc')
             ->value('expiry_date');
 
-        return $earliest ? \Illuminate\Support\Carbon::parse($earliest)->toDateString() : null;
+        return $earliest ? Carbon::parse($earliest)->toDateString() : null;
     }
 }

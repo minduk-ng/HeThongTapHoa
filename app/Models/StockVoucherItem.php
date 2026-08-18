@@ -18,11 +18,13 @@ class StockVoucherItem extends Model
         'quantity_remaining' => 'float',
     ];
 
+    /** @return BelongsTo<StockVoucher, $this> */
     public function voucher(): BelongsTo
     {
         return $this->belongsTo(StockVoucher::class, 'voucher_id');
     }
 
+    /** @return BelongsTo<Ingredient, $this> */
     public function ingredient(): BelongsTo
     {
         return $this->belongsTo(Ingredient::class);

@@ -27,7 +27,7 @@ class InventoryValueReportController extends Controller
             'cost_price' => round((float) $i->cost_price, 2),
             'value' => round((float) $i->stock_quantity * (float) $i->cost_price, 2),
         ]);
-        $totalValue = round($rows->sum('value'), 2);
+        $totalValue = round((float) $rows->sum('value'), 2);
 
         return Inertia::render('reports/InventoryValueReport', [
             'rows' => $rows,

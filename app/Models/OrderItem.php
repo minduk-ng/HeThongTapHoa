@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $id
@@ -17,11 +19,11 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $note
  * @property string|null $cancellation_reason
  * @property int|null $cancelled_by_user_id
- * @property \Carbon\Carbon|null $served_at
- * @property \Carbon\Carbon|null $cancelled_at
- * @property-read \App\Models\Order $order
- * @property-read \App\Models\MenuItem|null $menuItem
- * @property-read \App\Models\User|null $cancelledBy
+ * @property Carbon|null $served_at
+ * @property Carbon|null $cancelled_at
+ * @property-read Order $order
+ * @property-read MenuItem|null $menuItem
+ * @property-read User|null $cancelledBy
  */
 class OrderItem extends Model
 {
@@ -52,17 +54,20 @@ class OrderItem extends Model
         'cancelled_at' => 'datetime',
     ];
 
-    public function order(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    /** @return BelongsTo<Order, $this> */
+    public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'order_id');
     }
 
-    public function menuItem(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    /** @return BelongsTo<MenuItem, $this> */
+    public function menuItem(): BelongsTo
     {
         return $this->belongsTo(MenuItem::class, 'menu_item_id');
     }
 
-    public function cancelledBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    /** @return BelongsTo<User, $this> */
+    public function cancelledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by_user_id');
     }

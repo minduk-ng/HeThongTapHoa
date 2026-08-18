@@ -16,16 +16,19 @@ class StockVoucher extends Model
         'transacted_at' => 'datetime',
     ];
 
+    /** @return HasMany<StockVoucherItem, $this> */
     public function items(): HasMany
     {
         return $this->hasMany(StockVoucherItem::class, 'voucher_id');
     }
 
+    /** @return BelongsTo<Employee, $this> */
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

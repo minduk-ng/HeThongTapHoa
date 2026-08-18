@@ -66,17 +66,17 @@ class PromotionController extends Controller
             'stackable' => $p->stackable,
             'conditions' => $p->conditions->map(fn ($c) => [
                 'cond_type' => $c->cond_type, 'cond_value' => $c->cond_value,
-            ])->values(),
+            ])->values()->all(),
             'actions' => $p->actions->map(fn ($a) => [
                 'action_type' => $a->action_type,
                 'action_value' => (float) $a->action_value,
                 'max_discount_amount' => $a->max_discount_amount,
-            ])->values(),
+            ])->values()->all(),
             'time_slots' => $p->timeSlots->map(fn ($s) => [
                 'day_of_week' => $s->day_of_week,
                 'start_time' => $s->start_time,
                 'end_time' => $s->end_time,
-            ])->values(),
+            ])->values()->all(),
         ]);
 
         // Doanh thu campaign = full doanh thu hoá đơn distinct có dùng mã đó (không phân bổ theo discount,

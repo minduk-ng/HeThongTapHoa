@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -19,12 +22,12 @@ use Illuminate\Database\Eloquent\Model;
  * @property float $discount_amount
  * @property string|null $external_no
  * @property string|null $external_ref
- * @property \Carbon\Carbon $issued_at
+ * @property Carbon $issued_at
  * @property-read int $orders_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Order> $orders
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Payment> $payments
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\InvoiceLine> $lines
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\InvoicePromotion> $promotions
+ * @property-read Collection<int, Order> $orders
+ * @property-read Collection<int, Payment> $payments
+ * @property-read Collection<int, InvoiceLine> $lines
+ * @property-read Collection<int, InvoicePromotion> $promotions
  */
 class Invoice extends Model
 {
@@ -59,22 +62,26 @@ class Invoice extends Model
         'issued_at' => 'datetime',
     ];
 
-    public function orders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /** @return HasMany<Order, $this> */
+    public function orders(): HasMany
     {
         return $this->hasMany(Order::class, 'invoice_id');
     }
 
-    public function payments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /** @return HasMany<Payment, $this> */
+    public function payments(): HasMany
     {
         return $this->hasMany(Payment::class, 'invoice_id');
     }
 
-    public function lines(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /** @return HasMany<InvoiceLine, $this> */
+    public function lines(): HasMany
     {
         return $this->hasMany(InvoiceLine::class, 'invoice_id');
     }
 
-    public function promotions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /** @return HasMany<InvoicePromotion, $this> */
+    public function promotions(): HasMany
     {
         return $this->hasMany(InvoicePromotion::class, 'invoice_id');
     }

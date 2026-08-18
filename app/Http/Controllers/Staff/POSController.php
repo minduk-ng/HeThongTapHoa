@@ -126,7 +126,7 @@ class POSController extends Controller
                 $possibleServings = [];
                 foreach ($product->recipes as $recipe) {
                     if ((float) $recipe->amount > 0) {
-                        $stock = (float) ($recipe->ingredient?->stock_quantity ?? 0);
+                        $stock = (float) ($recipe->ingredient->stock_quantity ?? 0);
                         $possible = (int) floor($stock / (float) $recipe->amount);
                         $possibleServings[] = max(0, $possible);
                     }

@@ -2,8 +2,12 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -22,13 +26,13 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $note
  * @property string|null $reservation_name
  * @property string|null $reservation_phone
- * @property \Carbon\Carbon|null $reservation_time
+ * @property Carbon|null $reservation_time
  * @property string|null $reservation_note
- * @property-read \App\Models\Table|null $table
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderItem> $items
- * @property-read \App\Models\Invoice|null $invoice
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderActivity> $activities
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Deposit> $deposits
+ * @property-read Table|null $table
+ * @property-read Collection<int, OrderItem> $items
+ * @property-read Invoice|null $invoice
+ * @property-read Collection<int, OrderActivity> $activities
+ * @property-read Collection<int, Deposit> $deposits
  * @property float $deposit_total
  */
 class Order extends Model
@@ -72,27 +76,32 @@ class Order extends Model
         'reservation_time' => 'datetime',
     ];
 
-    public function table(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    /** @return BelongsTo<Table, $this> */
+    public function table(): BelongsTo
     {
         return $this->belongsTo(Table::class, 'table_id');
     }
 
-    public function items(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /** @return HasMany<OrderItem, $this> */
+    public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class, 'order_id');
     }
 
-    public function invoice(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    /** @return BelongsTo<Invoice, $this> */
+    public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class, 'invoice_id');
     }
 
-    public function activities(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /** @return HasMany<OrderActivity, $this> */
+    public function activities(): HasMany
     {
         return $this->hasMany(OrderActivity::class)->orderBy('created_at');
     }
 
-    public function deposits(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /** @return HasMany<Deposit, $this> */
+    public function deposits(): HasMany
     {
         return $this->hasMany(Deposit::class);
     }
@@ -102,6 +111,7 @@ class Order extends Model
         if ($this->relationLoaded('deposits')) {
             return (float) $this->deposits->where('status', 'held')->sum('amount');
         }
+
         return (float) $this->deposits()->where('status', 'held')->sum('amount');
     }
 }

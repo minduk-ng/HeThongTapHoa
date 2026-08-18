@@ -14,7 +14,7 @@ class PromotionEngine
         $lines = collect($lines)->values();
 
         // 0. Dedupe mã (đã chuẩn hoá hoa + trim) — tránh apply 2 lần cùng 1 code
-        $codes = array_values(array_unique(array_map(fn ($c) => mb_strtoupper(trim((string) $c)), $codes)));
+        $codes = array_unique(array_map(fn ($c) => mb_strtoupper(trim((string) $c)), $codes));
 
         // 1. COUPON/VOUCHER từ mã nhập
         $codePromotions = [];
@@ -159,7 +159,7 @@ class PromotionEngine
             $applied[] = [
                 'promotion' => $p,
                 'amount' => $amount,
-                'code' => $p->type === 'promotion' ? null : (($promotionCodesById[$p->id][0] ?? null)?->code ?? $p->code),
+                'code' => $p->type === 'promotion' ? null : ($promotionCodesById[$p->id][0]->code ?? $p->code),
                 'codes' => $promotionCodesById[$p->id] ?? [],
                 'actions_applied' => $actionsApplied,
             ];
@@ -211,7 +211,6 @@ class PromotionEngine
                 'min_quantity' => $lines->sum('quantity') >= (int) $cond->cond_value,
                 'specific_product' => $lines->contains(fn ($l) => (int) ($l['menu_item_id'] ?? 0) === (int) $cond->cond_value),
                 'specific_category' => self::lineInCategory($lines, (int) $cond->cond_value),
-                default => false,
             };
             if (! $ok) {
                 return false;

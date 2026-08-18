@@ -464,7 +464,7 @@ class CheckoutService
             ->max() ?? 0;
         $voucherCode = $prefix.str_pad((string) ($maxSeq + 1), 3, '0', STR_PAD_LEFT);
 
-        $invoiceCodes = $orders->map(fn ($o) => $o->invoice?->invoice_code ?? $o->order_code)->unique()->implode(', ');
+        $invoiceCodes = $orders->map(fn ($o) => $o->invoice->invoice_code ?? $o->order_code)->unique()->implode(', ');
 
         $voucher = StockVoucher::create([
             'voucher_code' => $voucherCode,
