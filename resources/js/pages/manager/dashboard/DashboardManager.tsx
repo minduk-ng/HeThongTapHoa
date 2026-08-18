@@ -67,7 +67,7 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
         const echo = (window as any).Echo;
         if (!echo) return;
 
-        const posChannel = echo.channel('pos-channel');
+        const posChannel = echo.private('pos-channel');
         
         const reloadDashboard = () => {
             router.reload({
@@ -88,7 +88,7 @@ export default function DashboardManager({ filters, kpis, live_operations, analy
         inventoryChannel.listen('.IngredientStockUpdated', reloadDashboard);
 
         return () => {
-            echo.leaveChannel('pos-channel');
+            echo.leaveChannel('private-pos-channel');
             echo.leaveChannel('private-inventory-channel');
         };
     }, [filters.date_range]);

@@ -47,8 +47,8 @@ return [
     ],
 
     'admin' => [
-        'email' => env('ADMIN_EMAIL', 'admin@admin.com'),
-        'default_password' => env('ADMIN_DEFAULT_PASSWORD', '244466666'),
+        'email' => env('ADMIN_EMAIL'),
+        'default_password' => env('ADMIN_DEFAULT_PASSWORD'),
     ],
 
 ];

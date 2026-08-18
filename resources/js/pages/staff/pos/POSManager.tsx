@@ -111,7 +111,7 @@ export default function POSManager({ tables, categories, products, promotions }:
     // Realtime WebSocket Listener via Reverb for POS tables & orders updates
     useEffect(() => {
         if (typeof window !== 'undefined' && window.Echo) {
-            const channel = window.Echo.channel('pos-channel');
+            const channel = window.Echo.private('pos-channel');
 
             const handleTableReload = (eventName: string, payload?: any) => {
                 const eventKey = `${eventName}_${payload?.order_id || payload?.table_id || ''}`;

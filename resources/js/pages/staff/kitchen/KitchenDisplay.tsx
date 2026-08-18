@@ -149,7 +149,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
     // Realtime WebSocket Listener via Reverb for instant new order tickets & completions & chime audio
     useEffect(() => {
         if (typeof window !== 'undefined' && window.Echo) {
-            const channel = window.Echo.channel('kitchen-channel');
+            const channel = window.Echo.private('kitchen-channel');
 
             const handleOrderSent = (payload?: any) => {
                 const eventKey = `OrderSentToKitchen_${payload?.order_id || ''}_${payload?.action_type || ''}`;
