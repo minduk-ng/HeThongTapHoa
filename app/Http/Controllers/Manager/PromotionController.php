@@ -322,6 +322,7 @@ class PromotionController extends Controller
         $validated = $request->validate($this->rules());
 
         $this->assertTypeConfigValid($validated);
+        $this->assertActionsAndConditionsValid($validated);
 
         DB::transaction(function () use ($validated) {
             // Batch (code_prefix) và mã lẻ (code) loại trừ lẫn nhau — chọn 1 trong 2
@@ -379,6 +380,7 @@ class PromotionController extends Controller
         $validated = $request->validate($this->rules($promotion));
 
         $this->assertTypeConfigValid($validated, $promotion);
+        $this->assertActionsAndConditionsValid($validated);
 
         DB::transaction(function () use ($validated, $promotion) {
             // Batch (code_prefix) và mã lẻ (code) loại trừ lẫn nhau — chọn 1 trong 2
@@ -526,6 +528,134 @@ class PromotionController extends Controller
                         'code' => 'Voucher không dùng mã đơn — dùng batch mã ngẫu nhiên.',
                     ]);
                 }
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function assertActionsAndConditionsValid(array $validated): void
+    {
+        $actions = $validated['actions'] ?? [];
+        if (empty($actions)) {
+            throw ValidationException::withMessages([
+                'actions' => 'Vui lòng cấu hình ít nhất một hành động giảm giá.',
+            ]);
+        }
+
+        $hasPercent = false;
+        $hasAmount = false;
+        $freeProductIds = [];
+
+        foreach ($actions as $action) {
+            $type = $action['action_type'] ?? '';
+            $val = (float) ($action['action_value'] ?? 0);
+
+            if ($type === 'discount_percent') {
+                if ($hasPercent) {
+                    throw ValidationException::withMessages([
+                        'actions' => 'Không được cấu hình nhiều hơn 1 mức giảm phần trăm (%).',
+                    ]);
+                }
+                if ($hasAmount) {
+                    throw ValidationException::withMessages([
+                        'actions' => 'Không thể vừa giảm theo phần trăm vừa giảm theo số tiền trong cùng một chương trình.',
+                    ]);
+                }
+                if ($val <= 0 || $val > 100) {
+                    throw ValidationException::withMessages([
+                        'actions' => 'Phần trăm giảm giá phải từ 0.01% đến 100%.',
+                    ]);
+                }
+                $hasPercent = true;
+            } elseif ($type === 'discount_amount') {
+                if ($hasAmount) {
+                    throw ValidationException::withMessages([
+                        'actions' => 'Không được cấu hình nhiều hơn 1 mức giảm số tiền (đ).',
+                    ]);
+                }
+                if ($hasPercent) {
+                    throw ValidationException::withMessages([
+                        'actions' => 'Không thể vừa giảm theo số tiền vừa giảm theo phần trăm trong cùng một chương trình.',
+                    ]);
+                }
+                if ($val <= 0) {
+                    throw ValidationException::withMessages([
+                        'actions' => 'Số tiền giảm giá phải lớn hơn 0đ.',
+                    ]);
+                }
+                $hasAmount = true;
+            } elseif ($type === 'free_product') {
+                $itemId = (int) ($action['action_value'] ?? 0);
+                if ($itemId <= 0) {
+                    throw ValidationException::withMessages([
+                        'actions' => 'Vui lòng chọn món tặng cụ thể.',
+                    ]);
+                }
+                if (in_array($itemId, $freeProductIds, true)) {
+                    throw ValidationException::withMessages([
+                        'actions' => 'Món tặng đã được chọn, không thể chọn trùng món.',
+                    ]);
+                }
+                $freeProductIds[] = $itemId;
+            }
+        }
+
+        $conditions = $validated['conditions'] ?? [];
+        $hasMinOrder = false;
+        $hasMinQty = false;
+        $productConds = [];
+        $categoryConds = [];
+
+        foreach ($conditions as $cond) {
+            $type = $cond['cond_type'] ?? '';
+            $val = trim((string) ($cond['cond_value'] ?? ''));
+
+            if ($val === '') {
+                throw ValidationException::withMessages([
+                    'conditions' => 'Giá trị điều kiện không được để trống.',
+                ]);
+            }
+
+            if ($type === 'min_order_value') {
+                if ($hasMinOrder) {
+                    throw ValidationException::withMessages([
+                        'conditions' => 'Chỉ được thiết lập 1 điều kiện Giá trị đơn tối thiểu.',
+                    ]);
+                }
+                if ((float) $val <= 0) {
+                    throw ValidationException::withMessages([
+                        'conditions' => 'Giá trị đơn tối thiểu phải lớn hơn 0đ.',
+                    ]);
+                }
+                $hasMinOrder = true;
+            } elseif ($type === 'min_quantity') {
+                if ($hasMinQty) {
+                    throw ValidationException::withMessages([
+                        'conditions' => 'Chỉ được thiết lập 1 điều kiện Số lượng món tối thiểu.',
+                    ]);
+                }
+                if ((int) $val <= 0) {
+                    throw ValidationException::withMessages([
+                        'conditions' => 'Số lượng món tối thiểu phải từ 1 trở lên.',
+                    ]);
+                }
+                $hasMinQty = true;
+            } elseif ($type === 'specific_product') {
+                if (in_array($val, $productConds, true)) {
+                    throw ValidationException::withMessages([
+                        'conditions' => 'Điều kiện món áp dụng bị trùng lặp.',
+                    ]);
+                }
+                $productConds[] = $val;
+            } elseif ($type === 'specific_category') {
+                if (in_array($val, $categoryConds, true)) {
+                    throw ValidationException::withMessages([
+                        'conditions' => 'Điều kiện danh mục áp dụng bị trùng lặp.',
+                    ]);
+                }
+                $categoryConds[] = $val;
             }
         }
     }
