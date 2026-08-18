@@ -203,52 +203,51 @@ export default function PaymentDrawer({
                 <div className="flex-1 overflow-hidden">
                     <div className="grid grid-cols-12 h-full">
                         {/* Cột trái: CHỈ HIỂN THỊ DANH SÁCH MÓN (Full Height - 6/12) */}
-                        <div className="col-span-6 border-r border-zinc-200/80 dark:border-zinc-800/80 flex flex-col min-h-0 bg-zinc-50/40 dark:bg-zinc-900/40">
+                        <div className="col-span-6 border-r border-zinc-200/80 dark:border-zinc-800/80 flex flex-col min-h-0 bg-white dark:bg-zinc-900">
                             {/* Column Subheader */}
                             <div className="px-5 py-2.5 border-b border-zinc-200/60 dark:border-zinc-800/60 flex items-center justify-between text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider shrink-0 bg-zinc-100/50 dark:bg-zinc-800/30">
                                 <span>Món đã chọn ({cartItems.reduce((s, i) => s + i.quantity, 0)})</span>
                                 <span>Thành tiền</span>
                             </div>
 
-                            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
+                            <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800/60">
                                 {cartItems.length === 0 ? (
-                                    <div className="text-center text-sm text-zinc-400 dark:text-zinc-500 py-16">
+                                    <div className="text-center text-xs text-zinc-400 dark:text-zinc-500 py-16">
                                         Chưa có món nào được chọn
                                     </div>
                                 ) : (
-                                    <div className="space-y-4">
-                                        {Object.entries(itemsByOrder).map(([code, items]) => (
-                                            <div key={code} className="space-y-2">
-                                                {orderCodes.length > 1 && (
-                                                    <div className="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
-                                                        {code}
-                                                    </div>
-                                                )}
-                                                <div className="divide-y divide-zinc-200/70 dark:divide-zinc-800/70 bg-white dark:bg-zinc-850 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 overflow-hidden shadow-xs">
-                                                    {items.map((item, idx) => (
-                                                        <div key={idx} className="flex justify-between items-center px-4 py-3.5 transition-colors hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
-                                                            <div className="flex-1 pr-3 min-w-0">
-                                                                <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                                                                    {item.name}
-                                                                </div>
-                                                                <div className="flex items-center gap-2 mt-1">
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 font-bold tabular-nums text-xs border border-sky-200/60 dark:border-sky-800/60">
-                                                                        x{item.quantity}
-                                                                    </span>
-                                                                    <span className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">
-                                                                        {item.unit_price.toLocaleString('vi-VN')} đ
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tabular-nums shrink-0">
-                                                                {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                    Object.entries(itemsByOrder).map(([code, items]) => (
+                                        <div key={code} className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                                            {orderCodes.length > 1 && (
+                                                <div className="px-5 py-1.5 bg-zinc-50/80 dark:bg-zinc-800/50 text-[11px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800/60">
+                                                    {code}
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                            )}
+                                            {items.map((item, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="flex justify-between items-center px-5 py-2.5 transition-colors hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40"
+                                                >
+                                                    <div className="flex-1 pr-3 min-w-0">
+                                                        <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                                                            {item.name}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 font-bold tabular-nums text-[11px] border border-sky-200/60 dark:border-sky-800/60">
+                                                                x{item.quantity}
+                                                            </span>
+                                                            <span className="text-[11px] text-zinc-500 dark:text-zinc-400 tabular-nums">
+                                                                {item.unit_price.toLocaleString('vi-VN')} đ
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 tabular-nums shrink-0">
+                                                        {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))
                                 )}
                             </div>
                         </div>
