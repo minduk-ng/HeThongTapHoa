@@ -360,28 +360,14 @@ class CheckoutService
                 }
             }
 
-            // 8. Cập nhật orders (1 nguồn duy nhất): phân bổ discount theo tỷ trọng, đơn cuối nhận phần dư
+            // 8. Cập nhật orders lấy trực tiếp từ $lineInputs đã phân bổ — đảm bảo order == invoice_lines
             $count = $orders->count();
-            $assignedDiscount = 0.0;
             /** @var Order $order */
-            foreach ($orders as $idx => $order) {
-                $activeItems = $order->items()->where('status', '!=', 'cancelled')->with('menuItem')->get();
-                $orderSubtotal = (float) $activeItems->sum('subtotal');
-                $orderDiscount = 0.0;
-                if ($totalDiscount > 0 && $subtotal > 0) {
-                    if ($idx === $count - 1) {
-                        $orderDiscount = round($totalDiscount - $assignedDiscount, 2);
-                    } else {
-                        $orderDiscount = floor($totalDiscount * $orderSubtotal / $subtotal);
-                        $assignedDiscount += $orderDiscount;
-                    }
-                }
-                // VAT thực thu trên giá sau discount (phân bổ theo tỷ trọng subtotal, khớp line-level)
-                $orderVat = (float) $activeItems->sum(fn ($item) => $item instanceof OrderItem
-                    ? OrderTotals::vatInPrice(
-                        max(0.0, (float) $item->subtotal - ($orderSubtotal > 0 ? $orderDiscount * (float) $item->subtotal / $orderSubtotal : 0.0)),
-                        (float) ($item->menuItem->vat_rate ?? 0))
-                    : 0.0);
+            foreach ($orders as $order) {
+                $orderLines = collect($lineInputs)->where('order_id', $order->id);
+                $orderSubtotal = round((float) $order->items()->where('status', '!=', 'cancelled')->sum('subtotal'), 2);
+                $orderDiscount = round((float) $orderLines->sum('discount_amount'), 2);
+                $orderVat = round((float) $orderLines->sum('vat_amount'), 2);
                 $orderTotal = round(max(0.0, $orderSubtotal - $orderDiscount), 2);
 
                 $order->update([
