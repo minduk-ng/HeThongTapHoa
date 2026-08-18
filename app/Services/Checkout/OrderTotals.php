@@ -16,12 +16,14 @@ class OrderTotals
         if ($rate <= 0) {
             return $subtotal;
         }
-        return (float) floor($subtotal / (1 + $rate / 100));
+
+        return (float) floor(round($subtotal / (1 + $rate / 100), 10));
     }
 
     /**
      * Gom preview từ danh sách order_items (đã lọc status != 'cancelled').
      * Mỗi item dùng $item->subtotal và $item->menuItem?->vat_rate.
+     *
      * @param  iterable<object>  $items
      * @return array{subtotal: float, vat_amount: float}
      */
@@ -35,6 +37,7 @@ class OrderTotals
             $subtotal += $line;
             $vat += static::vatInPrice($line, $rate);
         }
+
         return ['subtotal' => $subtotal, 'vat_amount' => $vat];
     }
 }

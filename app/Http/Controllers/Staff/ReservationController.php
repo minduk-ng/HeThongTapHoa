@@ -12,6 +12,7 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Table;
+use App\Services\Checkout\OrderTotals;
 use App\Services\IdempotencyGuard;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\Request;
@@ -223,7 +224,7 @@ class ReservationController extends Controller
                         // In POS flow, if sendToKitchen expects VAT, we calculate it here based on vat_rate
                         // Assuming vat_rate exists or is 0
                         $vatRate = $menuItem->vat_rate ?? 0;
-                        $itemVat = $itemSubtotal * ($vatRate / 100);
+                        $itemVat = OrderTotals::vatInPrice($itemSubtotal, $vatRate);
 
                         $subtotal += $itemSubtotal;
                         $vatAmount += $itemVat;
@@ -337,7 +338,7 @@ class ReservationController extends Controller
 
         try {
             $result = DB::transaction(function () use ($validated, $request) {
-                $order = Order::with('table')->findOrFail($validated['order_id']);
+                $order = Order::with('table')->lockForUpdate()->findOrFail($validated['order_id']);
 
                 if (in_array($order->status, ['paid', 'cancelled'])) {
                     throw new \Exception('Không thể đặt cọc cho đơn đã thanh toán hoặc đã hủy', 422);

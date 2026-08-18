@@ -180,7 +180,7 @@ class CheckoutService
             $heldDeposits = [];
             /** @var Order $order */
             foreach ($orders as $order) {
-                $held = $order->deposits()->where('status', 'held')->get();
+                $held = $order->deposits()->where('status', 'held')->lockForUpdate()->get();
                 /** @var Deposit $d */
                 foreach ($held as $d) {
                     $heldDeposits[] = $d;
@@ -305,12 +305,11 @@ class CheckoutService
                         'discount_applied' => $allocated,
                     ]);
 
-                    // Truy vết invoice cho mã con đã dùng
-                    if ($pr['code']) {
-                        \App\Models\PromotionCode::where('code', $pr['code'])
-                            ->where('status', 'used')
-                            ->whereNull('used_invoice_id')
-                            ->update(['used_invoice_id' => $invoice->id]);
+                    // Truy vết invoice cho mọi mã con đã dùng
+                    foreach ($pr['codes'] ?? [] as $pc) {
+                        if ($pc->used_invoice_id === null) {
+                            $pc->forceFill(['used_invoice_id' => $invoice->id])->save();
+                        }
                     }
                 }
             }
