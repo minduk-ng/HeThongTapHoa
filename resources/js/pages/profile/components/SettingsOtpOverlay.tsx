@@ -14,7 +14,11 @@ interface SettingsOtpOverlayProps {
 const getCookie = (name: string): string => {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return decodeURIComponent(parts.pop()?.split(';').shift() || '');
+
+    if (parts.length === 2) {
+return decodeURIComponent(parts.pop()?.split(';').shift() || '');
+}
+
     return '';
 };
 
@@ -39,7 +43,10 @@ export default function SettingsOtpOverlay({
     }, []);
 
     const handleChange = (element: HTMLInputElement, index: number) => {
-        if (element.value && isNaN(Number(element.value))) return;
+        if (element.value && isNaN(Number(element.value))) {
+return;
+}
+
         const val = element.value;
         const nextOtp = otp.map((d, idx) => (idx === index ? val : d));
         setOtp(nextOtp);
@@ -67,24 +74,22 @@ export default function SettingsOtpOverlay({
     const handlePaste = (e: React.ClipboardEvent) => {
         e.preventDefault();
         const pastedData = e.clipboardData.getData('text').slice(0, 6).split('');
-        if (pastedData.some((char) => isNaN(Number(char)))) return;
+
+        if (pastedData.some((char) => isNaN(Number(char)))) {
+return;
+}
 
         const newOtp = [...otp];
         pastedData.forEach((char, index) => {
-            if (index < 6) newOtp[index] = char;
+            if (index < 6) {
+newOtp[index] = char;
+}
         });
         setOtp(newOtp);
 
         const focusIndex = Math.min(pastedData.length, 5);
         inputs.current[focusIndex]?.focus();
     };
-
-    useEffect(() => {
-        const code = otp.join('');
-        if (code.length === 6 && status === 'idle') {
-            verifyOtp(code);
-        }
-    }, [otp]);
 
     const verifyOtp = async (code: string) => {
         setStatus('processing');
@@ -116,7 +121,7 @@ export default function SettingsOtpOverlay({
                     inputs.current[0]?.focus();
                 }, 500);
             }
-        } catch (e) {
+        } catch {
             setStatus('error');
             setErrorMsg('Có lỗi kết nối xảy ra.');
             setTimeout(() => {
@@ -127,9 +132,22 @@ export default function SettingsOtpOverlay({
         }
     };
 
+    useEffect(() => {
+        const code = otp.join('');
+
+        if (code.length === 6 && status === 'idle') {
+            queueMicrotask(() => verifyOtp(code));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [otp]);
+
     const handleResend = async () => {
-        if (resendCooldown > 0 || resendProcessing) return;
+        if (resendCooldown > 0 || resendProcessing) {
+return;
+}
+
         setResendProcessing(true);
+
         try {
             const response = await fetch('/resend-otp', {
                 method: 'POST',
@@ -139,6 +157,7 @@ export default function SettingsOtpOverlay({
                     'X-XSRF-TOKEN': getCookie('XSRF-TOKEN')
                 }
             });
+
             if (response.ok) {
                 setOtp(['', '', '', '', '', '']);
                 setStatus('idle');
@@ -147,7 +166,7 @@ export default function SettingsOtpOverlay({
                 setResendCooldown(cooldownMultiplier);
                 setCooldownMultiplier(prev => prev * 2);
             }
-        } catch (e) {
+        } catch {
             // Ignore resend network error silently
         } finally {
             setResendProcessing(false);
@@ -182,14 +201,25 @@ export default function SettingsOtpOverlay({
                 <div className="my-6 flex justify-center gap-2">
                     {otp.map((v, i) => {
                         let fieldClass = 'otp-input-field transition-all duration-200';
-                        if (status === 'error') fieldClass += ' otp-input-error';
-                        if (status === 'success') fieldClass += ' otp-input-success';
-                        if (status === 'processing') fieldClass += ' animate-pulse border-indigo-400';
+
+                        if (status === 'error') {
+fieldClass += ' otp-input-error';
+}
+
+                        if (status === 'success') {
+fieldClass += ' otp-input-success';
+}
+
+                        if (status === 'processing') {
+fieldClass += ' animate-pulse border-indigo-400';
+}
 
                         return (
                             <input
                                 key={i}
-                                ref={(el) => { inputs.current[i] = el; }}
+                                ref={(el) => {
+ inputs.current[i] = el; 
+}}
                                 type="text"
                                 maxLength={1}
                                 className={fieldClass}

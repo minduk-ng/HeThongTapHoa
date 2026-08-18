@@ -1,5 +1,6 @@
 import { useForm, router, usePage } from '@inertiajs/react';
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import type { FormEvent} from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface OtpVerifyProps {
     email: string;
@@ -9,18 +10,22 @@ interface OtpVerifyProps {
 const getCookie = (name: string): string => {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return decodeURIComponent(parts.pop()?.split(';').shift() || '');
+
+    if (parts.length === 2) {
+return decodeURIComponent(parts.pop()?.split(';').shift() || '');
+}
+
     return '';
 };
 
-export default function OtpVerify({ email, type }: OtpVerifyProps) {
+export default function OtpVerify({ email }: OtpVerifyProps) {
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
     const [localError, setLocalError] = useState<string | null>(null);
     const inputs = useRef<(HTMLInputElement | null)[]>([]);
     const { errors } = usePage().props as any;
 
-    const { data, setData } = useForm({
+    const { setData } = useForm({
         code: '',
     });
 
@@ -36,6 +41,7 @@ export default function OtpVerify({ email, type }: OtpVerifyProps) {
             const timer = setTimeout(() => {
                 setOtpExpirationCooldown((prev) => prev - 1);
             }, 1000);
+
             return () => clearTimeout(timer);
         }
     }, [otpExpirationCooldown]);
@@ -46,6 +52,7 @@ export default function OtpVerify({ email, type }: OtpVerifyProps) {
             const timer = setTimeout(() => {
                 setResendCooldown((prev) => prev - 1);
             }, 1000);
+
             return () => clearTimeout(timer);
         }
     }, [resendCooldown]);
@@ -56,7 +63,9 @@ export default function OtpVerify({ email, type }: OtpVerifyProps) {
     }, []);
 
     const handleChange = (element: HTMLInputElement, index: number) => {
-        if (element.value && isNaN(Number(element.value))) return false;
+        if (element.value && isNaN(Number(element.value))) {
+return false;
+}
 
         const val = element.value;
         const nextOtp = otp.map((d, idx) => (idx === index ? val : d));
@@ -86,11 +95,16 @@ export default function OtpVerify({ email, type }: OtpVerifyProps) {
     const handlePaste = (e: React.ClipboardEvent) => {
         e.preventDefault();
         const pastedData = e.clipboardData.getData('text').slice(0, 6).split('');
-        if (pastedData.some((char) => isNaN(Number(char)))) return;
+
+        if (pastedData.some((char) => isNaN(Number(char)))) {
+return;
+}
 
         const newOtp = [...otp];
         pastedData.forEach((char, index) => {
-            if (index < 6) newOtp[index] = char;
+            if (index < 6) {
+newOtp[index] = char;
+}
         });
         setOtp(newOtp);
 
@@ -101,15 +115,7 @@ export default function OtpVerify({ email, type }: OtpVerifyProps) {
     // Keep code in sync with otp array
     useEffect(() => {
         setData('code', otp.join(''));
-    }, [otp]);
-
-    // Auto submit when all 6 digits are filled
-    useEffect(() => {
-        const code = otp.join('');
-        if (code.length === 6 && status === 'idle') {
-            verifyOtpCode(code);
-        }
-    }, [otp]);
+    }, [otp, setData]);
 
     const verifyOtpCode = async (code: string) => {
         setStatus('processing');
@@ -147,7 +153,7 @@ export default function OtpVerify({ email, type }: OtpVerifyProps) {
                     inputs.current[0]?.focus();
                 }, 500);
             }
-        } catch (error) {
+        } catch {
             setStatus('error');
             setLocalError('Đã xảy ra lỗi kết nối. Vui lòng thử lại.');
             setTimeout(() => {
@@ -158,9 +164,20 @@ export default function OtpVerify({ email, type }: OtpVerifyProps) {
         }
     };
 
+    // Auto submit when all 6 digits are filled
+    useEffect(() => {
+        const code = otp.join('');
+
+        if (code.length === 6 && status === 'idle') {
+            queueMicrotask(() => verifyOtpCode(code));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [otp]);
+
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         const code = otp.join('');
+
         if (code.length === 6) {
             verifyOtpCode(code);
         }
@@ -169,11 +186,14 @@ export default function OtpVerify({ email, type }: OtpVerifyProps) {
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
+
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
     const handleResend = () => {
-        if (resendCooldown > 0) return;
+        if (resendCooldown > 0) {
+return;
+}
 
         postResend('/resend-otp', {
             onSuccess: () => {
@@ -207,6 +227,7 @@ export default function OtpVerify({ email, type }: OtpVerifyProps) {
             <div className="flex justify-center gap-2 sm:gap-3">
                 {otp.map((dataVal, index) => {
                     let inputClass = 'otp-input-field transition-all duration-200';
+
                     if (status === 'error') {
                         inputClass += ' otp-input-error';
                     } else if (status === 'success') {
@@ -227,7 +248,9 @@ export default function OtpVerify({ email, type }: OtpVerifyProps) {
                             onKeyDown={(e) => handleKeyDown(e, index)}
                             onPaste={handlePaste}
                             disabled={status === 'processing' || status === 'success'}
-                            ref={(el) => { inputs.current[index] = el; }}
+                            ref={(el) => {
+ inputs.current[index] = el; 
+}}
                         />
                     );
                 })}

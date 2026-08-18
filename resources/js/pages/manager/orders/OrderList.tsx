@@ -1,15 +1,10 @@
 import { Head, router } from '@inertiajs/react';
 import {
-    ClipboardList,
     Search,
     ChevronUp,
     ChevronDown,
     Rows3,
-    CalendarDays,
     ReceiptText,
-    CircleDollarSign,
-    XCircle,
-    Clock,
     RotateCcw,
 } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
@@ -241,33 +236,6 @@ export default function OrderList({
             <ChevronDown className="h-3 w-3 text-sky-500" />
         );
     };
-
-    const summaryCards = [
-        {
-            label: 'Tổng order',
-            value: summary.total_orders,
-            icon: ClipboardList,
-            color: 'text-zinc-600 dark:text-zinc-300',
-        },
-        {
-            label: 'Đang mở',
-            value: summary.open_orders,
-            icon: Clock,
-            color: 'text-amber-600 dark:text-amber-400',
-        },
-        {
-            label: 'Đã thanh toán',
-            value: summary.paid_orders,
-            icon: CircleDollarSign,
-            color: 'text-emerald-600 dark:text-emerald-400',
-        },
-        {
-            label: 'Đã hủy',
-            value: summary.cancelled_orders,
-            icon: XCircle,
-            color: 'text-rose-600 dark:text-rose-400',
-        },
-    ];
 
     const hasActiveFilter = Boolean(searchQuery || typeFilter !== 'all' || statusFilter !== 'all' || startDateVal || endDateVal);
 

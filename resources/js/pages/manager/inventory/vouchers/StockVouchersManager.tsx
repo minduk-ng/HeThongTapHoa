@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { ReceiptText, Plus, RotateCcw, Filter, SlidersHorizontal } from 'lucide-react';
-import DashboardLayout from '../../../../layouts/DashboardLayout';
-import ManagerPageLayout from '../../../../components/ManagerPageLayout';
-import StockImportModal from '../ingredients/components/StockImportModal';
-import DataTable, { DataTableColumn } from '../../../../components/DataTable';
+import React, { useState } from 'react';
+import type { DataTableColumn } from '../../../../components/DataTable';
+import DataTable from '../../../../components/DataTable';
 import DatePicker from '../../../../components/DatePicker';
+import ManagerPageLayout from '../../../../components/ManagerPageLayout';
+import DashboardLayout from '../../../../layouts/DashboardLayout';
+import StockImportModal from '../ingredients/components/StockImportModal';
 
 interface VoucherData {
     id: number;
@@ -39,6 +40,7 @@ const columns: DataTableColumn<VoucherData>[] = [
                     </span>
                 );
             }
+
             if (v.type === 'import') {
                 return (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
@@ -46,6 +48,7 @@ const columns: DataTableColumn<VoucherData>[] = [
                     </span>
                 );
             }
+
             return (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
                     Xuất kho
@@ -189,7 +192,10 @@ export default function StockVouchersManager({ vouchers, filters = {}, ingredien
                     defaultSortKey="transacted_at"
                     defaultSortDirection="desc"
                     getSortValue={(v, key) => {
-                        if (key === 'transacted_at') return v.sort_key ?? '';
+                        if (key === 'transacted_at') {
+return v.sort_key ?? '';
+}
+
                         return (v as any)[key] ?? '';
                     }}
                     onRowClick={(v) => router.get(`/manager/inventory/vouchers/${v.id}`, {}, { preserveState: true })}

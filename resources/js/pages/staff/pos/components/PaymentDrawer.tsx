@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
 import { Banknote, QrCode, X, Printer, CalendarClock, Tag, Ticket, ChevronDown, Check } from 'lucide-react';
-import { POSTableData, CartItem, ReservationDraft, PromotionCandidate } from '../types/pos.types';
+import React, { useState, useEffect } from 'react';
 import { useSubmitGuard } from '../../../../hooks/useSubmitGuard';
+import type { POSTableData, CartItem, ReservationDraft, PromotionCandidate } from '../types/pos.types';
 
 interface PaymentDrawerProps {
     isOpen: boolean;
@@ -75,33 +75,58 @@ export default function PaymentDrawer({
     const depositRefund = Math.max(0, depositTotal - discountedTotal);
 
     useEffect(() => {
-        if (isOpen) {
-            setPaymentMethod('cash');
-            setPromotionInput('');
-            setPromotionError(null);
-            setShowCouponInput(false);
-            if (mode === 'payment') {
-                setAmountReceived(payable);
-            } else if (mode === 'deposit') {
-                setAmountReceived(totalAmount);
-            } else if (mode === 'reservation') {
-                setAmountReceived(0);
+        queueMicrotask(() => {
+            if (isOpen) {
+                setPaymentMethod('cash');
+                setPromotionInput('');
+                setPromotionError(null);
+                setShowCouponInput(false);
+
+                if (mode === 'payment') {
+                    setAmountReceived(payable);
+                } else if (mode === 'deposit') {
+                    setAmountReceived(totalAmount);
+                } else if (mode === 'reservation') {
+                    setAmountReceived(0);
+                }
             }
-        }
+        });
     }, [isOpen, mode, payable, totalAmount]);
 
     const calculatePresets = (total: number) => {
-        if (total <= 0) return [0];
+        if (total <= 0) {
+return [0];
+}
+
         const presets = [total];
         let nextRound = Math.ceil(total / 50000) * 50000;
-        if (nextRound === total) nextRound += 50000;
-        if (!presets.includes(nextRound)) presets.push(nextRound);
+
+        if (nextRound === total) {
+nextRound += 50000;
+}
+
+        if (!presets.includes(nextRound)) {
+presets.push(nextRound);
+}
+
         const bigRound1 = Math.ceil(total / 100000) * 100000;
-        if (!presets.includes(bigRound1) && bigRound1 > total) presets.push(bigRound1);
+
+        if (!presets.includes(bigRound1) && bigRound1 > total) {
+presets.push(bigRound1);
+}
+
         const bigRound2 = 200000;
-        if (!presets.includes(bigRound2) && bigRound2 > total) presets.push(bigRound2);
+
+        if (!presets.includes(bigRound2) && bigRound2 > total) {
+presets.push(bigRound2);
+}
+
         const bigRound3 = 500000;
-        if (!presets.includes(bigRound3) && bigRound3 > total) presets.push(bigRound3);
+
+        if (!presets.includes(bigRound3) && bigRound3 > total) {
+presets.push(bigRound3);
+}
+
         return presets.slice(0, 4);
     };
 
@@ -111,7 +136,10 @@ export default function PaymentDrawer({
 
     const handlePromotion = async () => {
         const code = promotionInput.trim();
-        if (!code || !onApplyPromotion || promotionLoading) return;
+
+        if (!code || !onApplyPromotion || promotionLoading) {
+return;
+}
 
         setPromotionLoading(true);
         setPromotionError(null);
@@ -124,9 +152,11 @@ export default function PaymentDrawer({
                 unit_price: item.unit_price,
             })),
         );
+
         if (!result.ok) {
             setPromotionError(result.error || 'Mã khuyến mãi không hợp lệ.');
         }
+
         setPromotionLoading(false);
     };
 
@@ -153,12 +183,19 @@ export default function PaymentDrawer({
 
     const itemsByOrder = cartItems.reduce((acc, item) => {
         const code = item.orderCode || 'Chưa gửi bếp';
-        if (!acc[code]) acc[code] = [];
+
+        if (!acc[code]) {
+acc[code] = [];
+}
+
         acc[code].push(item);
+
         return acc;
     }, {} as Record<string, CartItem[]>);
 
-    if (!isOpen || !selectedTable) return null;
+    if (!isOpen || !selectedTable) {
+return null;
+}
 
     return (
         <div className="fixed inset-0 z-[100] overflow-hidden flex justify-end">
@@ -448,8 +485,12 @@ export default function PaymentDrawer({
                                             type="button"
                                             onClick={() => {
                                                 setPaymentMethod('cash');
-                                                if (mode === 'payment') setAmountReceived(payable);
-                                                else if (mode === 'deposit') setAmountReceived(totalAmount);
+
+                                                if (mode === 'payment') {
+setAmountReceived(payable);
+} else if (mode === 'deposit') {
+setAmountReceived(totalAmount);
+}
                                             }}
                                             className={`py-2.5 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all ${
                                                 paymentMethod === 'cash'

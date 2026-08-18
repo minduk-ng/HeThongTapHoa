@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import { X, Plus, Loader2, Image as ImageIcon, Trash2 } from 'lucide-react';
-import { MenuItemData } from './ProductTable';
+import React, { useState, useEffect, useRef } from 'react';
 import { compressAndResizeImage } from '../../../../utils/imageCompressor';
+import type { MenuItemData } from './ProductTable';
 
 interface Category {
     id: number;
@@ -44,33 +44,38 @@ export default function ProductFormDrawer({
             URL.revokeObjectURL(blobUrlRef.current);
             blobUrlRef.current = null;
         }
+
         if (newUrl && newUrl.startsWith('blob:')) {
             blobUrlRef.current = newUrl;
         }
+
         setImagePreview(newUrl);
     };
 
     useEffect(() => {
-        if (productToEdit) {
-            setName(productToEdit.name || '');
-            setCategoryId(productToEdit.category_id || (categories[0]?.id ?? ''));
-            setPrice(productToEdit.price ? String(productToEdit.price) : '');
-            setVatRate(productToEdit.vat_rate ? String(productToEdit.vat_rate) : '0');
-            setDescription(productToEdit.description || '');
-            setIsAvailable(productToEdit.is_available ?? true);
-            setSafeImagePreview(productToEdit.image || null);
-            setImageFile(null);
-        } else {
-            setName('');
-            setCategoryId(categories[0]?.id || '');
-            setPrice('');
-            setVatRate('0');
-            setDescription('');
-            setIsAvailable(true);
-            setSafeImagePreview(null);
-            setImageFile(null);
-        }
-        setErrors({});
+        queueMicrotask(() => {
+            if (productToEdit) {
+                setName(productToEdit.name || '');
+                setCategoryId(productToEdit.category_id || (categories[0]?.id ?? ''));
+                setPrice(productToEdit.price ? String(productToEdit.price) : '');
+                setVatRate(productToEdit.vat_rate ? String(productToEdit.vat_rate) : '0');
+                setDescription(productToEdit.description || '');
+                setIsAvailable(productToEdit.is_available ?? true);
+                setSafeImagePreview(productToEdit.image || null);
+                setImageFile(null);
+            } else {
+                setName('');
+                setCategoryId(categories[0]?.id || '');
+                setPrice('');
+                setVatRate('0');
+                setDescription('');
+                setIsAvailable(true);
+                setSafeImagePreview(null);
+                setImageFile(null);
+            }
+
+            setErrors({});
+        });
 
         return () => {
             if (blobUrlRef.current && blobUrlRef.current.startsWith('blob:')) {
@@ -84,10 +89,14 @@ export default function ProductFormDrawer({
 
     // Handle Ctrl+V Paste Image from Clipboard
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen) {
+return;
+}
 
         const handlePaste = async (e: ClipboardEvent) => {
-            if (!e.clipboardData || !e.clipboardData.files) return;
+            if (!e.clipboardData || !e.clipboardData.files) {
+return;
+}
 
             const files = Array.from(e.clipboardData.files);
             const imageItem = files.find((f) => f.type.startsWith('image/'));
@@ -95,6 +104,7 @@ export default function ProductFormDrawer({
             if (imageItem) {
                 e.preventDefault();
                 setIsCompressingImage(true);
+
                 try {
                     const compressed = await compressAndResizeImage(imageItem, 600, 0.85);
                     setImageFile(compressed);
@@ -107,17 +117,21 @@ export default function ProductFormDrawer({
         };
 
         window.addEventListener('paste', handlePaste);
+
         return () => {
             window.removeEventListener('paste', handlePaste);
         };
     }, [isOpen]);
 
-    if (!isOpen) return null;
+    if (!isOpen) {
+return null;
+}
 
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const rawFile = e.target.files[0];
             setIsCompressingImage(true);
+
             try {
                 const compressed = await compressAndResizeImage(rawFile, 600, 0.85);
                 setImageFile(compressed);
@@ -132,6 +146,7 @@ export default function ProductFormDrawer({
     const handleRemoveImage = () => {
         setImageFile(null);
         setSafeImagePreview(null);
+
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }

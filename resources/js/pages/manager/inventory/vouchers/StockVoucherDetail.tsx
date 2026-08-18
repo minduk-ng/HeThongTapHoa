@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import {
     ArrowLeft,
@@ -16,6 +15,7 @@ import {
     Eye,
     EyeOff,
 } from 'lucide-react';
+import React, { useState } from 'react';
 import DashboardLayout from '../../../../layouts/DashboardLayout';
 
 interface ChildUsageData {
@@ -79,6 +79,7 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
                 init[it.ingredient_id] = true;
             }
         });
+
         return init;
     });
 

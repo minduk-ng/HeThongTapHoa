@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
 import { Users, Check, ArrowRightLeft, ShoppingBag } from 'lucide-react';
-import { POSTableData } from '../types/pos.types';
-import { CheckoutLockInfo } from '../hooks/usePOSCheckoutLock';
+import React, { useState } from 'react';
+import type { CheckoutLockInfo } from '../hooks/usePOSCheckoutLock';
+import type { POSTableData } from '../types/pos.types';
 
 /** Virtual table ID for takeaway orders (table_id = null in backend) */
 export const TAKEAWAY_TABLE_ID = 0;
@@ -34,8 +34,13 @@ export default function POSTableTab({
     const groupedAreas = safeTables.reduce(
         (acc, table) => {
             const areaName = table.area || 'Khác';
-            if (!acc[areaName]) acc[areaName] = [];
+
+            if (!acc[areaName]) {
+acc[areaName] = [];
+}
+
             acc[areaName].push(table);
+
             return acc;
         },
         {} as Record<string, POSTableData[]>,
@@ -52,8 +57,14 @@ export default function POSTableTab({
 
     // Ensure "Mang đi (Takeaway)" appears first
     const sortedAreaEntries = Object.entries(groupedAreas).sort(([a], [b]) => {
-        if (a.includes('Mang đi')) return -1;
-        if (b.includes('Mang đi')) return 1;
+        if (a.includes('Mang đi')) {
+return -1;
+}
+
+        if (b.includes('Mang đi')) {
+return 1;
+}
+
         return a.localeCompare(b);
     });
 
@@ -70,14 +81,24 @@ export default function POSTableTab({
         selectedArea === 'all'
             ? [...safeTables].sort((a, b) => {
                   // Pin Mang đi (id=0) first, then natural sort by table_number
-                  if (a.id === TAKEAWAY_TABLE_ID) return -1;
-                  if (b.id === TAKEAWAY_TABLE_ID) return 1;
+                  if (a.id === TAKEAWAY_TABLE_ID) {
+return -1;
+}
+
+                  if (b.id === TAKEAWAY_TABLE_ID) {
+return 1;
+}
+
                   return a.table_number.localeCompare(b.table_number, undefined, { numeric: true });
               })
             : safeTables.filter((t) => (t.area || 'Khác') === selectedArea)
     ).filter((t) => {
-        if (!searchQuery) return true;
+        if (!searchQuery) {
+return true;
+}
+
         const q = searchQuery.toLowerCase();
+
         return (
             t.table_number.toLowerCase().includes(q) ||
             (t.area || '').toLowerCase().includes(q)

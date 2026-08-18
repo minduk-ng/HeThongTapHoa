@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Search } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
 
 export interface SelectOption {
     id: number;

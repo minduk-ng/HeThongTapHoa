@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
 import { X, ChevronDown } from 'lucide-react';
-import DataTable, { DataTableColumn } from '../../../../components/DataTable';
+import React, { useEffect, useState } from 'react';
+import type { DataTableColumn } from '../../../../components/DataTable';
+import DataTable from '../../../../components/DataTable';
 
 interface InvoiceRow {
     id: number;
@@ -28,15 +29,23 @@ export default function PromotionInvoicesModal({ isOpen, onClose, promotionId }:
     const [nextPage, setNextPage] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!isOpen || promotionId === null) return;
-        setLoading(true);
-        setError(null);
-        setInvoices([]);
-        setHasMore(false);
-        setNextPage(null);
+        if (!isOpen || promotionId === null) {
+return;
+}
+
+        queueMicrotask(() => {
+            setLoading(true);
+            setError(null);
+            setInvoices([]);
+            setHasMore(false);
+            setNextPage(null);
+        });
         fetch(`/manager/promotions/${promotionId}/invoices?per_page=50`, { headers: { Accept: 'application/json' } })
             .then((r) => {
-                if (!r.ok) throw new Error('Không thể tải danh sách hoá đơn.');
+                if (!r.ok) {
+throw new Error('Không thể tải danh sách hoá đơn.');
+}
+
                 return r.json();
             })
             .then((data) => {
@@ -49,20 +58,32 @@ export default function PromotionInvoicesModal({ isOpen, onClose, promotionId }:
     }, [isOpen, promotionId]);
 
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen) {
+return;
+}
+
         const handler = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
+            if (e.key === 'Escape') {
+onClose();
+}
         };
         window.addEventListener('keydown', handler);
+
         return () => window.removeEventListener('keydown', handler);
     }, [isOpen, onClose]);
 
     const loadMore = () => {
-        if (!nextPage || loadingMore) return;
+        if (!nextPage || loadingMore) {
+return;
+}
+
         setLoadingMore(true);
         fetch(nextPage, { headers: { Accept: 'application/json' } })
             .then((r) => {
-                if (!r.ok) throw new Error('Không thể tải thêm.');
+                if (!r.ok) {
+throw new Error('Không thể tải thêm.');
+}
+
                 return r.json();
             })
             .then((data) => {
@@ -74,7 +95,9 @@ export default function PromotionInvoicesModal({ isOpen, onClose, promotionId }:
             .finally(() => setLoadingMore(false));
     };
 
-    if (!isOpen) return null;
+    if (!isOpen) {
+return null;
+}
 
     const columns: DataTableColumn<InvoiceRow>[] = [
         { key: 'invoice_code', header: 'Mã hoá đơn', align: 'center', render: (i) => <span className="font-mono font-medium text-sky-600 dark:text-sky-400">{i.invoice_code}</span> },

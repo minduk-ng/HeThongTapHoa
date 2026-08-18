@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
 import { MinusCircle, X } from 'lucide-react';
-import { CartItem } from '../types/pos.types';
+import React, { useState } from 'react';
+import type { CartItem } from '../types/pos.types';
 
 interface ReduceItemModalProps {
     isOpen: boolean;
@@ -26,7 +26,9 @@ export default function ReduceItemModal({
     const [note, setNote] = useState<string>('');
     const [reduceQty, setReduceQty] = useState<number>(1);
 
-    if (!isOpen || !item || !item.orderItemId) return null;
+    if (!isOpen || !item || !item.orderItemId) {
+return null;
+}
 
     const maxReduce = item.quantity;
 

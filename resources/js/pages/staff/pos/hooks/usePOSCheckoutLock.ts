@@ -8,10 +8,18 @@ export interface CheckoutLockInfo {
 export function usePOSCheckoutLock() {
     const [lockedCheckoutTables, setLockedCheckoutTables] = useState<Record<number, CheckoutLockInfo>>({});
     const activeLockTableIdRef = useRef<number | null>(null);
-    const clientIdRef = useRef<string>(Math.random().toString(36).substring(2, 9));
+    const clientIdRef = useRef<string>('');
 
     useEffect(() => {
-        if (typeof window === 'undefined' || !window.Echo) return;
+        if (!clientIdRef.current) {
+            clientIdRef.current = Math.random().toString(36).substring(2, 9);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || !window.Echo) {
+return;
+}
 
         const presenceChannel = window.Echo.join('pos-room');
 
@@ -21,6 +29,7 @@ export function usePOSCheckoutLock() {
                     if (e.clientId && e.clientId === clientIdRef.current) {
                         return;
                     }
+
                     setLockedCheckoutTables((prev) => ({
                         ...prev,
                         [e.tableId]: {
@@ -35,6 +44,7 @@ export function usePOSCheckoutLock() {
                     setLockedCheckoutTables((prev) => {
                         const next = { ...prev };
                         delete next[e.tableId];
+
                         return next;
                     });
                 }
@@ -45,10 +55,12 @@ export function usePOSCheckoutLock() {
                         const next = { ...prev };
                         Object.keys(next).forEach((key) => {
                             const numericKey = Number(key);
+
                             if (next[numericKey]?.employeeName === user.name) {
                                 delete next[numericKey];
                             }
                         });
+
                         return next;
                     });
                 }
@@ -67,6 +79,7 @@ export function usePOSCheckoutLock() {
         return () => {
             handleBeforeUnload();
             window.removeEventListener('beforeunload', handleBeforeUnload);
+
             if (window.Echo) {
                 window.Echo.leave('pos-room');
             }
@@ -75,9 +88,11 @@ export function usePOSCheckoutLock() {
 
     const lockTableCheckout = useCallback((tableId: number, employeeName: string, linkedTableIds: number[] = []) => {
         activeLockTableIdRef.current = tableId;
+
         try {
             if (typeof window !== 'undefined' && window.Echo) {
                 const presence = window.Echo.join('pos-room');
+
                 if (presence && typeof presence.whisper === 'function') {
                     presence.whisper('table-checkout-started', {
                         tableId,
@@ -102,9 +117,11 @@ export function usePOSCheckoutLock() {
         if (activeLockTableIdRef.current === tableId) {
             activeLockTableIdRef.current = null;
         }
+
         try {
             if (typeof window !== 'undefined' && window.Echo) {
                 const presence = window.Echo.join('pos-room');
+
                 if (presence && typeof presence.whisper === 'function') {
                     presence.whisper('table-checkout-ended', {
                         tableId,

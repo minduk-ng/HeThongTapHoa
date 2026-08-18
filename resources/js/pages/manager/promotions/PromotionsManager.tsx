@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Plus, Search, SlidersHorizontal, Ticket, Pencil, Eye, Filter, RotateCcw } from 'lucide-react';
-import DashboardLayout from '../../../layouts/DashboardLayout';
+import { Plus, Search, Ticket, Pencil, Eye, Filter, RotateCcw } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import type { DataTableColumn } from '../../../components/DataTable';
+import DataTable from '../../../components/DataTable';
 import ManagerPageLayout from '../../../components/ManagerPageLayout';
-import DataTable, { DataTableColumn } from '../../../components/DataTable';
-import PromotionStatsCards from './components/PromotionStatsCards';
+import DashboardLayout from '../../../layouts/DashboardLayout';
 import PromotionAnalyticsCharts from './components/PromotionAnalyticsCharts';
+import PromotionCodesModal from './components/PromotionCodesModal';
 import PromotionFormDrawer from './components/PromotionFormDrawer';
 import PromotionInvoicesModal from './components/PromotionInvoicesModal';
-import PromotionCodesModal from './components/PromotionCodesModal';
+import PromotionStatsCards from './components/PromotionStatsCards';
 
 interface AnalyticsKpis {
     total_revenue: number;
@@ -74,8 +75,15 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
 
     useEffect(() => {
         const params = new URLSearchParams();
-        if (statusFilter !== 'all') params.set('status', statusFilter);
-        if (search) params.set('search', search);
+
+        if (statusFilter !== 'all') {
+params.set('status', statusFilter);
+}
+
+        if (search) {
+params.set('search', search);
+}
+
         fetch(`/manager/promotions/analytics?${params.toString()}`, { headers: { Accept: 'application/json' } })
             .then((r) => r.json())
             .then((data) => setAnalytics(data))
@@ -90,33 +98,61 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
     };
 
     // Lọc ngay lập tức theo search + statusFilter (không chờ server) — đồng bộ với stat/chart
+    const [now, setNow] = useState(0);
+    useEffect(() => {
+        queueMicrotask(() => setNow(Date.now()));
+        const timer = setInterval(() => setNow(Date.now()), 30000);
+
+        return () => clearInterval(timer);
+    }, []);
+
     const filteredPromotions = useMemo(() => {
         const q = search.trim().toLowerCase();
-        const now = Date.now();
         // end_date từ server dạng d/m/Y
         const toTs = (v: string | null) => {
-            if (!v) return null;
+            if (!v) {
+return null;
+}
+
             const [d, m, y] = v.split('/').map(Number);
-            if (!d || !m || !y) return null;
+
+            if (!d || !m || !y) {
+return null;
+}
+
             return new Date(y, m - 1, d, 23, 59, 59).getTime();
         };
+
         return promotions.filter((p) => {
             if (statusFilter !== 'all') {
                 const endTs = toTs(p.end_date);
+
                 if (statusFilter === 'running') {
-                    if (!p.status) return false;
-                    if (endTs !== null && endTs < now) return false;
+                    if (!p.status) {
+return false;
+}
+
+                    if (endTs !== null && endTs < now) {
+return false;
+}
                 } else if (statusFilter === 'ended') {
-                    if (endTs === null || endTs >= now) return false;
+                    if (endTs === null || endTs >= now) {
+return false;
+}
                 }
             }
+
             if (q) {
                 const code = (p.code || `KM_${p.id}`).toLowerCase();
-                if (!code.includes(q) && !p.name.toLowerCase().includes(q)) return false;
+
+                if (!code.includes(q) && !p.name.toLowerCase().includes(q)) {
+return false;
+}
             }
+
             return true;
         });
-    }, [promotions, search, statusFilter]);
+    }, [promotions, search, statusFilter, now]);
 
     const columns: DataTableColumn<PromotionData>[] = [
         { key: 'name', header: 'Mã / Tên chiến dịch', render: (p) => (
@@ -135,6 +171,7 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
                     const perf = p.codes_count > 0
                         ? (p.codes_count ? Math.min(100, Math.round((p.codes_used / p.codes_count) * 100)) : null)
                         : ((p.target_usage ?? p.max_usage) ? Math.min(100, Math.round((p.used_count / (p.target_usage ?? p.max_usage!)) * 100)) : null);
+
             return perf === null ? <span className="text-xs text-zinc-400">—</span> : (
                 <div className="flex items-center gap-2">
                     <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
@@ -146,7 +183,9 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
         }},
         { key: 'actions', header: 'Thao tác', align: 'center', render: (p) => (
             <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <button type="button" onClick={() => { setEditing(p); setDrawerOpen(true); }} title="Sửa"
+                <button type="button" onClick={() => {
+ setEditing(p); setDrawerOpen(true); 
+}} title="Sửa"
                     className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950">
                     <Pencil className="w-4 h-4" />
                 </button>
@@ -180,7 +219,9 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
                 actions={
                     <button
                         type="button"
-                        onClick={() => { setEditing(null); setDrawerOpen(true); }}
+                        onClick={() => {
+ setEditing(null); setDrawerOpen(true); 
+}}
                         className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors shadow-xs"
                     >
                         <Plus className="w-3.5 h-3.5 stroke-2" />
@@ -265,11 +306,26 @@ export default function PromotionsManager({ promotions, stats, filters, menu_ite
                                 defaultSortKey="id"
                                 defaultSortDirection="desc"
                                 getSortValue={(p, key) => {
-                                    if (key === 'name') return p.name;
-                                    if (key === 'type') return p.type;
-                                    if (key === 'revenue') return p.revenue ?? 0;
-                                    if (key === 'discount_total') return p.discount_total ?? 0;
-                                    if (key === 'used_count') return p.used_count;
+                                    if (key === 'name') {
+return p.name;
+}
+
+                                    if (key === 'type') {
+return p.type;
+}
+
+                                    if (key === 'revenue') {
+return p.revenue ?? 0;
+}
+
+                                    if (key === 'discount_total') {
+return p.discount_total ?? 0;
+}
+
+                                    if (key === 'used_count') {
+return p.used_count;
+}
+
                                     return p.id;
                                 }}
                             />

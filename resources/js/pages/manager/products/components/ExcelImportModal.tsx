@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
-import { FileSpreadsheet, Download, UploadCloud, AlertTriangle, CheckCircle2, X, FileText } from 'lucide-react';
+import { FileSpreadsheet, Download, UploadCloud, AlertTriangle, CheckCircle2, X } from 'lucide-react';
+import React, { useState } from 'react';
 
 interface ExcelImportModalProps {
     isOpen: boolean;
@@ -31,7 +31,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
         onClose();
     };
 
-    if (!isOpen) return null;
+    if (!isOpen) {
+return null;
+}
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -44,6 +46,7 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     const handleCheckFile = async () => {
         if (!file) {
             setErrorMsg('Vui lòng chọn file Excel / CSV để kiểm tra');
+
             return;
         }
 
@@ -71,8 +74,10 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
                     throw new Error(data.message);
                 } else if (data && data.errors) {
                     const firstErr = Object.values(data.errors).flat()[0];
+
                     throw new Error(String(firstErr));
                 }
+
                 throw new Error(`Lỗi kiểm tra file Excel (${res.status} ${res.statusText})`);
             }
 
@@ -89,7 +94,9 @@ export default function ExcelImportModal({ isOpen, onClose }: ExcelImportModalPr
     };
 
     const handleConfirmImport = (action: 'replace_all' | 'add_only_new') => {
-        if (!checkResult) return;
+        if (!checkResult) {
+return;
+}
 
         setConfirming(true);
         router.post(

@@ -1,12 +1,11 @@
-import { Head, router, usePage } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { Head, router } from '@inertiajs/react';
 import { Store } from 'lucide-react';
+import ThemeToggle from '../../components/ThemeToggle';
 import ForgotPassword from './components/ForgotPassword';
 import LoginForm from './components/LoginForm';
 import OtpVerify from './components/OtpVerify';
 import ResetPassword from './components/ResetPassword';
 import SignupForm from './components/SignupForm';
-import ThemeToggle from '../../components/ThemeToggle';
 
 interface AuthPageProps {
     step: 'login' | 'signup' | 'otp' | 'forgot' | 'reset';

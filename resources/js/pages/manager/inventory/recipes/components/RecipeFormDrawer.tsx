@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { X, Plus, Trash2 } from 'lucide-react';
-import { ProductRecipeData } from './RecipeTable';
+import React, { useState, useEffect } from 'react';
+import type { ProductRecipeData } from './RecipeTable';
 
 interface Ingredient {
     id: number;
@@ -35,25 +35,34 @@ export default function RecipeFormDrawer({
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     useEffect(() => {
-        if (product && product.recipes && product.recipes.length > 0) {
-            setLines(
-                product.recipes.map((r) => ({
-                    ingredient_id: r.ingredient_id,
-                    amount: Number(r.amount),
-                    unit: r.unit || r.ingredient?.unit || 'g',
-                }))
-            );
-        } else {
-            setLines([]);
-        }
-        setErrorMsg(null);
+        queueMicrotask(() => {
+            if (product && product.recipes && product.recipes.length > 0) {
+                setLines(
+                    product.recipes.map((r) => ({
+                        ingredient_id: r.ingredient_id,
+                        amount: Number(r.amount),
+                        unit: r.unit || r.ingredient?.unit || 'g',
+                    }))
+                );
+            } else {
+                setLines([]);
+            }
+
+            setErrorMsg(null);
+        });
     }, [product, isOpen]);
 
-    if (!isOpen || !product) return null;
+    if (!isOpen || !product) {
+return null;
+}
 
     const handleAddLine = () => {
         const firstIng = ingredients[0];
-        if (!firstIng) return;
+
+        if (!firstIng) {
+return;
+}
+
         setLines((prev) => [
             ...prev,
             {
@@ -94,6 +103,7 @@ export default function RecipeFormDrawer({
     const cogs = lines.reduce((sum, line) => {
         const ing = ingredients.find((i) => i.id === line.ingredient_id);
         const cost = ing ? Number(ing.cost_price) : 0;
+
         return sum + line.amount * cost;
     }, 0);
 

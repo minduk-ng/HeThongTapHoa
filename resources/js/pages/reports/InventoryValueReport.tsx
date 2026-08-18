@@ -51,7 +51,10 @@ export default function InventoryValueReport({
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
-        if (!q) return safeRows;
+
+        if (!q) {
+return safeRows;
+}
 
         return safeRows.filter(
             (r) =>

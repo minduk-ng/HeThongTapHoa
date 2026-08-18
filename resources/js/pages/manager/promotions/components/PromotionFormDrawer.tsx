@@ -1,4 +1,3 @@
-import React, { useEffect, useState } from 'react';
 import { router } from '@inertiajs/react';
 import {
     X,
@@ -11,17 +10,19 @@ import {
     Percent,
     SlidersHorizontal,
     Clock,
-    ShieldCheck,
     Layers,
     Save,
     AlertCircle,
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import DatePicker from '../../../../components/DatePicker';
-import PromotionActionsEditor, { ActionRow } from './PromotionActionsEditor';
-import PromotionConditionsEditor, { ConditionRow } from './PromotionConditionsEditor';
-import PromotionPreview from './PromotionPreview';
 import { exportXLSX } from '../../../../components/reports/reportExport';
-import { PromotionData } from '../PromotionsManager';
+import type { PromotionData } from '../PromotionsManager';
+import type { ActionRow } from './PromotionActionsEditor';
+import PromotionActionsEditor from './PromotionActionsEditor';
+import type { ConditionRow } from './PromotionConditionsEditor';
+import PromotionConditionsEditor from './PromotionConditionsEditor';
+import PromotionPreview from './PromotionPreview';
 
 interface Props {
     isOpen: boolean;
@@ -84,82 +85,104 @@ export default function PromotionFormDrawer({
     const toggleDay = (i: number, d: number) => {
         setTimeSlots((prev) =>
             prev.map((s, idx) => {
-                if (idx !== i) return s;
+                if (idx !== i) {
+return s;
+}
+
                 const has = s.days.includes(d);
+
                 return { ...s, days: has ? s.days.filter((x) => x !== d) : [...s.days, d].sort() };
             })
         );
     };
 
     useEffect(() => {
-        setErrors({});
-        const toYmd = (v: string | null) => {
-            if (!v) return null;
-            const parts = v.split('/'); // d/m/Y from controller
-            if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-            return v;
-        };
-        if (promotionToEdit) {
-            setName(promotionToEdit.name);
-            setType(promotionToEdit.type);
-            setCode(promotionToEdit.code || '');
-            setStartDate(toYmd(promotionToEdit.start_date || null));
-            setEndDate(toYmd(promotionToEdit.end_date || null));
-            setStatus(promotionToEdit.status);
-            setMaxUsage(promotionToEdit.max_usage === null ? '' : String(promotionToEdit.max_usage));
-            setTargetUsage(promotionToEdit.target_usage === null ? '' : String(promotionToEdit.target_usage));
-            setExclusive(!promotionToEdit.stackable);
-            setActions(
-                promotionToEdit.actions.length
-                    ? promotionToEdit.actions.map((a) => ({
-                          action_type: a.action_type,
-                          action_value: String(a.action_value),
-                          max_discount_amount: a.max_discount_amount === null ? '' : String(a.max_discount_amount),
-                      }))
-                    : [{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]
-            );
-            setConditions(
-                promotionToEdit.conditions.map((c) => ({ cond_type: c.cond_type, cond_value: c.cond_value }))
-            );
-            setCodePrefix(promotionToEdit.code_prefix || '');
-            setCodeQuantity(promotionToEdit.code_quantity === null ? '' : String(promotionToEdit.code_quantity));
-            setCodeRandom(promotionToEdit.code_random);
-            setTimeSlots(
-                (promotionToEdit.time_slots ?? []).map((s) => ({
-                    days: [s.day_of_week],
-                    start: s.start_time.slice(0, 5),
-                    end: s.end_time.slice(0, 5),
-                }))
-            );
-        } else {
-            setName('');
-            setType('promotion');
-            setCode('');
-            setStartDate(null);
-            setEndDate(null);
-            setStatus(true);
-            setMaxUsage('');
-            setTargetUsage('');
-            setExclusive(false);
-            setActions([{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]);
-            setConditions([]);
-            setCodePrefix('');
-            setCodeQuantity('');
-            setCodeRandom(false);
-            setTimeSlots([]);
-        }
+        queueMicrotask(() => {
+            setErrors({});
+            const toYmd = (v: string | null) => {
+                if (!v) {
+                    return null;
+                }
+
+                const parts = v.split('/'); // d/m/Y from controller
+
+                if (parts.length === 3) {
+                    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+
+                return v;
+            };
+
+            if (promotionToEdit) {
+                setName(promotionToEdit.name);
+                setType(promotionToEdit.type);
+                setCode(promotionToEdit.code || '');
+                setStartDate(toYmd(promotionToEdit.start_date || null));
+                setEndDate(toYmd(promotionToEdit.end_date || null));
+                setStatus(promotionToEdit.status);
+                setMaxUsage(promotionToEdit.max_usage === null ? '' : String(promotionToEdit.max_usage));
+                setTargetUsage(promotionToEdit.target_usage === null ? '' : String(promotionToEdit.target_usage));
+                setExclusive(!promotionToEdit.stackable);
+                setActions(
+                    promotionToEdit.actions.length
+                        ? promotionToEdit.actions.map((a) => ({
+                              action_type: a.action_type,
+                              action_value: String(a.action_value),
+                              max_discount_amount: a.max_discount_amount === null ? '' : String(a.max_discount_amount),
+                          }))
+                        : [{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]
+                );
+                setConditions(
+                    promotionToEdit.conditions.map((c) => ({ cond_type: c.cond_type, cond_value: c.cond_value }))
+                );
+                setCodePrefix(promotionToEdit.code_prefix || '');
+                setCodeQuantity(promotionToEdit.code_quantity === null ? '' : String(promotionToEdit.code_quantity));
+                setCodeRandom(promotionToEdit.code_random);
+                setTimeSlots(
+                    (promotionToEdit.time_slots ?? []).map((s) => ({
+                        days: [s.day_of_week],
+                        start: s.start_time.slice(0, 5),
+                        end: s.end_time.slice(0, 5),
+                    }))
+                );
+            } else {
+                setName('');
+                setType('promotion');
+                setCode('');
+                setStartDate(null);
+                setEndDate(null);
+                setStatus(true);
+                setMaxUsage('');
+                setTargetUsage('');
+                setExclusive(false);
+                setActions([{ action_type: 'discount_percent', action_value: '', max_discount_amount: '' }]);
+                setConditions([]);
+                setCodePrefix('');
+                setCodeQuantity('');
+                setCodeRandom(false);
+                setTimeSlots([]);
+            }
+        });
     }, [promotionToEdit, isOpen]);
 
     const [exporting, setExporting] = useState(false);
 
     const handleExport = async () => {
-        if (!promotionToEdit || exporting || promotionToEdit.codes_count <= 0) return;
+        if (!promotionToEdit || exporting || promotionToEdit.codes_count <= 0) {
+return;
+}
+
         setExporting(true);
+
         try {
             const res = await fetch(`/manager/promotions/${promotionToEdit.id}/codes?export=1`, {
                 headers: { Accept: 'application/json' },
             });
-            if (!res.ok) throw new Error('fail');
+
+            if (!res.ok) {
+throw new Error('fail');
+}
+
             const data = await res.json();
             const rows = (data.codes || []).map((c: any) => [
                 c.code,
@@ -181,7 +204,9 @@ export default function PromotionFormDrawer({
         }
     };
 
-    if (!isOpen) return null;
+    if (!isOpen) {
+return null;
+}
 
     const validateForm = (): boolean => {
         const errs: Record<string, string> = {};
@@ -214,10 +239,12 @@ export default function PromotionFormDrawer({
                     errs.actions = 'Vui lòng chọn món tặng cụ thể từ thực đơn.';
                     break;
                 }
+
                 if ((a.action_type === 'discount_percent' || a.action_type === 'discount_amount') && (!a.action_value || Number(a.action_value) <= 0)) {
                     errs.actions = 'Vui lòng nhập giá trị giảm giá hợp lệ lớn hơn 0.';
                     break;
                 }
+
                 if (a.action_type === 'discount_percent' && Number(a.action_value) > 100) {
                     errs.actions = 'Phần trăm giảm giá tối đa là 100%.';
                     break;
@@ -234,14 +261,20 @@ export default function PromotionFormDrawer({
         }
 
         setErrors(errs);
+
         return Object.keys(errs).length === 0;
     };
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (submitting) return;
 
-        if (!validateForm()) return;
+        if (submitting) {
+return;
+}
+
+        if (!validateForm()) {
+return;
+}
 
         setSubmitting(true);
         const isBatch = codePrefix !== '' || codeQuantity !== '';

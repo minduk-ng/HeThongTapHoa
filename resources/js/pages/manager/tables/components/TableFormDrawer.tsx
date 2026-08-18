@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { Zap, Calendar, X } from 'lucide-react';
-import { TableData } from './TableListTable';
+import React, { useState, useEffect } from 'react';
+import type { TableData } from './TableListTable';
 
 interface TableFormDrawerProps {
     isOpen: boolean;
@@ -41,51 +41,58 @@ export default function TableFormDrawer({
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        if (tableToEdit) {
-            setMode('single');
-            setTableNumber(tableToEdit.table_number || '');
-            
-            const areaExists = areas.includes(tableToEdit.area);
-            if (areaExists) {
-                setSelectedArea(tableToEdit.area);
-                setIsCustomArea(false);
+        queueMicrotask(() => {
+            if (tableToEdit) {
+                setMode('single');
+                setTableNumber(tableToEdit.table_number || '');
+                
+                const areaExists = areas.includes(tableToEdit.area);
+
+                if (areaExists) {
+                    setSelectedArea(tableToEdit.area);
+                    setIsCustomArea(false);
+                } else {
+                    setSelectedArea('__NEW__');
+                    setCustomArea(tableToEdit.area || '');
+                    setIsCustomArea(true);
+                }
+
+                setCapacity(String(tableToEdit.capacity || 4));
+                setStatus(tableToEdit.status || 'available');
+                setReservationName(tableToEdit.reservation_name || '');
+                setReservationPhone(tableToEdit.reservation_phone || '');
+                
+                // Format ISO datetime string for datetime-local input
+                if (tableToEdit.reservation_time) {
+                    const d = new Date(tableToEdit.reservation_time);
+                    const isoStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                    setReservationTime(isoStr);
+                } else {
+                    setReservationTime('');
+                }
+
+                setReservationNote(tableToEdit.reservation_note || '');
             } else {
-                setSelectedArea('__NEW__');
-                setCustomArea(tableToEdit.area || '');
-                setIsCustomArea(true);
+                setMode('single');
+                setTableNumber('');
+                setSelectedArea(areas[0] || 'Tầng 1 (Trong nhà)');
+                setIsCustomArea(false);
+                setCustomArea('');
+                setCapacity('4');
+                setStatus('available');
+                setReservationName('');
+                setReservationPhone('');
+                setReservationTime('');
+                setReservationNote('');
             }
 
-            setCapacity(String(tableToEdit.capacity || 4));
-            setStatus(tableToEdit.status || 'available');
-            setReservationName(tableToEdit.reservation_name || '');
-            setReservationPhone(tableToEdit.reservation_phone || '');
-            
-            // Format ISO datetime string for datetime-local input
-            if (tableToEdit.reservation_time) {
-                const d = new Date(tableToEdit.reservation_time);
-                const isoStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-                setReservationTime(isoStr);
-            } else {
-                setReservationTime('');
-            }
-            setReservationNote(tableToEdit.reservation_note || '');
-        } else {
-            setMode('single');
-            setTableNumber('');
-            setSelectedArea(areas[0] || 'Tầng 1 (Trong nhà)');
-            setIsCustomArea(false);
-            setCustomArea('');
-            setCapacity('4');
-            setStatus('available');
-            setReservationName('');
-            setReservationPhone('');
-            setReservationTime('');
-            setReservationNote('');
-        }
-        setErrors({});
+            setErrors({});
+        });
     }, [tableToEdit, isOpen, areas]);
 
-    if (!isOpen) return null;
+    if (!isOpen) {
+return null;
+}
 
     // Smart Table Number handler: auto-prefixes numeric input e.g. "11" -> "Bàn 11"
     const handleTableNumberChange = (val: string) => {
@@ -131,6 +138,7 @@ export default function TableFormDrawer({
                     setSubmitting(false);
                 },
             });
+
             return;
         }
 

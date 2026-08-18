@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
-import { POSTableData } from '../types/pos.types';
+import { useState, useEffect } from 'react';
+import type { POSTableData } from '../types/pos.types';
 
 export function usePOSTables(tables: POSTableData[]) {
     const [selectedTable, setSelectedTable] = useState<POSTableData | null>(tables[0] || null);
@@ -57,14 +57,19 @@ export function usePOSTables(tables: POSTableData[]) {
     // Sync selectedTable when Inertia reloads tables prop
     useEffect(() => {
         const safeTables = (Array.isArray(tables) ? tables : Object.values(tables || {})) as POSTableData[];
-        if (selectedTable) {
-            const updated = safeTables.find((t) => t.id === selectedTable.id);
-            if (updated) {
-                setSelectedTable(updated);
+
+        queueMicrotask(() => {
+            if (selectedTable) {
+                const updated = safeTables.find((t) => t.id === selectedTable.id);
+
+                if (updated) {
+                    setSelectedTable(updated);
+                }
+            } else if (safeTables.length > 0) {
+                setSelectedTable(safeTables[0] || null);
             }
-        } else if (safeTables.length > 0) {
-            setSelectedTable(safeTables[0] || null);
-        }
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tables]);
 
     const handleSelectTable = (table: POSTableData) => {

@@ -1,5 +1,4 @@
 import { Head, useForm, router } from '@inertiajs/react';
-import React, { useState } from 'react';
 import { 
     Shield, 
     Plus, 
@@ -11,12 +10,12 @@ import {
     ChevronDown, 
     ChevronUp, 
     Lightbulb, 
-    Lock,
-    Users
+    Lock
 } from 'lucide-react';
-import DashboardLayout from '../../layouts/DashboardLayout';
-import { Page, Permission, Role } from '../../types/admin';
+import React, { useState } from 'react';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
+import DashboardLayout from '../../layouts/DashboardLayout';
+import type { Page, Permission, Role } from '../../types/admin';
 
 interface Props {
     roles: Role[];
@@ -73,15 +72,22 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
             const candidate = segments[i];
             const matching = permissions.filter(p => {
                 const parts = p.name.split('.');
+
                 return parts[0] === candidate;
             });
-            if (matching.length > 0) return matching;
+
+            if (matching.length > 0) {
+return matching;
+}
         }
 
         // Exact match fallback
         const exactMatch = pagePath.replace(/^\/+|\/+$/g, '').replace(/\//g, '.');
         const fallback = permissions.filter(p => p.name.startsWith(exactMatch));
-        if (fallback.length > 0) return fallback;
+
+        if (fallback.length > 0) {
+return fallback;
+}
 
         return [];
     };
@@ -123,6 +129,7 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
         if (editingRole) {
             put(`/admin/roles/${editingRole.id}`, {
                 onSuccess: () => closeModal(),
@@ -148,6 +155,7 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
 
     const confirmDelete = (e: React.FormEvent) => {
         e.preventDefault();
+
         if (deleteId) {
             router.delete(`/admin/roles/${deleteId}`, {
                 data: { password: deletePassword },
@@ -166,7 +174,10 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
 
     // Selection state: 0 = Unselected, 1 = View only (-), 2 = All permissions (✓)
     const getPageSelectionState = (page: Page): number => {
-        if (editingRole?.name === 'admin') return 2;
+        if (editingRole?.name === 'admin') {
+return 2;
+}
+
         const pagePerms = getPagePermissions(page.route_path).map(p => p.name);
         const selectedPerms = data.permissions.filter(pName => pagePerms.includes(pName));
 
@@ -179,6 +190,7 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
         }
 
         const viewPerm = pagePerms.find(p => p.endsWith('.view'));
+
         if (viewPerm && selectedPerms.length === 1 && selectedPerms[0] === viewPerm) {
             return 1;
         }
@@ -191,7 +203,9 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
     };
 
     const handlePageToggle = (page: Page) => {
-        if (editingRole?.name === 'admin') return;
+        if (editingRole?.name === 'admin') {
+return;
+}
 
         const currentState = getPageSelectionState(page);
         const pagePerms = getPagePermissions(page.route_path).map(p => p.name);
@@ -202,12 +216,21 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
 
         if (currentState === 0) {
             // Unselected -> State 1 (View only)
-            if (!nextPages.includes(page.id)) nextPages.push(page.id);
-            if (viewPerm) nextPermissions.push(viewPerm);
+            if (!nextPages.includes(page.id)) {
+nextPages.push(page.id);
+}
+
+            if (viewPerm) {
+nextPermissions.push(viewPerm);
+}
+
             setExpandedPages(prev => ({ ...prev, [page.id]: false }));
         } else if (currentState === 1) {
             // State 1 -> State 2 (All permissions)
-            if (!nextPages.includes(page.id)) nextPages.push(page.id);
+            if (!nextPages.includes(page.id)) {
+nextPages.push(page.id);
+}
+
             nextPermissions = [...new Set([...nextPermissions, ...pagePerms])];
             setExpandedPages(prev => ({ ...prev, [page.id]: true }));
         } else {
@@ -221,20 +244,25 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
     };
 
     const handleNestedPermissionToggle = (permissionName: string, page: Page) => {
-        if (editingRole?.name === 'admin') return;
+        if (editingRole?.name === 'admin') {
+return;
+}
 
         const currentPermissions = [...data.permissions];
         let nextPermissions = [];
+
         if (currentPermissions.includes(permissionName)) {
             nextPermissions = currentPermissions.filter(p => p !== permissionName);
         } else {
             nextPermissions = [...currentPermissions, permissionName];
         }
+
         setData('permissions', nextPermissions);
 
         // Auto-uncheck page if no permissions for this page remain
         const pagePermissions = getPagePermissions(page.route_path).map(p => p.name);
         const hasAnyPermissionLeft = nextPermissions.some(pName => pagePermissions.includes(pName));
+
         if (!hasAnyPermissionLeft && data.pages.includes(page.id)) {
             setData('pages', data.pages.filter(id => id !== page.id));
             setExpandedPages(prev => ({ ...prev, [page.id]: false }));
@@ -407,23 +435,34 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
                                 <div className="space-y-3 max-h-[360px] overflow-y-auto p-3.5 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-zinc-50/60 dark:bg-zinc-800/40">
                                     {Object.entries(
                                         pages.reduce((acc, page) => {
-                                            if (!acc[page.group_name]) acc[page.group_name] = [];
+                                            if (!acc[page.group_name]) {
+acc[page.group_name] = [];
+}
+
                                             acc[page.group_name].push(page);
+
                                             return acc;
                                         }, {} as Record<string, Page[]>)
                                     ).map(([groupName, groupPages]) => {
                                         const isGroupAllSelected = groupPages.every(p => getPageSelectionState(p) === 2) && editingRole?.name !== 'admin';
                                         
                                         const handleGroupToggle = () => {
-                                            if (editingRole?.name === 'admin') return;
+                                            if (editingRole?.name === 'admin') {
+return;
+}
+
                                             const groupPageIds = groupPages.map(p => p.id);
+
                                             if (isGroupAllSelected) {
                                                 setData('pages', data.pages.filter(id => !groupPageIds.includes(id)));
                                                 const allGroupPerms = groupPages.flatMap(p => getPagePermissions(p.route_path).map(pm => pm.name));
                                                 setData('permissions', data.permissions.filter(pName => !allGroupPerms.includes(pName)));
                                                 setExpandedPages(prev => {
                                                     const next = { ...prev };
-                                                    groupPageIds.forEach(id => { next[id] = false; });
+                                                    groupPageIds.forEach(id => {
+ next[id] = false; 
+});
+
                                                     return next;
                                                 });
                                             } else {
@@ -431,7 +470,9 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
                                                 const allGroupPerms = groupPages.flatMap(p => getPagePermissions(p.route_path).map(pm => pm.name));
                                                 const nextPermissions = [...new Set([...data.permissions, ...allGroupPerms])];
                                                 const newExpanded = { ...expandedPages };
-                                                groupPages.forEach(p => { newExpanded[p.id] = true; });
+                                                groupPages.forEach(p => {
+ newExpanded[p.id] = true; 
+});
 
                                                 setData('pages', nextPages);
                                                 setData('permissions', nextPermissions);
@@ -516,6 +557,7 @@ export default function RolesManager({ roles, permissions, pages }: Props) {
                                                                         <div className="flex flex-wrap gap-2">
                                                                             {pagePerms.map((perm) => {
                                                                                 const friendlyLabel = formatPermissionLabel(perm.name);
+
                                                                                 return (
                                                                                     <label key={perm.id} className="flex items-center space-x-1.5 cursor-pointer bg-white dark:bg-zinc-800 px-2.5 py-1 rounded-lg border border-zinc-200/80 dark:border-zinc-700/60 shadow-2xs text-[11px] select-none">
                                                                                         <input

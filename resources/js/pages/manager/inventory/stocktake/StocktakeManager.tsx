@@ -47,6 +47,7 @@ export default function StocktakeManager({ ingredients }: StocktakeManagerProps)
 
     const changedCount = ingredients.filter((ing) => {
         const v = values[ing.id];
+
         return v !== undefined && v.trim() !== '';
     }).length;
 
@@ -106,6 +107,7 @@ export default function StocktakeManager({ ingredients }: StocktakeManagerProps)
         const items = ingredients
             .filter((ing) => {
                 const v = values[ing.id];
+
                 return v !== undefined && v.trim() !== '';
             })
             .map((ing) => ({
@@ -113,7 +115,9 @@ export default function StocktakeManager({ ingredients }: StocktakeManagerProps)
                 actual_qty: Number(values[ing.id]),
             }));
 
-        if (items.length === 0) return;
+        if (items.length === 0) {
+return;
+}
 
         setSaving(true);
         router.post(

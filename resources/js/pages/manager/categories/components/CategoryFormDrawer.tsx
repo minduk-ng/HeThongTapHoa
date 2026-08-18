@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { X } from 'lucide-react';
-import { CategoryData } from './CategoryTable';
+import React, { useState, useEffect } from 'react';
+import type { CategoryData } from './CategoryTable';
 
 interface CategoryFormDrawerProps {
     isOpen: boolean;
@@ -21,19 +21,24 @@ export default function CategoryFormDrawer({
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        if (categoryToEdit) {
-            setName(categoryToEdit.name || '');
-            setDescription(categoryToEdit.description || '');
-            setSortOrder(categoryToEdit.display_order ? String(categoryToEdit.display_order) : (categoryToEdit.sort_order ? String(categoryToEdit.sort_order) : '0'));
-        } else {
-            setName('');
-            setDescription('');
-            setSortOrder('0');
-        }
-        setErrors({});
+        queueMicrotask(() => {
+            if (categoryToEdit) {
+                setName(categoryToEdit.name || '');
+                setDescription(categoryToEdit.description || '');
+                setSortOrder(categoryToEdit.display_order ? String(categoryToEdit.display_order) : (categoryToEdit.sort_order ? String(categoryToEdit.sort_order) : '0'));
+            } else {
+                setName('');
+                setDescription('');
+                setSortOrder('0');
+            }
+
+            setErrors({});
+        });
     }, [categoryToEdit, isOpen]);
 
-    if (!isOpen) return null;
+    if (!isOpen) {
+return null;
+}
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

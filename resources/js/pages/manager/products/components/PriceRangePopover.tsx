@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
 import { CircleDollarSign, ChevronDown } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
 
 interface PriceRangePopoverProps {
     minPrice?: number | string;
@@ -23,8 +23,10 @@ export default function PriceRangePopover({
 
     // Sync with external props
     useEffect(() => {
-        setTempMin(minPrice ? String(minPrice) : '');
-        setTempMax(maxPrice ? String(maxPrice) : '');
+        queueMicrotask(() => {
+            setTempMin(minPrice ? String(minPrice) : '');
+            setTempMax(maxPrice ? String(maxPrice) : '');
+        });
     }, [minPrice, maxPrice]);
 
     // Close popover when clicked outside
@@ -35,12 +37,17 @@ export default function PriceRangePopover({
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
+
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const formatVND = (value: number | string) => {
         const num = Number(value);
-        if (isNaN(num)) return '0 đ';
+
+        if (isNaN(num)) {
+return '0 đ';
+}
+
         return `${new Intl.NumberFormat('vi-VN').format(num)} đ`;
     };
 
@@ -58,6 +65,7 @@ export default function PriceRangePopover({
 
     const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>, isMin: boolean) => {
         const val = Number(e.target.value);
+
         if (isMin) {
             const currentMax = tempMax ? Number(tempMax) : globalMax;
             const newMin = Math.min(val, currentMax);

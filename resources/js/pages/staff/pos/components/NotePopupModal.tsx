@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { CartItem } from '../types/pos.types';
+import React, { useState } from 'react';
+import type { CartItem } from '../types/pos.types';
 
 interface NotePopupModalProps {
     isOpen: boolean;
@@ -30,7 +30,9 @@ export default function NotePopupModal({
 }: NotePopupModalProps) {
     const [note, setNote] = useState(item?.note || '');
 
-    if (!isOpen || !item) return null;
+    if (!isOpen || !item) {
+return null;
+}
 
     const toggleQuickNote = (quickNote: string) => {
         setNote((prev) => {
@@ -39,9 +41,11 @@ export default function NotePopupModal({
                 .map((n) => n.trim())
                 .filter(Boolean);
             const idx = notes.indexOf(quickNote);
+
             if (idx > -1) {
                 return notes.filter((_, i) => i !== idx).join(', ');
             }
+
             return [...notes, quickNote].join(', ');
         });
     };
@@ -75,6 +79,7 @@ export default function NotePopupModal({
                     <div className="flex flex-wrap gap-1.5">
                         {QUICK_NOTES.map((quickNote) => {
                             const isActive = noteList.includes(quickNote);
+
                             return (
                                 <button
                                     key={quickNote}

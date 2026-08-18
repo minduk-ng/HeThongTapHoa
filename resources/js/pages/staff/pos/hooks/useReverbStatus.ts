@@ -7,13 +7,16 @@ export function useReverbStatus() {
 
     useEffect(() => {
         if (typeof window === 'undefined' || !window.Echo) {
-            setStatus('disconnected');
+            queueMicrotask(() => setStatus('disconnected'));
+
             return;
         }
 
         const pusher = (window.Echo as any).connector?.pusher;
+
         if (!pusher) {
-            setStatus('disconnected');
+            queueMicrotask(() => setStatus('disconnected'));
+
             return;
         }
 
@@ -30,7 +33,7 @@ export function useReverbStatus() {
             }
         };
 
-        setStatus(mapState(pusher.connection?.state || 'connecting'));
+        queueMicrotask(() => setStatus(mapState(pusher.connection?.state || 'connecting')));
 
         const handleStateChange = (states: { current: string }) => {
             setStatus(mapState(states.current));

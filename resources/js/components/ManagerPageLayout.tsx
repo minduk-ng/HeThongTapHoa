@@ -1,5 +1,6 @@
-import React, { ReactNode, useState, ElementType } from 'react';
 import { SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
+import type { ReactNode, ElementType } from 'react';
+import React, { useState } from 'react';
 
 export interface ManagerPageLayoutProps {
     icon?: ElementType<{ className?: string }>;

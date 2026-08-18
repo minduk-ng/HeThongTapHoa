@@ -1,7 +1,6 @@
-import React, { useEffect } from 'react';
 import { Printer, X } from 'lucide-react';
-import { POSTableData, CartItem } from '../types/pos.types';
-
+import React, { useEffect, useState } from 'react';
+import type { POSTableData, CartItem } from '../types/pos.types';
 
 interface ReceiptPrintModalProps {
     isOpen: boolean;
@@ -25,21 +24,35 @@ export default function ReceiptPrintModal({
     paymentMethod,
     amountReceived,
     changeAmount,
-    invoiceCode = 'INV-' + Math.floor(100000 + Math.random() * 900000),
+    invoiceCode,
     depositAmount = 0,
     depositRefund = 0,
     promotionDiscount = 0,
 }: ReceiptPrintModalProps) {
+    const [fallbackInvoiceCode, setFallbackInvoiceCode] = useState('');
+
+    useEffect(() => {
+        if (isOpen && !invoiceCode) {
+            queueMicrotask(() => {
+                setFallbackInvoiceCode(`INV-${Math.floor(100000 + Math.random() * 900000)}`);
+            });
+        }
+    }, [isOpen, invoiceCode]);
+
+    const displayInvoiceCode = invoiceCode || fallbackInvoiceCode;
     useEffect(() => {
         if (isOpen) {
             const timer = setTimeout(() => {
                 window.print();
             }, 300);
+
             return () => clearTimeout(timer);
         }
     }, [isOpen]);
 
-    if (!isOpen || !selectedTable) return null;
+    if (!isOpen || !selectedTable) {
+return null;
+}
 
     const subtotal = cartItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
     const vatInTotal = cartItems.reduce((sum, item) => {
@@ -149,7 +162,7 @@ export default function ReceiptPrintModal({
                                 <h3 className="text-sm font-black uppercase tracking-wider">
                                     PHIẾU THANH TOÁN
                                 </h3>
-                                <p className="text-[10px] font-mono text-zinc-600 tabular-nums">Số: {invoiceCode}</p>
+                                <p className="text-[10px] font-mono text-zinc-600 tabular-nums">Số: {displayInvoiceCode}</p>
                             </div>
 
                             <div className="grid grid-cols-2 text-[11px] pt-1 border-t border-dotted border-zinc-400">

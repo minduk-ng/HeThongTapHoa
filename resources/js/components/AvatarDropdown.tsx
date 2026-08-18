@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { Moon, Sun, Settings, LogOut } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
 import ThemeToggle from './ThemeToggle';
 
 interface AvatarDropdownProps {
@@ -17,6 +17,7 @@ export default function AvatarDropdown({ user }: AvatarDropdownProps) {
         if (typeof document !== 'undefined') {
             return document.documentElement.classList.contains('dark');
         }
+
         return false;
     });
     const containerRef = useRef<HTMLDivElement>(null);
@@ -28,6 +29,7 @@ export default function AvatarDropdown({ user }: AvatarDropdownProps) {
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
+
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 

@@ -1,7 +1,8 @@
-import { ReactNode, useEffect, useState } from 'react';
-import Sidebar from '../components/Sidebar';
 import { usePage } from '@inertiajs/react';
 import { Check, AlertTriangle, X } from 'lucide-react';
+import type { ReactNode} from 'react';
+import { useEffect, useState } from 'react';
+import Sidebar from '../components/Sidebar';
 
 interface DashboardLayoutProps {
     children: ReactNode;
@@ -14,15 +15,19 @@ export default function DashboardLayout({ children, fullWidth = false, hideNavba
     const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
     useEffect(() => {
-        if (flash?.success) {
-            setNotification({ type: 'success', message: flash.success });
-            const timer = setTimeout(() => setNotification(null), 4000);
-            return () => clearTimeout(timer);
-        } else if (flash?.error) {
-            setNotification({ type: 'error', message: flash.error });
-            const timer = setTimeout(() => setNotification(null), 4000);
-            return () => clearTimeout(timer);
+        if (!flash?.success && !flash?.error) {
+            return;
         }
+
+        const type = flash?.success ? 'success' : 'error';
+        const message = flash?.success || flash?.error || '';
+
+        queueMicrotask(() => {
+            setNotification({ type, message });
+        });
+        const timer = setTimeout(() => setNotification(null), 4000);
+
+        return () => clearTimeout(timer);
     }, [flash]);
 
     return (

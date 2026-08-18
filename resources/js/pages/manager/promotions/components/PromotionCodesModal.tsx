@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
 import { router } from '@inertiajs/react';
 import { X, ChevronDown, Download } from 'lucide-react';
-import DataTable, { DataTableColumn } from '../../../../components/DataTable';
+import React, { useEffect, useState } from 'react';
+import type { DataTableColumn } from '../../../../components/DataTable';
+import DataTable from '../../../../components/DataTable';
 import { exportXLSX } from '../../../../components/reports/reportExport';
 
 interface CodeRow {
@@ -28,15 +29,23 @@ export default function PromotionCodesModal({ isOpen, onClose, promotion }: Prop
     const [nextPage, setNextPage] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!isOpen || !promotion) return;
-        setLoading(true);
-        setError(null);
-        setCodes([]);
-        setHasMore(false);
-        setNextPage(null);
+        if (!isOpen || !promotion) {
+return;
+}
+
+        queueMicrotask(() => {
+            setLoading(true);
+            setError(null);
+            setCodes([]);
+            setHasMore(false);
+            setNextPage(null);
+        });
         fetch(`/manager/promotions/${promotion.id}/codes?per_page=50`, { headers: { Accept: 'application/json' } })
             .then((r) => {
-                if (!r.ok) throw new Error('fail');
+                if (!r.ok) {
+throw new Error('fail');
+}
+
                 return r.json();
             })
             .then((data) => {
@@ -49,14 +58,25 @@ export default function PromotionCodesModal({ isOpen, onClose, promotion }: Prop
     }, [isOpen, promotion]);
 
     useEffect(() => {
-        if (!isOpen) return;
-        const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        if (!isOpen) {
+return;
+}
+
+        const h = (e: KeyboardEvent) => {
+ if (e.key === 'Escape') {
+onClose();
+} 
+};
         window.addEventListener('keydown', h);
+
         return () => window.removeEventListener('keydown', h);
     }, [isOpen, onClose]);
 
     const loadMore = () => {
-        if (!nextPage || loadingMore) return;
+        if (!nextPage || loadingMore) {
+return;
+}
+
         setLoadingMore(true);
         fetch(nextPage, { headers: { Accept: 'application/json' } })
             .then((r) => r.json())
@@ -70,13 +90,20 @@ export default function PromotionCodesModal({ isOpen, onClose, promotion }: Prop
     };
 
     const toggleCodes = (action: 'disable' | 'enable') => {
-        if (!promotion) return;
+        if (!promotion) {
+return;
+}
+
         router.post(`/manager/promotions/${promotion.id}/codes/toggle`, { action }, { preserveScroll: true });
     };
 
     const handleExport = async () => {
-        if (!promotion || exporting) return;
+        if (!promotion || exporting) {
+return;
+}
+
         setExporting(true);
+
         try {
             const res = await fetch(`/manager/promotions/${promotion.id}/codes?export=1`, { headers: { Accept: 'application/json' } });
             const data = await res.json();
@@ -101,7 +128,9 @@ export default function PromotionCodesModal({ isOpen, onClose, promotion }: Prop
         }
     };
 
-    if (!isOpen) return null;
+    if (!isOpen) {
+return null;
+}
 
     const columns: DataTableColumn<CodeRow>[] = [
         { key: 'code', header: 'Mã', align: 'center', render: (c) => <span className="font-mono font-medium text-sky-600 dark:text-sky-400">{c.code}</span> },

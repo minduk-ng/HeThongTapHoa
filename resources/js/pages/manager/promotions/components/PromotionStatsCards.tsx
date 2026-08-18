@@ -1,5 +1,5 @@
-import React from 'react';
 import { TrendingUp, Activity, BadgePercent, TrendingDown } from 'lucide-react';
+import React from 'react';
 
 interface Stats {
     total_campaigns?: number;
@@ -19,6 +19,7 @@ export default function PromotionStatsCards({ stats }: { stats: Stats }) {
         { label: 'Giá trị giảm trung bình', value: fmt(stats.avg_discount), icon: BadgePercent, color: 'text-amber-600' },
         { label: 'Chi phí khuyến mãi', value: fmt(stats.total_discount), icon: TrendingDown, color: 'text-rose-600' },
     ];
+
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {cards.map((c) => (

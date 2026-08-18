@@ -1,12 +1,16 @@
-import { useState, useEffect } from 'react';
 import { usePage, router } from '@inertiajs/react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import SettingsOtpOverlay from './components/SettingsOtpOverlay';
 
 const getCookie = (name: string): string => {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return decodeURIComponent(parts.pop()?.split(';').shift() || '');
+
+    if (parts.length === 2) {
+return decodeURIComponent(parts.pop()?.split(';').shift() || '');
+}
+
     return '';
 };
 
@@ -40,6 +44,7 @@ export default function Settings() {
             const timer = setTimeout(() => {
                 setResendCooldown((prev) => prev - 1);
             }, 1000);
+
             return () => clearTimeout(timer);
         }
     }, [resendCooldown]);
@@ -50,8 +55,10 @@ export default function Settings() {
     const handleUpdateName = async () => {
         if (!nameVal.trim()) {
             setNameError('Tên không được để trống.');
+
             return;
         }
+
         try {
             const response = await fetch('/profile/update-name', {
                 method: 'POST',
@@ -63,6 +70,7 @@ export default function Settings() {
                 body: JSON.stringify({ name: nameVal })
             });
             const result = await response.json();
+
             if (response.ok && result.success) {
                 setIsEditingName(false);
                 setNameError(null);
@@ -70,7 +78,7 @@ export default function Settings() {
             } else {
                 setNameError(result.errors?.name || 'Cập nhật tên thất bại.');
             }
-        } catch (e) {
+        } catch {
             setNameError('Đã có lỗi xảy ra.');
         }
     };
@@ -78,8 +86,10 @@ export default function Settings() {
     const handleUpdateEmail = async () => {
         if (!emailVal.trim()) {
             setEmailError('Email không được để trống.');
+
             return;
         }
+
         try {
             const response = await fetch('/profile/update-email', {
                 method: 'POST',
@@ -91,6 +101,7 @@ export default function Settings() {
                 body: JSON.stringify({ email: emailVal })
             });
             const result = await response.json();
+
             if (response.ok && result.requires_otp) {
                 setEmailError(null);
                 setOtpConfig({
@@ -100,7 +111,7 @@ export default function Settings() {
             } else {
                 setEmailError(result.errors?.email || 'Email không hợp lệ hoặc đã được sử dụng.');
             }
-        } catch (e) {
+        } catch {
             setEmailError('Đã có lỗi xảy ra.');
         }
     };
@@ -111,10 +122,13 @@ export default function Settings() {
 
         if (!newPass || newPass.length < 8) {
             setPassError('Mật khẩu mới phải có tối thiểu 8 ký tự.');
+
             return;
         }
+
         if (newPass !== confirmPass) {
             setPassError('Mật khẩu xác nhận không khớp.');
+
             return;
         }
 
@@ -134,6 +148,7 @@ export default function Settings() {
                     })
                 });
                 const result = await response.json();
+
                 if (response.ok && result.success) {
                     setNewPass('');
                     setConfirmPass('');
@@ -142,15 +157,17 @@ export default function Settings() {
                 } else {
                     setPassError(result.errors?.password || 'Thiết lập mật khẩu thất bại.');
                 }
-            } catch (e) {
+            } catch {
                 setPassError('Đã có lỗi xảy ra.');
             }
         } else {
             // Requires verification
             if (!currentPass) {
                 setPassError('Vui lòng nhập mật khẩu cũ.');
+
                 return;
             }
+
             try {
                 const response = await fetch('/profile/change-password', {
                     method: 'POST',
@@ -166,6 +183,7 @@ export default function Settings() {
                     })
                 });
                 const result = await response.json();
+
                 if (response.ok && result.requires_otp) {
                     setOtpConfig({
                         email: user.email,
@@ -174,13 +192,13 @@ export default function Settings() {
                 } else {
                     setPassError(result.errors?.current_password || result.errors?.password || 'Đổi mật khẩu thất bại.');
                 }
-            } catch (e) {
+            } catch {
                 setPassError('Đã có lỗi xảy ra.');
             }
         }
     };
 
-    const handleOtpSuccess = (updatedUser: any) => {
+    const handleOtpSuccess = () => {
         setOtpConfig(null);
         setIsEditingEmail(false);
         setCurrentPass('');

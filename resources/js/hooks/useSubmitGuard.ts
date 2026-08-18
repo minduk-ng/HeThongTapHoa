@@ -5,9 +5,13 @@ export function useSubmitGuard() {
     const lockRef = useRef(false);
 
     const guard = useCallback(async <T>(fn: () => Promise<T>): Promise<T | undefined> => {
-        if (lockRef.current) return undefined;
+        if (lockRef.current) {
+return undefined;
+}
+
         lockRef.current = true;
         setIsSubmitting(true);
+
         try {
             return await fn();
         } finally {

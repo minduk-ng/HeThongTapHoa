@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { History, RotateCcw, Filter, ArrowDownToLine, ArrowUpFromLine, SlidersHorizontal } from 'lucide-react';
-import DashboardLayout from '../../../../layouts/DashboardLayout';
-import ManagerPageLayout from '../../../../components/ManagerPageLayout';
-import DataTable, { DataTableColumn } from '../../../../components/DataTable';
+import React, { useState } from 'react';
+import type { DataTableColumn } from '../../../../components/DataTable';
+import DataTable from '../../../../components/DataTable';
 import DatePicker from '../../../../components/DatePicker';
+import ManagerPageLayout from '../../../../components/ManagerPageLayout';
+import DashboardLayout from '../../../../layouts/DashboardLayout';
 
 interface Ingredient {
     id: number;
@@ -57,6 +58,7 @@ const columns: DataTableColumn<HistoryRow>[] = [
                     </span>
                 );
             }
+
             if (r.type === 'import') {
                 return (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
@@ -65,6 +67,7 @@ const columns: DataTableColumn<HistoryRow>[] = [
                     </span>
                 );
             }
+
             return (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
                     <ArrowUpFromLine className="w-3 h-3 stroke-[1.5]" />
@@ -88,6 +91,7 @@ const columns: DataTableColumn<HistoryRow>[] = [
         sortable: true,
         render: (r) => {
             const isPos = r.change_qty > 0;
+
             return (
                 <span className={`tabular-nums font-bold text-xs ${isPos ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                     {isPos ? '+' : ''}{Number(r.change_qty).toLocaleString('vi-VN')}
@@ -134,6 +138,7 @@ export default function StockHistoryManager({ ingredients, ingredientId, rows, f
     const handleReset = () => {
         setFrom('');
         setTo('');
+
         if (selIngredient) {
             router.reload({
                 only: ['rows', 'ingredientId'],
@@ -234,7 +239,10 @@ export default function StockHistoryManager({ ingredients, ingredientId, rows, f
                     defaultSortKey="transacted_at"
                     defaultSortDirection="desc"
                     getSortValue={(r, key) => {
-                        if (key === 'transacted_at') return r.sort_key ?? '';
+                        if (key === 'transacted_at') {
+return r.sort_key ?? '';
+}
+
                         return (r as any)[key] ?? '';
                     }}
                     onRowClick={(r) => router.get(`/manager/inventory/vouchers/${r.voucher_id}`, {}, { preserveState: true })}

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
 import { X, CalendarX2 } from 'lucide-react';
+import React, { useState } from 'react';
 
 interface CancelReservationModalProps {
     isOpen: boolean;
@@ -17,7 +17,9 @@ export default function CancelReservationModal({
     const [resolution, setResolution] = useState<'refund' | 'forfeit'>('refund');
     const [note, setNote] = useState('');
 
-    if (!isOpen) return null;
+    if (!isOpen) {
+return null;
+}
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

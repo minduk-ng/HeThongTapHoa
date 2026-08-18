@@ -1,6 +1,6 @@
 import { useForm } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import GoogleButton from './GoogleButton';
 
 // Khai báo khai sinh biến grecaptcha toàn cục cho TypeScript
@@ -28,7 +28,10 @@ export default function LoginForm({ onSwitchToSignup, onSwitchToForgot }: LoginF
 
     // Hàm gọi API check số lần sai khi rời ô nhập email (onBlur)
     const checkEmailAttempts = async (email: string) => {
-        if (!email || !email.includes('@')) return;
+        if (!email || !email.includes('@')) {
+return;
+}
+
         try {
             const res = await fetch('/login/check-attempts', {
                 method: 'POST',
@@ -38,6 +41,7 @@ export default function LoginForm({ onSwitchToSignup, onSwitchToForgot }: LoginF
                 },
                 body: JSON.stringify({ email }),
             });
+
             if (res.ok) {
                 const result = await res.json();
                 setFailedAttempts(result.failed_attempts || 0);
@@ -50,10 +54,12 @@ export default function LoginForm({ onSwitchToSignup, onSwitchToForgot }: LoginF
     // Theo dõi và gọi explicit render reCAPTCHA v2
     useEffect(() => {
         const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+
         if (failedAttempts >= 5 && siteKey) {
             const initCaptcha = () => {
                 if (window.grecaptcha && window.grecaptcha.render) {
                     const container = document.getElementById('recaptcha-container');
+
                     if (container && container.innerHTML === '') {
                         window.grecaptcha.render('recaptcha-container', {
                             sitekey: siteKey,
@@ -74,18 +80,22 @@ export default function LoginForm({ onSwitchToSignup, onSwitchToForgot }: LoginF
         } else {
             setData('recaptcha_token', '');
         }
-    }, [failedAttempts]);
+    }, [failedAttempts, clearErrors, setData]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
         if (failedAttempts >= 5 && !data.recaptcha_token) {
             setError('recaptcha_token', 'Vui lòng hoàn thành xác thực reCAPTCHA.');
+
             return;
         }
+
         post('/login', {
             onError: () => {
                 // Tăng số lần sai cục bộ khi gửi thất bại
                 setFailedAttempts(prev => prev + 1);
+
                 // Reset recaptcha checkbox
                 if (window.grecaptcha && window.grecaptcha.reset) {
                     try {
@@ -94,6 +104,7 @@ export default function LoginForm({ onSwitchToSignup, onSwitchToForgot }: LoginF
                         console.error('Lỗi reset recaptcha:', err);
                     }
                 }
+
                 setData('recaptcha_token', '');
             }
         });

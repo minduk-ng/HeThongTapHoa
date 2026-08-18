@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { POSTableData, POSProductData, CartItem } from '../types/pos.types';
+import type { POSTableData, POSProductData, CartItem } from '../types/pos.types';
 
 export function usePOSCart(
     selectedTable: POSTableData | null,
@@ -14,9 +14,10 @@ export function usePOSCart(
     >({});
 
     useEffect(() => {
-        const safeTables = (
-            Array.isArray(tables) ? tables : Object.values(tables || {})
-        ) as POSTableData[];
+        queueMicrotask(() => {
+            const safeTables = (
+                Array.isArray(tables) ? tables : Object.values(tables || {})
+            ) as POSTableData[];
 
         setActiveInvoiceId((prevActive) => {
             const nextActive = { ...prevActive };
@@ -37,6 +38,7 @@ export function usePOSCart(
                         (o) =>
                             (o.order_code || `draft_${o.id}`) === currentActive,
                     );
+
                     if (!currentActive || !hasCurrentActive) {
                         if (allOrders.length > 0) {
                             nextActive[table.id] =
@@ -48,6 +50,7 @@ export function usePOSCart(
                     }
                 }
             });
+
             return nextActive;
         });
 
@@ -63,11 +66,17 @@ export function usePOSCart(
                     const isOrderCompleted = order.status === 'completed';
                     const isDraft = order.status === 'draft' || order.status === 'reserved';
                     const key = order.order_code || `draft_${order.id}`;
-                    if (!tableInvoices[key]) tableInvoices[key] = [];
+
+                    if (!tableInvoices[key]) {
+tableInvoices[key] = [];
+}
 
                     if (order.items) {
                         order.items.forEach((item) => {
-                            if (item.status === 'cancelled') return;
+                            if (item.status === 'cancelled') {
+return;
+}
+
                             tableInvoices[key].push({
                                 menu_item_id: item.menu_item_id,
                                 name: item.menu_item?.name || 'Món',
@@ -94,6 +103,7 @@ export function usePOSCart(
                 Object.keys(prevTableCarts).forEach((key) => {
                     if (key.startsWith('draft_')) {
                         const draftItems = prevTableCarts[key];
+
                         if (
                             draftItems &&
                             draftItems.length > 0 &&
@@ -110,7 +120,9 @@ export function usePOSCart(
 
                 nextCarts[table.id] = tableInvoices;
             });
+
             return nextCarts;
+        });
         });
     }, [tables]);
 
@@ -138,6 +150,7 @@ export function usePOSCart(
         const nextTempId = `draft_${Date.now()}`;
         setTableCarts((prev) => {
             const prevTableCarts = prev[tableId] || {};
+
             return {
                 ...prev,
                 [tableId]: {
@@ -156,9 +169,11 @@ export function usePOSCart(
         setTableCarts((prev) => {
             const nextTableCarts = { ...(prev[tableId] || {}) };
             delete nextTableCarts[tempId];
+
             if (Object.keys(nextTableCarts).length === 0) {
                 nextTableCarts['draft_default'] = [];
             }
+
             return {
                 ...prev,
                 [tableId]: nextTableCarts,
@@ -166,23 +181,29 @@ export function usePOSCart(
         });
         setActiveInvoiceId((prev) => {
             const currentActive = prev[tableId];
+
             if (currentActive === tempId) {
                 const nextTableCarts = tableCarts[tableId] || {};
                 const keys = Object.keys(nextTableCarts).filter(
                     (k) => k !== tempId,
                 );
                 const nextActive = keys.length > 0 ? keys[0] : 'draft_default';
+
                 return {
                     ...prev,
                     [tableId]: nextActive,
                 };
             }
+
             return prev;
         });
     };
 
     const handleToggleProduct = (product: POSProductData) => {
-        if (!selectedTable) return;
+        if (!selectedTable) {
+return;
+}
+
         const tableId = selectedTable.id;
         const activeId = activeInvoiceId[tableId] || 'draft_default';
         const existingCart = (tableCarts[tableId] || {})[activeId] || [];
@@ -194,16 +215,24 @@ export function usePOSCart(
         );
 
         let updated: CartItem[];
+
         if (draftIndex > -1) {
             const existingDraft = existingCart[draftIndex];
-            if (existingDraft.quantity + 1 > maxServings) return;
+
+            if (existingDraft.quantity + 1 > maxServings) {
+return;
+}
+
             updated = [...existingCart];
             updated[draftIndex] = {
                 ...existingDraft,
                 quantity: existingDraft.quantity + 1,
             };
         } else {
-            if (1 > maxServings) return;
+            if (1 > maxServings) {
+return;
+}
+
             const newItem: CartItem = {
                 menu_item_id: product.id,
                 name: product.name,
@@ -228,7 +257,10 @@ export function usePOSCart(
     };
 
     const handleUpdateQuantity = (menuItemId: number, delta: number) => {
-        if (!selectedTable) return;
+        if (!selectedTable) {
+return;
+}
+
         const tableId = selectedTable.id;
         const activeId = activeInvoiceId[tableId] || 'draft_default';
         const existingCart = (tableCarts[tableId] || {})[activeId] || [];
@@ -237,18 +269,26 @@ export function usePOSCart(
             product?.max_servings !== undefined ? product.max_servings : 999;
 
         let draftAlreadyHandled = false;
-        let updated = existingCart
+        const updated = existingCart
             .map((item) => {
                 if (item.menu_item_id === menuItemId && !item.isConfirmed) {
                     const newQty = item.quantity + delta;
-                    if (delta > 0 && newQty > maxServings) return item;
+
+                    if (delta > 0 && newQty > maxServings) {
+return item;
+}
+
                     if (newQty <= 0) {
                         draftAlreadyHandled = true;
+
                         return null;
                     }
+
                     draftAlreadyHandled = true;
+
                     return { ...item, quantity: newQty };
                 }
+
                 return item;
             })
             .filter(Boolean) as CartItem[];
@@ -257,12 +297,15 @@ export function usePOSCart(
             const confirmedItem = existingCart.find(
                 (i) => i.menu_item_id === menuItemId && i.isConfirmed,
             );
+
             if (confirmedItem && product && !draftAlreadyHandled) {
                 const draftIndex = updated.findIndex(
                     (i) => i.menu_item_id === menuItemId && !i.isConfirmed,
                 );
+
                 if (draftIndex > -1) {
                     const existingDraft = updated[draftIndex];
+
                     if (existingDraft.quantity + 1 <= maxServings) {
                         updated[draftIndex] = {
                             ...existingDraft,
@@ -303,7 +346,10 @@ export function usePOSCart(
         reason: string,
         note?: string,
     ) => {
-        if (!selectedTable) return;
+        if (!selectedTable) {
+return;
+}
+
         const tableId = selectedTable.id;
         const activeId = activeInvoiceId[tableId] || 'draft_default';
         const existingCart = (tableCarts[tableId] || {})[activeId] || [];
@@ -315,6 +361,7 @@ export function usePOSCart(
                     0,
                     item.quantity - reduceQty,
                 );
+
                 return {
                     ...item,
                     quantity: currentEffectiveQty,
@@ -323,6 +370,7 @@ export function usePOSCart(
                     stagedNote: note,
                 };
             }
+
             return item;
         });
 
@@ -337,7 +385,10 @@ export function usePOSCart(
     };
 
     const handleRemoveItem = (menuItemId: number) => {
-        if (!selectedTable) return;
+        if (!selectedTable) {
+return;
+}
+
         const tableId = selectedTable.id;
         const activeId = activeInvoiceId[tableId] || 'draft_default';
         const existingCart = (tableCarts[tableId] || {})[activeId] || [];
@@ -355,7 +406,10 @@ export function usePOSCart(
     };
 
     const handleUpdateNote = (menuItemId: number, note: string) => {
-        if (!selectedTable) return;
+        if (!selectedTable) {
+return;
+}
+
         const tableId = selectedTable.id;
         const activeId = activeInvoiceId[tableId] || 'draft_default';
         const existingCart = (tableCarts[tableId] || {})[activeId] || [];
@@ -373,7 +427,10 @@ export function usePOSCart(
 
     const clearTableCart = (tableId?: number, invoiceId?: string) => {
         // Note: virtual "Mang đi" table has id = 0, so a falsy check would skip it
-        if (tableId === undefined || tableId === null) return;
+        if (tableId === undefined || tableId === null) {
+return;
+}
+
         const activeId =
             invoiceId || activeInvoiceId[tableId] || 'draft_default';
         setTableCarts((prev) => {
@@ -387,11 +444,13 @@ export function usePOSCart(
             setActiveInvoiceId((prevActive) => {
                 if (prevActive[tableId] === activeId) {
                     const keys = Object.keys(nextTableCarts);
+
                     return {
                         ...prevActive,
                         [tableId]: keys.length > 0 ? keys[0] : 'draft_default',
                     };
                 }
+
                 return prevActive;
             });
 
@@ -405,7 +464,10 @@ export function usePOSCart(
 
     const clearUnconfirmedDraft = (tableId?: number, invoiceId?: string) => {
         // Note: virtual "Mang đi" table has id = 0, so a falsy check would skip it
-        if (tableId === undefined || tableId === null) return;
+        if (tableId === undefined || tableId === null) {
+return;
+}
+
         const activeId =
             invoiceId || activeInvoiceId[tableId] || 'draft_default';
         setTableCarts((prev) => {
@@ -419,10 +481,12 @@ export function usePOSCart(
                         stagedNote,
                         ...rest
                     } = item;
+
                     return rest;
                 });
 
             const nextTableCarts = { ...(prev[tableId] || {}) };
+
             if (confirmedOnly.length === 0 && activeId.startsWith('draft_')) {
                 delete nextTableCarts[activeId];
             } else {

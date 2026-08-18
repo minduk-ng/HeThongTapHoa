@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
 import { X, CalendarClock, Save, Calendar } from 'lucide-react';
-import { POSTableData, ReservationDraft } from '../types/pos.types';
+import React, { useState, useEffect } from 'react';
+import type { POSTableData, ReservationDraft } from '../types/pos.types';
 
 interface ReservationFormDrawerProps {
     isOpen: boolean;
@@ -23,28 +23,35 @@ export default function ReservationFormDrawer({
     const [note, setNote] = useState('');
 
     useEffect(() => {
-        if (isOpen) {
-            if (initialDraft) {
-                setName(initialDraft.name);
-                setPhone(initialDraft.phone);
-                setTime(initialDraft.time);
-                setNote(initialDraft.note);
-            } else {
-                setName('');
-                setPhone('');
-                setTime('');
-                setNote('');
+        queueMicrotask(() => {
+            if (isOpen) {
+                if (initialDraft) {
+                    setName(initialDraft.name);
+                    setPhone(initialDraft.phone);
+                    setTime(initialDraft.time);
+                    setNote(initialDraft.note);
+                } else {
+                    setName('');
+                    setPhone('');
+                    setTime('');
+                    setNote('');
+                }
             }
-        }
+        });
     }, [isOpen, initialDraft]);
 
-    if (!isOpen || !table) return null;
+    if (!isOpen || !table) {
+return null;
+}
 
     const isFormValid = name.trim() !== '' && phone.trim() !== '' && time.trim() !== '';
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!isFormValid) return;
+
+        if (!isFormValid) {
+return;
+}
         
         onSubmit({
             name: name.trim(),

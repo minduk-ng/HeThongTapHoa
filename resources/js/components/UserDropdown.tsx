@@ -1,6 +1,6 @@
 import { Link, router } from '@inertiajs/react';
-import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Settings, LogOut } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 import type { User } from '../types/auth';
 
 interface UserDropdownProps {
@@ -18,6 +18,7 @@ export default function UserDropdown({ user }: UserDropdownProps) {
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
+
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 

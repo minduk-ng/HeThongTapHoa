@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Plus, Search, Armchair, SlidersHorizontal, CheckCircle, Users, RotateCcw } from 'lucide-react';
-import DashboardLayout from '../../../layouts/DashboardLayout';
-import ManagerPageLayout from '../../../components/ManagerPageLayout';
-import TableListTable, { TableData } from './components/TableListTable';
-import TableFormDrawer from './components/TableFormDrawer';
+import { Plus, Search, Armchair, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal';
+import ManagerPageLayout from '../../../components/ManagerPageLayout';
+import DashboardLayout from '../../../layouts/DashboardLayout';
+import TableFormDrawer from './components/TableFormDrawer';
+import type { TableData } from './components/TableListTable';
+import TableListTable from './components/TableListTable';
 
 interface TableManagerProps {
     tables: TableData[];
@@ -30,11 +31,14 @@ export default function TableManager({ tables, areas, filters }: TableManagerPro
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    useEffect(() => {
+    const [prevFilters, setPrevFilters] = useState(filters);
+
+    if (filters !== prevFilters) {
+        setPrevFilters(filters);
         setSearchQuery(filters.search || '');
         setSelectedArea(filters.area || 'all');
         setSelectedStatus(filters.status || 'all');
-    }, [filters]);
+    }
 
     // Realtime WebSocket Listener via Reverb for instant table updates
     useEffect(() => {
@@ -112,10 +116,14 @@ export default function TableManager({ tables, areas, filters }: TableManagerPro
 
     const confirmDelete = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!deletingTable) return;
+
+        if (!deletingTable) {
+return;
+}
 
         if (!passwordValue) {
             setDeleteError('Vui lòng nhập mật khẩu xác nhận');
+
             return;
         }
 
@@ -131,6 +139,7 @@ export default function TableManager({ tables, areas, filters }: TableManagerPro
             },
             onError: (errs: any) => {
                 setIsDeleting(false);
+
                 if (errs.password) {
                     setDeleteError(errs.password);
                 } else {

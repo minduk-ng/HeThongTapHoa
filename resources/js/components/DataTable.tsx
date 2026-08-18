@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
 import {
     ChevronUp,
     ChevronDown,
     Rows3,
 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
 
 export interface DataTableColumn<T> {
     key: string;
@@ -59,29 +59,49 @@ export default function DataTable<T>({
     );
 
     const alignClass = (align?: 'left' | 'center' | 'right') => {
-        if (align === 'center') return 'text-center';
-        if (align === 'right') return 'text-right';
+        if (align === 'center') {
+return 'text-center';
+}
+
+        if (align === 'right') {
+return 'text-right';
+}
+
         return 'text-left';
     };
 
     const sortedRows = useMemo(() => {
-        if (!sortField || !getSortValue) return rows;
+        if (!sortField || !getSortValue) {
+return rows;
+}
+
         const sorted = [...rows];
         sorted.sort((a, b) => {
             const valA = getSortValue(a, sortField);
             const valB = getSortValue(b, sortField);
+
             if (typeof valA === 'string') {
                 const cmp = (valA as string)
                     .toLowerCase()
                     .localeCompare((valB as string).toLowerCase());
+
                 return sortDirection === 'asc' ? cmp : -cmp;
             }
+
             const numA = Number(valA);
             const numB = Number(valB);
-            if (numA < numB) return sortDirection === 'asc' ? -1 : 1;
-            if (numA > numB) return sortDirection === 'asc' ? 1 : -1;
+
+            if (numA < numB) {
+return sortDirection === 'asc' ? -1 : 1;
+}
+
+            if (numA > numB) {
+return sortDirection === 'asc' ? 1 : -1;
+}
+
             return 0;
         });
+
         return sorted;
     }, [rows, sortField, sortDirection, getSortValue]);
 
@@ -90,6 +110,7 @@ export default function DataTable<T>({
 
     const paginatedRows = useMemo(() => {
         const start = (safeCurrentPage - 1) * pageSize;
+
         return sortedRows.slice(start, start + pageSize);
     }, [sortedRows, safeCurrentPage, pageSize]);
 
@@ -100,6 +121,7 @@ export default function DataTable<T>({
             setSortField(field);
             setSortDirection('asc');
         }
+
         setCurrentPage(1);
     };
 
@@ -109,6 +131,7 @@ export default function DataTable<T>({
                 <ChevronUp className="h-3 w-3 text-zinc-300 dark:text-zinc-600" />
             );
         }
+
         return sortDirection === 'asc' ? (
             <ChevronUp className="h-3 w-3 text-sky-500" />
         ) : (

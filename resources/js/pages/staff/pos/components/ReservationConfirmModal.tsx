@@ -1,6 +1,6 @@
-import React from 'react';
 import { Calendar, User, Phone, Clock, FileText, Check } from 'lucide-react';
-import { POSTableData } from '../types/pos.types';
+import React from 'react';
+import type { POSTableData } from '../types/pos.types';
 
 interface ReservationConfirmModalProps {
     isOpen: boolean;
@@ -15,7 +15,9 @@ export default function ReservationConfirmModal({
     table,
     onConfirm,
 }: ReservationConfirmModalProps) {
-    if (!isOpen || !table) return null;
+    if (!isOpen || !table) {
+return null;
+}
 
     const formattedTime = table.reservation_time
         ? new Date(table.reservation_time).toLocaleString('vi-VN', {

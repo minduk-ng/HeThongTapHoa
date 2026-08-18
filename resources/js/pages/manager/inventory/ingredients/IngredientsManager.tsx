@@ -1,12 +1,13 @@
-import React, { useState, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Plus, Search, Box, SlidersHorizontal, AlertTriangle, CheckCircle, Package, RotateCcw } from 'lucide-react';
-import DashboardLayout from '../../../../layouts/DashboardLayout';
-import ManagerPageLayout from '../../../../components/ManagerPageLayout';
-import IngredientTable, { IngredientData } from './components/IngredientTable';
-import IngredientFormDrawer from './components/IngredientFormDrawer';
-import StockImportModal from './components/StockImportModal';
+import { Plus, Search, Package, RotateCcw } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
 import DeleteConfirmModal from '../../../../components/DeleteConfirmModal';
+import ManagerPageLayout from '../../../../components/ManagerPageLayout';
+import DashboardLayout from '../../../../layouts/DashboardLayout';
+import IngredientFormDrawer from './components/IngredientFormDrawer';
+import type { IngredientData } from './components/IngredientTable';
+import IngredientTable from './components/IngredientTable';
+import StockImportModal from './components/StockImportModal';
 
 interface IngredientsManagerProps {
     ingredients: IngredientData[];
@@ -50,6 +51,7 @@ export default function IngredientsManager({
             const matchesUnit = selectedUnit === 'all' || item.unit === selectedUnit;
 
             let matchesAlert = true;
+
             if (alertFilter === 'low_stock') {
                 const minAlert = item.min_stock_alert !== undefined ? item.min_stock_alert : 5;
                 matchesAlert = Number(item.stock_quantity || 0) <= minAlert;
@@ -91,10 +93,14 @@ export default function IngredientsManager({
 
     const confirmDelete = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!deletingIngredient) return;
+
+        if (!deletingIngredient) {
+return;
+}
 
         if (!passwordValue) {
             setDeleteError('Vui lòng nhập mật khẩu xác nhận');
+
             return;
         }
 
@@ -110,6 +116,7 @@ export default function IngredientsManager({
             },
             onError: (errs: any) => {
                 setIsDeleting(false);
+
                 if (errs.password) {
                     setDeleteError(errs.password);
                 } else {
@@ -123,6 +130,7 @@ export default function IngredientsManager({
     const totalCount = ingredients.length;
     const lowStockCount = ingredients.filter((i) => {
         const minAlert = i.min_stock_alert !== undefined ? i.min_stock_alert : 5;
+
         return Number(i.stock_quantity || 0) <= minAlert && Number(i.stock_quantity || 0) > 0;
     }).length;
     const outOfStockCount = ingredients.filter((i) => Number(i.stock_quantity || 0) <= 0).length;

@@ -1,5 +1,5 @@
-import React from 'react';
 import { Plus, Trash2, Percent, Coins, Gift, AlertCircle, Info } from 'lucide-react';
+import React from 'react';
 
 export interface ActionRow {
     action_type: string;
@@ -22,12 +22,17 @@ const ALL_TYPES = [
 export default function PromotionActionsEditor({ actions, onChange, menuItems }: Props) {
     const update = (i: number, key: keyof ActionRow, value: string) => {
         const next = actions.map((a, idx) => {
-            if (idx !== i) return a;
+            if (idx !== i) {
+return a;
+}
+
             const updated = { ...a, [key]: value };
+
             if (key === 'action_type') {
                 updated.action_value = '';
                 updated.max_discount_amount = '';
             }
+
             return updated;
         });
         onChange(next);
@@ -44,13 +49,16 @@ export default function PromotionActionsEditor({ actions, onChange, menuItems }:
         if (typeVal === 'discount_percent') {
             return !hasPercent && !hasAmount;
         }
+
         if (typeVal === 'discount_amount') {
             return !hasPercent && !hasAmount;
         }
+
         if (typeVal === 'free_product') {
             // Còn món chưa được tặng
             return selectedFreeItemIds.length < menuItems.length;
         }
+
         return false;
     };
 
@@ -58,9 +66,11 @@ export default function PromotionActionsEditor({ actions, onChange, menuItems }:
 
     const add = () => {
         let nextType = 'discount_percent';
+
         if (hasPercent || hasAmount) {
             nextType = 'free_product';
         }
+
         onChange([...actions, { action_type: nextType, action_value: '', max_discount_amount: '' }]);
     };
 
@@ -83,10 +93,22 @@ export default function PromotionActionsEditor({ actions, onChange, menuItems }:
 
                     // Các options hợp lệ cho dòng này
                     const allowedTypesForRow = ALL_TYPES.filter((t) => {
-                        if (t.value === a.action_type) return true;
-                        if (t.value === 'discount_percent') return !hasPercent && !hasAmount;
-                        if (t.value === 'discount_amount') return !hasPercent && !hasAmount;
-                        if (t.value === 'free_product') return true;
+                        if (t.value === a.action_type) {
+return true;
+}
+
+                        if (t.value === 'discount_percent') {
+return !hasPercent && !hasAmount;
+}
+
+                        if (t.value === 'discount_amount') {
+return !hasPercent && !hasAmount;
+}
+
+                        if (t.value === 'free_product') {
+return true;
+}
+
                         return false;
                     });
 

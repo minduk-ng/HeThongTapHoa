@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Plus, Search, Upload, Download, UtensilsCrossed, Package, Layers, SlidersHorizontal, RotateCcw } from 'lucide-react';
-import DashboardLayout from '../../../layouts/DashboardLayout';
-import ManagerPageLayout from '../../../components/ManagerPageLayout';
-import ProductTable, { MenuItemData } from './components/ProductTable';
-import ProductFormDrawer from './components/ProductFormDrawer';
-import ExcelImportModal from './components/ExcelImportModal';
-import CategoryFormModal from './components/CategoryFormModal';
+import { Plus, Search, Upload, Download, UtensilsCrossed, RotateCcw } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal';
+import ManagerPageLayout from '../../../components/ManagerPageLayout';
+import DashboardLayout from '../../../layouts/DashboardLayout';
+import CategoryFormModal from './components/CategoryFormModal';
+import ExcelImportModal from './components/ExcelImportModal';
+import ProductFormDrawer from './components/ProductFormDrawer';
+import type { MenuItemData } from './components/ProductTable';
+import ProductTable from './components/ProductTable';
 
 interface Category {
     id: number;
@@ -53,11 +54,14 @@ export default function ProductsManager({
     const [isDeleting, setIsDeleting] = useState(false);
 
     // Sync state with filters on reload/nav
-    useEffect(() => {
+    const [prevFilters, setPrevFilters] = useState(filters);
+
+    if (filters !== prevFilters) {
+        setPrevFilters(filters);
         setStatusFilter(filters.status || 'all');
         setSearchQuery(filters.search || '');
         setSelectedCategory(filters.category_id || 'all');
-    }, [filters]);
+    }
 
     // 100% Instant Frontend Filtering via useMemo without backend HTTP roundtrips
     const filteredItems = useMemo(() => {
@@ -72,6 +76,7 @@ export default function ProductsManager({
                 selectedCategory === 'all' || String(product.category_id) === selectedCategory;
 
             let matchesStatus = true;
+
             if (statusFilter === 'active') {
                 matchesStatus = product.is_available === true;
             } else if (statusFilter === 'inactive') {
@@ -112,10 +117,14 @@ export default function ProductsManager({
 
     const confirmDelete = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!deletingProduct) return;
+
+        if (!deletingProduct) {
+return;
+}
 
         if (!passwordValue) {
             setDeleteError('Vui lòng nhập mật khẩu xác nhận');
+
             return;
         }
 
@@ -131,6 +140,7 @@ export default function ProductsManager({
             },
             onError: (errs: any) => {
                 setIsDeleting(false);
+
                 if (errs.password) {
                     setDeleteError(errs.password);
                 } else {

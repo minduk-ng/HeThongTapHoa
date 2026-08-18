@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import { X } from 'lucide-react';
+import React, { useState } from 'react';
 
 interface CategoryFormModalProps {
     isOpen: boolean;
@@ -13,12 +13,16 @@ export default function CategoryFormModal({ isOpen, onClose }: CategoryFormModal
     const [errors, setErrors] = useState<{ name?: string }>({});
     const [submitting, setSubmitting] = useState(false);
 
-    if (!isOpen) return null;
+    if (!isOpen) {
+return null;
+}
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
         if (!name.trim()) {
             setErrors({ name: 'Tên danh mục không được để trống' });
+
             return;
         }
 

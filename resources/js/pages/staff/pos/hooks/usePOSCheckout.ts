@@ -1,22 +1,29 @@
-import { useState, useRef, useEffect } from 'react';
 import { router, usePage } from '@inertiajs/react';
-import { POSTableData, CartItem, ReceiptModalState, PromotionCandidate } from '../types/pos.types';
+import { useState, useRef, useEffect } from 'react';
+import type { POSTableData, CartItem, ReceiptModalState, PromotionCandidate } from '../types/pos.types';
 import { usePOSCheckoutLock } from './usePOSCheckoutLock';
 
 function getCsrfTokenFromCookie(): string {
-    if (typeof document === 'undefined') return '';
+    if (typeof document === 'undefined') {
+return '';
+}
+
     const name = 'XSRF-TOKEN=';
     const decodedCookie = decodeURIComponent(document.cookie);
     const ca = decodedCookie.split(';');
+
     for (let i = 0; i < ca.length; i++) {
         let c = ca[i];
+
         while (c.charAt(0) === ' ') {
             c = c.substring(1);
         }
+
         if (c.indexOf(name) === 0) {
             return c.substring(name.length, c.length);
         }
     }
+
     return '';
 }
 
@@ -40,6 +47,7 @@ export function usePOSCheckout(
     const submitting = kitchenSubmitting || (selectedTable
         ? (() => {
               const orders = selectedTable.active_orders || (selectedTable.active_order ? [selectedTable.active_order] : []);
+
               return orders.some((o) => !!processingOrders[o.id]);
           })()
         : false);
@@ -69,6 +77,7 @@ export function usePOSCheckout(
 
     const togglePaymentDrawer = (open: boolean) => {
         setIsPaymentDrawerOpen(open);
+
         if (!open) {
             // Đóng drawer: reset hoàn toàn (kể cả auto) để lần sau mở lại tự pick lại
             setPromotionCode(null);
@@ -78,6 +87,7 @@ export function usePOSCheckout(
             setPromotionName(null);
             setSelectedAutoId(null);
         }
+
         if (selectedTable) {
             const groupId = selectedTable.merged_into_table_id || selectedTable.id;
             const linkedTableIds = tables
@@ -106,16 +116,20 @@ export function usePOSCheckout(
     }, []);
 
     useEffect(() => {
-        setAvailablePromotions(promotions);
-        if (promotions.length > 0 && selectedAutoId === null) {
-            // mặc định chọn promotion ước tính cao nhất (payload cache không có estimated_discount → giữ đầu list)
-            setSelectedAutoId(promotions.reduce((best, p) => (p.estimated_discount > (best?.estimated_discount ?? -1) ? p : best), promotions[0])?.id ?? null);
-        }
+        queueMicrotask(() => {
+            setAvailablePromotions(promotions);
+
+            if (promotions.length > 0 && selectedAutoId === null) {
+                // mặc định chọn promotion ước tính cao nhất (payload cache không có estimated_discount → giữ đầu list)
+                setSelectedAutoId(promotions.reduce((best, p) => (p.estimated_discount > (best?.estimated_discount ?? -1) ? p : best), promotions[0])?.id ?? null);
+            }
+        });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [promotions]);
 
     const dateCode = () => {
         const d = new Date();
+
         return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
     };
 
@@ -125,13 +139,17 @@ export function usePOSCheckout(
         activeInvoiceId?: string | null,
         onSuccessCallback?: () => void
     ) => {
-        if (!selectedTable || currentCart.length === 0 || submitting) return;
+        if (!selectedTable || currentCart.length === 0 || submitting) {
+return;
+}
 
         let orderId: number | null = null;
+
         if (activeInvoiceId && !activeInvoiceId.startsWith('draft_')) {
             const matchedOrder = selectedTable.active_orders?.find(
                 (o) => o.order_code === activeInvoiceId || `order_${o.id}` === activeInvoiceId
             ) || selectedTable.active_order;
+
             if (matchedOrder) {
                 orderId = matchedOrder.id;
             }
@@ -156,12 +174,17 @@ export function usePOSCheckout(
                 note: item.stagedNote || '',
             }));
 
-        if (newDeltaItems.length === 0 && reducedItems.length === 0) return;
+        if (newDeltaItems.length === 0 && reducedItems.length === 0) {
+return;
+}
 
         setKitchenSubmitting(true);
 
         // Safety timeout (8s) if DB/Server hangs indefinitely
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        if (timeoutRef.current) {
+clearTimeout(timeoutRef.current);
+}
+
         timeoutRef.current = setTimeout(() => {
             setKitchenSubmitting(false);
         }, 8000);
@@ -169,6 +192,7 @@ export function usePOSCheckout(
         const subtotal = newDeltaItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
         const vatTotal = newDeltaItems.reduce((sum, item) => {
             const itemSubtotal = item.quantity * item.unit_price;
+
             return sum + itemSubtotal * ((item.vat_rate || 0) / 100);
         }, 0);
         const totalAmount = subtotal;
@@ -193,11 +217,17 @@ export function usePOSCheckout(
                 }
             },
             onFinish: () => {
-                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                if (timeoutRef.current) {
+clearTimeout(timeoutRef.current);
+}
+
                 setKitchenSubmitting(false);
             },
             onError: (errors) => {
-                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                if (timeoutRef.current) {
+clearTimeout(timeoutRef.current);
+}
+
                 setKitchenSubmitting(false);
                 const firstError = errors && Object.values(errors)[0];
                 alert(
@@ -217,6 +247,7 @@ export function usePOSCheckout(
             : [];
         setAppliedPromotions(list);
         setPromotionName(data.promotion?.name ?? null); // giữ cho ReceiptPrintModal
+
         if (!list.some((x: any) => x.code !== null)) {
             // không còn coupon mã (toàn auto/empty) → xoá promotion_code để checkout không tự ý áp lại mã cũ
             setPromotionCode(null);
@@ -246,6 +277,7 @@ export function usePOSCheckout(
             if (response.ok && data.ok) {
                 setPromotionCode(code);
                 syncApplied(data);
+
                 return {
                     ok: true,
                     discount_amount: data.discount_amount,
@@ -267,6 +299,7 @@ export function usePOSCheckout(
         items: { menu_item_id: number; quantity: number; unit_price: number }[] = []
     ) => {
         const csrfToken = getCsrfTokenFromCookie();
+
         try {
             const response = await fetch('/staff/pos/validate-promotion', {
                 method: 'POST',
@@ -279,7 +312,10 @@ export function usePOSCheckout(
                 }),
             });
             const data = await response.json().catch(() => ({}));
-            if (response.ok && data.ok) syncApplied(data);
+
+            if (response.ok && data.ok) {
+syncApplied(data);
+}
         } catch { /* bỏ qua */ }
     };
 
@@ -290,6 +326,7 @@ export function usePOSCheckout(
         items: { menu_item_id: number; quantity: number; unit_price: number }[] = []
     ) => {
         const csrfToken = getCsrfTokenFromCookie();
+
         try {
             const response = await fetch('/staff/pos/available-promotions', {
                 method: 'POST',
@@ -297,10 +334,12 @@ export function usePOSCheckout(
                 body: JSON.stringify({ subtotal, items }),
             });
             const data = await response.json().catch(() => ({}));
+
             if (response.ok && data.ok && Array.isArray(data.promotions)) {
                 const list = data.promotions as PromotionCandidate[];
                 setAvailablePromotions(list);
                 const currentlyUnset = selectedAutoId === null || selectedAutoId === 0;
+
                 if (currentlyUnset && list.length > 0) {
                     const best = list.reduce<PromotionCandidate | undefined>(
                         (acc, p) => (p.estimated_discount > (acc?.estimated_discount ?? -1) ? p : acc),
@@ -323,14 +362,18 @@ export function usePOSCheckout(
         onSuccessClearCart: () => void,
         onLogEntry?: (type: 'sent' | 'received' | 'error', message: string, details?: string) => void
     ) => {
-        if (!selectedTable) return;
+        if (!selectedTable) {
+return;
+}
 
         let orderId: number | null = null;
         let matchedOrderObj: any = null;
+
         if (activeInvoiceId && !activeInvoiceId.startsWith('draft_')) {
             const matchedOrder = selectedTable.active_orders?.find(
                 (o) => o.order_code === activeInvoiceId || `order_${o.id}` === activeInvoiceId
             ) || selectedTable.active_order;
+
             if (matchedOrder) {
                 orderId = matchedOrder.id;
                 matchedOrderObj = matchedOrder;
@@ -339,14 +382,20 @@ export function usePOSCheckout(
 
         if (!orderId) {
             alert('Không thể thanh toán đơn nháp chưa gửi bếp chế biến!');
+
             return;
         }
 
         // Prevent duplicate processing
-        if (processingOrders[orderId]) return;
+        if (processingOrders[orderId]) {
+return;
+}
 
         const hasUnconfirmedDrafts = currentCart.some((i) => !i.isConfirmed || (i.stagedReduceQty || 0) > 0);
-        if (hasUnconfirmedDrafts) return;
+
+        if (hasUnconfirmedDrafts) {
+return;
+}
 
         if (lockedCheckoutTables[selectedTable.id]) {
             return;
@@ -356,7 +405,10 @@ export function usePOSCheckout(
         setProcessingOrders((prev) => ({ ...prev, [orderId]: true }));
 
         // Safety timeout (15s for background tasks) if DB/Server hangs indefinitely
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        if (timeoutRef.current) {
+clearTimeout(timeoutRef.current);
+}
+
         timeoutRef.current = setTimeout(() => {
             setProcessingOrders((prev) => ({ ...prev, [orderId]: false }));
             alert('Kết nối cơ sở dữ liệu/máy chủ quá thời gian chờ (Timeout). Vui lòng thử thanh toán lại!');
@@ -391,10 +443,14 @@ export function usePOSCheckout(
             body: JSON.stringify(payload),
         })
             .then(async (response) => {
-                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                if (timeoutRef.current) {
+clearTimeout(timeoutRef.current);
+}
+
                 setProcessingOrders((prev) => ({ ...prev, [currentOrderId]: false }));
 
                 const data = await response.json().catch(() => ({}));
+
                 if (response.ok && data.success) {
                     togglePaymentDrawer(false);
                     onSuccessClearCart();
@@ -440,7 +496,10 @@ export function usePOSCheckout(
                 }
             })
             .catch((error) => {
-                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                if (timeoutRef.current) {
+clearTimeout(timeoutRef.current);
+}
+
                 setProcessingOrders((prev) => ({ ...prev, [currentOrderId]: false }));
 
                 const errorMsg = error?.message || 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng!';
@@ -465,7 +524,9 @@ export function usePOSCheckout(
         depositTotal: number,
         onSuccess: () => void,
     ) => {
-        if (!selectedTable || allConfirmedOrders.length === 0) return;
+        if (!selectedTable || allConfirmedOrders.length === 0) {
+return;
+}
 
         const csrfToken = getCsrfTokenFromCookie();
         const idempotencyKey = `pos_bulk_${selectedTable.id}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -491,11 +552,14 @@ export function usePOSCheckout(
         })
             .then(async (response) => {
                 const data = await response.json().catch(() => ({}));
+
                 if (response.ok && data.success) {
                     togglePaymentDrawer(false);
+
                     if (data.deposit_refund > 0) {
                         alert(`Hoàn khách ${data.deposit_refund.toLocaleString('vi-VN')} đ từ tiền cọc thừa.`);
                     }
+
                     if (shouldPrint) {
                         setReceiptModal({
                             isOpen: true,
@@ -510,6 +574,7 @@ export function usePOSCheckout(
                             promotionDiscount: promotionDiscount || 0,
                         });
                     }
+
                     onSuccess();
                     router.reload({ only: ['tables'] });
                 } else {

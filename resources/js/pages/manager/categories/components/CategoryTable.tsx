@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
 import { FolderTree, Folder, ChevronRight, ChevronUp, ChevronDown, Edit3, Trash2, Rows3 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
 
 export interface CategoryItem {
     id: number;
@@ -51,6 +51,7 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
             setSortField(field);
             setSortDirection('asc');
         }
+
         setCurrentPage(1);
     };
 
@@ -68,13 +69,25 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
                 valB = Number(b.items_sum_price || 0);
             }
 
-            if (typeof valA === 'string') valA = valA.toLowerCase();
-            if (typeof valB === 'string') valB = valB.toLowerCase();
+            if (typeof valA === 'string') {
+valA = valA.toLowerCase();
+}
 
-            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            if (typeof valB === 'string') {
+valB = valB.toLowerCase();
+}
+
+            if (valA < valB) {
+return sortDirection === 'asc' ? -1 : 1;
+}
+
+            if (valA > valB) {
+return sortDirection === 'asc' ? 1 : -1;
+}
+
             return 0;
         });
+
         return sorted;
     }, [categories, sortField, sortDirection]);
 
@@ -83,11 +96,15 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
 
     const paginatedCategories = useMemo(() => {
         const start = (safeCurrentPage - 1) * pageSize;
+
         return sortedCategories.slice(start, start + pageSize);
     }, [sortedCategories, safeCurrentPage, pageSize]);
 
     const formatCurrency = (val: number | string | null | undefined) => {
-        if (val === null || val === undefined) return '0 đ';
+        if (val === null || val === undefined) {
+return '0 đ';
+}
+
         return Number(val).toLocaleString('vi-VN') + ' đ';
     };
 
@@ -95,6 +112,7 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
         if (sortField !== field) {
             return <ChevronUp className="w-3.5 h-3.5 ml-1 text-zinc-300 dark:text-zinc-600 opacity-50 inline" />;
         }
+
         return sortDirection === 'asc' ? (
             <ChevronUp className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
         ) : (

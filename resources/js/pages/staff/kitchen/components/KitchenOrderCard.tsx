@@ -68,20 +68,23 @@ export default function KitchenOrderCard({
         const interval = setInterval(() => {
             setNowTime(Date.now());
         }, 10000); // refresh every 10s
+
         return () => clearInterval(interval);
     }, []);
 
     // Sync state when order items change (e.g. from real-time extra items calls)
     useEffect(() => {
-        setCheckedItems((prev) => {
-            const next = { ...prev };
-            order.items.forEach((item) => {
-                if (item.status === 'completed') {
-                    next[item.id] = true;
-                }
-            });
+        queueMicrotask(() => {
+            setCheckedItems((prev) => {
+                const next = { ...prev };
+                order.items.forEach((item) => {
+                    if (item.status === 'completed') {
+                        next[item.id] = true;
+                    }
+                });
 
-            return next;
+                return next;
+            });
         });
     }, [order.items]);
 
@@ -89,7 +92,10 @@ export default function KitchenOrderCard({
     const pendingItems = order.items.filter((item) => item.status === 'pending');
     const referenceTime = pendingItems.length > 0
         ? pendingItems.reduce((oldest, item) => {
-              if (!item.created_at) return oldest;
+              if (!item.created_at) {
+return oldest;
+}
+
               return new Date(item.created_at).getTime() < new Date(oldest).getTime() ? item.created_at : oldest;
           }, pendingItems[0].created_at || order.created_at)
         : order.created_at;
@@ -103,9 +109,7 @@ export default function KitchenOrderCard({
     const isOver10Mins = elapsedMinutes >= 10;
     const hasAdditional = order.has_additional_items;
 
-    const totalItems = order.items.reduce((s, i) => s + i.quantity, 0);
-    const completedItemsCount =
-        Object.values(checkedItems).filter(Boolean).length;
+    const completedItemsCount = Object.values(checkedItems).filter(Boolean).length;
 
     const toggleCheckItem = (itemId: number) => {
         setCheckedItems((prev) => ({

@@ -1,21 +1,18 @@
-import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import {
     ArrowLeft,
     ReceiptText,
     Clock,
     User,
-    UtensilsCrossed,
-    CreditCard,
     History,
     PackageCheck,
     Send,
     PlusCircle,
     XCircle,
-    CheckCircle2,
     Truck,
     CircleDollarSign,
 } from 'lucide-react';
+import React, { useState } from 'react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 
 interface OrderItemData {
@@ -118,6 +115,7 @@ export default function OrderDetail({ order }: OrderDetailProps) {
 
     const formatDateTime = (iso: string) => {
         const d = new Date(iso);
+
         return d.toLocaleString('vi-VN', {
             hour: '2-digit',
             minute: '2-digit',
@@ -131,7 +129,6 @@ export default function OrderDetail({ order }: OrderDetailProps) {
     const statusInfo = STATUS_MAP[order.status] ?? STATUS_MAP.draft;
 
     const depositTotal = order.deposit_total || 0;
-    const netTotal = Math.max(0, order.total - depositTotal);
 
     const cocDu = Math.max(0, (order.invoice ? order.invoice.deposit_amount : depositTotal) - order.total);
     const displayChangeAmount = order.invoice 
@@ -386,6 +383,7 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                         <div className="space-y-5">
                                             {(() => {
                                                 const depositActivities = safeActivities.filter(a => a.action === 'deposit_received');
+
                                                 return safeActivities.map((activity) => {
                                                     const config = ACTION_CONFIG[activity.action] ?? {
                                                         label: activity.action,

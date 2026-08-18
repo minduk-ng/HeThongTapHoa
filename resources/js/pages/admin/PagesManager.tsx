@@ -1,5 +1,4 @@
 import { Head, useForm, router } from '@inertiajs/react';
-import React, { useState, useMemo } from 'react';
 import { 
     FolderTree, 
     Plus, 
@@ -7,19 +6,17 @@ import {
     Trash2, 
     GripVertical, 
     ArrowUpDown, 
-    Check, 
     X, 
     Lightbulb, 
-    Layers, 
     Users, 
-    Globe, 
     ChevronDown, 
     ChevronRight,
     Save
 } from 'lucide-react';
-import DashboardLayout from '../../layouts/DashboardLayout';
-import { Page } from '../../types/admin';
+import React, { useState, useMemo } from 'react';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
+import DashboardLayout from '../../layouts/DashboardLayout';
+import type { Page } from '../../types/admin';
 
 interface Props {
     pages: Page[];
@@ -75,6 +72,7 @@ export default function PagesManager({ pages }: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
         if (editingPage) {
             put(`/admin/pages/${editingPage.id}`, {
                 onSuccess: () => closeModal(),
@@ -100,6 +98,7 @@ export default function PagesManager({ pages }: Props) {
 
     const confirmDelete = (e: React.FormEvent) => {
         e.preventDefault();
+
         if (deleteId) {
             router.delete(`/admin/pages/${deleteId}`, {
                 data: { password: deletePassword },
@@ -132,6 +131,7 @@ export default function PagesManager({ pages }: Props) {
                 if (!groupsMap[page.group_name]) {
                     groupsMap[page.group_name] = [];
                 }
+
                 groupsMap[page.group_name].push(page);
             });
 
@@ -150,13 +150,17 @@ export default function PagesManager({ pages }: Props) {
 
     // Group drag handlers
     const handleGroupDragStart = (e: React.DragEvent, index: number) => {
-        if (draggedPage) return;
+        if (draggedPage) {
+return;
+}
+
         setDraggedGroupIndex(index);
         e.dataTransfer.effectAllowed = 'move';
     };
 
     const handleGroupDragOver = (e: React.DragEvent, index: number) => {
         e.preventDefault();
+
         if (draggedGroupIndex !== null) {
             if (draggedGroupIndex !== index) {
                 setDragOverGroupIndex(index);
@@ -173,11 +177,13 @@ export default function PagesManager({ pages }: Props) {
 
     const handleGroupDrop = (e: React.DragEvent, targetGroupIndex: number) => {
         e.preventDefault();
+
         if (draggedGroupIndex !== null && draggedGroupIndex !== targetGroupIndex) {
             const nextGroups = [...sortedGroups];
             const [draggedGroup] = nextGroups.splice(draggedGroupIndex, 1);
             
             let insertIndex = targetGroupIndex;
+
             if (draggedGroupIndex < targetGroupIndex && dropPosition === 'top') {
                 insertIndex = targetGroupIndex - 1;
             } else if (draggedGroupIndex > targetGroupIndex && dropPosition === 'bottom') {
@@ -201,6 +207,7 @@ export default function PagesManager({ pages }: Props) {
                 setSortedGroups(nextGroups);
             }
         }
+
         handleDragEnd();
     };
 
@@ -214,8 +221,12 @@ export default function PagesManager({ pages }: Props) {
     const handlePageDragOver = (e: React.DragEvent, groupIndex: number, pageIndex: number) => {
         e.preventDefault();
         e.stopPropagation();
+
         if (draggedPage) {
-            if (draggedPage.groupIndex === groupIndex && draggedPage.pageIndex === pageIndex) return;
+            if (draggedPage.groupIndex === groupIndex && draggedPage.pageIndex === pageIndex) {
+return;
+}
+
             setDragOverGroupIndex(groupIndex);
             setDragOverPageIndex(pageIndex);
             
@@ -228,9 +239,13 @@ export default function PagesManager({ pages }: Props) {
     const handlePageDrop = (e: React.DragEvent, targetGroupIndex: number, targetPageIndex: number) => {
         e.preventDefault();
         e.stopPropagation();
+
         if (draggedPage) {
             const { groupIndex: sourceGroupIndex, pageIndex: sourcePageIndex } = draggedPage;
-            if (sourceGroupIndex === targetGroupIndex && sourcePageIndex === targetPageIndex) return;
+
+            if (sourceGroupIndex === targetGroupIndex && sourcePageIndex === targetPageIndex) {
+return;
+}
             
             const nextGroups = [...sortedGroups];
             const pageToMove = nextGroups[sourceGroupIndex].pages[sourcePageIndex];
@@ -240,6 +255,7 @@ export default function PagesManager({ pages }: Props) {
             const updatedPage = { ...pageToMove, group_name: nextGroups[targetGroupIndex].group_name };
             
             let insertIndex = targetPageIndex;
+
             if (sourceGroupIndex === targetGroupIndex && sourcePageIndex < targetPageIndex && dropPosition === 'top') {
                 insertIndex = targetPageIndex - 1;
             } else if (sourceGroupIndex === targetGroupIndex && sourcePageIndex > targetPageIndex && dropPosition === 'bottom') {
@@ -251,6 +267,7 @@ export default function PagesManager({ pages }: Props) {
             nextGroups[targetGroupIndex].pages.splice(insertIndex, 0, updatedPage);
             setSortedGroups(nextGroups);
         }
+
         handleDragEnd();
     };
 
@@ -283,12 +300,15 @@ export default function PagesManager({ pages }: Props) {
         const result: { groupName: string; groupPages: Page[] }[] = [];
         pages.forEach(page => {
             let existing = result.find(g => g.groupName === page.group_name);
+
             if (!existing) {
                 existing = { groupName: page.group_name, groupPages: [] };
                 result.push(existing);
             }
+
             existing.groupPages.push(page);
         });
+
         return result;
     }, [pages]);
 
@@ -462,6 +482,7 @@ export default function PagesManager({ pages }: Props) {
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                             {orderedGroups.map(({ groupName, groupPages }) => {
                                 const isCollapsed = collapsedGroups[groupName];
+
                                 return (
                                     <div
                                         key={groupName}

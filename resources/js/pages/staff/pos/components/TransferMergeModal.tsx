@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { ArrowRightLeft, Layers, Split, AlertCircle, X } from 'lucide-react';
-import { POSTableData } from '../types/pos.types';
+import React, { useState, useEffect } from 'react';
+import type { POSTableData } from '../types/pos.types';
 
 interface TransferMergeModalProps {
     isOpen: boolean;
@@ -33,20 +33,25 @@ export default function TransferMergeModal({
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     useEffect(() => {
-        if (selectedTable) {
-            setErrorMsg(null);
-            setTargetTransferTableId('');
-            setTargetMergeTableId('');
-            setKeepTableId(selectedTable.id);
-            if (isMerged) {
-                setActiveTab('unmerge');
-            } else {
-                setActiveTab('transfer');
+        queueMicrotask(() => {
+            if (selectedTable) {
+                setErrorMsg(null);
+                setTargetTransferTableId('');
+                setTargetMergeTableId('');
+                setKeepTableId(selectedTable.id);
+
+                if (isMerged) {
+                    setActiveTab('unmerge');
+                } else {
+                    setActiveTab('transfer');
+                }
             }
-        }
+        });
     }, [selectedTable, isOpen, isMerged]);
 
-    if (!isOpen || !selectedTable) return null;
+    if (!isOpen || !selectedTable) {
+return null;
+}
 
     const availableTransferTables = safeTables.filter(
         (t) => t.id !== selectedTable.id && t.status === 'available' && !t.merged_into_table_id
@@ -65,8 +70,10 @@ export default function TransferMergeModal({
 
     const handleExecuteTransfer = (e: React.FormEvent) => {
         e.preventDefault();
+
         if (!targetTransferTableId) {
             setErrorMsg('Vui lòng chọn bàn trống đích muốn chuyển tới.');
+
             return;
         }
 
@@ -95,8 +102,10 @@ export default function TransferMergeModal({
 
     const handleExecuteMerge = (e: React.FormEvent) => {
         e.preventDefault();
+
         if (!targetMergeTableId) {
             setErrorMsg('Vui lòng chọn bàn muốn gộp cùng.');
+
             return;
         }
 
@@ -125,8 +134,10 @@ export default function TransferMergeModal({
 
     const handleExecuteUnmerge = (e: React.FormEvent) => {
         e.preventDefault();
+
         if (!keepTableId) {
             setErrorMsg('Vui lòng chọn bàn sẽ giữ lại tất cả các món.');
+
             return;
         }
 
@@ -179,7 +190,9 @@ export default function TransferMergeModal({
                 <div className="flex border-b border-zinc-200 dark:border-zinc-800 bg-zinc-100/60 dark:bg-zinc-800/60 p-1.5 gap-1">
                     <button
                         type="button"
-                        onClick={() => { setActiveTab('transfer'); setErrorMsg(null); }}
+                        onClick={() => {
+ setActiveTab('transfer'); setErrorMsg(null); 
+}}
                         className={`flex-1 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-center space-x-1.5 ${
                             activeTab === 'transfer'
                                 ? 'bg-white dark:bg-zinc-900 text-sky-600 dark:text-sky-400 shadow-xs'
@@ -192,7 +205,9 @@ export default function TransferMergeModal({
 
                     <button
                         type="button"
-                        onClick={() => { setActiveTab('merge'); setErrorMsg(null); }}
+                        onClick={() => {
+ setActiveTab('merge'); setErrorMsg(null); 
+}}
                         className={`flex-1 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-center space-x-1.5 ${
                             activeTab === 'merge'
                                 ? 'bg-white dark:bg-zinc-900 text-sky-600 dark:text-sky-400 shadow-xs'
@@ -206,7 +221,9 @@ export default function TransferMergeModal({
                     {isMerged && (
                         <button
                             type="button"
-                            onClick={() => { setActiveTab('unmerge'); setErrorMsg(null); }}
+                            onClick={() => {
+ setActiveTab('unmerge'); setErrorMsg(null); 
+}}
                             className={`flex-1 py-2 text-xs font-bold rounded-xl transition-colors flex items-center justify-center space-x-1.5 ${
                                 activeTab === 'unmerge'
                                     ? 'bg-white dark:bg-zinc-900 text-amber-600 dark:text-amber-400 shadow-xs'

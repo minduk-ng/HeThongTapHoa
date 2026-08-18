@@ -11,6 +11,7 @@ export async function compressAndResizeImage(
         // If file is already small svg, resolve as is
         if (file.type === 'image/svg+xml') {
             resolve(file);
+
             return;
         }
 
@@ -25,6 +26,7 @@ export async function compressAndResizeImage(
 
                 if (!ctx) {
                     resolve(file);
+
                     return;
                 }
 

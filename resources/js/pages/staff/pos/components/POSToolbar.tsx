@@ -1,5 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import {
     Armchair,
     UtensilsCrossed,
@@ -10,10 +9,11 @@ import {
     Search,
     X,
 } from 'lucide-react';
-import type { PageProps } from '../../../../types/auth';
-import type { POSTableData } from '../types/pos.types';
+import React, { useState, useRef, useEffect } from 'react';
 import AvatarDropdown from '../../../../components/AvatarDropdown';
+import type { PageProps } from '../../../../types/auth';
 import { useReverbStatus } from '../hooks/useReverbStatus';
+import type { POSTableData } from '../types/pos.types';
 
 type POSToolbarTab = 'tables' | 'menu' | 'log';
 
@@ -23,7 +23,6 @@ interface POSToolbarProps {
     selectedTable: POSTableData | null;
     cartItemCount: number;
     unreadErrorCount: number;
-    onClearUnread: () => void;
     searchQuery: string;
     onSearchChange: (value: string) => void;
     onOpenLog: () => void;
@@ -35,7 +34,6 @@ export default function POSToolbar({
     selectedTable,
     cartItemCount,
     unreadErrorCount,
-    onClearUnread,
     searchQuery,
     onSearchChange,
     onOpenLog,
@@ -56,6 +54,7 @@ export default function POSToolbar({
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
+
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
@@ -65,6 +64,7 @@ export default function POSToolbar({
             setIsFullscreen(!!document.fullscreenElement);
         };
         document.addEventListener('fullscreenchange', handleFullscreenChange);
+
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 

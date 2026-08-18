@@ -1,6 +1,6 @@
 import { Head, usePage } from '@inertiajs/react';
-import type { PageProps } from './../types/auth';
 import DashboardLayout from '../layouts/DashboardLayout';
+import type { PageProps } from './../types/auth';
 export default function Welcome() {
     const { auth } = usePage<PageProps>().props;
     const { user } = auth;

@@ -14,11 +14,11 @@ import {
     AlertTriangle,
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import DashboardLayout from '../../../layouts/DashboardLayout';
-import { useReverbStatus } from '../pos/hooks/useReverbStatus';
 import AvatarDropdown from '../../../components/AvatarDropdown';
 import { useCommandQueue } from '../../../hooks/useCommandQueue';
+import DashboardLayout from '../../../layouts/DashboardLayout';
 import type { PageProps } from '../../../types/auth';
+import { useReverbStatus } from '../pos/hooks/useReverbStatus';
 import type { KitchenOrderData } from './components/KitchenOrderCard';
 import KitchenOrderCard from './components/KitchenOrderCard';
 import { playKitchenChime } from './utils/kitchenAudio';
@@ -34,7 +34,7 @@ interface KitchenDisplayProps {
 }
 
 export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
-    const [nowTime, setNowTime] = useState<number>(Date.now());
+    const [nowTime, setNowTime] = useState<number>(0);
     const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
     const [activeStation, setActiveStation] = useState<
         'all' | 'bar' | 'kitchen'
@@ -114,6 +114,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
 
     // Tick every 5 seconds to update real-time minute counters and warning counts locally
     useEffect(() => {
+        queueMicrotask(() => setNowTime(Date.now()));
         const timer = setInterval(() => {
             setNowTime(Date.now());
         }, 5000);

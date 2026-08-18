@@ -1,6 +1,7 @@
 import { useForm } from '@inertiajs/react';
-import { FormEvent, useState } from 'react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import type { FormEvent} from 'react';
+import { useState } from 'react';
 
 export default function ResetPassword() {
     const [showPassword, setShowPassword] = useState(false);

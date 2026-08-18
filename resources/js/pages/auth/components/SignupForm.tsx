@@ -1,6 +1,6 @@
 import { useForm } from '@inertiajs/react';
-import { useState } from 'react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 import GoogleButton from './GoogleButton';
 
 interface SignupFormProps {

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { X } from 'lucide-react';
-import { IngredientData } from './IngredientTable';
+import React, { useState, useEffect } from 'react';
+import type { IngredientData } from './IngredientTable';
 
 interface IngredientFormDrawerProps {
     isOpen: boolean;
@@ -25,27 +25,32 @@ export default function IngredientFormDrawer({
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        if (ingredientToEdit) {
-            setName(ingredientToEdit.name);
-            setUnit(ingredientToEdit.unit);
-            setPurchaseUnit(ingredientToEdit.purchase_unit || '');
-            setUnitConversion(String(ingredientToEdit.unit_conversion || 1));
-            setStockQuantity(String(ingredientToEdit.stock_quantity));
-            setMinStockAlert(String(ingredientToEdit.min_stock_alert));
-            setCostPrice(String(ingredientToEdit.cost_price || 0));
-        } else {
-            setName('');
-            setUnit('g');
-            setPurchaseUnit('');
-            setUnitConversion('1');
-            setStockQuantity('0');
-            setMinStockAlert('10');
-            setCostPrice('0');
-        }
-        setErrors({});
+        queueMicrotask(() => {
+            if (ingredientToEdit) {
+                setName(ingredientToEdit.name);
+                setUnit(ingredientToEdit.unit);
+                setPurchaseUnit(ingredientToEdit.purchase_unit || '');
+                setUnitConversion(String(ingredientToEdit.unit_conversion || 1));
+                setStockQuantity(String(ingredientToEdit.stock_quantity));
+                setMinStockAlert(String(ingredientToEdit.min_stock_alert));
+                setCostPrice(String(ingredientToEdit.cost_price || 0));
+            } else {
+                setName('');
+                setUnit('g');
+                setPurchaseUnit('');
+                setUnitConversion('1');
+                setStockQuantity('0');
+                setMinStockAlert('10');
+                setCostPrice('0');
+            }
+
+            setErrors({});
+        });
     }, [ingredientToEdit, isOpen]);
 
-    if (!isOpen) return null;
+    if (!isOpen) {
+return null;
+}
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -169,6 +174,7 @@ export default function IngredientFormDrawer({
                         {(() => {
                             const trimmed = purchaseUnit.trim();
                             const conversionNum = Number(unitConversion) || 1;
+
                             if (trimmed && trimmed !== unit && conversionNum === 1) {
                                 return (
                                     <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
@@ -176,6 +182,7 @@ export default function IngredientFormDrawer({
                                     </p>
                                 );
                             }
+
                             return null;
                         })()}
 

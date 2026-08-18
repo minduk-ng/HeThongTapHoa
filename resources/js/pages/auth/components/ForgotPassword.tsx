@@ -1,6 +1,6 @@
 import { useForm } from '@inertiajs/react';
-import { FormEvent } from 'react';
 import { KeyRound, ArrowLeft, Loader2 } from 'lucide-react';
+import type { FormEvent } from 'react';
 
 interface ForgotPasswordProps {
     onBack: () => void;

@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import { usePage } from '@inertiajs/react';
 import {
     Armchair,
@@ -11,19 +10,19 @@ import {
     Plus,
     X,
     Menu,
-    StickyNote,
     ChevronUp,
     CalendarClock,
     Banknote,
     LogIn,
 } from 'lucide-react';
-import { POSTableData, CartItem, ReservationDraft, POSOrderData } from '../types/pos.types';
-import TransferMergeModal from './TransferMergeModal';
+import React, { useState } from 'react';
+import VoidItemModal from '@/pages/staff/kitchen/components/VoidItemModal';
+import type { POSTableData, CartItem, ReservationDraft} from '../types/pos.types';
+import CancelReservationModal from './CancelReservationModal';
+import NotePopupModal from './NotePopupModal';
 import ReduceItemModal from './ReduceItemModal';
 
-import VoidItemModal from '@/pages/staff/kitchen/components/VoidItemModal';
-import NotePopupModal from './NotePopupModal';
-import CancelReservationModal from './CancelReservationModal';
+import TransferMergeModal from './TransferMergeModal';
 
 interface POSCartPanelProps {
     selectedTable: POSTableData | null;
@@ -226,6 +225,7 @@ export default function POSCartPanel({
                     if (reservedOrder && onCancelReservation) {
                         onCancelReservation(reservedOrder.id, resolution, note);
                     }
+
                     setIsCancelReservationModalOpen(false);
                 }}
             />
@@ -315,6 +315,7 @@ export default function POSCartPanel({
                                 invoiceCart.every((i) => i.isKitchenCompleted);
 
                             let label = invoiceId;
+
                             if (isDraft) {
                                 label = `Đơn #${idx + 1}`;
                             }
@@ -449,12 +450,17 @@ export default function POSCartPanel({
                                     <span>
                                         {(() => {
                                             const timeString = reservationDraft?.time || reservationInfo?.time;
-                                            if (!timeString) return '';
+
+                                            if (!timeString) {
+return '';
+}
+
                                             const d = new Date(timeString);
                                             const hh = String(d.getHours()).padStart(2, '0');
                                             const mm = String(d.getMinutes()).padStart(2, '0');
                                             const dd = String(d.getDate()).padStart(2, '0');
                                             const MM = String(d.getMonth() + 1).padStart(2, '0');
+
                                             return `${hh}:${mm} ${dd}/${MM}`;
                                         })()}
                                     </span>
@@ -511,20 +517,26 @@ export default function POSCartPanel({
                         const sortedConfirmed = [...confirmedItems].sort((a, b) => {
                             const ta = a.sentAt ? new Date(a.sentAt).getTime() : 0;
                             const tb = b.sentAt ? new Date(b.sentAt).getTime() : 0;
+
                             return ta - tb || (a.orderItemId || 0) - (b.orderItemId || 0);
                         });
                         const callRounds: CartItem[][] = [];
                         let prevSentTime: number | null = null;
                         sortedConfirmed.forEach((item) => {
                             const t = item.sentAt ? new Date(item.sentAt).getTime() : null;
+
                             if (
                                 callRounds.length === 0 ||
                                 (t !== null && prevSentTime !== null && t - prevSentTime > 60_000)
                             ) {
                                 callRounds.push([]);
                             }
+
                             callRounds[callRounds.length - 1].push(item);
-                            if (t !== null) prevSentTime = t;
+
+                            if (t !== null) {
+prevSentTime = t;
+}
                         });
                         const hasMultipleRounds = callRounds.length > 1;
             
@@ -921,7 +933,10 @@ export default function POSCartPanel({
                                                 disabled={isPaymentBlocked || isCheckoutLocked}
                                                 onClick={() => {
                                                     setIsCheckoutDropUpOpen(false);
-                                                    if (onOpenSinglePayment) onOpenSinglePayment();
+
+                                                    if (onOpenSinglePayment) {
+onOpenSinglePayment();
+}
                                                 }}
                                                 title={
                                                     isPaymentBlocked
@@ -938,7 +953,10 @@ export default function POSCartPanel({
                                                     type="button"
                                                     onClick={() => {
                                                         setIsCheckoutDropUpOpen(false);
-                                                        if (onOpenDeposit) onOpenDeposit();
+
+                                                        if (onOpenDeposit) {
+onOpenDeposit();
+}
                                                     }}
                                                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                                                 >

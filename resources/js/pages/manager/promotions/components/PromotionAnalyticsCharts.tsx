@@ -8,6 +8,7 @@ const COLORS = ['#0059bb', '#008730', '#e6a700'];
 
 export default function PromotionAnalyticsCharts({ daily, types }: { daily: Daily[]; types: TypeItem[] }) {
     const typeLabels: Record<string, string> = { promotion: 'Promotion', coupon: 'Coupon', voucher: 'Voucher' };
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-8 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5">

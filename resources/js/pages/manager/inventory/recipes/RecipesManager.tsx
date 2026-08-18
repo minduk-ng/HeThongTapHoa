@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
 import { Head } from '@inertiajs/react';
-import { ChefHat, Search, SlidersHorizontal, BookOpen, Layers, RotateCcw } from 'lucide-react';
-import DashboardLayout from '../../../../layouts/DashboardLayout';
+import { ChefHat, Search, RotateCcw } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
 import ManagerPageLayout from '../../../../components/ManagerPageLayout';
-import RecipeTable, { ProductRecipeData } from './components/RecipeTable';
+import DashboardLayout from '../../../../layouts/DashboardLayout';
 import RecipeFormDrawer from './components/RecipeFormDrawer';
+import type { ProductRecipeData } from './components/RecipeTable';
+import RecipeTable from './components/RecipeTable';
 
 interface Category {
     id: number;
@@ -39,10 +40,13 @@ export default function RecipesManager({
     const [selectedCategory, setSelectedCategory] = useState(filters.category_id || 'all');
     const [selectedProduct, setSelectedProduct] = useState<ProductRecipeData | null>(null);
 
-    useEffect(() => {
+    const [prevFilters, setPrevFilters] = useState(filters);
+
+    if (filters !== prevFilters) {
+        setPrevFilters(filters);
         setSearchQuery(filters.search || '');
         setSelectedCategory(filters.category_id || 'all');
-    }, [filters]);
+    }
 
     // 100% Instant Frontend Filtering via useMemo without backend HTTP roundtrips
     const filteredProducts = useMemo(() => {

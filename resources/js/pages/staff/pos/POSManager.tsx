@@ -1,21 +1,22 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Head, router } from '@inertiajs/react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
-import POSTableTab from './components/POSTableTab';
-import POSMenuTab from './components/POSMenuTab';
-import POSCartPanel from './components/POSCartPanel';
-import POSLogTab, { SystemLogEntry } from './components/POSLogTab';
 import PaymentDrawer from './components/PaymentDrawer';
+import POSCartPanel from './components/POSCartPanel';
+import type { SystemLogEntry } from './components/POSLogTab';
+import POSLogTab from './components/POSLogTab';
+import POSMenuTab from './components/POSMenuTab';
+import POSTableTab from './components/POSTableTab';
+import POSToolbar from './components/POSToolbar';
 import ReceiptPrintModal from './components/ReceiptPrintModal';
 import ReservationFormDrawer from './components/ReservationFormDrawer';
-import POSToolbar from './components/POSToolbar';
 
-import { POSManagerProps } from './types/pos.types';
-import { usePOSTables } from './hooks/usePOSTables';
 import { usePOSCart } from './hooks/usePOSCart';
 import { usePOSCheckout } from './hooks/usePOSCheckout';
 import { usePOSReservation } from './hooks/usePOSReservation';
-import { POSTableData, POSProductData, CategoryData, PromotionCandidate } from './types/pos.types';
+import { usePOSTables } from './hooks/usePOSTables';
+import type { POSManagerProps } from './types/pos.types';
+import type { POSTableData, POSProductData, CategoryData, PromotionCandidate, ReceiptModalState } from './types/pos.types';
 
 export default function POSManager({ tables, categories, products, promotions }: POSManagerProps) {
     const safeTables = (Array.isArray(tables) ? tables : Object.values(tables || {})) as POSTableData[];
@@ -31,6 +32,7 @@ export default function POSManager({ tables, categories, products, promotions }:
         if (typeof window !== 'undefined') {
             return localStorage.getItem('pos_auto_switch_to_menu') === 'true';
         }
+
         return false;
     });
 
@@ -51,6 +53,7 @@ export default function POSManager({ tables, categories, products, promotions }:
             details,
         };
         setSystemLogs((prev) => [newEntry, ...prev.slice(0, 99)]);
+
         if (type === 'error') {
             setUnreadErrorCount((prev) => prev + 1);
         }
@@ -76,7 +79,6 @@ export default function POSManager({ tables, categories, products, promotions }:
 
     const {
         selectedTable,
-        setSelectedTable,
         draftTableCounts,
         handleSelectTable,
     } = usePOSTables(safeTables);
@@ -101,10 +103,13 @@ export default function POSManager({ tables, categories, products, promotions }:
 
     const isDuplicateEvent = useCallback((eventKey: string) => {
         const now = Date.now();
+
         if (lastEventRef.current.key === eventKey && now - lastEventRef.current.time < 1000) {
             return true;
         }
+
         lastEventRef.current = { key: eventKey, time: now };
+
         return false;
     }, []);
 
@@ -115,7 +120,10 @@ export default function POSManager({ tables, categories, products, promotions }:
 
             const handleTableReload = (eventName: string, payload?: any) => {
                 const eventKey = `${eventName}_${payload?.order_id || payload?.table_id || ''}`;
-                if (isDuplicateEvent(eventKey)) return;
+
+                if (isDuplicateEvent(eventKey)) {
+return;
+}
 
                 if (eventName === 'OrderCompleted') {
                     addLogEntry('received', 'Bếp vừa chế biến hoàn thành đơn hàng', 'Món ăn đã sẵn sàng phục vụ');
@@ -139,7 +147,10 @@ export default function POSManager({ tables, categories, products, promotions }:
 
             const handleOrderSent = (payload?: any) => {
                 const eventKey = `OrderSentToKitchen_${payload?.order_id || ''}_${payload?.action_type || ''}`;
-                if (isDuplicateEvent(eventKey)) return;
+
+                if (isDuplicateEvent(eventKey)) {
+return;
+}
 
                 if (selectedTable) {
                     clearUnconfirmedDraft(selectedTable.id);
@@ -164,7 +175,10 @@ export default function POSManager({ tables, categories, products, promotions }:
 
             const handleItemsServed = (payload: any) => {
                 const eventKey = `ItemsServed_${payload?.order_ids?.join('_') || ''}`;
-                if (isDuplicateEvent(eventKey)) return;
+
+                if (isDuplicateEvent(eventKey)) {
+return;
+}
 
                 const tableStr = payload?.table_number ? `Bàn ${payload.table_number}` : 'đơn hàng';
                 addLogEntry('received', `Nhân viên đã phục vụ ${payload?.served_count || 0} món tại ${tableStr}`, 'Cập nhật trạng thái giỏ hàng');
@@ -206,7 +220,6 @@ export default function POSManager({ tables, categories, products, promotions }:
     } = usePOSCheckout(selectedTable, safeTables, safePromotions);
 
     const {
-        reservationDrafts,
         getDraft,
         setDraft,
         clearDraft,
@@ -248,7 +261,10 @@ export default function POSManager({ tables, categories, products, promotions }:
     // All confirmed items across every order of the table/merged group,
     // used by PaymentDrawer in bulk mode so totals cover all orders.
     const bulkCartItems = useMemo(() => {
-        if (!selectedTable) return [];
+        if (!selectedTable) {
+return [];
+}
+
         const carts = tableCarts[selectedTable.id] || {};
         const activeOrderCodes = safeTables.find(t => t.id === selectedTable.id)?.active_orders
             ?.filter(o => o.status !== 'reserved' && o.status !== 'paid' && o.status !== 'cancelled')
@@ -257,7 +273,7 @@ export default function POSManager({ tables, categories, products, promotions }:
 
         return Object.entries(carts)
             .filter(([invId]) => activeOrderCodes.includes(invId))
-            .flatMap(([_, items]) => items);
+            .flatMap(([, items]) => items);
     }, [selectedTable, tableCarts, safeTables]);
 
     const paymentCart = paymentMode === 'bulk' && drawerMode === 'payment' ? bulkCartItems : currentCart;
@@ -278,7 +294,10 @@ export default function POSManager({ tables, categories, products, promotions }:
     }, [isPaymentDrawerOpen, drawerMode, selectedAutoId]);
 
     const isCurrentTableCheckoutLocked = useMemo(() => {
-        if (!selectedTable) return false;
+        if (!selectedTable) {
+return false;
+}
+
         const groupId = selectedTable.merged_into_table_id || selectedTable.id;
         const groupTableIds = safeTables
             .filter((t) => t.id === groupId || t.merged_into_table_id === groupId)
@@ -288,13 +307,17 @@ export default function POSManager({ tables, categories, products, promotions }:
     }, [selectedTable, safeTables, lockedCheckoutTables]);
 
     const currentTableLockedBy = useMemo(() => {
-        if (!selectedTable) return '';
+        if (!selectedTable) {
+return '';
+}
+
         const groupId = selectedTable.merged_into_table_id || selectedTable.id;
         const groupTableIds = safeTables
             .filter((t) => t.id === groupId || t.merged_into_table_id === groupId)
             .map((t) => t.id);
 
         const lockedId = groupTableIds.find((id) => !!lockedCheckoutTables[id]);
+
         return lockedId ? lockedCheckoutTables[lockedId].employeeName : '';
     }, [selectedTable, safeTables, lockedCheckoutTables]);
 
@@ -310,7 +333,6 @@ export default function POSManager({ tables, categories, products, promotions }:
                 selectedTable={selectedTable}
                 cartItemCount={currentCart.reduce((s, i) => s + i.quantity, 0)}
                 unreadErrorCount={unreadErrorCount}
-                onClearUnread={() => setUnreadErrorCount(0)}
                 onOpenLog={() => setUnreadErrorCount(0)}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
@@ -329,6 +351,7 @@ export default function POSManager({ tables, categories, products, promotions }:
                                     selectedTable={selectedTable}
                                     onSelectTable={(table) => {
                                         handleSelectTable(table);
+
                                         if (autoSwitchToMenu) {
                                             setActiveTab('menu');
                                         }
@@ -378,8 +401,12 @@ export default function POSManager({ tables, categories, products, promotions }:
                                     });
                                 }
                             }}
-                            onOpenPayment={() => { setPaymentMode(isTakeawayTable ? 'single' : 'bulk'); setDrawerMode('payment'); setIsPaymentDrawerOpen(true); }}
-                            onOpenSinglePayment={() => { setPaymentMode('single'); setDrawerMode('payment'); setIsPaymentDrawerOpen(true); }}
+                            onOpenPayment={() => {
+ setPaymentMode(isTakeawayTable ? 'single' : 'bulk'); setDrawerMode('payment'); setIsPaymentDrawerOpen(true); 
+}}
+                            onOpenSinglePayment={() => {
+ setPaymentMode('single'); setDrawerMode('payment'); setIsPaymentDrawerOpen(true); 
+}}
                             submitting={submitting}
                             isCheckoutLocked={isCurrentTableCheckoutLocked}
                             checkoutLockedBy={currentTableLockedBy}
@@ -505,6 +532,7 @@ export default function POSManager({ tables, categories, products, promotions }:
                     if (selectedTable) {
                         setDraft(selectedTable.id, activeInvoiceIdForTable, draft);
                     }
+
                     setIsReservationFormOpen(false);
                 }}
             />
@@ -512,7 +540,7 @@ export default function POSManager({ tables, categories, products, promotions }:
             {/* K80 Thermal Receipt Printable Modal */}
             <ReceiptPrintModal
                 isOpen={receiptModal.isOpen}
-                onClose={() => setReceiptModal((prev: import('./types/pos.types').ReceiptModalState) => ({ ...prev, isOpen: false }))}
+                onClose={() => setReceiptModal((prev: ReceiptModalState) => ({ ...prev, isOpen: false }))}
                 selectedTable={receiptModal.table}
                 cartItems={receiptModal.cartItems}
                 paymentMethod={receiptModal.paymentMethod}

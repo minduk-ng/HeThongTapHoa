@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
 import { Sun, Moon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface ThemeToggleProps {
     onThemeChange?: (isDark: boolean) => void;
@@ -10,18 +10,24 @@ export default function ThemeToggle({ onThemeChange }: ThemeToggleProps) {
     const [dark, setDark] = useState(false);
 
     useEffect(() => {
-        setMounted(true);
-        const root = document.documentElement;
-        const isDark = root.classList.contains('dark');
-        setDark(isDark);
-        if (onThemeChange) onThemeChange(isDark);
-    }, []);
+        queueMicrotask(() => {
+            const root = document.documentElement;
+            const isDark = root.classList.contains('dark');
+            setMounted(true);
+            setDark(isDark);
+
+            if (onThemeChange) {
+                onThemeChange(isDark);
+            }
+        });
+    }, [onThemeChange]);
 
     const toggleTheme = (e: React.MouseEvent) => {
         e.stopPropagation();
         const nextDark = !dark;
         setDark(nextDark);
         const root = document.documentElement;
+
         if (nextDark) {
             root.classList.add('dark');
             localStorage.setItem('theme', 'dark');
@@ -29,7 +35,10 @@ export default function ThemeToggle({ onThemeChange }: ThemeToggleProps) {
             root.classList.remove('dark');
             localStorage.setItem('theme', 'light');
         }
-        if (onThemeChange) onThemeChange(nextDark);
+
+        if (onThemeChange) {
+onThemeChange(nextDark);
+}
     };
 
     if (!mounted) {

@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
-import DashboardLayout from '../../../layouts/DashboardLayout';
 import { 
     TrendingUp, TrendingDown, ShoppingBag, CreditCard, 
     LayoutGrid, AlertTriangle, ChefHat, ConciergeBell, CheckCircle2 
 } from 'lucide-react';
+import React, { useEffect } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import DashboardLayout from '../../../layouts/DashboardLayout';
 
 interface WarningItem {
     code: string;
@@ -62,10 +62,15 @@ interface DashboardProps {
 export default function DashboardManager({ filters, kpis, live_operations, analytics, inventory_warnings }: DashboardProps) {
     // Realtime WebSocket sync via Echo
     useEffect(() => {
-        if (filters.date_range !== 'today') return;
+        if (filters.date_range !== 'today') {
+return;
+}
 
         const echo = (window as any).Echo;
-        if (!echo) return;
+
+        if (!echo) {
+return;
+}
 
         const posChannel = echo.private('pos-channel');
         

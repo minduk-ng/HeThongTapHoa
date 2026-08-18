@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
-import { Box, X, Plus, Trash2, CalendarDays, AlertCircle } from 'lucide-react';
-import { IngredientData } from './IngredientTable';
+import { Box, X, Plus, Trash2, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
 import DatePicker from '../../../../../components/DatePicker';
+import type { IngredientData } from './IngredientTable';
 
 interface StockImportModalProps {
     ingredients: IngredientData[];
@@ -28,7 +28,9 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
     const [submitting, setSubmitting] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-    if (!isOpen) return null;
+    if (!isOpen) {
+return null;
+}
 
     const updateLine = (idx: number, field: keyof ImportLine, value: string) => {
         setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, [field]: value } : l)));
@@ -40,8 +42,10 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
     const removeLine = (idx: number) => {
         if (lines.length === 1) {
             setLines([{ ingredient_id: '', quantity: '', unit_price: '', expiry_date: '' }]);
+
             return;
         }
+
         setLines((prev) => prev.filter((_, i) => i !== idx));
     };
 
@@ -50,18 +54,21 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
 
     const displayUnit = (ingId: string): string => {
         const ing = getIngredient(ingId);
+
         return ing?.purchase_unit || ing?.unit || '';
     };
 
     const toBaseQuantity = (line: ImportLine): number => {
         const ing = getIngredient(line.ingredient_id);
         const conversion = ing?.unit_conversion ?? 1;
+
         return Number(line.quantity) * conversion;
     };
 
     const toBasePrice = (line: ImportLine): number => {
         const ing = getIngredient(line.ingredient_id);
         const conversion = ing?.unit_conversion ?? 1;
+
         return Number(line.unit_price || 0) / conversion;
     };
 
@@ -73,10 +80,14 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (submitting) return;
+
+        if (submitting) {
+return;
+}
 
         if (validLines.length === 0) {
             setErrorMsg('Vui lòng nhập ít nhất 1 dòng nguyên liệu hợp lệ (chọn nguyên liệu và số lượng > 0).');
+
             return;
         }
 
@@ -161,7 +172,6 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
                             {/* Line Rows */}
                             <div className="space-y-2">
                                 {lines.map((line, idx) => {
-                                    const ing = getIngredient(line.ingredient_id);
                                     const unit = displayUnit(line.ingredient_id);
                                     const lineSubtotal =
                                         Number(line.quantity || 0) * Number(line.unit_price || 0);
@@ -179,6 +189,7 @@ export default function StockImportModal({ ingredients, isOpen, onClose }: Stock
                                                         const newIngId = e.target.value;
                                                         const targetIng = getIngredient(newIngId);
                                                         updateLine(idx, 'ingredient_id', newIngId);
+
                                                         // Tự động gợi ý giá vốn hiện tại nếu chưa nhập
                                                         if (targetIng && !line.unit_price) {
                                                             const basePrice = Number(targetIng.cost_price || 0);

@@ -1,5 +1,5 @@
-import React from 'react';
 import { Plus, Trash2, Coins, ShoppingBag, UtensilsCrossed, Layers, Info } from 'lucide-react';
+import React from 'react';
 
 export interface ConditionRow {
     cond_type: string;
@@ -28,11 +28,16 @@ export default function PromotionConditionsEditor({
 }: Props) {
     const update = (i: number, key: keyof ConditionRow, value: string) => {
         const next = conditions.map((c, idx) => {
-            if (idx !== i) return c;
+            if (idx !== i) {
+return c;
+}
+
             const updated = { ...c, [key]: value };
+
             if (key === 'cond_type') {
                 updated.cond_value = '';
             }
+
             return updated;
         });
         onChange(next);
@@ -49,10 +54,22 @@ export default function PromotionConditionsEditor({
 
     // Kiểm tra loại điều kiện nào còn có thể thêm mới
     const isTypeAvailableForAdd = (typeVal: string) => {
-        if (typeVal === 'min_order_value') return !hasMinOrder;
-        if (typeVal === 'min_quantity') return !hasMinQty;
-        if (typeVal === 'specific_product') return selectedProductIds.length < menuItems.length;
-        if (typeVal === 'specific_category') return selectedCategoryIds.length < menuCategories.length;
+        if (typeVal === 'min_order_value') {
+return !hasMinOrder;
+}
+
+        if (typeVal === 'min_quantity') {
+return !hasMinQty;
+}
+
+        if (typeVal === 'specific_product') {
+return selectedProductIds.length < menuItems.length;
+}
+
+        if (typeVal === 'specific_category') {
+return selectedCategoryIds.length < menuCategories.length;
+}
+
         return false;
     };
 
@@ -83,11 +100,26 @@ export default function PromotionConditionsEditor({
 
                     // Các options hợp lệ cho dòng này
                     const allowedTypesForRow = ALL_COND_TYPES.filter((t) => {
-                        if (t.value === c.cond_type) return true;
-                        if (t.value === 'min_order_value') return !hasMinOrder;
-                        if (t.value === 'min_quantity') return !hasMinQty;
-                        if (t.value === 'specific_product') return selectedProductIds.length < menuItems.length;
-                        if (t.value === 'specific_category') return selectedCategoryIds.length < menuCategories.length;
+                        if (t.value === c.cond_type) {
+return true;
+}
+
+                        if (t.value === 'min_order_value') {
+return !hasMinOrder;
+}
+
+                        if (t.value === 'min_quantity') {
+return !hasMinQty;
+}
+
+                        if (t.value === 'specific_product') {
+return selectedProductIds.length < menuItems.length;
+}
+
+                        if (t.value === 'specific_category') {
+return selectedCategoryIds.length < menuCategories.length;
+}
+
                         return false;
                     });
 

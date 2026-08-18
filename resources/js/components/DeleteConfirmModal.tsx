@@ -23,7 +23,9 @@ export default function DeleteConfirmModal({
     processing = false,
     errorMsg,
 }: DeleteConfirmModalProps) {
-    if (!isOpen) return null;
+    if (!isOpen) {
+return null;
+}
 
     return (
         <div className="modal-overlay">

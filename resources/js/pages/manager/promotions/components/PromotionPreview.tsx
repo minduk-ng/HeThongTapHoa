@@ -1,7 +1,7 @@
-import React from 'react';
 import { Sparkles, Calendar, Tag, ShieldCheck, Gift, Clock, Coins, ShoppingBag, UtensilsCrossed, Layers, CheckCircle2 } from 'lucide-react';
-import { ActionRow } from './PromotionActionsEditor';
-import { ConditionRow } from './PromotionConditionsEditor';
+import React from 'react';
+import type { ActionRow } from './PromotionActionsEditor';
+import type { ConditionRow } from './PromotionConditionsEditor';
 
 interface Props {
     name: string;
@@ -48,6 +48,7 @@ export default function PromotionPreview({
         if (primaryAction.action_type === 'discount_percent') {
             const val = primaryAction.action_value ? `${primaryAction.action_value}%` : '0%';
             mainDiscountText = `Giảm ${val}`;
+
             if (primaryAction.max_discount_amount) {
                 subDiscountCap = `Tối đa ${fmt(primaryAction.max_discount_amount)}đ`;
             }
@@ -114,6 +115,7 @@ export default function PromotionPreview({
                         <div className="mt-2 space-y-1">
                             {freeProductActions.map((fp, idx) => {
                                 const item = menuItems.find((m) => String(m.id) === fp.action_value);
+
                                 return (
                                     <div key={idx} className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                                         <Gift className="h-3.5 w-3.5 shrink-0 stroke-[1.5]" />
@@ -168,6 +170,7 @@ export default function PromotionPreview({
                                         </div>
                                     );
                                 }
+
                                 if (c.cond_type === 'min_quantity') {
                                     return (
                                         <div key={idx} className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 text-[11px]">
@@ -176,8 +179,10 @@ export default function PromotionPreview({
                                         </div>
                                     );
                                 }
+
                                 if (c.cond_type === 'specific_product') {
                                     const itm = menuItems.find((m) => String(m.id) === c.cond_value);
+
                                     return (
                                         <div key={idx} className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 text-[11px]">
                                             <UtensilsCrossed className="h-3.5 w-3.5 text-rose-500 shrink-0" />
@@ -185,8 +190,10 @@ export default function PromotionPreview({
                                         </div>
                                     );
                                 }
+
                                 if (c.cond_type === 'specific_category') {
                                     const cat = menuCategories.find((ctg) => String(ctg.id) === c.cond_value);
+
                                     return (
                                         <div key={idx} className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 text-[11px]">
                                             <Layers className="h-3.5 w-3.5 text-purple-500 shrink-0" />
@@ -194,6 +201,7 @@ export default function PromotionPreview({
                                         </div>
                                     );
                                 }
+
                                 return null;
                             })}
                         </div>

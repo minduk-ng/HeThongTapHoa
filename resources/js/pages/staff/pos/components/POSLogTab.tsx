@@ -1,5 +1,5 @@
-import React from 'react';
 import { Activity, AlertCircle, ArrowDownLeft, ArrowUpRight, Trash2 } from 'lucide-react';
+import React from 'react';
 
 export interface SystemLogEntry {
     id: string;

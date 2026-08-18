@@ -1,5 +1,4 @@
 import { Head, router, Link, useForm } from '@inertiajs/react';
-import React, { useState, useMemo } from 'react';
 import { 
     Users, 
     Search, 
@@ -8,16 +7,14 @@ import {
     Pencil, 
     Trash2, 
     RotateCcw, 
-    Check, 
     X, 
     ChevronRight, 
-    AlertTriangle,
-    Eye,
-    CheckCircle2
+    AlertTriangle
 } from 'lucide-react';
-import DashboardLayout from '../../layouts/DashboardLayout';
-import { Role, AdminUser, PaginatedUsers } from '../../types/admin';
+import React, { useState, useMemo } from 'react';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
+import DashboardLayout from '../../layouts/DashboardLayout';
+import type { Role, AdminUser, PaginatedUsers } from '../../types/admin';
 
 interface Props {
     users: PaginatedUsers;
@@ -55,6 +52,7 @@ export default function UsersPermission({ users, roles }: Props) {
             const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 user.email.toLowerCase().includes(searchQuery.toLowerCase());
             const matchesRole = roleFilter === '' || user.roles.some((r: Role) => r.name === roleFilter);
+
             return matchesSearch && matchesRole;
         });
     }, [users.data, searchQuery, roleFilter]);
@@ -104,6 +102,7 @@ export default function UsersPermission({ users, roles }: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
         if (editingUser) {
             post(`/admin/permissions/${editingUser.id}`, {
                 onSuccess: () => closeModal(),
@@ -112,7 +111,10 @@ export default function UsersPermission({ users, roles }: Props) {
     };
 
     const handleBulkRoleAssign = (roleNames: string[]) => {
-        if (selectedUserIds.length === 0 || roleNames.length === 0) return;
+        if (selectedUserIds.length === 0 || roleNames.length === 0) {
+return;
+}
+
         router.post('/admin/permissions/bulk', {
             user_ids: selectedUserIds,
             action: 'assign_roles',
@@ -147,7 +149,10 @@ export default function UsersPermission({ users, roles }: Props) {
     };
 
     const triggerBulkAction = (action: 'clear_roles' | 'delete_users') => {
-        if (selectedUserIds.length === 0) return;
+        if (selectedUserIds.length === 0) {
+return;
+}
+
         setBulkActionType(action);
         setIsBulkConfirmModalOpen(true);
     };
@@ -403,10 +408,15 @@ export default function UsersPermission({ users, roles }: Props) {
                                             key={user.id} 
                                             onClick={(e) => {
                                                 const target = e.target as HTMLElement;
-                                                if (isSuperAdmin) return;
+
+                                                if (isSuperAdmin) {
+return;
+}
+
                                                 if (target.closest('button') || target.closest('input') || target.closest('a') || target.closest('select')) {
                                                     return;
                                                 }
+
                                                 if (isBulkMode) {
                                                     handleSelectUser(user.id, !selectedUserIds.includes(user.id));
                                                 }

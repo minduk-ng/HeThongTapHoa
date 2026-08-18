@@ -1,6 +1,7 @@
-import React from 'react';
 import { Edit3, Trash2 } from 'lucide-react';
-import DataTable, { DataTableColumn } from '../../../../../components/DataTable';
+import React from 'react';
+import type { DataTableColumn } from '../../../../../components/DataTable';
+import DataTable from '../../../../../components/DataTable';
 
 export interface IngredientData {
     id: number;
@@ -108,10 +109,22 @@ export default function IngredientTable({ ingredients, onEdit, onDelete }: Ingre
             rowKey={(item) => item.id}
             defaultSortKey="name"
             getSortValue={(item, key) => {
-                if (key === 'code') return item.code ?? `NVL${item.id}`;
-                if (key === 'name') return item.name;
-                if (key === 'stock_quantity') return item.stock_quantity;
-                if (key === 'cost_price') return item.cost_price;
+                if (key === 'code') {
+return item.code ?? `NVL${item.id}`;
+}
+
+                if (key === 'name') {
+return item.name;
+}
+
+                if (key === 'stock_quantity') {
+return item.stock_quantity;
+}
+
+                if (key === 'cost_price') {
+return item.cost_price;
+}
+
                 return item[key as keyof IngredientData] ?? '';
             }}
             emptyMessage="Không tìm thấy nguyên liệu"

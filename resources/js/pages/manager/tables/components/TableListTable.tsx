@@ -1,6 +1,7 @@
-import React from 'react';
 import { Armchair, CheckCircle2, Users, Clock, AlertTriangle, Edit3, Trash2 } from 'lucide-react';
-import DataTable, { DataTableColumn } from '../../../../components/DataTable';
+import React from 'react';
+import type { DataTableColumn } from '../../../../components/DataTable';
+import DataTable from '../../../../components/DataTable';
 
 export interface TableData {
     id: number;
@@ -134,10 +135,22 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
             rowKey={(item) => item.id}
             defaultSortKey="table_number"
             getSortValue={(item, key) => {
-                if (key === 'table_number') return item.table_number;
-                if (key === 'area') return item.area;
-                if (key === 'capacity') return item.capacity;
-                if (key === 'status') return item.status;
+                if (key === 'table_number') {
+return item.table_number;
+}
+
+                if (key === 'area') {
+return item.area;
+}
+
+                if (key === 'capacity') {
+return item.capacity;
+}
+
+                if (key === 'status') {
+return item.status;
+}
+
                 return item[key as keyof TableData] ?? '';
             }}
             emptyMessage="Không tìm thấy bàn"

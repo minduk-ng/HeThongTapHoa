@@ -199,11 +199,21 @@ export default function ReportTable<T>({
 
     const getCellAlignClass = (c: ReportTableColumn) => {
         if (c.align) {
-            if (c.align === 'center') return 'text-center';
-            if (c.align === 'right') return 'text-right';
+            if (c.align === 'center') {
+return 'text-center';
+}
+
+            if (c.align === 'right') {
+return 'text-right';
+}
+
             return 'text-left';
         }
-        if (c.numeric) return 'text-center';
+
+        if (c.numeric) {
+return 'text-center';
+}
+
         return 'text-left';
     };
 

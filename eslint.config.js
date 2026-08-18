@@ -63,6 +63,10 @@ export default [
         },
         rules: {
             '@typescript-eslint/no-explicit-any': 'off',
+            '@typescript-eslint/no-unused-vars': [
+                'error',
+                { ignoreRestSiblings: true },
+            ],
             '@typescript-eslint/consistent-type-imports': [
                 'error',
                 {
@@ -117,6 +121,10 @@ export default [
             'resources/js/components/ui/*',
             'resources/js/routes/**',
             'resources/js/wayfinder/**',
+            '.agents/**',
+            '.gitnexus/**',
+            '.ua/**',
+            'storage/**',
         ],
     },
     prettier, // Turn off all rules that might conflict with Prettier

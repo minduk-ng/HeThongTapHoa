@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Plus, Search, FolderTree, Package, Layers, RotateCcw } from 'lucide-react';
-import DashboardLayout from '../../../layouts/DashboardLayout';
-import ManagerPageLayout from '../../../components/ManagerPageLayout';
-import CategoryTable, { CategoryData } from './components/CategoryTable';
-import CategoryFormDrawer from './components/CategoryFormDrawer';
+import { Plus, Search, FolderTree, RotateCcw } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal';
+import ManagerPageLayout from '../../../components/ManagerPageLayout';
+import DashboardLayout from '../../../layouts/DashboardLayout';
+import CategoryFormDrawer from './components/CategoryFormDrawer';
+import type { CategoryData } from './components/CategoryTable';
+import CategoryTable from './components/CategoryTable';
 
 interface CategoriesManagerProps {
     categories: CategoryData[];
@@ -27,18 +28,26 @@ export default function CategoriesManager({ categories, filters }: CategoriesMan
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    useEffect(() => {
+    const [prevFilters, setPrevFilters] = useState(filters);
+
+    if (filters !== prevFilters) {
+        setPrevFilters(filters);
         setSearchQuery(filters.search || '');
-    }, [filters]);
+    }
 
     // 100% Instant Frontend Search/Filtering via useMemo
     const filteredCategories = useMemo(() => {
         return categories.filter((cat) => {
             const query = searchQuery.trim().toLowerCase();
-            if (!query) return true;
+
+            if (!query) {
+return true;
+}
+
             const matchesName = cat.name.toLowerCase().includes(query);
             const matchesDesc = cat.description?.toLowerCase().includes(query);
             const matchesChild = cat.items?.some((item) => item.name.toLowerCase().includes(query));
+
             return matchesName || matchesDesc || matchesChild;
         });
     }, [categories, searchQuery]);
@@ -65,10 +74,14 @@ export default function CategoriesManager({ categories, filters }: CategoriesMan
 
     const confirmDelete = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!deletingCategory) return;
+
+        if (!deletingCategory) {
+return;
+}
 
         if (!passwordValue) {
             setDeleteError('Vui lòng nhập mật khẩu xác nhận');
+
             return;
         }
 
@@ -84,6 +97,7 @@ export default function CategoriesManager({ categories, filters }: CategoriesMan
             },
             onError: (errs: any) => {
                 setIsDeleting(false);
+
                 if (errs.password) {
                     setDeleteError(errs.password);
                 } else {
