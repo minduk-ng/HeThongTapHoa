@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import { usePage } from '@inertiajs/react';
+import { Check, AlertTriangle, X } from 'lucide-react';
 
 interface DashboardLayoutProps {
     children: ReactNode;
@@ -37,24 +38,21 @@ export default function DashboardLayout({ children, fullWidth = false, hideNavba
                     <div className="fixed top-20 right-6 z-50 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-lg transition-opacity duration-150 dark:border-slate-700 dark:bg-slate-800 max-w-sm">
                         {notification.type === 'success' ? (
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
+                                <Check className="h-5 w-5 stroke-[2]" />
                             </div>
                         ) : (
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400">
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
+                                <AlertTriangle className="h-5 w-5 stroke-[1.5]" />
                             </div>
                         )}
                         <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                             {notification.message}
                         </div>
-                        <button onClick={() => setNotification(null)} className="ml-auto text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                        <button
+                            onClick={() => setNotification(null)}
+                            className="ml-auto p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        >
+                            <X className="h-4 w-4 stroke-[1.5]" />
                         </button>
                     </div>
                 )}

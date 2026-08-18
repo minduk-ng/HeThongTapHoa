@@ -317,3 +317,29 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
   - Backend: `cdn_asset($path)` tự động sinh URL Sirv CDN khi `SIRV_ENABLED=true` và URL local khi `false`.
   - Frontend: `resources/js/utils/cdn.ts` (`cdnAsset(path)`).
 - **Artisan Sync Command**: Lệnh `php artisan sirv:sync` tự động duyệt và tải toàn bộ ảnh tĩnh cũ (`public/logo`, `public/banner`, `public/QR_chuyen_khoan`) và ảnh sản phẩm lên Sirv CDN dưới thư mục `/TapHoa/...`.
+
+---
+
+## 11. 📐 Kiến Trúc Layout Quản Lý `/manager/*`, Phân Hệ `/admin/*` & Chuẩn Hóa Anti-Slop
+
+### 11.1 Bố Cục Phân Hệ Quản Lý (`/manager/*` & `ManagerPageLayout.tsx`)
+- **Top Control Bar Header**: Gom Tiêu đề trang, Icon nhận diện, Badges số liệu và Nút thao tác chính lên 1 dòng thanh công cụ trên cùng.
+- **Collapsible Horizontal Filter Bar (`defaultFiltersOpen = false`)**: Bộ lọc ngang có thể ẩn/hiện linh hoạt, tiết kiệm tối đa không gian màn hình, nhường 100% diện tích chiều ngang cho Bảng dữ liệu (`DataTable`).
+- **Mở rộng file mẫu Excel (`GET /manager/products/template`)**:
+  - `ProductController::template()` xuất file CSV UTF-8 kèm ký tự BOM (`\xEF\xBB\xBF`) tương thích 100% Microsoft Excel tiếng Việt.
+  - Tích hợp nút Tải file mẫu trực tiếp trong `ExcelImportModal.tsx`.
+
+### 11.2 Bố Cục Phân Hệ Admin (`/admin/*`) & Multi-Column Cards Grid
+- **Full-width Layout (`DashboardLayout fullWidth={true}`)**: Xóa bỏ giới hạn `max-w-7xl` gây lãng phí 2 bên màn hình trên các trang Admin (`/admin/pages`, `/admin/roles`, `/admin/permissions`).
+- **Lưới Nhóm Đa Cột (`PagesManager.tsx`)**:
+  - Chuyển đổi từ bảng dọc 1 cột kéo dài sang **Responsive Multi-Column Group Cards Grid** (`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4`).
+  - Mỗi nhóm chức năng là 1 Card độc lập, hiển thị toàn bộ 20+ trang cùng lúc trong tầm nhìn, giảm 70% độ sâu cuộn trang.
+- **Phân vai trò & Người dùng (`RolesManager.tsx`, `UsersPermission.tsx`)**:
+  - Giao diện bảng full-width với thanh công cụ tìm kiếm, phân trang và chỉnh sửa nhóm (Bulk Mode).
+  - Áp dụng `tabular-nums` cho số lượng quyền, ngày tạo và chỉ số STT.
+
+### 11.3 Chuẩn Hóa Toàn Diện Anti-Slop (Hallmark Audit Zero-Slop)
+- **100% Lucide Icons**: Thay thế toàn bộ thẻ `<svg>` viết tay inline trong Auth, Admin, Drawers và Sidebar bằng icon SVG chuẩn từ thư viện `lucide-react`.
+- **Đồng bộ Bảng màu Hệ thống**: Xóa bỏ hoàn toàn hiện tượng trôi màu (`indigo-600`, `blue-600`) sang bảng màu chuẩn `sky-600`.
+- **Display Font Nhất quán**: Tất cả tiêu đề Card, Drawer, Modal áp dụng font `Plus Jakarta Sans` (`.font-display`).
+

@@ -1,5 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { FormEvent } from 'react';
+import { KeyRound, ArrowLeft, Loader2 } from 'lucide-react';
 
 interface ForgotPasswordProps {
     onBack: () => void;
@@ -18,10 +19,8 @@ export default function ForgotPassword({ onBack }: ForgotPasswordProps) {
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="text-center">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/50">
-                    <svg className="h-6 w-6 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                    </svg>
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400">
+                    <KeyRound className="h-6 w-6 stroke-[1.5]" />
                 </div>
                 <h2 className="auth-heading">Quên mật khẩu?</h2>
                 <p className="mt-2 auth-subtitle">
@@ -39,7 +38,7 @@ export default function ForgotPassword({ onBack }: ForgotPasswordProps) {
                     value={data.email}
                     onChange={(e) => setData('email', e.target.value)}
                     className="input-field"
-                    placeholder="you@example.com"
+                    placeholder="email@example.com"
                     required
                 />
                 {errors.email && <p className="form-error">{errors.email}</p>}
@@ -52,10 +51,7 @@ export default function ForgotPassword({ onBack }: ForgotPasswordProps) {
             >
                 {processing ? (
                     <span className="flex items-center justify-center gap-2">
-                        <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
+                        <Loader2 className="h-4 w-4 animate-spin stroke-[1.5]" />
                         Đang gửi yêu cầu...
                     </span>
                 ) : (
@@ -66,11 +62,9 @@ export default function ForgotPassword({ onBack }: ForgotPasswordProps) {
             <button
                 type="button"
                 onClick={onBack}
-                className="flex w-full items-center justify-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+                className="flex w-full items-center justify-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
             >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
+                <ArrowLeft className="h-4 w-4 stroke-[1.5]" />
                 Quay lại đăng nhập
             </button>
         </form>

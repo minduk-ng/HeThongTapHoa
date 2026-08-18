@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
-import { Zap, Calendar } from 'lucide-react';
+import { Zap, Calendar, X } from 'lucide-react';
 import { TableData } from './TableListTable';
 
 interface TableFormDrawerProps {
@@ -171,15 +171,15 @@ export default function TableFormDrawer({
     };
 
     return (
-        <div className="fixed inset-0 z-[100] overflow-hidden">
+        <div className="fixed inset-0 z-100 overflow-hidden">
             <div className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" onClick={onClose} />
 
-            <div className="absolute inset-y-0 right-0 max-w-full flex pl-10 z-[101]">
-                <div className="w-screen max-w-md bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col justify-between">
+            <div className="absolute inset-y-0 right-0 max-w-full flex pl-10 z-101">
+                <div className="w-screen max-w-md bg-white dark:bg-zinc-900 border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl flex flex-col justify-between">
                     {/* Drawer Header */}
-                    <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
+                    <div className="p-6 border-b border-zinc-200/80 dark:border-zinc-800/80 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
                         <div>
-                            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                            <h2 className="font-display text-lg font-bold text-zinc-900 dark:text-zinc-100">
                                 {tableToEdit ? 'Cập nhật thông tin bàn' : mode === 'batch' ? 'Tạo nhanh hàng loạt bàn' : 'Thêm bàn mới'}
                             </h2>
                             {!tableToEdit && (
@@ -187,10 +187,10 @@ export default function TableFormDrawer({
                                     <button
                                         type="button"
                                         onClick={() => setMode('single')}
-                                        className={`px-3 py-1 text-xs font-bold rounded-full ${
+                                        className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
                                             mode === 'single'
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300'
+                                                ? 'bg-sky-600 text-white shadow-xs'
+                                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
                                         }`}
                                     >
                                         Thêm đơn lẻ
@@ -198,10 +198,10 @@ export default function TableFormDrawer({
                                     <button
                                         type="button"
                                         onClick={() => setMode('batch')}
-                                        className={`px-3 py-1 text-xs font-bold rounded-full ${
+                                        className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
                                             mode === 'batch'
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300'
+                                                ? 'bg-sky-600 text-white shadow-xs'
+                                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
                                         }`}
                                     >
                                         <Zap className="w-3.5 h-3.5 inline mr-1 stroke-[1.5]" />
@@ -213,11 +213,9 @@ export default function TableFormDrawer({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                            className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                         >
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            <X className="w-5 h-5 stroke-[1.5]" />
                         </button>
                     </div>
 
@@ -410,11 +408,11 @@ export default function TableFormDrawer({
                     </form>
 
                     {/* Footer Buttons */}
-                    <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex justify-end space-x-3">
+                    <div className="p-4 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-800/50 flex justify-end space-x-3">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-5 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 rounded-lg shadow-xs"
+                            className="px-4 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 rounded-xl shadow-2xs transition-colors"
                         >
                             Hủy
                         </button>
@@ -422,7 +420,7 @@ export default function TableFormDrawer({
                             type="submit"
                             form="table-form"
                             disabled={submitting}
-                            className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs disabled:opacity-50"
+                            className="px-5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl shadow-xs disabled:opacity-50 transition-colors"
                         >
                             {submitting ? 'Đang lưu...' : mode === 'batch' ? 'Khởi tạo danh sách bàn' : 'Lưu thay đổi'}
                         </button>

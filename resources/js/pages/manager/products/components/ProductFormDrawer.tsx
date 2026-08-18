@@ -180,26 +180,26 @@ export default function ProductFormDrawer({
     };
 
     return (
-        <div className="fixed inset-0 z-[100] overflow-hidden">
+        <div className="fixed inset-0 z-100 overflow-hidden">
             {/* Dimming Backdrop */}
             <div
                 className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
                 onClick={onClose}
             />
 
-            <div className="absolute inset-y-0 right-0 max-w-full flex pl-10 z-[101]">
-                <div className="w-screen max-w-xl bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 shadow-xl flex flex-col justify-between">
+            <div className="absolute inset-y-0 right-0 max-w-full flex pl-10 z-101">
+                <div className="w-screen max-w-xl bg-white dark:bg-zinc-900 border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl flex flex-col justify-between">
                     {/* Header */}
-                    <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
+                    <div className="p-6 border-b border-zinc-200/80 dark:border-zinc-800/80 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
                         <h2 className="text-xl font-bold font-display text-zinc-900 dark:text-zinc-100">
                             {productToEdit ? 'Cập nhật hàng hóa' : 'Thêm sản phẩm mới'}
                         </h2>
                         <button
                             type="button"
                             onClick={onClose}
-                            className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                            className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                         >
-                            <X className="w-6 h-6 stroke-[1.5]" />
+                            <X className="w-5 h-5 stroke-[1.5]" />
                         </button>
                     </div>
 
@@ -207,7 +207,7 @@ export default function ProductFormDrawer({
                     <form id="product-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
                         {/* Section 1: Thông tin sản phẩm */}
                         <div className="space-y-4">
-                            <h3 className="text-sm font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
                                 Thông tin chung
                             </h3>
 
@@ -215,24 +215,22 @@ export default function ProductFormDrawer({
                                 {/* Category Dropdown with Quick Add Button */}
                                 <div>
                                     <div className="flex justify-between items-center mb-1">
-                                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                        <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
                                             Danh mục <span className="text-red-500">*</span>
                                         </label>
                                         <button
                                             type="button"
                                             onClick={onOpenAddCategoryModal}
-                                            className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:underline flex items-center space-x-1"
+                                            className="text-xs text-sky-600 dark:text-sky-400 font-medium hover:underline flex items-center space-x-1"
                                         >
-                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                            </svg>
+                                            <Plus className="w-3.5 h-3.5 stroke-[2]" />
                                             <span>Thêm mới</span>
                                         </button>
                                     </div>
                                     <select
                                         value={categoryId}
                                         onChange={(e) => setCategoryId(e.target.value)}
-                                        className="w-full px-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                                        className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-sky-500 font-medium"
                                     >
                                         <option value="">— Chọn danh mục —</option>
                                         {categories.map((cat) => (
@@ -246,36 +244,36 @@ export default function ProductFormDrawer({
 
                                 {/* Product Code ID info */}
                                 <div>
-                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                                         Mã hàng hóa (ID)
                                     </label>
                                     <input
                                         type="text"
                                         disabled
                                         value={productToEdit ? `SP${String(productToEdit.id).padStart(5, '0')}` : 'Tự động tạo (SPXXXXX)'}
-                                        className="w-full px-3 py-2 text-sm border rounded-lg bg-zinc-100 dark:bg-zinc-800/60 text-zinc-500 border-zinc-300 dark:border-zinc-700 cursor-not-allowed"
+                                        className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-100 dark:bg-zinc-800/60 text-zinc-500 border-zinc-200 dark:border-zinc-700 cursor-not-allowed font-mono"
                                     />
                                 </div>
                             </div>
 
                             {/* Product Name */}
                             <div>
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                                     Tên hàng hóa <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
-                                    placeholder="Ví dụ: Mỳ cay hải sản vi cá chép"
-                                    className="w-full px-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Ví dụ: Cà phê sữa đá"
+                                    className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-sky-500 font-medium"
                                 />
                                 {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
                             </div>
 
                             {/* Image Upload / Clipboard Paste Container */}
                             <div>
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                                     Ảnh sản phẩm
                                 </label>
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -302,7 +300,7 @@ export default function ProductFormDrawer({
                                             type="file"
                                             accept="image/*"
                                             onChange={handleImageChange}
-                                            className="block w-full text-xs text-zinc-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 dark:file:bg-zinc-800 dark:file:text-zinc-200 cursor-pointer"
+                                            className="block w-full text-xs text-zinc-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 dark:file:bg-zinc-800 dark:file:text-zinc-200 cursor-pointer"
                                         />
                                         {imagePreview && (
                                             <button
@@ -315,7 +313,7 @@ export default function ProductFormDrawer({
                                             </button>
                                         )}
                                         <p className="text-[11px] text-zinc-400">
-                                            Tip: Bạn có thể sao chép ảnh từ web/máy tính và nhấn <strong className="text-blue-600 dark:text-blue-400">Ctrl + V</strong> để dán ảnh.
+                                            Mẹo: Bạn có thể sao chép ảnh từ web/máy tính và nhấn <strong className="text-sky-600 dark:text-sky-400">Ctrl + V</strong> để dán ảnh.
                                         </p>
                                     </div>
                                 </div>
@@ -328,9 +326,9 @@ export default function ProductFormDrawer({
                                         type="checkbox"
                                         checked={isAvailable}
                                         onChange={(e) => setIsAvailable(e.target.checked)}
-                                        className="w-4 h-4 text-blue-600 rounded border-zinc-300 focus:ring-blue-500"
+                                        className="checkbox-field"
                                     />
-                                    <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                                    <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
                                         Sản phẩm có bán (hiển thị trên menu)
                                     </span>
                                 </label>
@@ -339,13 +337,13 @@ export default function ProductFormDrawer({
 
                         {/* Section 2: Định giá */}
                         <div className="space-y-4 pt-2">
-                            <h3 className="text-sm font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
                                 Định giá & Thuế
                             </h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                                         Giá bán (VNĐ) <span className="text-red-500">*</span>
                                     </label>
                                     <input
@@ -353,13 +351,13 @@ export default function ProductFormDrawer({
                                         value={price}
                                         onChange={(e) => setPrice(e.target.value)}
                                         placeholder="50000"
-                                        className="w-full px-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                                        className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-sky-500 tabular-nums font-semibold"
                                     />
                                     {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                                         Thuế VAT (%)
                                     </label>
                                     <input
@@ -367,7 +365,7 @@ export default function ProductFormDrawer({
                                         value={vatRate}
                                         onChange={(e) => setVatRate(e.target.value)}
                                         placeholder="8"
-                                        className="w-full px-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                                        className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-sky-500 tabular-nums font-semibold"
                                     />
                                 </div>
                             </div>
@@ -375,7 +373,7 @@ export default function ProductFormDrawer({
 
                         {/* Section 3: Ghi chú */}
                         <div className="space-y-4 pt-2">
-                            <h3 className="text-sm font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400 border-b border-zinc-100 dark:border-zinc-800 pb-2">
                                 Ghi chú thêm
                             </h3>
 
@@ -385,18 +383,18 @@ export default function ProductFormDrawer({
                                     onChange={(e) => setDescription(e.target.value)}
                                     rows={3}
                                     placeholder="Nhập ghi chú cho món ăn..."
-                                    className="w-full px-3 py-2 text-sm border rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-sky-500"
                                 />
                             </div>
                         </div>
                     </form>
 
                     {/* Footer Action Buttons */}
-                    <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex justify-end space-x-3">
+                    <div className="p-4 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-800/50 flex justify-end space-x-3">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-5 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 rounded-lg shadow-xs"
+                            className="px-4 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 rounded-xl shadow-2xs transition-colors"
                         >
                             Hủy
                         </button>
@@ -404,7 +402,7 @@ export default function ProductFormDrawer({
                             type="submit"
                             form="product-form"
                             disabled={submitting}
-                            className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs disabled:opacity-50"
+                            className="px-5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl shadow-xs disabled:opacity-50 transition-colors"
                         >
                             {submitting ? 'Đang lưu...' : 'Lưu thay đổi'}
                         </button>
