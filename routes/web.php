@@ -111,6 +111,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/products', [ProductController::class, 'index'])->middleware('permission:products.view');
         Route::post('/products', [ProductController::class, 'store'])->middleware('permission:products.create');
         Route::get('/products/export', [ProductController::class, 'export'])->middleware('permission:products.export');
+        Route::get('/products/template', [ProductController::class, 'template'])->middleware('permission:products.import');
         Route::post('/products/check-import', [ProductController::class, 'checkImport'])->middleware('permission:products.import');
         Route::post('/products/confirm-import', [ProductController::class, 'confirmImport'])->middleware('permission:products.import');
         Route::post('/products/{product}', [ProductController::class, 'update'])->middleware('permission:products.edit');

@@ -204,6 +204,45 @@ class ProductController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
+    public function template(): StreamedResponse
+    {
+        $headers = [
+            'Content-type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename=mau_nhap_san_pham.csv',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $sampleItems = [
+            ['', 'Cà phê đen đá', 'Cà phê', 25000, 8, 'Đang hoạt động', 'Cà phê rang mộc nguyên chất'],
+            ['', 'Cà phê sữa đá', 'Cà phê', 30000, 8, 'Đang hoạt động', 'Pha phin truyền thống đậm đà'],
+            ['', 'Bạc xỉu đá', 'Cà phê', 35000, 8, 'Đang hoạt động', 'Nhiều sữa ít cà phê ngọt dịu'],
+            ['', 'Trà đào cam sả', 'Trà trái cây', 40000, 8, 'Đang hoạt động', 'Thanh mát giải nhiệt kèm đào ngâm'],
+            ['', 'Trà vải lài', 'Trà trái cây', 38000, 8, 'Đang hoạt động', 'Trà nhài thơm kết hợp quả vải'],
+            ['', 'Bánh mì que pate', 'Đồ ăn nhanh', 20000, 0, 'Đang hoạt động', 'Bánh mì giòn nóng kèm pate béo ngậy'],
+        ];
+
+        $callback = function () use ($sampleItems) {
+            $file = fopen('php://output', 'w');
+            if ($file === false) {
+                return;
+            }
+            // UTF-8 BOM for Excel compatibility
+            fwrite($file, "\xEF\xBB\xBF");
+
+            fputcsv($file, ['ID / Mã SP', 'Tên sản phẩm', 'Danh mục', 'Giá bán (VNĐ)', 'Thuế VAT (%)', 'Trạng thái', 'Ghi chú']);
+
+            foreach ($sampleItems as $item) {
+                fputcsv($file, $item);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
     public function checkImport(Request $request): JsonResponse
     {
         try {
