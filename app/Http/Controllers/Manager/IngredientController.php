@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Manager;
 use App\Events\IngredientStockUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
+use App\Services\Inventory\LotService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -65,6 +67,14 @@ class IngredientController extends Controller
 
         $ingredient = Ingredient::create($validated);
 
+        if ((float) $ingredient->stock_quantity > 0) {
+            LotService::createAdjustmentVoucher($request->user()?->id, 'Tồn đầu kỳ', [[
+                'ingredient_id' => $ingredient->id,
+                'quantity' => (float) $ingredient->stock_quantity,
+                'quantity_remaining' => (float) $ingredient->stock_quantity,
+            ]]);
+        }
+
         IngredientStockUpdated::dispatch(['ingredient_id' => $ingredient->id]);
 
         return back()->with('success', 'Thêm nguyên liệu thành công!');
@@ -84,7 +94,38 @@ class IngredientController extends Controller
 
         $validated['unit_conversion'] = $validated['unit_conversion'] ?? 1;
 
-        $ingredient->update($validated);
+        $oldQty = (float) $ingredient->stock_quantity;
+        $newQty = (float) $validated['stock_quantity'];
+
+        if (abs($newQty - $oldQty) < 0.0001) {
+            $ingredient->update($validated);
+        } else {
+            DB::transaction(function () use ($ingredient, $newQty, $validated, $request) {
+                $ingredient = Ingredient::lockForUpdate()->find($ingredient->id);
+                $residual = round($newQty - LotService::totalRemaining($ingredient->id), 2);
+                $lotFields = [];
+                if ($residual > 0) {
+                    $lot = LotService::increment($ingredient, $residual);
+                    if (! $lot) {
+                        $lotFields['quantity_remaining'] = $residual;
+                    }
+                } elseif ($residual < 0) {
+                    LotService::decrement($ingredient, abs($residual));
+                }
+
+                $ingredient->update($validated);
+
+                if (abs($residual) >= 0.0001) {
+                    LotService::createAdjustmentVoucher($request->user()?->id, 'Điều chỉnh thủ công tồn kho', [
+                        array_merge([
+                            'ingredient_id' => $ingredient->id,
+                            'quantity' => $residual,
+                            'unit_price' => null,
+                        ], $lotFields),
+                    ]);
+                }
+            });
+        }
 
         IngredientStockUpdated::dispatch(['ingredient_id' => $ingredient->id]);
 
