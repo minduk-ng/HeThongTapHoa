@@ -46,13 +46,20 @@ function ElapsedTimer({ completedAt }: { completedAt: string }) {
     useEffect(() => {
         const tick = () => {
             const diff = Date.now() - new Date(completedAt).getTime();
-            if (diff < 0) { setElapsed('0:00'); return; }
+
+            if (diff < 0) {
+ setElapsed('0:00');
+
+ return; 
+}
+
             const mins = Math.floor(diff / 60000);
             const secs = Math.floor((diff % 60000) / 1000);
             setElapsed(`${mins}:${String(secs).padStart(2, '0')}`);
         };
         tick();
         const id = setInterval(tick, 1000);
+
         return () => clearInterval(id);
     }, [completedAt]);
 
@@ -66,6 +73,7 @@ function ElapsedTimer({ completedAt }: { completedAt: string }) {
 
 function cardIdsInCommand(c: QueueCommand): string[] {
     const p = c.payload as { __card_id?: string; __card_ids?: string[] };
+
     return p.__card_ids ?? (p.__card_id ? [p.__card_id] : []);
 }
 
@@ -95,18 +103,24 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
         commands.forEach((c) => {
             const ids = cardIdsInCommand(c);
             ids.forEach((id) => all.add(id));
-            if (c.status !== 'failed') ids.forEach((id) => active.add(id));
+
+            if (c.status !== 'failed') {
+ids.forEach((id) => active.add(id));
+}
         });
 
-        setSyncIds(active);
+        queueMicrotask(() => {
+            setSyncIds(active);
+            const gone = [...cmdCardIdsRef.current].filter((id) => !all.has(id));
 
-        const gone = [...cmdCardIdsRef.current].filter((id) => !all.has(id));
-        if (gone.length > 0) {
-            const goneSet = new Set(gone);
-            setQueue((prev) => prev.filter((card) => !goneSet.has(card.id)));
-            setSelectedIds((prev) => new Set([...prev].filter((id) => !goneSet.has(id))));
-        }
-        cmdCardIdsRef.current = all;
+            if (gone.length > 0) {
+                const goneSet = new Set(gone);
+                setQueue((prev) => prev.filter((card) => !goneSet.has(card.id)));
+                setSelectedIds((prev) => new Set([...prev].filter((id) => !goneSet.has(id))));
+            }
+
+            cmdCardIdsRef.current = all;
+        });
     }, [commands]);
 
     // Sync when Inertia reloads props (keep cards with any live command — pending/flushing/failed — never clobber)
@@ -115,6 +129,7 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
         setQueue((prev) => {
             const retained = prev.filter((card) => cmdCardIdsRef.current.has(card.id));
             const safeIds = new Set(safe.map((card) => card.id));
+
             return [...safe, ...retained.filter((card) => !safeIds.has(card.id))];
         });
         const validIds = new Set(safe.map((card) => card.id));
@@ -125,6 +140,7 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
     useEffect(() => {
         const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
         document.addEventListener('fullscreenchange', handleFullscreenChange);
+
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
@@ -144,6 +160,7 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
+
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
@@ -151,8 +168,13 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
     const lastEventRef = useRef<{ key: string; time: number }>({ key: '', time: 0 });
     const isDuplicateEvent = useCallback((eventKey: string) => {
         const now = Date.now();
-        if (lastEventRef.current.key === eventKey && now - lastEventRef.current.time < 1000) return true;
+
+        if (lastEventRef.current.key === eventKey && now - lastEventRef.current.time < 1000) {
+return true;
+}
+
         lastEventRef.current = { key: eventKey, time: now };
+
         return false;
     }, []);
 
@@ -162,7 +184,10 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
 
             const handleItemsReady = (payload: any) => {
                 const eventKey = `ItemsReadyToServe_${payload?.order_id}`;
-                if (isDuplicateEvent(eventKey)) return;
+
+                if (isDuplicateEvent(eventKey)) {
+return;
+}
 
                 const newCard: ServingItemData = {
                     id: `${payload.order_id}_${Date.now()}`,
@@ -188,6 +213,7 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
             const handleTableStatus = (payload: any) => {
                 if (payload?.action === 'checkout') {
                     const tableNum = payload.table_number || '';
+
                     if (tableNum) {
                         setQueue(prev => prev.filter(c => c.table_number !== tableNum));
                     }
@@ -199,7 +225,9 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                 .listen('.OrderCompleted', handleOrderCompleted)
                 .listen('.TableStatusUpdated', handleTableStatus);
 
-            return () => { window.Echo.leave('pos-channel'); };
+            return () => {
+ window.Echo.leave('pos-channel'); 
+};
         }
     }, [isDuplicateEvent]);
 
@@ -209,7 +237,10 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
 
     // Mark served via offline command queue — card stays until command syncs
     const handleServed = useCallback((card: ServingItemData) => {
-        if (commands.some((c) => cardIdsInCommand(c).includes(card.id))) return;
+        if (commands.some((c) => cardIdsInCommand(c).includes(card.id))) {
+return;
+}
+
         markSync(card.id);
         enqueue('serving.mark-served', '/staff/serving/mark-served', {
             item_ids: card.items.map((i) => i.id),
@@ -222,12 +253,14 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
         const map = new Map<string, { area: string; count: number }>();
         queue.forEach(card => {
             const existing = map.get(card.table_number);
+
             if (existing) {
                 existing.count++;
             } else {
                 map.set(card.table_number, { area: card.table_area, count: 1 });
             }
         });
+
         return Array.from(map.entries()).map(([tableNumber, info]) => ({
             tableNumber,
             area: info.area,
@@ -245,11 +278,13 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
     const toggleSelect = useCallback((cardId: string) => {
         setSelectedIds(prev => {
             const next = new Set(prev);
+
             if (next.has(cardId)) {
                 next.delete(cardId);
             } else {
                 next.add(cardId);
             }
+
             return next;
         });
     }, []);
@@ -266,8 +301,13 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
 
     // Batch mark served via queue — one command covering all selected cards
     const handleBatchServed = useCallback(() => {
-        if (selectedIds.size === 0) return;
-        if ([...selectedIds].some((id) => commands.some((c) => cardIdsInCommand(c).includes(id)))) return;
+        if (selectedIds.size === 0) {
+return;
+}
+
+        if ([...selectedIds].some((id) => commands.some((c) => cardIdsInCommand(c).includes(id)))) {
+return;
+}
 
         const allItemIds = queue
             .filter((c) => selectedIds.has(c.id))
@@ -486,12 +526,16 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                                 );
                                 const handleServeClick = (e: React.MouseEvent) => {
                                     e.stopPropagation();
+
                                     if (failedCmd) {
                                         retry(failedCmd.id);
+
                                         return;
                                     }
+
                                     handleServed(card);
                                 };
+
                                 return (
                                     <div
                                         key={card.id}
@@ -564,14 +608,18 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                                                     <div className="flex shrink-0 items-center gap-1">
                                                         <button
                                                             type="button"
-                                                            onClick={(e) => { e.stopPropagation(); retry(failedCmd.id); }}
+                                                            onClick={(e) => {
+ e.stopPropagation(); retry(failedCmd.id); 
+}}
                                                             className="rounded-md bg-rose-600 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-rose-700"
                                                         >
                                                             Thử lại
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            onClick={(e) => { e.stopPropagation(); discard(failedCmd.id); }}
+                                                            onClick={(e) => {
+ e.stopPropagation(); discard(failedCmd.id); 
+}}
                                                             className="rounded-md border border-rose-300 px-2 py-1 text-[10px] font-bold text-rose-600 transition-colors hover:bg-rose-100 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-900/40"
                                                         >
                                                             Bỏ qua

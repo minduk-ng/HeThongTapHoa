@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import { Banknote, CalendarClock, Clock, LogIn, LogOut, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 
 type Shift = {
@@ -46,15 +46,19 @@ export default function ShiftsPage() {
             },
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok)
-            throw new Error(
+
+        if (!response.ok) {
+throw new Error(
                 data.error || data.message || 'Không thể xử lý yêu cầu.',
             );
+}
+
         return data;
     };
     const load = useCallback(async () => {
         setLoading(true);
         setError(null);
+
         try {
             const data = await request('/staff/shifts/current');
             setShift(data.shift);
@@ -70,12 +74,16 @@ export default function ShiftsPage() {
         }
     }, []);
     useEffect(() => {
-        void load();
+        queueMicrotask(() => void load());
     }, [load]);
     const openShift = async () => {
-        if (submitting) return;
+        if (submitting) {
+return;
+}
+
         setSubmitting(true);
         setError(null);
+
         try {
             await request('/staff/shifts/open', {
                 method: 'POST',
@@ -97,9 +105,13 @@ export default function ShiftsPage() {
         }
     };
     const closeShift = async () => {
-        if (submitting) return;
+        if (submitting) {
+return;
+}
+
         setSubmitting(true);
         setError(null);
+
         try {
             const data = await request('/staff/shifts/close', {
                 method: 'POST',
@@ -121,6 +133,7 @@ export default function ShiftsPage() {
             setSubmitting(false);
         }
     };
+
     return (
         <DashboardLayout fullWidth>
             <Head title="Ca làm việc" />

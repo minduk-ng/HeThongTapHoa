@@ -1,7 +1,8 @@
-import React from 'react';
 import { Image as ImageIcon, Edit3, Trash2 } from 'lucide-react';
-import DataTable, { DataTableColumn } from '../../../../components/DataTable';
-import { cdnAsset } from '../../../../utils/cdn';
+import React from 'react';
+import type { DataTableColumn } from '../../../../components/DataTable';
+import DataTable from '../../../../components/DataTable';
+import { cdnAsset, useCdnBaseUrl } from '../../../../utils/cdn';
 
 interface Category {
     id: number;
@@ -27,6 +28,7 @@ interface ProductTableProps {
 }
 
 export default function ProductTable({ items, onEdit, onDelete }: ProductTableProps) {
+    const cdnUrl = useCdnBaseUrl();
     const formatCurrency = (val: number | string) => {
         return Number(val).toLocaleString('vi-VN') + ' đ';
     };
@@ -45,7 +47,7 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
             render: (item) => (
                 <div className="w-10 h-10 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto">
                     {item.image ? (
-                        <img src={cdnAsset(item.image, { w: 96, format: 'webp' })} alt={item.name} className="w-full h-full object-cover" />
+                        <img src={cdnAsset(item.image, { w: 96, format: 'webp' }, cdnUrl)} alt={item.name} className="w-full h-full object-cover" />
                     ) : (
                         <ImageIcon className="w-5 h-5 text-zinc-400 stroke-[1.5]" />
                     )}
@@ -140,12 +142,30 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
             rowKey={(item) => item.id}
             defaultSortKey="name"
             getSortValue={(item, key) => {
-                if (key === 'code') return item.id;
-                if (key === 'name') return item.name;
-                if (key === 'category') return item.category?.name ?? '';
-                if (key === 'price') return item.price;
-                if (key === 'vat_rate') return item.vat_rate;
-                if (key === 'is_available') return item.is_available ? 1 : 0;
+                if (key === 'code') {
+return item.id;
+}
+
+                if (key === 'name') {
+return item.name;
+}
+
+                if (key === 'category') {
+return item.category?.name ?? '';
+}
+
+                if (key === 'price') {
+return item.price;
+}
+
+                if (key === 'vat_rate') {
+return item.vat_rate;
+}
+
+                if (key === 'is_available') {
+return item.is_available ? 1 : 0;
+}
+
                 return String(item[key as keyof MenuItemData] ?? '');
             }}
             emptyMessage="Không tìm thấy sản phẩm"

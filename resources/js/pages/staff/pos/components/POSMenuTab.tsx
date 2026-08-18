@@ -1,7 +1,7 @@
+import { UtensilsCrossed } from 'lucide-react';
 import React, { useState } from 'react';
-import { Search, UtensilsCrossed } from 'lucide-react';
-import { CategoryData, POSProductData, CartItem } from '../types/pos.types';
-import { cdnAsset } from '../../../../utils/cdn';
+import { cdnAsset, useCdnBaseUrl } from '../../../../utils/cdn';
+import type { CategoryData, POSProductData, CartItem } from '../types/pos.types';
 
 interface POSMenuTabProps {
     products: POSProductData[];
@@ -18,6 +18,7 @@ export default function POSMenuTab({
     onToggleProduct,
     searchQuery,
 }: POSMenuTabProps) {
+    const cdnUrl = useCdnBaseUrl();
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
 
     const safeProducts = Array.isArray(products) ? products : [];
@@ -30,6 +31,7 @@ export default function POSMenuTab({
         const matchesSearch = product.name
             .toLowerCase()
             .includes(searchQuery.toLowerCase());
+
         return matchesCategory && matchesSearch;
     });
 
@@ -69,6 +71,7 @@ export default function POSMenuTab({
                         ).length;
                         const isSelected =
                             selectedCategoryId === String(cat.id);
+
                         return (
                             <button
                                 key={cat.id}
@@ -119,7 +122,7 @@ export default function POSMenuTab({
                                 <div className="relative mb-1.5 aspect-[4/3] w-full overflow-hidden rounded-lg border border-zinc-100 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800">
                                     {product.image ? (
                                         <img
-                                            src={cdnAsset(product.image, { w: 400, format: 'webp' })}
+                                            src={cdnAsset(product.image, { w: 400, format: 'webp' }, cdnUrl)}
                                             alt={product.name}
                                             className="h-full w-full object-cover"
                                         />

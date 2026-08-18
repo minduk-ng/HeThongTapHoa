@@ -1,7 +1,8 @@
-import React from 'react';
 import { Image as ImageIcon, Edit3 } from 'lucide-react';
-import DataTable, { DataTableColumn } from '../../../../../components/DataTable';
-import { cdnAsset } from '../../../../../utils/cdn';
+import React from 'react';
+import type { DataTableColumn } from '../../../../../components/DataTable';
+import DataTable from '../../../../../components/DataTable';
+import { cdnAsset, useCdnBaseUrl } from '../../../../../utils/cdn';
 
 export interface RecipeItem {
     id: number;
@@ -36,11 +37,16 @@ interface RecipeTableProps {
 }
 
 export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps) {
+    const cdnUrl = useCdnBaseUrl();
     // Calculate COGS (Cost of Goods Sold) for a product
     const calculateCOGS = (product: ProductRecipeData) => {
-        if (!product.recipes || product.recipes.length === 0) return 0;
+        if (!product.recipes || product.recipes.length === 0) {
+return 0;
+}
+
         return product.recipes.reduce((sum, item) => {
             const cost = item.ingredient ? Number(item.ingredient.cost_price) : 0;
+
             return sum + item.amount * cost;
         }, 0);
     };
@@ -59,7 +65,7 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
             render: (product) => (
                 <div className="w-10 h-10 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto">
                     {product.image ? (
-                        <img src={cdnAsset(product.image, { w: 96, format: 'webp' })} alt={product.name} className="w-full h-full object-cover" />
+                        <img src={cdnAsset(product.image, { w: 96, format: 'webp' }, cdnUrl)} alt={product.name} className="w-full h-full object-cover" />
                     ) : (
                         <ImageIcon className="w-5 h-5 text-zinc-400 stroke-[1.5]" />
                     )}
@@ -73,6 +79,7 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
             sortable: true,
             render: (product) => {
                 const hasRecipes = product.recipes && product.recipes.length > 0;
+
                 return (
                     <div>
                         <p className="font-bold text-zinc-900 dark:text-zinc-100">{product.name}</p>
@@ -104,6 +111,7 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
             align: 'center',
             render: (product) => {
                 const hasRecipes = product.recipes && product.recipes.length > 0;
+
                 return hasRecipes
                     ? <span className="font-semibold text-amber-600 dark:text-amber-400 tabular-nums">{formatCurrency(calculateCOGS(product))}</span>
                     : <span className="text-xs text-zinc-400">—</span>;
@@ -116,11 +124,16 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
             align: 'center',
             render: (product) => {
                 const hasRecipes = product.recipes && product.recipes.length > 0;
-                if (!hasRecipes) return <span className="text-xs text-zinc-400">Chưa tính</span>;
+
+                if (!hasRecipes) {
+return <span className="text-xs text-zinc-400">Chưa tính</span>;
+}
+
                 const cogs = calculateCOGS(product);
                 const marginPercent = product.price > 0
                     ? Math.round(((product.price - cogs) / product.price) * 100)
                     : 0;
+
                 return (
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tabular-nums ${
                         marginPercent >= 60
@@ -159,14 +172,28 @@ export default function RecipeTable({ products, onEditRecipe }: RecipeTableProps
             rowKey={(product) => product.id}
             defaultSortKey="name"
             getSortValue={(product, key) => {
-                if (key === 'name') return product.name;
-                if (key === 'category') return product.category?.name ?? '';
-                if (key === 'price') return product.price;
-                if (key === 'cogs') return calculateCOGS(product);
+                if (key === 'name') {
+return product.name;
+}
+
+                if (key === 'category') {
+return product.category?.name ?? '';
+}
+
+                if (key === 'price') {
+return product.price;
+}
+
+                if (key === 'cogs') {
+return calculateCOGS(product);
+}
+
                 if (key === 'margin') {
                     const cogs = calculateCOGS(product);
+
                     return product.price > 0 ? Math.round(((product.price - cogs) / product.price) * 100) : 0;
                 }
+
                 return String(product[key as keyof ProductRecipeData] ?? '');
             }}
             emptyMessage="Không tìm thấy định lượng"
