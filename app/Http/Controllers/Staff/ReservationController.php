@@ -102,6 +102,10 @@ class ReservationController extends Controller
             return response()->json(['success' => true]);
 
         } catch (\Exception $e) {
+            IdempotencyGuard::release($request, 'cancel_reservation', [
+                'order_id' => $validated['order_id'],
+                'deposit_resolution' => $validated['deposit_resolution'] ?? null,
+            ]);
             Log::error('POS cancelReservation error: '.$e->getMessage());
             $status = $e->getCode() === 422 ? 422 : 500;
 
@@ -157,6 +161,9 @@ class ReservationController extends Controller
             return response()->json(['success' => true]);
 
         } catch (\Exception $e) {
+            IdempotencyGuard::release($request, 'check_in_reservation', [
+                'order_id' => $validated['order_id'],
+            ]);
             if ($e->getCode() === 422) {
                 return response()->json(['error' => $e->getMessage()], 422);
             }
@@ -300,6 +307,11 @@ class ReservationController extends Controller
             ]);
 
         } catch (\Throwable $e) {
+            IdempotencyGuard::release($request, 'reserve', [
+                'table_id' => $validated['table_id'],
+                'reservation_name' => $validated['reservation_name'],
+                'reservation_time' => $validated['reservation_time'],
+            ]);
             Log::error('POS reserve error: '.$e->getMessage());
 
             return response()->json(['error' => 'Đặt bàn thất bại: '.$e->getMessage()], 500);
@@ -355,6 +367,11 @@ class ReservationController extends Controller
             return response()->json(['success' => true]);
 
         } catch (\Exception $e) {
+            IdempotencyGuard::release($request, 'deposit', [
+                'order_id' => $validated['order_id'],
+                'amount' => $validated['amount'],
+                'method' => $validated['method'],
+            ]);
             Log::error('POS deposit error: '.$e->getMessage());
             $status = $e->getCode() === 422 ? 422 : 500;
 

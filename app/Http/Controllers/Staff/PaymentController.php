@@ -288,6 +288,10 @@ class PaymentController extends Controller
 
             return back()->with('success', 'Thanh toán hoàn tất thành công!');
         } catch (\Throwable $e) {
+            IdempotencyGuard::release($request, 'checkout', [
+                'order_id' => $validated['order_id'],
+                'amount_received' => $validated['amount_received'],
+            ]);
             Log::error('POS checkout DB error: '.$e->getMessage());
 
             if ($request->wantsJson()) {
@@ -445,6 +449,10 @@ class PaymentController extends Controller
 
             return back()->with('success', 'Thanh toán gộp thành công!');
         } catch (\Throwable $e) {
+            IdempotencyGuard::release($request, 'bulk_checkout', [
+                'order_ids' => collect($validated['order_ids'])->sort()->values()->all(),
+                'amount_received' => $validated['amount_received'],
+            ]);
             Log::error('POS bulk checkout error: '.$e->getMessage());
 
             if ($request->wantsJson()) {
