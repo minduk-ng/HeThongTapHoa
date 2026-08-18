@@ -44,6 +44,21 @@ test('invariant: stock_quantity bang SUM(quantity_remaining) sau import, kiem ke
     expect(LotService::totalRemaining($ing->id))->toBe(65.0);
 });
 
+test('kiem ke chua drift khi actual bang tong lo nhung stock_quantity lech', function () {
+    $admin = posAdmin();
+    $ing = Ingredient::create(['code' => 'drift'.uniqid(), 'name' => 'Drift '.uniqid(), 'unit' => 'g', 'stock_quantity' => 50, 'min_stock_alert' => 5, 'cost_price' => 100]);
+    $v = StockVoucher::create(['voucher_code' => 'PN-DR-'.uniqid(), 'type' => 'import', 'transacted_at' => now()]);
+    $v->items()->create(['ingredient_id' => $ing->id, 'quantity' => 80, 'unit_price' => 100, 'quantity_remaining' => 80]);
+
+    // stock_quantity = 50 nhưng lô = 80 (drift cũ); kiểm kê actual = 80 → phải chữa stock về 80
+    $this->actingAs($admin)->post('/manager/inventory/stocktake', [
+        'items' => [['ingredient_id' => $ing->id, 'actual_qty' => 80]],
+    ])->assertSessionHasNoErrors();
+
+    expect((float) $ing->fresh()->stock_quantity)->toBe(80.0);
+    expect(LotService::totalRemaining($ing->id))->toBe(80.0);
+});
+
 test('stock:init-lots tao lo ton dau ky cho nguyen lieu chi co stock_quantity', function () {
     $admin = posAdmin();
     $ing = Ingredient::create(['code' => 'bf'.uniqid(), 'name' => 'Backfill '.uniqid(), 'unit' => 'g', 'stock_quantity' => 250, 'min_stock_alert' => 5, 'cost_price' => 100]);

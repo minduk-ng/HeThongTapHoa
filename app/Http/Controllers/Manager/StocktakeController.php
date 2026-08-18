@@ -29,7 +29,8 @@ class StocktakeController extends Controller
             'items.*.actual_qty' => 'required|numeric|min:0',
         ]);
 
-        $changes = collect($validated['items'])->filter(fn ($it) => abs((float) $it['actual_qty'] - LotService::totalRemaining((int) $it['ingredient_id'])) > 0.0001);
+        $changes = collect($validated['items'])->filter(fn ($it) => abs((float) $it['actual_qty'] - LotService::totalRemaining((int) $it['ingredient_id'])) > 0.0001
+            || abs((float) $it['actual_qty'] - (float) Ingredient::find((int) $it['ingredient_id'])?->stock_quantity) > 0.0001);
 
         if ($changes->isEmpty()) {
             return back()->with('info', 'Không có thay đổi tồn kho nào.');
@@ -47,6 +48,7 @@ class StocktakeController extends Controller
                 $residual = round($actual - LotService::totalRemaining($ing->id), 2);
                 if (abs($residual) < 0.0001) {
                     $ing->update(['stock_quantity' => $actual]);
+                    IngredientStockUpdated::dispatch(['ingredient_id' => $ing->id]);
 
                     continue;
                 }

@@ -65,15 +65,19 @@ class IngredientController extends Controller
         $validated['cost_price'] = $validated['cost_price'] ?? 0;
         $validated['unit_conversion'] = $validated['unit_conversion'] ?? 1;
 
-        $ingredient = Ingredient::create($validated);
+        $ingredient = DB::transaction(function () use ($validated, $request) {
+            $ingredient = Ingredient::create($validated);
 
-        if ((float) $ingredient->stock_quantity > 0) {
-            LotService::createAdjustmentVoucher($request->user()?->id, 'Tồn đầu kỳ', [[
-                'ingredient_id' => $ingredient->id,
-                'quantity' => (float) $ingredient->stock_quantity,
-                'quantity_remaining' => (float) $ingredient->stock_quantity,
-            ]]);
-        }
+            if ((float) $ingredient->stock_quantity > 0) {
+                LotService::createAdjustmentVoucher($request->user()?->id, 'Tồn đầu kỳ', [[
+                    'ingredient_id' => $ingredient->id,
+                    'quantity' => (float) $ingredient->stock_quantity,
+                    'quantity_remaining' => (float) $ingredient->stock_quantity,
+                ]]);
+            }
+
+            return $ingredient;
+        });
 
         IngredientStockUpdated::dispatch(['ingredient_id' => $ingredient->id]);
 

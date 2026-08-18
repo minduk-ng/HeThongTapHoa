@@ -481,7 +481,7 @@ class CheckoutService
                 continue;
             }
             $available = LotService::totalRemaining($ingredient->id);
-            if ($available < $totalUsed) {
+            if ($totalUsed - $available > 0.0001) {
                 throw new \Exception(
                     "Không đủ nguyên liệu {$ingredient->name} (cần ".round($totalUsed, 2).', còn '.round($available, 2).').',
                     422,
