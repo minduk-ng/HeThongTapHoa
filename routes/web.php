@@ -224,6 +224,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/shifts', [ShiftController::class, 'index'])->middleware('permission:shifts.view');
         Route::post('/shifts/open', [ShiftController::class, 'open'])->middleware('permission:shifts.open');
         Route::get('/shifts/current', [ShiftController::class, 'current'])->middleware('permission:shifts.view');
+        Route::post('/shifts/movements', [ShiftController::class, 'storeMovement'])->middleware('permission:shifts.view');
         Route::post('/shifts/close', [ShiftController::class, 'close'])->middleware('permission:shifts.close');
 
         Route::get('/kitchen', [KitchenController::class, 'index'])->middleware('permission:kitchen.view');

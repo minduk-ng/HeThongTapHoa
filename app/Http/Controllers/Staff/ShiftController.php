@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
+use App\Models\CashMovement;
 use App\Models\Shift;
 use App\Services\Manager\ShiftService;
 use Carbon\CarbonInterface;
@@ -70,7 +71,34 @@ class ShiftController extends Controller
         return response()->json([
             'shift' => $shift,
             'expected_cash' => $this->expectedCash($shift, now()),
+            'movements' => $shift->movements()->orderByDesc('id')->get(),
         ]);
+    }
+
+    public function storeMovement(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:expense,income',
+            'category' => 'required|string|max:30',
+            'amount' => 'required|numeric|gt:0',
+            'note' => 'nullable|string|max:255',
+        ]);
+
+        $shift = Shift::open()->latest('id')->first();
+        if (! $shift) {
+            return response()->json(['error' => 'Không có ca nào đang mở.'], 422);
+        }
+
+        $movement = CashMovement::create([
+            'shift_id' => $shift->id,
+            'type' => $validated['type'],
+            'category' => $validated['category'],
+            'amount' => $validated['amount'],
+            'note' => $validated['note'] ?? null,
+            'created_by' => $request->user()?->id,
+        ]);
+
+        return response()->json(['success' => true, 'movement' => $movement]);
     }
 
     public function close(Request $request): JsonResponse

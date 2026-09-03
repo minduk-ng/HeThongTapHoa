@@ -2,6 +2,7 @@
 
 namespace App\Services\Manager;
 
+use App\Models\CashMovement;
 use App\Models\Deposit;
 use App\Models\Payment;
 use App\Models\Shift;
@@ -34,6 +35,11 @@ final class ShiftService
             ->whereBetween('resolved_at', [$shift->opened_at, $until])
             ->sum('amount');
 
-        return round((float) $shift->opening_cash + (float) $checkoutCash + (float) $depositCash - (float) $refundedCash, 2);
+        $adjustment = CashMovement::query()
+            ->where('shift_id', $shift->id)
+            ->get()
+            ->reduce(fn ($carry, $m) => $carry + ($m->type === 'income' ? (float) $m->amount : -(float) $m->amount), 0.0);
+
+        return round((float) $shift->opening_cash + (float) $checkoutCash + (float) $depositCash - (float) $refundedCash + $adjustment, 2);
     }
 }
