@@ -65,6 +65,8 @@ class StockVoucherController extends Controller
         $validated = $request->validate([
             'note' => ['nullable', 'string', 'max:255'],
             'transacted_at' => ['nullable', 'date'],
+            'supplier_id' => ['nullable', 'exists:suppliers,id'],
+            'is_paid' => ['nullable', 'boolean'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.ingredient_id' => ['required', 'exists:ingredients,id'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
@@ -96,6 +98,8 @@ class StockVoucherController extends Controller
                 'transacted_at' => $transactedAt,
                 'note' => $validated['note'] ?? null,
                 'created_by' => $userId,
+                'supplier_id' => $validated['supplier_id'] ?? null,
+                'is_paid' => $validated['is_paid'] ?? false,
             ]);
 
             foreach ($validated['items'] as $item) {

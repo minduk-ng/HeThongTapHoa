@@ -17,9 +17,10 @@ use App\Http\Controllers\Manager\OrderListController;
 use App\Http\Controllers\Manager\ProductController;
 use App\Http\Controllers\Manager\PromotionController;
 use App\Http\Controllers\Manager\RecipeController;
-use App\Http\Controllers\Manager\StockVoucherController;
 use App\Http\Controllers\Manager\StockHistoryController;
 use App\Http\Controllers\Manager\StocktakeController;
+use App\Http\Controllers\Manager\StockVoucherController;
+use App\Http\Controllers\Manager\SupplierController;
 use App\Http\Controllers\Manager\TableController;
 use App\Http\Controllers\Reports\CancelledReportController;
 use App\Http\Controllers\Reports\ConsumptionReportController;
@@ -130,6 +131,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/customers', [CustomerController::class, 'store'])->middleware('permission:customers.create');
         Route::post('/customers/{customer}', [CustomerController::class, 'update'])->middleware('permission:customers.edit');
         Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware('permission:customers.delete');
+
+        // Suppliers Management
+        Route::get('/suppliers', [SupplierController::class, 'index'])->middleware('permission:suppliers.view');
+        Route::post('/suppliers', [SupplierController::class, 'store'])->middleware('permission:suppliers.create');
+        Route::post('/suppliers/{supplier}', [SupplierController::class, 'update'])->middleware('permission:suppliers.edit');
+        Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->middleware('permission:suppliers.delete');
+        Route::post('/suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->middleware('permission:suppliers.edit');
 
         // Promotions Management
         Route::get('/promotions', [PromotionController::class, 'index'])->middleware('permission:promotions.view');
