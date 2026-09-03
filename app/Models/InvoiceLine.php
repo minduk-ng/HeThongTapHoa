@@ -9,6 +9,7 @@ class InvoiceLine extends Model
     protected $fillable = [
         'invoice_id', 'order_item_id', 'menu_item_id', 'name_snapshot',
         'quantity', 'unit_price', 'subtotal', 'vat_rate', 'vat_amount', 'discount_amount',
+        'refunded_qty',
     ];
 
     protected $casts = [
@@ -18,6 +19,7 @@ class InvoiceLine extends Model
         'vat_rate' => 'float',
         'vat_amount' => 'float',
         'discount_amount' => 'float',
+        'refunded_qty' => 'int',
     ];
 
     /** Doanh thu thực thu 1 dòng = giá bán sau giảm giá (đã gồm VAT). */

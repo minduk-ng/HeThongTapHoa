@@ -11,9 +11,12 @@ import {
     XCircle,
     Truck,
     CircleDollarSign,
+    RotateCcw,
 } from 'lucide-react';
 import React, { useState } from 'react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
+import RefundModal from './components/RefundModal';
+import type {RefundLine} from './components/RefundModal';
 
 interface OrderItemData {
     id: number;
@@ -29,6 +32,7 @@ interface OrderItemData {
 }
 
 interface InvoiceData {
+    id: number;
     invoice_code: string;
     payment_method: string;
     total_amount: number;
@@ -36,6 +40,7 @@ interface InvoiceData {
     amount_received: number;
     change_amount: number;
     issued_at: string;
+    lines: RefundLine[];
 }
 
 interface ActivityData {
@@ -106,6 +111,7 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 export default function OrderDetail({ order }: OrderDetailProps) {
     const [activeTab, setActiveTab] = useState<'detail' | 'history'>('detail');
+    const [refundOpen, setRefundOpen] = useState(false);
 
     const safeItems = Array.isArray(order.items) ? order.items : [];
     const safeActivities = Array.isArray(order.activities) ? order.activities : [];
@@ -206,6 +212,16 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                     {safeActivities.length}
                                 </span>
                             </button>
+                            {order.status === 'paid' && order.invoice && (
+                                <button
+                                    type="button"
+                                    onClick={() => setRefundOpen(true)}
+                                    className="ml-auto flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-xl transition-colors bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50"
+                                >
+                                    <RotateCcw className="w-4.5 h-4.5" />
+                                    <span>Hoàn trả</span>
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -476,6 +492,12 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                     </div>
                 </div>
             </div>
+            <RefundModal
+                isOpen={refundOpen}
+                invoiceId={order.invoice?.id ?? 0}
+                lines={Array.isArray(order.invoice?.lines) ? order.invoice.lines : []}
+                onClose={() => setRefundOpen(false)}
+            />
         </DashboardLayout>
     );
 }

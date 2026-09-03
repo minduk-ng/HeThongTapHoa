@@ -39,6 +39,7 @@ use App\Http\Controllers\Staff\CustomerController as StaffCustomerController;
 use App\Http\Controllers\Staff\KitchenController;
 use App\Http\Controllers\Staff\PaymentController;
 use App\Http\Controllers\Staff\POSController;
+use App\Http\Controllers\Staff\RefundController;
 use App\Http\Controllers\Staff\ReservationController;
 use App\Http\Controllers\Staff\ServingController;
 use App\Http\Controllers\Staff\ShiftController;
@@ -211,6 +212,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/pos/validate-promotion', [PaymentController::class, 'validatePromotion'])->middleware('permission:pos.create');
         Route::post('/pos/available-promotions', [PaymentController::class, 'availablePromotions'])->middleware('permission:pos.create');
         Route::post('/pos/checkout', [PaymentController::class, 'checkout'])->middleware('permission:pos.create');
+        Route::post('/pos/refund', [RefundController::class, 'store'])->middleware('permission:pos.create');
         Route::post('/pos/bulk-checkout', [PaymentController::class, 'bulkCheckout'])->middleware('permission:pos.create');
         Route::post('/pos/customers/search', [StaffCustomerController::class, 'search'])->middleware('permission:pos.create');
         Route::post('/pos/customers', [StaffCustomerController::class, 'store'])->middleware('permission:pos.create');
