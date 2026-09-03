@@ -155,6 +155,7 @@ class PaymentController extends Controller
             'change_amount' => 'nullable|numeric|min:0',
             'promotion_code' => 'nullable|string|max:50',
             'idempotency_key' => 'nullable|string|max:100',
+            'customer_id' => 'nullable|exists:customers,id',
             'selected_promotion_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
                 $this->validateSelectedPromotion((int) $value, $fail);
             }],
@@ -221,6 +222,7 @@ class PaymentController extends Controller
                     $request->user()?->id,
                     $tableNameStr,
                     $validated['selected_promotion_id'] ?? null,
+                    $validated['customer_id'] ?? null,
                 );
 
                 $totalAmount = (float) $invoice->total_amount;
@@ -315,6 +317,7 @@ class PaymentController extends Controller
             'change_amount' => 'nullable|numeric|min:0',
             'promotion_code' => 'nullable|string|max:50',
             'idempotency_key' => 'nullable|string|max:100',
+            'customer_id' => 'nullable|exists:customers,id',
             'selected_promotion_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
                 $this->validateSelectedPromotion((int) $value, $fail);
             }],
@@ -396,6 +399,7 @@ class PaymentController extends Controller
                     $request->user()?->id,
                     $tableNameStr,
                     $validated['selected_promotion_id'] ?? null,
+                    $validated['customer_id'] ?? null,
                 );
 
                 $totalAmount = (float) $invoice->total_amount;

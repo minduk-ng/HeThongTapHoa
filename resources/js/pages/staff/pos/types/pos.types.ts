@@ -88,6 +88,13 @@ export interface CartItem {
     stagedNote?: string;
 }
 
+export interface PosCustomer {
+    id: number;
+    full_name: string;
+    phone: string;
+    note?: string | null;
+}
+
 export interface ReceiptModalState {
     isOpen: boolean;
     paymentMethod: 'cash' | 'bank_transfer';

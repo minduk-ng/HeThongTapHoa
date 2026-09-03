@@ -34,6 +34,7 @@ use App\Http\Controllers\Reports\ReservationsReportController;
 use App\Http\Controllers\Reports\SalesInvoiceReportController;
 use App\Http\Controllers\Reports\ShiftReportController;
 use App\Http\Controllers\Reports\StockMovementReportController;
+use App\Http\Controllers\Staff\CustomerController as StaffCustomerController;
 use App\Http\Controllers\Staff\KitchenController;
 use App\Http\Controllers\Staff\PaymentController;
 use App\Http\Controllers\Staff\POSController;
@@ -203,6 +204,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/pos/available-promotions', [PaymentController::class, 'availablePromotions'])->middleware('permission:pos.create');
         Route::post('/pos/checkout', [PaymentController::class, 'checkout'])->middleware('permission:pos.create');
         Route::post('/pos/bulk-checkout', [PaymentController::class, 'bulkCheckout'])->middleware('permission:pos.create');
+        Route::post('/pos/customers/search', [StaffCustomerController::class, 'search'])->middleware('permission:pos.create');
+        Route::post('/pos/customers', [StaffCustomerController::class, 'store'])->middleware('permission:pos.create');
         Route::post('/pos/transfer-table', [TableOperationController::class, 'transferTable'])->middleware('permission:pos.create');
         Route::post('/pos/merge-tables', [TableOperationController::class, 'mergeTables'])->middleware('permission:pos.create');
         Route::post('/pos/unmerge-table', [TableOperationController::class, 'unmergeTable'])->middleware('permission:pos.create');

@@ -49,6 +49,7 @@ class Invoice extends Model
         'external_no',
         'external_ref',
         'issued_at',
+        'customer_id',
     ];
 
     protected $casts = [
