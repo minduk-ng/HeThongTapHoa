@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\SignupController;
 use App\Http\Controllers\Manager\CategoryController;
+use App\Http\Controllers\Manager\CustomerController;
 use App\Http\Controllers\Manager\DashboardController;
 use App\Http\Controllers\Manager\IngredientController;
 use App\Http\Controllers\Manager\OrderListController;
@@ -122,6 +123,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/categories', [CategoryController::class, 'store'])->middleware('permission:categories.create');
         Route::post('/categories/{category}', [CategoryController::class, 'update'])->middleware('permission:categories.edit');
         Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->middleware('permission:categories.delete');
+
+        // Customers Management
+        Route::get('/customers', [CustomerController::class, 'index'])->middleware('permission:customers.view');
+        Route::post('/customers', [CustomerController::class, 'store'])->middleware('permission:customers.create');
+        Route::post('/customers/{customer}', [CustomerController::class, 'update'])->middleware('permission:customers.edit');
+        Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware('permission:customers.delete');
 
         // Promotions Management
         Route::get('/promotions', [PromotionController::class, 'index'])->middleware('permission:promotions.view');
