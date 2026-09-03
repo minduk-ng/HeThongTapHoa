@@ -36,6 +36,8 @@ test('refund mot phan dong tao payment am va tra kho', function () {
 
     // kho: 25g hoàn về (đã trừ 50g lúc checkout từ stock_quantity=0)
     expect((float) $coffee->fresh()->stock_quantity)->toBe(-25.0);
+    // lô: 100 - 50 + 25 (không đếm 2 lần)
+    expect(\App\Services\Inventory\LotService::totalRemaining($coffee->id))->toBe(75.0);
 });
 
 test('khong hoan qua so luong da mua', function () {

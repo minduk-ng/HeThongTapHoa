@@ -106,8 +106,7 @@ class RefundController extends Controller
                             'ingredient_id' => $ingredient->id,
                             'quantity' => $qtyToReturn,
                             'unit_price' => null,
-                            'quantity_remaining' => $qtyToReturn,
-                        ]);
+                        ] + ($lot === null ? ['quantity_remaining' => $qtyToReturn] : []));
                     }
                 }
             });
