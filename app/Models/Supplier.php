@@ -26,9 +26,14 @@ class Supplier extends Model
     public function debt(): float
     {
         // tổng các phiếu nhập chưa trả — mỗi phiếu = SUM(quantity × unit_price) các dòng
-        return (float) $this->vouchers()
+        $vouchers = $this->relationLoaded('vouchers') ? $this->vouchers : $this->vouchers()->get();
+
+        return (float) $vouchers
             ->where('type', 'import')->where('is_paid', false)
-            ->get()
-            ->sum(fn ($v) => (float) $v->items->sum(fn ($i) => (float) $i->quantity * (float) $i->unit_price));
+            ->sum(function ($v) {
+                $items = $v->relationLoaded('items') ? $v->items : $v->items()->get();
+
+                return (float) $items->sum(fn ($i) => (float) $i->quantity * (float) $i->unit_price);
+            });
     }
 }

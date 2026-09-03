@@ -84,19 +84,25 @@ class ShiftController extends Controller
             'note' => 'nullable|string|max:255',
         ]);
 
-        $shift = Shift::open()->latest('id')->first();
-        if (! $shift) {
+        $movement = DB::transaction(function () use ($validated, $request) {
+            $shift = Shift::open()->latest('id')->lockForUpdate()->first();
+            if (! $shift) {
+                return null;
+            }
+
+            return CashMovement::create([
+                'shift_id' => $shift->id,
+                'type' => $validated['type'],
+                'category' => $validated['category'],
+                'amount' => $validated['amount'],
+                'note' => $validated['note'] ?? null,
+                'created_by' => $request->user()?->id,
+            ]);
+        });
+
+        if (! $movement) {
             return response()->json(['error' => 'Không có ca nào đang mở.'], 422);
         }
-
-        $movement = CashMovement::create([
-            'shift_id' => $shift->id,
-            'type' => $validated['type'],
-            'category' => $validated['category'],
-            'amount' => $validated['amount'],
-            'note' => $validated['note'] ?? null,
-            'created_by' => $request->user()?->id,
-        ]);
 
         return response()->json(['success' => true, 'movement' => $movement]);
     }

@@ -14,7 +14,7 @@ class SalesInvoiceReportController extends Controller
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
 
-        $invoices = Invoice::withCount('orders')
+        $invoices = Invoice::withCount('orders')->with('customer')
             ->whereBetween('issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
             ->orderByDesc('issued_at')
             ->get()
@@ -23,6 +23,7 @@ class SalesInvoiceReportController extends Controller
                 'id' => $invoice->id,
                 'invoice_code' => $invoice->invoice_code,
                 'table_name' => $invoice->table_name,
+                'customer_name' => $invoice->customer?->full_name,
                 'payment_method' => $invoice->payment_method,
                 'orders_count' => $invoice->orders_count,
                 'total_amount' => (float) $invoice->total_amount,

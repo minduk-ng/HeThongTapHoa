@@ -23,7 +23,19 @@ class CustomerController extends Controller
             });
         }
 
-        $customers = $query->orderBy('id', 'desc')->get(['id', 'full_name', 'phone', 'note']);
+        $customers = $query
+            ->withCount(['orders' => fn ($q) => $q->where('status', 'paid')])
+            ->withSum(['orders' => fn ($q) => $q->where('status', 'paid')], 'total')
+            ->orderBy('id', 'desc')
+            ->get(['id', 'full_name', 'phone', 'note'])
+            ->map(fn ($c) => [
+                'id' => $c->id,
+                'full_name' => $c->full_name,
+                'phone' => $c->phone,
+                'note' => $c->note,
+                'orders_count' => (int) $c->orders_count,
+                'total_spent' => (float) ($c->orders_sum_total ?? 0),
+            ]);
 
         return Inertia::render('manager/customers/CustomersManager', [
             'customers' => $customers,

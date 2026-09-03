@@ -76,6 +76,12 @@ class Order extends Model
         'reservation_time' => 'datetime',
     ];
 
+    /** @return BelongsTo<Customer, $this> */
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
+    }
+
     /** @return BelongsTo<Table, $this> */
     public function table(): BelongsTo
     {

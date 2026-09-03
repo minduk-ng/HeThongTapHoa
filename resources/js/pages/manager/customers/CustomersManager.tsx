@@ -13,6 +13,8 @@ export interface CustomerData {
     full_name: string;
     phone: string;
     note: string | null;
+    orders_count: number;
+    total_spent: number;
 }
 
 interface CustomersManagerProps {
@@ -132,6 +134,26 @@ export default function CustomersManager({
             render: (c) => (
                 <span className="text-zinc-500 dark:text-zinc-400">
                     {c.note || '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'orders_count',
+            header: 'Tổng số đơn',
+            sortable: true,
+            align: 'center',
+            render: (c) => (
+                <span className="tabular-nums">{c.orders_count}</span>
+            ),
+        },
+        {
+            key: 'total_spent',
+            header: 'Tổng tiền mua',
+            sortable: true,
+            align: 'right',
+            render: (c) => (
+                <span className="tabular-nums font-medium text-zinc-800 dark:text-zinc-200">
+                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(c.total_spent)}
                 </span>
             ),
         },

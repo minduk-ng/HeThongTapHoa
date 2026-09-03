@@ -21,6 +21,7 @@ interface InvoiceRow {
     id: number;
     invoice_code: string;
     table_name: string | null;
+    customer_name: string | null;
     payment_method: string;
     orders_count: number;
     total_amount: number;
@@ -49,6 +50,7 @@ const COLUMNS: ReportTableColumn[] = [
     { key: 'invoice_code', label: 'Mã HĐ' },
     { key: 'issued_at', label: 'Thời gian' },
     { key: 'table_name', label: 'Bàn' },
+    { key: 'customer_name', label: 'Khách hàng' },
     { key: 'orders_count', label: 'Số order', numeric: true },
     { key: 'payment_method', label: 'PTTT' },
     { key: 'total_amount', label: 'Tổng tiền', numeric: true },
@@ -90,7 +92,8 @@ export default function SalesInvoiceReport({
             (inv) =>
                 (!q ||
                     inv.invoice_code.toLowerCase().includes(q) ||
-                    (inv.table_name ?? '').toLowerCase().includes(q)) &&
+                    (inv.table_name ?? '').toLowerCase().includes(q) ||
+                    (inv.customer_name ?? '').toLowerCase().includes(q)) &&
                 (paymentFilter === 'all' ||
                     inv.payment_method === paymentFilter),
         );
@@ -135,6 +138,8 @@ export default function SalesInvoiceReport({
                 return formatDateTime(row.issued_at);
             case 'table_name':
                 return row.table_name ?? '—';
+            case 'customer_name':
+                return row.customer_name ?? '—';
             case 'orders_count':
                 return row.orders_count;
             case 'payment_method':
@@ -202,7 +207,7 @@ export default function SalesInvoiceReport({
             onReset={reset}
             searchValue={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Tìm theo mã HĐ hoặc bàn..."
+            searchPlaceholder="Tìm theo mã HĐ, bàn hoặc khách hàng..."
             extraFilters={
                 <select
                     value={paymentFilter}

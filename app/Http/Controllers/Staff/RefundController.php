@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Models\ProductRecipe;
 use App\Models\StockVoucher;
 use App\Services\Inventory\LotService;
+use App\Services\OrderActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +33,7 @@ class RefundController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $request) {
-                $invoice = Invoice::with('lines')->lockForUpdate()->findOrFail($validated['invoice_id']);
+                $invoice = Invoice::with(['lines', 'orders'])->lockForUpdate()->findOrFail($validated['invoice_id']);
 
                 if ($invoice->payment_method === '') {
                     throw new \Exception('Hóa đơn không hợp lệ để hoàn.', 422);
@@ -108,6 +109,20 @@ class RefundController extends Controller
                             'unit_price' => null,
                         ] + ($lot === null ? ['quantity_remaining' => $qtyToReturn] : []));
                     }
+                }
+
+                // Audit trail: mỗi order thuộc hóa đơn ghi nhận lượt hoàn trả
+                foreach ($invoice->orders as $order) {
+                    OrderActivityLogger::log($order, 'refund', $request->user()?->id, [
+                        'invoice_code' => $invoice->invoice_code,
+                        'amount' => $refundTotal,
+                        'items' => array_map(fn ($m) => [
+                            'invoice_line_id' => $m['line']->id,
+                            'name' => $m['line']->name_snapshot,
+                            'qty' => $m['qty'],
+                            'amount' => $m['amount'],
+                        ], $linesMap),
+                    ]);
                 }
             });
 

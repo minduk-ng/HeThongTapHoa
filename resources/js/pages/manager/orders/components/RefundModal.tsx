@@ -21,11 +21,22 @@ interface RefundModalProps {
 
 const REFUND_REASONS = ['Hàng lỗi', 'Khách hủy', 'Giao nhầm', 'Khác'];
 
+function getCsrfTokenFromCookie(): string {
+    if (typeof document === 'undefined') {
+        return '';
+    }
+
+    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+
+    return match ? decodeURIComponent(match[1]) : '';
+}
+
 export default function RefundModal({ isOpen, invoiceId, lines, onClose }: RefundModalProps) {
     const [qtys, setQtys] = useState<Record<number, number>>({});
     const [reason, setReason] = useState<string>(REFUND_REASONS[0]);
     const [note, setNote] = useState<string>('');
     const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     if (!isOpen) {
         return null;
@@ -36,31 +47,47 @@ export default function RefundModal({ isOpen, invoiceId, lines, onClose }: Refun
 
     const maxQty = (line: RefundLine) => line.quantity - line.refunded_qty;
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (submitting) {
+            return;
+        }
+
         setSubmitting(true);
-        router.post(
-            '/staff/pos/refund',
-            {
-                invoice_id: invoiceId,
-                items: lines
-                    .filter((l) => (qtys[l.id] ?? 0) > 0)
-                    .map((l) => ({ invoice_line_id: l.id, qty: qtys[l.id] })),
-                reason,
-                note: note.trim() || null,
-            },
-            {
-                onSuccess: () => {
-                    onClose();
+        setError(null);
+
+        try {
+            const response = await fetch('/staff/pos/refund', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-XSRF-TOKEN': getCsrfTokenFromCookie(),
+                    'X-Requested-With': 'XMLHttpRequest',
                 },
-                onFinish: () => {
-                    setSubmitting(false);
-                },
-                onError: () => {
-                    setSubmitting(false);
-                },
-            },
-        );
+                body: JSON.stringify({
+                    invoice_id: invoiceId,
+                    items: lines
+                        .filter((l) => (qtys[l.id] ?? 0) > 0)
+                        .map((l) => ({ invoice_line_id: l.id, qty: qtys[l.id] })),
+                    reason,
+                    note: note.trim() || null,
+                }),
+            });
+            const data = await response.json().catch(() => ({}));
+
+            if (response.ok && data.success) {
+                onClose();
+                router.reload({ only: ['order'], onError: () => {} });
+            } else {
+                setError(data.error || data.message || 'Hoàn trả thất bại. Vui lòng thử lại.');
+            }
+        } catch {
+            setError('Không thể kết nối máy chủ. Vui lòng kiểm tra mạng.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -84,6 +111,12 @@ export default function RefundModal({ isOpen, invoiceId, lines, onClose }: Refun
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                    {error && (
+                        <div className="rounded-xl bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800/60 px-3 py-2 text-xs text-rose-600 dark:text-rose-400">
+                            {error}
+                        </div>
+                    )}
+
                     <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
                         <table className="w-full text-left text-sm">
                             <thead className="bg-zinc-50 dark:bg-zinc-800/80">
