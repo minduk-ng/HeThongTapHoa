@@ -11,6 +11,7 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\ProductRecipe;
 use App\Models\StockVoucher;
+use App\Models\Supplier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -57,6 +58,7 @@ class StockVoucherController extends Controller
             'vouchers' => $vouchers,
             'filters' => $request->only(['type', 'from', 'to', 'search']),
             'ingredients' => $ingredients,
+            'suppliers' => Supplier::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
