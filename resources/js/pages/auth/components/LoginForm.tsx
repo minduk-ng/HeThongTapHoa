@@ -18,6 +18,7 @@ interface LoginFormProps {
 export default function LoginForm({ onSwitchToSignup, onSwitchToForgot }: LoginFormProps) {
     const [showPassword, setShowPassword] = useState(false);
     const [failedAttempts, setFailedAttempts] = useState(0);
+    const [showSpinner, setShowSpinner] = useState(false);
 
     const { data, setData, post, processing, errors, setError, clearErrors } = useForm({
         email: '',
@@ -25,6 +26,21 @@ export default function LoginForm({ onSwitchToSignup, onSwitchToForgot }: LoginF
         remember: false,
         recaptcha_token: '',
     });
+
+    useEffect(() => {
+        if (!processing) {
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setShowSpinner(true);
+        }, 300);
+
+        return () => {
+            clearTimeout(timer);
+            setShowSpinner(false);
+        };
+    }, [processing]);
 
     // Hàm gọi API check số lần sai khi rời ô nhập email (onBlur)
     const checkEmailAttempts = async (email: string) => {
@@ -200,10 +216,10 @@ return;
                 disabled={isSubmitDisabled}
                 className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
             >
-                {processing ? (
+                {showSpinner ? (
                     <span className="flex items-center justify-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin stroke-[1.5]" />
-                        Đang xử lý...
+                        Đang xử lý…
                     </span>
                 ) : (
                     'Đăng nhập'

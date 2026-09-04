@@ -1,5 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { KeyRound, ArrowLeft, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 
 interface ForgotPasswordProps {
@@ -7,9 +8,25 @@ interface ForgotPasswordProps {
 }
 
 export default function ForgotPassword({ onBack }: ForgotPasswordProps) {
+    const [showSpinner, setShowSpinner] = useState(false);
     const { data, setData, post, processing, errors } = useForm({
         email: '',
     });
+
+    useEffect(() => {
+        if (!processing) {
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setShowSpinner(true);
+        }, 300);
+
+        return () => {
+            clearTimeout(timer);
+            setShowSpinner(false);
+        };
+    }, [processing]);
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
@@ -49,10 +66,10 @@ export default function ForgotPassword({ onBack }: ForgotPasswordProps) {
                 disabled={processing}
                 className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
             >
-                {processing ? (
+                {showSpinner ? (
                     <span className="flex items-center justify-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin stroke-[1.5]" />
-                        Đang gửi yêu cầu...
+                        Đang gửi yêu cầu…
                     </span>
                 ) : (
                     'Gửi mã xác nhận'

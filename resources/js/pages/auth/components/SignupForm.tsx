@@ -1,6 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import GoogleButton from './GoogleButton';
 
 interface SignupFormProps {
@@ -10,12 +10,29 @@ interface SignupFormProps {
 export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
+    const [showSpinner, setShowSpinner] = useState(false);
+
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         email: '',
         password: '',
         password_confirmation: '',
     });
+
+    useEffect(() => {
+        if (!processing) {
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setShowSpinner(true);
+        }, 300);
+
+        return () => {
+            clearTimeout(timer);
+            setShowSpinner(false);
+        };
+    }, [processing]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -128,10 +145,10 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                 disabled={processing}
                 className="btn-primary"
             >
-                {processing ? (
+                {showSpinner ? (
                     <span className="flex items-center justify-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin stroke-[1.5]" />
-                        Đang xử lý...
+                        Đang xử lý…
                     </span>
                 ) : (
                     'Đăng ký'

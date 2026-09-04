@@ -86,6 +86,38 @@ export default function ProductFormDrawer({
     }, [productToEdit, isOpen, categories]);
 
     const [isCompressingImage, setIsCompressingImage] = useState(false);
+    const [showCompressingSpinner, setShowCompressingSpinner] = useState(false);
+    const [showSubmittingSpinner, setShowSubmittingSpinner] = useState(false);
+
+    useEffect(() => {
+        if (!isCompressingImage) {
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setShowCompressingSpinner(true);
+        }, 300);
+
+        return () => {
+            clearTimeout(timer);
+            setShowCompressingSpinner(false);
+        };
+    }, [isCompressingImage]);
+
+    useEffect(() => {
+        if (!submitting) {
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setShowSubmittingSpinner(true);
+        }, 300);
+
+        return () => {
+            clearTimeout(timer);
+            setShowSubmittingSpinner(false);
+        };
+    }, [submitting]);
 
     // Handle Ctrl+V Paste Image from Clipboard
     useEffect(() => {
@@ -294,10 +326,10 @@ return null;
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                                     {/* Enlarged Image Preview Box (w-36 h-36) */}
                                     <div className="w-36 h-36 rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 flex items-center justify-center overflow-hidden relative shrink-0 shadow-xs">
-                                        {isCompressingImage ? (
+                                        {showCompressingSpinner ? (
                                             <div className="text-center p-2 text-sky-600 dark:text-sky-400">
                                                 <Loader2 className="w-6 h-6 animate-spin mx-auto mb-1 stroke-[1.5]" />
-                                                <span className="text-[10px] font-medium block">Đang nén 600x600 WebP...</span>
+                                                <span className="text-[10px] font-medium block">Đang nén 600x600 WebP…</span>
                                             </div>
                                         ) : imagePreview ? (
                                             <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
@@ -419,7 +451,7 @@ return null;
                             disabled={submitting}
                             className="px-5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl shadow-xs disabled:opacity-50 transition-colors"
                         >
-                            {submitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+                            {showSubmittingSpinner ? 'Đang lưu…' : 'Lưu thay đổi'}
                         </button>
                     </div>
                 </div>
