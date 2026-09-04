@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal';
 import ManagerPageLayout from '../../../components/ManagerPageLayout';
 import DashboardLayout from '../../../layouts/DashboardLayout';
-import TableFormDrawer from './components/TableFormDrawer';
+import TableFormModal from './components/TableFormModal';
 import type { TableData } from './components/TableListTable';
 import TableListTable from './components/TableListTable';
 
@@ -23,7 +23,7 @@ export default function TableManager({ tables, areas, filters }: TableManagerPro
     const [selectedArea, setSelectedArea] = useState(filters.area || 'all');
     const [selectedStatus, setSelectedStatus] = useState(filters.status || 'all');
 
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [tableToEdit, setTableToEdit] = useState<TableData | null>(null);
 
     const [deletingTable, setDeletingTable] = useState<TableData | null>(null);
@@ -98,14 +98,14 @@ export default function TableManager({ tables, areas, filters }: TableManagerPro
         setSelectedStatus(status);
     };
 
-    const handleOpenAddDrawer = () => {
+    const handleOpenAddModal = () => {
         setTableToEdit(null);
-        setIsDrawerOpen(true);
+        setIsModalOpen(true);
     };
 
     const handleEditTable = (table: TableData) => {
         setTableToEdit(table);
-        setIsDrawerOpen(true);
+        setIsModalOpen(true);
     };
 
     const handleDeleteTable = (table: TableData) => {
@@ -215,7 +215,7 @@ return;
                 actions={
                     <button
                         type="button"
-                        onClick={handleOpenAddDrawer}
+                        onClick={handleOpenAddModal}
                         className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors shadow-xs"
                     >
                         <Plus className="w-3.5 h-3.5 stroke-2" />
@@ -313,10 +313,10 @@ return;
                 </div>
             </ManagerPageLayout>
 
-            {/* Table Form Drawer */}
-            <TableFormDrawer
-                isOpen={isDrawerOpen}
-                onClose={() => setIsDrawerOpen(false)}
+            {/* Table Form Modal */}
+            <TableFormModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
                 tableToEdit={tableToEdit}
                 areas={areas}
             />

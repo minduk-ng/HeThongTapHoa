@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal';
 import ManagerPageLayout from '../../../components/ManagerPageLayout';
 import DashboardLayout from '../../../layouts/DashboardLayout';
-import CategoryFormDrawer from './components/CategoryFormDrawer';
+import CategoryFormModal from './components/CategoryFormModal';
 import type { CategoryData } from './components/CategoryTable';
 import CategoryTable from './components/CategoryTable';
 
@@ -18,8 +18,8 @@ interface CategoriesManagerProps {
 export default function CategoriesManager({ categories, filters }: CategoriesManagerProps) {
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
 
-    // Modals and Drawer States
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    // Modals States
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [categoryToEdit, setCategoryToEdit] = useState<CategoryData | null>(null);
 
     // Delete confirmation state
@@ -56,14 +56,14 @@ return true;
         setSearchQuery(query);
     };
 
-    const handleOpenAddDrawer = () => {
+    const handleOpenAddModal = () => {
         setCategoryToEdit(null);
-        setIsDrawerOpen(true);
+        setIsModalOpen(true);
     };
 
     const handleEditCategory = (category: CategoryData) => {
         setCategoryToEdit(category);
-        setIsDrawerOpen(true);
+        setIsModalOpen(true);
     };
 
     const handleDeleteCategory = (category: CategoryData) => {
@@ -135,7 +135,7 @@ return;
                 actions={
                     <button
                         type="button"
-                        onClick={handleOpenAddDrawer}
+                        onClick={handleOpenAddModal}
                         className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors shadow-xs"
                     >
                         <Plus className="w-3.5 h-3.5 stroke-2" />
@@ -179,10 +179,10 @@ return;
                 />
             </ManagerPageLayout>
 
-            {/* Category Form Drawer */}
-            <CategoryFormDrawer
-                isOpen={isDrawerOpen}
-                onClose={() => setIsDrawerOpen(false)}
+            {/* Category Form Modal */}
+            <CategoryFormModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
                 categoryToEdit={categoryToEdit}
             />
 
