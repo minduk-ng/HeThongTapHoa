@@ -123,7 +123,7 @@ export default function POSToolbar({
                     <Armchair className="w-3.5 h-3.5 stroke-[1.5]" />
                     <span>Chọn bàn</span>
                     {selectedTable && (
-                        <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px] tabular-nums">
+                        <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-white/20 text-[11px] tabular-nums">
                             {selectedTable.table_number}
                         </span>
                     )}
@@ -137,7 +137,7 @@ export default function POSToolbar({
                     <UtensilsCrossed className="w-3.5 h-3.5 stroke-[1.5]" />
                     <span>Chọn món</span>
                     {cartItemCount > 0 && (
-                        <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-amber-400 text-amber-950 font-bold text-[10px] tabular-nums">
+                        <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-amber-400 text-amber-950 font-bold text-[11px] tabular-nums">
                             {cartItemCount}
                         </span>
                     )}
@@ -184,7 +184,7 @@ export default function POSToolbar({
                         title="Xem chi tiết kết nối mạng"
                     >
                         <span className={`w-2 h-2 rounded-full ${wsConfig.dotClass}`} />
-                        <span className="text-[10px] font-semibold tabular-nums text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200">
+                        <span className="text-[11px] font-semibold tabular-nums text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200">
                             {wsConfig.label}
                         </span>
                     </button>
@@ -223,7 +223,7 @@ export default function POSToolbar({
                 >
                     <Activity className="w-4 h-4 stroke-[1.5]" />
                     {unreadErrorCount > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 px-1 py-0.5 rounded-full bg-rose-600 text-white font-bold text-[9px] tabular-nums animate-pulse border border-white dark:border-zinc-900 shadow-xs">
+                        <span className="absolute -top-0.5 -right-0.5 px-1 py-0.5 rounded-full bg-rose-600 text-white font-bold text-[11px] tabular-nums animate-pulse border border-white dark:border-zinc-900 shadow-xs">
                             {unreadErrorCount}
                         </span>
                     )}

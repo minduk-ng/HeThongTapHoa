@@ -263,7 +263,7 @@ return;
                 disabled={status === 'processing' || status === 'success' || otp.join('').length !== 6}
                 className="btn-primary"
             >
-                {status === 'processing' ? 'Đang xác thực...' : status === 'success' ? 'Xác thực thành công!' : 'Xác thực'}
+                {status === 'processing' ? 'Đang xác thực…' : status === 'success' ? 'Xác thực thành công!' : 'Xác thực'}
             </button>
 
             <p className="auth-footer">

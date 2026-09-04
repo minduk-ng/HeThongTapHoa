@@ -213,13 +213,13 @@ return oldest;
             <div className={`p-3 ${headerBgClass} space-y-1.5 shadow-xs`}>
                 <div className="flex items-start justify-between">
                     <div>
-                        <span className="block text-[10px] font-bold tracking-wider text-white/85 uppercase font-mono">
+                        <span className="block text-[11px] font-bold tracking-wider text-white/85 uppercase font-mono">
                             {order.order_code}
                         </span>
                         <h3 className="font-display text-lg font-bold leading-tight text-white mt-1 flex flex-wrap items-center gap-1.5">
                             <span>{order.table?.table_number || 'Mang về'}</span>
                             {hasAdditional && (
-                                <span className="inline-flex items-center space-x-0.5 rounded-md border border-amber-300/40 bg-amber-300/35 px-1.5 py-0.5 text-[9px] font-semibold text-amber-100 shrink-0">
+                                <span className="inline-flex items-center space-x-0.5 rounded-md border border-amber-300/40 bg-amber-300/35 px-1.5 py-0.5 text-[11px] font-semibold text-amber-100 shrink-0">
                                     <AlertTriangle className="h-2.5 w-2.5 stroke-[1.5]" />
                                     <span>Gọi thêm</span>
                                 </span>
@@ -306,14 +306,14 @@ return oldest;
                             <button
                                 type="button"
                                 onClick={handleRetryFailed}
-                                className="rounded-md bg-rose-600 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-rose-700"
+                                className="rounded-md bg-rose-600 px-2 py-1 text-xs font-bold text-white transition-colors hover:bg-rose-700"
                             >
                                 Thử lại
                             </button>
                             <button
                                 type="button"
                                 onClick={handleDiscardFailed}
-                                className="rounded-md border border-rose-300 px-2 py-1 text-[10px] font-bold text-rose-600 transition-colors hover:bg-rose-100 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-900/40"
+                                className="rounded-md border border-rose-300 px-2 py-1 text-xs font-bold text-rose-600 transition-colors hover:bg-rose-100 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-900/40"
                             >
                                 Bỏ qua
                             </button>

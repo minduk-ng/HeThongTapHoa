@@ -142,11 +142,11 @@ export default function POSMenuTab({
 
                                     {/* Stock badges */}
                                     {isOutOfStock ? (
-                                        <span className="absolute top-1 left-1 rounded-md bg-rose-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                        <span className="absolute top-1 left-1 rounded-md bg-rose-600 px-1.5 py-0.5 text-[11px] font-semibold text-white">
                                             Hết hàng
                                         </span>
                                     ) : isLowStock ? (
-                                        <span className="absolute top-1 left-1 rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                        <span className="absolute top-1 left-1 rounded-md bg-amber-500 px-1.5 py-0.5 text-[11px] font-semibold text-white">
                                             Còn {maxServings} suất
                                         </span>
                                     ) : null}

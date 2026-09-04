@@ -147,7 +147,7 @@ return null;
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4" onClick={onClose}>
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-auto p-6" onClick={(e) => e.stopPropagation()}>
                 <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3 mb-4">
-                    <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Danh sách mã {promotion?.code_prefix || ''}</h3>
+                    <h3 className="font-display text-lg font-bold text-zinc-900 dark:text-zinc-100">Danh sách mã {promotion?.code_prefix || ''}</h3>
                     <div className="flex items-center gap-2">
                         {promotion && promotion.codes_count > 0 && (promotion.type === 'coupon' || promotion.type === 'voucher') && (
                             <>

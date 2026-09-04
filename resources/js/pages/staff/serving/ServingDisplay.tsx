@@ -442,7 +442,7 @@ return;
                                         }`}
                                     >
                                         <span>{f.tableNumber}</span>
-                                        <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] tabular-nums ${
+                                        <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[11px] tabular-nums ${
                                             activeFilter === f.tableNumber
                                                 ? 'bg-white/20'
                                                 : 'bg-zinc-200 dark:bg-zinc-700'
@@ -557,7 +557,7 @@ return;
                                                     {card.table_number}
                                                 </span>
                                                 {card.table_area && (
-                                                    <span className="text-[10px] font-medium text-zinc-400 truncate">
+                                                    <span className="text-[11px] font-medium text-zinc-400 truncate">
                                                         {card.table_area}
                                                     </span>
                                                 )}
@@ -577,7 +577,7 @@ return;
                                                         </span>
                                                     </div>
                                                     {item.note && (
-                                                        <span className="text-[10px] text-amber-600 dark:text-amber-400 shrink-0 italic max-w-[120px] truncate">
+                                                        <span className="text-[11px] text-amber-600 dark:text-amber-400 shrink-0 italic max-w-[120px] truncate">
                                                             {item.note}
                                                         </span>
                                                     )}
@@ -611,7 +611,7 @@ return;
                                                             onClick={(e) => {
  e.stopPropagation(); retry(failedCmd.id); 
 }}
-                                                            className="rounded-md bg-rose-600 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-rose-700"
+                                                            className="rounded-md bg-rose-600 px-2 py-1 text-xs font-bold text-white transition-colors hover:bg-rose-700"
                                                         >
                                                             Thử lại
                                                         </button>
@@ -620,7 +620,7 @@ return;
                                                             onClick={(e) => {
  e.stopPropagation(); discard(failedCmd.id); 
 }}
-                                                            className="rounded-md border border-rose-300 px-2 py-1 text-[10px] font-bold text-rose-600 transition-colors hover:bg-rose-100 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-900/40"
+                                                            className="rounded-md border border-rose-300 px-2 py-1 text-xs font-bold text-rose-600 transition-colors hover:bg-rose-100 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-900/40"
                                                         >
                                                             Bỏ qua
                                                         </button>

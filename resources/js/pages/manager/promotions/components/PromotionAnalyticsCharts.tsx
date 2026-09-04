@@ -12,7 +12,7 @@ export default function PromotionAnalyticsCharts({ daily, types }: { daily: Dail
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-8 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5">
-                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Doanh thu &amp; Số lượt dùng theo ngày</h3>
+                <h3 className="font-display text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Doanh thu &amp; Số lượt dùng theo ngày</h3>
                 <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={daily}>
@@ -27,7 +27,7 @@ export default function PromotionAnalyticsCharts({ daily, types }: { daily: Dail
                 </div>
             </div>
             <div className="lg:col-span-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5">
-                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Tỷ lệ sử dụng</h3>
+                <h3 className="font-display text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Tỷ lệ sử dụng</h3>
                 <div className="h-64 flex items-center justify-center">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>

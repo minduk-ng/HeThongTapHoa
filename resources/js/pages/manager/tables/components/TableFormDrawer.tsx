@@ -430,7 +430,7 @@ return null;
                             disabled={submitting}
                             className="px-5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl shadow-xs disabled:opacity-50 transition-colors"
                         >
-                            {submitting ? 'Đang lưu...' : mode === 'batch' ? 'Khởi tạo danh sách bàn' : 'Lưu thay đổi'}
+                            {submitting ? 'Đang lưu…' : mode === 'batch' ? 'Khởi tạo danh sách bàn' : 'Lưu thay đổi'}
                         </button>
                     </div>
                 </div>

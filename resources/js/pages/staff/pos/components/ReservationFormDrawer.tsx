@@ -76,7 +76,7 @@ return;
                 <div className="flex-none p-5 pb-4 border-b border-zinc-100 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/50">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                            <h2 className="font-display text-xl font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                                 <CalendarClock className="w-5 h-5 text-violet-600 dark:text-violet-400" />
                                 Đặt bàn — {table.table_number}
                             </h2>

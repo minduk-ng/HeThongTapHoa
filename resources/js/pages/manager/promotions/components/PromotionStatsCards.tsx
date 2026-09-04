@@ -30,7 +30,7 @@ export default function PromotionStatsCards({ stats }: { stats: Stats }) {
                             <c.icon className={`w-4 h-4 ${c.color}`} />
                         </div>
                     </div>
-                    <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{c.value}</div>
+                    <div className="font-display text-2xl font-bold tabular-nums text-zinc-900 dark:text-zinc-100">{c.value}</div>
                 </div>
             ))}
         </div>

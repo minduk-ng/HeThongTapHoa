@@ -298,7 +298,7 @@ export default function POSCartPanel({
                         </h2>
                         {(selectedTable.merged_into_table ||
                             selectedTable.merged_into_table_id) && (
-                            <span className="shrink-0 rounded-md bg-amber-100 border border-amber-200 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-300">
+                            <span className="shrink-0 rounded-md bg-amber-100 border border-amber-200 px-1.5 py-0.5 text-[11px] font-bold text-amber-800 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-300">
                                 Gộp {selectedTable.merged_into_table?.table_number || `#${selectedTable.merged_into_table_id}`}
                             </span>
                         )}
@@ -470,7 +470,7 @@ return '';
                             </div>
                             <div className="flex flex-col items-end gap-1.5 shrink-0">
                                 {((reservedOrder?.deposit_total || 0) > 0) && (
-                                    <span className="rounded-md border border-violet-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300">
+                                    <span className="rounded-md border border-violet-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300">
                                         Đã cọc {reservedOrder?.deposit_total?.toLocaleString('vi-VN')} đ
                                     </span>
                                 )}
@@ -478,7 +478,7 @@ return '';
                                     <button
                                         type="button"
                                         onClick={() => setIsCancelReservationModalOpen(true)}
-                                        className="text-[10px] font-medium text-rose-600 hover:underline dark:text-rose-400"
+                                        className="text-xs font-medium text-rose-600 hover:underline dark:text-rose-400"
                                     >
                                         Hủy đặt bàn
                                     </button>
@@ -568,7 +568,7 @@ prevSentTime = t;
                                             </h4>
                                             {item.isConfirmed && (
                                                 <span
-                                                    className={`shrink-0 rounded-md border px-1.5 py-px text-[10px] font-medium ${
+                                                    className={`shrink-0 rounded-md border px-1.5 py-px text-[11px] font-medium ${
                                                         item.isServed
                                                             ? 'border-emerald-250 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
                                                             : item.isKitchenCompleted
@@ -584,7 +584,7 @@ prevSentTime = t;
                                                 </span>
                                             )}
                                             {(item.stagedReduceQty || 0) > 0 && (
-                                                <span className="shrink-0 rounded-md border border-amber-300 bg-amber-100 px-1.5 py-px text-[10px] font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                                                <span className="shrink-0 rounded-md border border-amber-300 bg-amber-100 px-1.5 py-px text-[11px] font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
                                                     Giảm {item.stagedReduceQty}
                                                 </span>
                                             )}
@@ -729,10 +729,10 @@ prevSentTime = t;
                                     <div key={`round_${roundIdx}`} className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
                                         {hasMultipleRounds && (
                                             <div className="border-b border-zinc-100 bg-zinc-50/80 px-2.5 py-1 dark:border-zinc-800 dark:bg-zinc-800/60">
-                                                <span className="text-[10px] font-semibold text-zinc-500 tabular-nums dark:text-zinc-400">
+                                                <span className="text-[11px] font-semibold text-zinc-500 tabular-nums dark:text-zinc-400">
                                                     Lần gọi {roundIdx + 1}
                                                 </span>
-                                                <span className="ml-1.5 text-[10px] text-zinc-400 tabular-nums dark:text-zinc-600">
+                                                <span className="ml-1.5 text-[11px] text-zinc-400 tabular-nums dark:text-zinc-600">
                                                     ({roundItems.length} món)
                                                 </span>
                                             </div>

@@ -231,14 +231,14 @@ return;
                                     <p className="font-display text-3xl font-black text-amber-500 tabular-nums">
                                         {String(live_operations.kds.pending_count).padStart(2, '0')}
                                     </p>
-                                    <span className="px-2 py-0.5 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 rounded-full text-[9px] font-bold uppercase tracking-wider">Đang chờ</span>
+                                    <span className="px-2 py-0.5 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 rounded-full text-[11px] font-bold uppercase tracking-wider">Đang chờ</span>
                                 </div>
                                 <div className="w-px h-12 bg-zinc-200 dark:bg-zinc-800"></div>
                                 <div className="text-center">
                                     <p className="font-display text-3xl font-black text-emerald-500 tabular-nums">
                                         {String(live_operations.kds.completed_count).padStart(2, '0')}
                                     </p>
-                                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-full text-[9px] font-bold uppercase tracking-wider">Hoàn thành</span>
+                                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-full text-[11px] font-bold uppercase tracking-wider">Hoàn thành</span>
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -247,7 +247,7 @@ return;
                                         <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 truncate pr-2">
                                             {kdsItem.name} (x{kdsItem.quantity})
                                         </span>
-                                        <span className="text-[10px] text-zinc-400 shrink-0 font-medium tabular-nums">{kdsItem.time_ago}</span>
+                                        <span className="text-[11px] text-zinc-400 shrink-0 font-medium tabular-nums">{kdsItem.time_ago}</span>
                                     </div>
                                 ))}
                             </div>
@@ -270,7 +270,7 @@ return;
                                     </span>
                                 </div>
                                 {live_operations.serving.queue_count > 0 && (
-                                    <div className="absolute -top-1 -right-1 w-5.5 h-5.5 bg-rose-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white dark:border-zinc-900 animate-bounce">
+                                    <div className="absolute -top-1 -right-1 w-5.5 h-5.5 bg-rose-500 rounded-full flex items-center justify-center text-[11px] font-bold text-white border-2 border-white dark:border-zinc-900 animate-pulse">
                                         !
                                     </div>
                                 )}
@@ -293,9 +293,9 @@ return;
                         <div className="p-4 border-b border-zinc-100 dark:border-zinc-900 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50">
                             <h4 className="font-display text-sm font-bold text-zinc-900 dark:text-white">Sơ đồ bàn thực tế</h4>
                             <div className="flex gap-2">
-                                <div className="flex items-center gap-1 text-[9px] font-bold"><span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Bận</div>
-                                <div className="flex items-center gap-1 text-[9px] font-bold"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Trả</div>
-                                <div className="flex items-center gap-1 text-[9px] font-bold"><span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span> Cọc</div>
+                                <div className="flex items-center gap-1 text-[11px] font-bold"><span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Bận</div>
+                                <div className="flex items-center gap-1 text-[11px] font-bold"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Trả</div>
+                                <div className="flex items-center gap-1 text-[11px] font-bold"><span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span> Cọc</div>
                             </div>
                         </div>
                         <div className="p-4 flex-1 grid grid-cols-4 gap-2 overflow-y-auto max-h-[250px]">
@@ -305,8 +305,8 @@ return;
                                     className={`aspect-square border rounded-xl flex flex-col items-center justify-center text-center p-1.5 transition-colors duration-150 ${getTableColorClass(tbl.status)}`}
                                     title={tbl.reservation_name ? `Cọc: ${tbl.reservation_name}` : tbl.status}
                                 >
-                                    <span className="text-[10px] font-bold tracking-tight">{tbl.name}</span>
-                                    <span className="text-[8px] opacity-80 scale-90 truncate max-w-full font-medium mt-0.5">
+                                    <span className="text-[11px] font-bold tracking-tight">{tbl.name}</span>
+                                    <span className="text-[11px] opacity-80 scale-90 truncate max-w-full font-medium mt-0.5">
                                         {tbl.status === 'ready' ? 'Trống' : tbl.status === 'billing' ? 'Trả' : tbl.status === 'reserved' ? 'Cọc' : 'Bận'}
                                     </span>
                                 </div>

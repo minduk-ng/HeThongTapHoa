@@ -207,7 +207,7 @@ return true;
                                     </span>
                                     <div className="flex flex-col items-end gap-1">
                                         <span
-                                            className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
+                                            className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${
                                                 isOccupied
                                                     ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/60 dark:text-amber-300'
                                                     : isReserved
@@ -230,7 +230,7 @@ return true;
                                         </span>
 
                                         {groupLockInfo && (
-                                            <span className="rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-600 dark:border-rose-800/60 dark:bg-rose-950/60">
+                                            <span className="rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[11px] font-semibold text-rose-600 dark:border-rose-800/60 dark:bg-rose-950/60">
                                                 Đang thanh toán:{' '}
                                                 {groupLockInfo.employeeName}
                                             </span>
