@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
 use Illuminate\Support\Facades\Cache;
 
 class MenuCategory extends Model
@@ -29,6 +28,7 @@ class MenuCategory extends Model
         });
     }
 
+    /** @return HasMany<MenuItem, $this> */
     public function items(): HasMany
     {
         return $this->hasMany(MenuItem::class, 'category_id');

@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $id
@@ -11,11 +13,12 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $ingredient_id
  * @property float $amount
  * @property string $unit
- * @property-read \App\Models\MenuItem $menuItem
- * @property-read \App\Models\Ingredient $ingredient
+ * @property-read MenuItem $menuItem
+ * @property-read Ingredient $ingredient
  */
 class ProductRecipe extends Model
 {
+    /** @use HasFactory<Factory<ProductRecipe>> */
     use HasFactory;
 
     protected $fillable = [
@@ -29,12 +32,14 @@ class ProductRecipe extends Model
         'amount' => 'float',
     ];
 
-    public function menuItem(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    /** @return BelongsTo<MenuItem, $this> */
+    public function menuItem(): BelongsTo
     {
         return $this->belongsTo(MenuItem::class, 'menu_item_id');
     }
 
-    public function ingredient(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    /** @return BelongsTo<Ingredient, $this> */
+    public function ingredient(): BelongsTo
     {
         return $this->belongsTo(Ingredient::class, 'ingredient_id');
     }

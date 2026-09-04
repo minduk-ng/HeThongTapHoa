@@ -14,6 +14,7 @@ class PromotionAction extends Model
         'max_discount_amount' => 'float',
     ];
 
+    /** @return BelongsTo<Promotion, $this> */
     public function promotion(): BelongsTo
     {
         return $this->belongsTo(Promotion::class);

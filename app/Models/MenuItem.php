@@ -54,11 +54,13 @@ class MenuItem extends Model
         });
     }
 
+    /** @return BelongsTo<MenuCategory, $this> */
     public function category(): BelongsTo
     {
         return $this->belongsTo(MenuCategory::class, 'category_id');
     }
 
+    /** @return HasMany<ProductRecipe, $this> */
     public function recipes(): HasMany
     {
         return $this->hasMany(ProductRecipe::class, 'menu_item_id');

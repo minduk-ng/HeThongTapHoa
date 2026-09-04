@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Cache;
@@ -11,9 +12,9 @@ use Illuminate\Support\Facades\Cache;
  * @property string $name
  * @property string|null $description
  * @property bool $is_system
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Permission> $permissions
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Page> $pages
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $users
+ * @property-read Collection<int, Permission> $permissions
+ * @property-read Collection<int, Page> $pages
+ * @property-read Collection<int, User> $users
  */
 class Role extends Model
 {
@@ -44,16 +45,19 @@ class Role extends Model
         });
     }
 
+    /** @return BelongsToMany<Permission, $this, RolePermission> */
     public function permissions(): BelongsToMany
     {
         return $this->belongsToMany(Permission::class, 'role_permissions')->using(RolePermission::class);
     }
 
+    /** @return BelongsToMany<Page, $this> */
     public function pages(): BelongsToMany
     {
         return $this->belongsToMany(Page::class, 'role_pages');
     }
 
+    /** @return BelongsToMany<User, $this, UserRole> */
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'user_roles')->using(UserRole::class);

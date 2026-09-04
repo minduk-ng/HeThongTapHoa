@@ -13,6 +13,7 @@ class PromotionTimeSlot extends Model
         'day_of_week' => 'int',
     ];
 
+    /** @return BelongsTo<Promotion, $this> */
     public function promotion(): BelongsTo
     {
         return $this->belongsTo(Promotion::class);

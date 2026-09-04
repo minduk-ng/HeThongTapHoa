@@ -2,14 +2,16 @@
 
 namespace App\Models;
 
-use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
- * @property \Carbon\Carbon $opened_at
- * @property \Carbon\Carbon|null $closed_at
+ * @property Carbon $opened_at
+ * @property Carbon|null $closed_at
  * @property float $opening_cash
  * @property float|null $closing_cash
  * @property float|null $actual_cash
@@ -18,8 +20,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $opened_by
  * @property int|null $closed_by
  * @property string|null $note
- * @property-read \App\Models\User $openedBy
- * @property-read \App\Models\User|null $closedBy
+ * @property-read User $openedBy
+ * @property-read User|null $closedBy
  */
 class Shift extends Model
 {
@@ -44,22 +46,28 @@ class Shift extends Model
         'actual_cash' => 'float',
     ];
 
+    /** @param Builder<Shift> $query
+     * @return Builder<Shift>
+     */
     public function scopeOpen(Builder $query): Builder
     {
         return $query->where('status', 'open');
     }
 
-    public function movements(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /** @return HasMany<CashMovement, $this> */
+    public function movements(): HasMany
     {
         return $this->hasMany(CashMovement::class);
     }
 
-    public function openedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    /** @return BelongsTo<User, $this> */
+    public function openedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'opened_by');
     }
 
-    public function closedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    /** @return BelongsTo<User, $this> */
+    public function closedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'closed_by');
     }

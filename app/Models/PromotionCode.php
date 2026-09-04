@@ -14,6 +14,7 @@ class PromotionCode extends Model
         'used_at' => 'datetime',
     ];
 
+    /** @return BelongsTo<Promotion, $this> */
     public function promotion(): BelongsTo
     {
         return $this->belongsTo(Promotion::class);

@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class InvoiceLine extends Model
 {
@@ -25,7 +27,8 @@ class InvoiceLine extends Model
     /** Doanh thu thực thu 1 dòng = giá bán sau giảm giá (đã gồm VAT). */
     public const REVENUE_SQL = 'invoice_lines.subtotal - invoice_lines.discount_amount';
 
-    public function invoice()
+    /** @return BelongsTo<Invoice, $this> */
+    public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
     }
@@ -36,8 +39,11 @@ class InvoiceLine extends Model
         return (float) $this->subtotal - (float) $this->discount_amount;
     }
 
-    /** Giới hạn lines thuộc các hóa đơn phát hành trong khoảng ngày. */
-    public function scopeSettledBetween($query, string $from, string $to)
+    /** Giới hạn lines thuộc các hóa đơn phát hành trong khoảng ngày.
+     * @param Builder<InvoiceLine> $query
+     * @return Builder<InvoiceLine>
+     */
+    public function scopeSettledBetween(Builder $query, string $from, string $to): Builder
     {
         return $query
             ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')

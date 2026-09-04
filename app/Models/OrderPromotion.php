@@ -13,16 +13,19 @@ class OrderPromotion extends Model
         'discount_applied' => 'float',
     ];
 
+    /** @return BelongsTo<Invoice, $this> */
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
     }
 
+    /** @return BelongsTo<Order, $this> */
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
     }
 
+    /** @return BelongsTo<Promotion, $this> */
     public function promotion(): BelongsTo
     {
         return $this->belongsTo(Promotion::class);

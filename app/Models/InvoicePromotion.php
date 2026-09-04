@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class InvoicePromotion extends Model
 {
@@ -19,12 +20,14 @@ class InvoicePromotion extends Model
         'amount' => 'float',
     ];
 
-    public function invoice()
+    /** @return BelongsTo<Invoice, $this> */
+    public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
     }
 
-    public function promotion()
+    /** @return BelongsTo<Promotion, $this> */
+    public function promotion(): BelongsTo
     {
         return $this->belongsTo(Promotion::class);
     }

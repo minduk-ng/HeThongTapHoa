@@ -17,6 +17,7 @@ class DailyPromotionStat extends Model
         'unique_orders' => 'int',
     ];
 
+    /** @return BelongsTo<Promotion, $this> */
     public function promotion(): BelongsTo
     {
         return $this->belongsTo(Promotion::class);

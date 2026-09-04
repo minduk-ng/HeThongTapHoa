@@ -44,6 +44,7 @@ class User extends Authenticatable
         ];
     }
 
+    /** @return BelongsToMany<Role, $this, UserRole> */
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'user_roles')->using(UserRole::class);
@@ -68,10 +69,11 @@ class User extends Authenticatable
         return in_array($permission, $this->getAllPermissions());
     }
 
+    /** @return array<int, string> */
     public function getAllPermissions(): array
     {
         if ($this->isAdmin()) {
-            return Permission::pluck('name')->toArray();
+            return Permission::pluck('name')->map(fn ($name): string => (string) $name)->values()->all();
         }
 
         return Cache::remember("user_permissions:{$this->id}", now()->addMinutes(15), function () {
@@ -81,7 +83,7 @@ class User extends Authenticatable
                 $permissions = $permissions->merge($role->permissions->pluck('name'));
             }
 
-            return $permissions->unique()->values()->toArray();
+            return $permissions->unique()->values()->map(fn ($name): string => (string) $name)->values()->all();
         });
     }
 }

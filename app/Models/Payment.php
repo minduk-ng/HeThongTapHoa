@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
@@ -10,12 +11,14 @@ class Payment extends Model
 
     protected $casts = ['amount' => 'float'];
 
-    public function invoice()
+    /** @return BelongsTo<Invoice, $this> */
+    public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
     }
 
-    public function receivedBy()
+    /** @return BelongsTo<User, $this> */
+    public function receivedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'received_by');
     }

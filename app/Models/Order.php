@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,6 +38,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Order extends Model
 {
+    /** @use HasFactory<Factory<Order>> */
     use HasFactory;
 
     /** Trạng thái đơn đang hoạt động (chưa paid/cancelled). */
@@ -45,7 +47,7 @@ class Order extends Model
     /** Trạng thái đơn vận hành (gồm cả đặt bàn chưa check-in). */
     public const OPERATIONAL_STATUSES = ['draft', 'pending', 'confirmed', 'processing', 'completed', 'reserved'];
 
-    public $afterCommit = true;
+    public bool $afterCommit = true;
 
     protected $fillable = [
         'order_code',

@@ -25,6 +25,7 @@ class Customer extends Model
 {
     protected $fillable = ['full_name', 'phone', 'note', 'created_by'];
 
+    /** @return BelongsTo<User, $this> */
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
