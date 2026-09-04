@@ -24,7 +24,7 @@ class OrderTotals
      * Gom preview từ danh sách order_items (đã lọc status != 'cancelled').
      * Mỗi item dùng $item->subtotal và $item->menuItem?->vat_rate.
      *
-     * @param  iterable<object>  $items
+     * @param  iterable<object{subtotal: float|int, menuItem: object{vat_rate: float|int|null}}>  $items
      * @return array{subtotal: float, vat_amount: float}
      */
     public static function preview(iterable $items): array

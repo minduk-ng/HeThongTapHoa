@@ -29,8 +29,15 @@ class StocktakeController extends Controller
             'items.*.actual_qty' => 'required|numeric|min:0',
         ]);
 
-        $changes = collect($validated['items'])->filter(fn ($it) => abs((float) $it['actual_qty'] - LotService::totalRemaining((int) $it['ingredient_id'])) > 0.0001
-            || abs((float) $it['actual_qty'] - (float) Ingredient::find((int) $it['ingredient_id'])?->stock_quantity) > 0.0001);
+        $changedItems = [];
+        foreach ($validated['items'] ?? [] as $it) {
+            $actual = (float) $it['actual_qty'];
+            if (abs($actual - LotService::totalRemaining((int) $it['ingredient_id'])) > 0.0001
+                || abs($actual - (float) Ingredient::find((int) $it['ingredient_id'])?->stock_quantity) > 0.0001) {
+                $changedItems[] = $it;
+            }
+        }
+        $changes = collect($changedItems);
 
         if ($changes->isEmpty()) {
             return back()->with('info', 'Không có thay đổi tồn kho nào.');
@@ -40,7 +47,7 @@ class StocktakeController extends Controller
             $voucher = LotService::createAdjustmentVoucher($request->user()?->id, 'Kiểm kê kho', []);
 
             foreach ($changes as $it) {
-                $ing = Ingredient::lockForUpdate()->find($it['ingredient_id']);
+                $ing = Ingredient::query()->lockForUpdate()->find((int) $it['ingredient_id']);
                 if (! $ing) {
                     continue;
                 }

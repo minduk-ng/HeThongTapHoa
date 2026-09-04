@@ -61,7 +61,10 @@ class LotService
         return null;
     }
 
-    /** Tạo phiếu điều chỉnh + sinh mã KK-yyyymmdd-nnn (giữ chuẩn StocktakeController cũ). */
+    /** Tạo phiếu điều chỉnh + sinh mã KK-yyyymmdd-nnn (giữ chuẩn StocktakeController cũ).
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     */
     public static function createAdjustmentVoucher(?int $userId, string $note, array $rows): StockVoucher
     {
         $employeeId = Employee::idForUser($userId);

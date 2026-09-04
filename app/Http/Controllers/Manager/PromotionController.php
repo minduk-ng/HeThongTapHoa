@@ -504,6 +504,9 @@ class PromotionController extends Controller
         }
     }
 
+    /**
+     * @param  array<string, mixed>  $validated
+     */
     private function assertTypeConfigValid(array $validated, ?Promotion $promotion = null): void
     {
         if (($validated['type'] ?? null) === 'coupon'

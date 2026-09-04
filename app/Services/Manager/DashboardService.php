@@ -15,7 +15,13 @@ use Illuminate\Support\Facades\Log;
 
 final class DashboardService
 {
-    private function cached(string $key, int $ttl, callable $loader): mixed
+    /**
+     * @template T
+     *
+     * @param  \Closure(): T  $loader
+     * @return T
+     */
+    private function cached(string $key, int $ttl, \Closure $loader): mixed
     {
         try {
             return Cache::tags(['dashboard'])->remember($key, $ttl, $loader);
@@ -26,6 +32,9 @@ final class DashboardService
         }
     }
 
+    /**
+     * @return array{Carbon, Carbon, Carbon, Carbon}
+     */
     public function getDateBounds(string $range): array
     {
         $now = Carbon::now();
@@ -60,6 +69,9 @@ final class DashboardService
         return [$start, $end, $prevStart, $prevEnd];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function kpis(Carbon $start, Carbon $end, Carbon $prevStart, Carbon $prevEnd): array
     {
         return $this->cached('dashboard_kpis_'.$start->toDateString().'_'.$end->toDateString(), 120, function () use ($start, $end, $prevStart, $prevEnd) {
@@ -99,6 +111,9 @@ final class DashboardService
         });
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function liveOperations(string $range): ?array
     {
         if ($range !== 'today') {
@@ -142,6 +157,9 @@ final class DashboardService
         ];
     }
 
+    /**
+     * @return array<int, array{label: string, revenue: float}>
+     */
     public function chartData(string $range, Carbon $start, Carbon $end): array
     {
         return $this->cached('dashboard_chart_'.$range.'_'.$start->toDateString(), 120, function () use ($range, $start, $end) {
@@ -181,6 +199,9 @@ final class DashboardService
         });
     }
 
+    /**
+     * @return array<int, array{name: mixed, sales_count: int}>
+     */
     public function topProducts(Carbon $start, Carbon $end): array
     {
         return $this->cached('dashboard_top_products_'.$start->toDateString().'_'.$end->toDateString(), 300, function () use ($start, $end) {
@@ -200,6 +221,9 @@ final class DashboardService
         });
     }
 
+    /**
+     * @return array<int, Ingredient>
+     */
     public function lowStock(): array
     {
         return $this->cached('dashboard_low_stock', 300, fn () => Ingredient::whereColumn('stock_quantity', '<=', 'min_stock_alert')

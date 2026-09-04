@@ -7,6 +7,9 @@ use App\Models\OrderActivity;
 
 class OrderActivityLogger
 {
+    /**
+     * @param  array<string, mixed>  $meta
+     */
     public static function log(Order $order, string $action, ?int $userId = null, array $meta = []): void
     {
         OrderActivity::create([

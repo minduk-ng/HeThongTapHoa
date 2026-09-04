@@ -54,6 +54,9 @@ class PromotionCodeService
         DB::table('promotion_codes')->insert($rows);
     }
 
+    /**
+     * @return list<string>
+     */
     private static function sequentialCodes(string $prefix, int $quantity): array
     {
         $width = max(3, strlen((string) $quantity));
@@ -65,6 +68,9 @@ class PromotionCodeService
         return $codes;
     }
 
+    /**
+     * @return list<string>
+     */
     private static function randomCodes(string $prefix, int $quantity): array
     {
         $codes = [];
@@ -79,6 +85,7 @@ class PromotionCodeService
             }
             if (isset($existing[$code]) || in_array($code, $codes, true)) {
                 $attempts++;
+
                 continue;
             }
             $codes[] = $code;

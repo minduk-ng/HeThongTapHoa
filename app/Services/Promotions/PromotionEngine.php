@@ -9,6 +9,11 @@ use Illuminate\Support\Collection;
 
 class PromotionEngine
 {
+    /**
+     * @param  array<int, string>  $codes
+     * @param  iterable<array<string, mixed>>  $lines
+     * @return array<string, mixed>
+     */
     public static function resolveAll(array $codes, iterable $lines, float $subtotal, bool $lockForUpdate = false, ?int $preferredAutoId = null): array
     {
         $lines = collect($lines)->values();
@@ -173,6 +178,9 @@ class PromotionEngine
         ];
     }
 
+    /**
+     * @param  Collection<int, array<string, mixed>>  $lines
+     */
     private static function validateAgainst(Promotion $p, Collection $lines, float $subtotal): ?string
     {
         if (! $p->status) {
@@ -203,6 +211,9 @@ class PromotionEngine
         return $p->max_usage === null || $p->used_count < $p->max_usage;
     }
 
+    /**
+     * @param  Collection<int, array<string, mixed>>  $lines
+     */
     private static function matchesConditions(Promotion $p, Collection $lines, float $subtotal): bool
     {
         foreach ($p->conditions as $cond) {
@@ -242,6 +253,9 @@ class PromotionEngine
         );
     }
 
+    /**
+     * @param  Collection<int, array<string, mixed>>  $lines
+     */
     private static function lineInCategory(Collection $lines, int $categoryId): bool
     {
         $itemIds = MenuItem::where('category_id', $categoryId)->pluck('id')->all();
@@ -252,6 +266,9 @@ class PromotionEngine
         return $lines->contains(fn ($l) => in_array((int) ($l['menu_item_id'] ?? 0), $itemIds, true));
     }
 
+    /**
+     * @param  Collection<int, array<string, mixed>>  $lines
+     */
     private static function estimateDiscount(Promotion $p, Collection $lines, float $subtotal): float
     {
         $total = 0.0;
@@ -270,6 +287,10 @@ class PromotionEngine
         return $total;
     }
 
+    /**
+     * @param  iterable<array<string, mixed>>  $lines
+     * @return array<int, array{id: int, name: string, code: string|null, estimated_discount: float}>
+     */
     public static function candidates(iterable $lines, float $subtotal): array
     {
         $lines = collect($lines);

@@ -12,6 +12,8 @@ class IdempotencyGuard
      * Có idempotency_key client: chặn trùng theo key (TTL 30s) HOẶC theo fingerprint
      * (TTL 5s) — bắt cả double-click lẫn gửi lặp từ 2 tab/2 thiết bị với key khác nhau.
      * Không có key: chặn theo fingerprint (TTL 5s).
+     *
+     * @param  array<string, mixed>  $fingerprint
      */
     public static function isDuplicate(Request $request, string $action, array $fingerprint = []): bool
     {
@@ -29,7 +31,10 @@ class IdempotencyGuard
         return ! Cache::add($fingerprintKey, true, 5);
     }
 
-    /** Xóa các key idempotency khi thao tác thất bại — cho phép retry chạy lại thật sự. */
+    /** Xóa các key idempotency khi thao tác thất bại — cho phép retry chạy lại thật sự.
+     *
+     * @param  array<string, mixed>  $fingerprint
+     */
     public static function release(Request $request, string $action, array $fingerprint = []): void
     {
         $clientKey = $request->input('idempotency_key');

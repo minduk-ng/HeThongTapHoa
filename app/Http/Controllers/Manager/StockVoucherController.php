@@ -105,7 +105,7 @@ class StockVoucherController extends Controller
             ]);
 
             foreach ($validated['items'] as $item) {
-                $ingredient = Ingredient::lockForUpdate()->findOrFail($item['ingredient_id']);
+                $ingredient = Ingredient::query()->lockForUpdate()->findOrFail((int) $item['ingredient_id']);
                 $currentStock = (float) $ingredient->stock_quantity;
                 $currentCost = (float) $ingredient->cost_price;
                 $importQty = (float) $item['quantity'];
@@ -150,7 +150,7 @@ class StockVoucherController extends Controller
 
             // Fallback: Nếu không match theo prefix trên, bóc tách các token trong note
             if (empty($codes)) {
-                $tokens = array_filter(preg_split('/[\s,;]+/', $voucher->note));
+                $tokens = array_filter(preg_split('/[\s,;]+/', $voucher->note) ?: []);
                 $matchedInvoices = Invoice::whereIn('invoice_code', $tokens)->pluck('invoice_code')->all();
                 $matchedOrders = Order::whereIn('order_code', $tokens)->pluck('order_code')->all();
                 $codes = array_merge($matchedInvoices, $matchedOrders);

@@ -34,13 +34,14 @@ class SupplierController extends Controller
             'debt' => $s->debt(),
             'unpaid_vouchers' => $s->vouchers
                 ->filter(fn ($v) => $v->type === 'import' && ! $v->is_paid)
-                ->map(fn ($v) => [
+                ->map(fn (StockVoucher $v) => [
                     'id' => $v->id,
                     'voucher_code' => $v->voucher_code,
                     'total' => (float) $v->items->sum(fn ($i) => (float) $i->quantity * (float) $i->unit_price),
-                    'transacted_at' => $v->transacted_at?->format('d/m/Y H:i') ?? '—',
+                    'transacted_at' => $v->transacted_at->format('d/m/Y H:i'),
                 ])
-                ->values(),
+                ->values()
+                ->all(),
         ])->values();
 
         return Inertia::render('manager/suppliers/SuppliersManager', [
