@@ -236,8 +236,8 @@ export default function ReportPage({
             <Head title={title} />
             <ReportColumnsContext.Provider value={ctxValue}>
                 <div className="flex h-full min-h-0 w-full flex-1 flex-col gap-4 overflow-hidden">
-                    {/* Header + metrics + filter */}
-                    <div className="shrink-0 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
+                    {/* Header + metrics + filter — một surface, không card kép */}
+                    <div className="shrink-0 border-b border-zinc-200/80 pb-3 dark:border-zinc-800/80">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                             <div>
                                 <h1 className="font-display text-2xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100">
@@ -251,8 +251,8 @@ export default function ReportPage({
                             </div>
                         </div>
 
-                        {/* Metrics hiển thị dạng inline text ngăn cách nhau bởi dấu chấm tròn */}
-                        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-zinc-100 pt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                        {/* Metrics inline text */}
+                        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-zinc-100 pt-2 text-sm text-zinc-600 dark:text-zinc-300">
                             {metrics.map((m, idx) => (
                                 <div
                                     key={m.label}
@@ -264,7 +264,7 @@ export default function ReportPage({
                                         </span>
                                     )}
                                     <div className="flex items-center space-x-1">
-                                        <m.icon className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                                        <m.icon className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
                                         <span>{m.label}:</span>
                                     </div>
                                     <span
@@ -292,7 +292,7 @@ export default function ReportPage({
                         </div>
                     </div>
 
-                    {/* Table card */}
+                    {/* Table card — 1 card duy nhất */}
                     <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-zinc-200/80 bg-white shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
                         {children}
                     </div>
