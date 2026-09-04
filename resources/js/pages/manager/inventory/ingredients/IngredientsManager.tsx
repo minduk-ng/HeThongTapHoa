@@ -12,6 +12,7 @@ import StockImportModal from './components/StockImportModal';
 interface IngredientsManagerProps {
     ingredients: IngredientData[];
     units: string[];
+    suppliers?: { id: number; name: string }[];
     filters: {
         search?: string;
         unit?: string;
@@ -22,6 +23,7 @@ interface IngredientsManagerProps {
 export default function IngredientsManager({
     ingredients,
     units,
+    suppliers = [],
     filters,
 }: IngredientsManagerProps) {
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
@@ -258,6 +260,7 @@ return;
             {/* Stock Import Modal */}
             <StockImportModal
                 ingredients={ingredients}
+                suppliers={suppliers}
                 isOpen={isImportOpen}
                 onClose={() => setIsImportOpen(false)}
             />

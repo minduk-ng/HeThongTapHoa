@@ -41,19 +41,24 @@ export default function CustomersManager({
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    const safeCustomers = useMemo(
+        () => (Array.isArray(customers) ? customers : Object.values(customers || {})) as CustomerData[],
+        [customers],
+    );
+
     const filteredCustomers = useMemo(() => {
         const query = searchQuery.trim().toLowerCase();
 
         if (!query) {
-            return customers;
+            return safeCustomers;
         }
 
-        return customers.filter(
+        return safeCustomers.filter(
             (c) =>
                 c.full_name.toLowerCase().includes(query) ||
                 c.phone.toLowerCase().includes(query),
         );
-    }, [customers, searchQuery]);
+    }, [safeCustomers, searchQuery]);
 
     const handleOpenAddDrawer = () => {
         setCustomerToEdit(null);
@@ -198,8 +203,8 @@ export default function CustomersManager({
                 title="Khách hàng"
                 subtitle="Quản lý thông tin khách quen của quán"
                 badge={
-                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                        {customers.length} khách hàng
+                    <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] font-semibold text-zinc-600 tabular-nums dark:bg-zinc-800 dark:text-zinc-400">
+                        {safeCustomers.length} khách hàng
                     </span>
                 }
                 hasActiveFilter={hasActiveFilter}
@@ -269,7 +274,7 @@ export default function CustomersManager({
             <DeleteConfirmModal
                 isOpen={!!deletingCustomer}
                 title="Xác nhận xóa khách hàng"
-                description={`Bạn có chắc chắn muốn xóa khách hàng ${deletingCustomer?.full_name || ''}?`}
+                description={`Bạn có chắc chắn muốn xóa khách hàng “${deletingCustomer?.full_name || ''}”? Thao tác này không thể hoàn tác.`}
                 passwordValue={passwordValue}
                 onPasswordChange={setPasswordValue}
                 onClose={() => setDeletingCustomer(null)}

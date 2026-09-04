@@ -29,10 +29,13 @@ class RoleController extends Controller
             'inventory.history.view',
             'recipes.view', 'recipes.edit',
             'tables.view', 'tables.create', 'tables.edit', 'tables.delete',
+            'customers.view', 'customers.create', 'customers.edit', 'customers.delete',
+            'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete',
             'pos.view', 'pos.create', 'pos.cancel_item',
             'kitchen.view', 'kitchen.update', 'kitchen.cancel_item',
             'serving.view', 'serving.update',
             'shifts.open', 'shifts.view', 'shifts.close',
+            'orders.view',
             'dashboard.view',
             'reports.view',
         ];

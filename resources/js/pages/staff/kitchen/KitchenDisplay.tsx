@@ -42,6 +42,17 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
     >('all');
     const [printOrder, setPrintOrder] = useState<KitchenOrderData | null>(null);
 
+    useEffect(() => {
+        if (printOrder) {
+            const timer = setTimeout(() => {
+                window.print();
+                setPrintOrder(null);
+            }, 100);
+
+            return () => clearTimeout(timer);
+        }
+    }, [printOrder]);
+
     const { status: reverbStatus } = useReverbStatus();
     const { auth } = usePage<PageProps>().props;
     const user = auth.user;

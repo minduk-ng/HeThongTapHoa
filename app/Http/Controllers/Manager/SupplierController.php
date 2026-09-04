@@ -38,10 +38,10 @@ class SupplierController extends Controller
                     'id' => $v->id,
                     'voucher_code' => $v->voucher_code,
                     'total' => (float) $v->items->sum(fn ($i) => (float) $i->quantity * (float) $i->unit_price),
-                    'transacted_at' => $v->transacted_at->format('d/m/Y H:i'),
+                    'transacted_at' => $v->transacted_at?->format('d/m/Y H:i') ?? '—',
                 ])
                 ->values(),
-        ]);
+        ])->values();
 
         return Inertia::render('manager/suppliers/SuppliersManager', [
             'suppliers' => $suppliers,

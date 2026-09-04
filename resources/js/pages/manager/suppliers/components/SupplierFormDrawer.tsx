@@ -45,13 +45,22 @@ export default function SupplierFormDrawer({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (submitting) {
+return;
+}
+
         setSubmitting(true);
 
+        const timer = setTimeout(() => {
+            setSubmitting(false);
+        }, 8000);
+
         const payload = {
-            name,
-            phone,
-            address,
-            note,
+            name: name.trim(),
+            phone: phone.trim() || null,
+            address: address.trim() || null,
+            note: note.trim() || null,
         };
 
         const url = supplierToEdit
@@ -60,10 +69,12 @@ export default function SupplierFormDrawer({
 
         router.post(url, payload, {
             onSuccess: () => {
+                clearTimeout(timer);
                 setSubmitting(false);
                 onClose();
             },
             onError: (errs) => {
+                clearTimeout(timer);
                 setErrors(errs as any);
                 setSubmitting(false);
             },
@@ -102,7 +113,7 @@ export default function SupplierFormDrawer({
                         <div>
                             <label className="mb-1 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
                                 Tên nhà cung cấp{' '}
-                                <span className="text-red-500">*</span>
+                                <span className="text-rose-500">*</span>
                             </label>
                             <input
                                 type="text"
@@ -113,7 +124,7 @@ export default function SupplierFormDrawer({
                                 required
                             />
                             {errors.name && (
-                                <p className="mt-1 text-xs text-red-500">
+                                <p className="mt-1 text-xs text-rose-500">
                                     {errors.name}
                                 </p>
                             )}
@@ -132,7 +143,7 @@ export default function SupplierFormDrawer({
                                 className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                             />
                             {errors.phone && (
-                                <p className="mt-1 text-xs text-red-500">
+                                <p className="mt-1 text-xs text-rose-500">
                                     {errors.phone}
                                 </p>
                             )}
@@ -150,7 +161,7 @@ export default function SupplierFormDrawer({
                                 className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                             />
                             {errors.address && (
-                                <p className="mt-1 text-xs text-red-500">
+                                <p className="mt-1 text-xs text-rose-500">
                                     {errors.address}
                                 </p>
                             )}
@@ -168,7 +179,7 @@ export default function SupplierFormDrawer({
                                 className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                             />
                             {errors.note && (
-                                <p className="mt-1 text-xs text-red-500">
+                                <p className="mt-1 text-xs text-rose-500">
                                     {errors.note}
                                 </p>
                             )}

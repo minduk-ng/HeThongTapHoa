@@ -35,7 +35,8 @@ class CustomerController extends Controller
                 'note' => $c->note,
                 'orders_count' => (int) $c->orders_count,
                 'total_spent' => (float) ($c->orders_sum_total ?? 0),
-            ]);
+            ])
+            ->values();
 
         return Inertia::render('manager/customers/CustomersManager', [
             'customers' => $customers,

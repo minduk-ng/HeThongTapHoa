@@ -32,6 +32,14 @@ const movementCategories: Record<'expense' | 'income', string[]> = {
     expense: ['mua_nguyen_lieu', 'mua_vat_dung', 'dien_nuoc', 'khac'],
     income: ['thu_ngoai', 'thu_cong_no', 'khac'],
 };
+const MOVEMENT_LABELS: Record<string, string> = {
+    mua_nguyen_lieu: 'Mua nguyên liệu',
+    mua_vat_dung: 'Mua vật dụng',
+    dien_nuoc: 'Điện nước / Chi phí quán',
+    thu_ngoai: 'Thu ngoài',
+    thu_cong_no: 'Thu công nợ',
+    khac: 'Khác',
+};
 const csrf = () =>
     decodeURIComponent(
         document.cookie
@@ -329,18 +337,18 @@ export default function ShiftsPage() {
                                 <button
                                     type="button"
                                     onClick={() => openMovement('expense')}
-                                    className="flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white"
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white shadow-xs hover:bg-rose-700 active:bg-rose-800 transition-colors"
                                 >
                                     <Minus className="h-4 w-4 stroke-[1.5]" />
-                                    Ghi chi trong ca
+                                    <span>Ghi chi trong ca</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => openMovement('income')}
-                                    className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white"
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 active:bg-emerald-800 transition-colors"
                                 >
                                     <Plus className="h-4 w-4 stroke-[1.5]" />
-                                    Ghi thu trong ca
+                                    <span>Ghi thu trong ca</span>
                                 </button>
                             </div>
                             {movements.length > 0 && (
@@ -369,11 +377,11 @@ export default function ShiftsPage() {
                                                             : 'thu'}
                                                     </span>
                                                     <span className="font-medium">
-                                                        {movement.category}
+                                                        {MOVEMENT_LABELS[movement.category] || movement.category}
                                                     </span>
                                                     {movement.note && (
                                                         <span className="text-xs text-zinc-500">
-                                                            {movement.note}
+                                                            ({movement.note})
                                                         </span>
                                                     )}
                                                 </span>
@@ -381,12 +389,12 @@ export default function ShiftsPage() {
                                                     className={`font-semibold tabular-nums ${
                                                         movement.type ===
                                                         'expense'
-                                                            ? 'text-rose-600'
-                                                            : 'text-emerald-600'
+                                                            ? 'text-rose-600 dark:text-rose-400'
+                                                            : 'text-emerald-600 dark:text-emerald-400'
                                                     }`}
                                                 >
                                                     {movement.type === 'expense'
-                                                        ? '-'
+                                                        ? '−'
                                                         : '+'}
                                                     {money(movement.amount)}
                                                 </span>
@@ -410,14 +418,15 @@ export default function ShiftsPage() {
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
                         <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
                             <div className="flex items-center justify-between">
-                                <h2 className="font-display text-xl">
+                                <h2 className="font-display text-xl font-bold text-zinc-900 dark:text-zinc-100">
                                     Đóng ca
                                 </h2>
                                 <button
                                     type="button"
                                     onClick={() => setCloseOpen(false)}
+                                    className="rounded-xl p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
                                 >
-                                    <X className="h-5 w-5" />
+                                    <X className="h-5 w-5 stroke-[1.5]" />
                                 </button>
                             </div>
                             <div className="mt-5 rounded-xl bg-zinc-50 p-4 text-sm dark:bg-zinc-800">
@@ -478,7 +487,7 @@ export default function ShiftsPage() {
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
                         <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
                             <div className="flex items-center justify-between">
-                                <h2 className="font-display text-xl">
+                                <h2 className="font-display text-xl font-bold text-zinc-900 dark:text-zinc-100">
                                     {movementType === 'expense'
                                         ? 'Ghi chi trong ca'
                                         : 'Ghi thu trong ca'}
@@ -486,18 +495,19 @@ export default function ShiftsPage() {
                                 <button
                                     type="button"
                                     onClick={() => setMovementOpen(false)}
+                                    className="rounded-xl p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
                                 >
-                                    <X className="h-5 w-5" />
+                                    <X className="h-5 w-5 stroke-[1.5]" />
                                 </button>
                             </div>
-                            <label className="mt-5 block text-sm font-semibold">
-                                Loại chi tiêu
+                            <label className="mt-5 block text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                                Loại {movementType === 'expense' ? 'chi tiêu' : 'thu ngoài'}
                                 <select
                                     value={movementCategory}
                                     onChange={(e) =>
                                         setMovementCategory(e.target.value)
                                     }
-                                    className="mt-2 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800"
+                                    className="mt-2 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-3 text-xs outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                 >
                                     <option value="" disabled>
                                         Chọn loại…
@@ -508,7 +518,7 @@ export default function ShiftsPage() {
                                                 key={category}
                                                 value={category}
                                             >
-                                                {category}
+                                                {MOVEMENT_LABELS[category] || category}
                                             </option>
                                         ),
                                     )}

@@ -36,8 +36,9 @@
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
 | `/staff/pos` | `Staff\POSController` | `resources/js/pages/staff/pos/POSManager.tsx` | Bán hàng POS. Gồm 4 tab: Chọn bàn, Chọn món, Phục vụ, Nhật ký Event. |
-| `/staff/kitchen` | `Staff\KitchenController` | `resources/js/pages/staff/kitchen/KitchenDisplay.tsx` | Màn hình Bếp (chế độ tràn màn hình, thanh công cụ compact 1 dòng: filter khu vực + thống kê + actions, grid cards full-width) |
+| `/staff/kitchen` | `Staff\KitchenController` | `resources/js/pages/staff/kitchen/KitchenDisplay.tsx` | Màn hình Bếp (chế độ tràn màn hình, thanh công cụ compact 1 dòng: filter khu vực + thống kê + actions, grid cards full-width, in ticket 58mm) |
 | `/staff/serving` | `Staff\ServingController` | `resources/js/pages/staff/serving/ServingDisplay.tsx` | Màn hình Phục vụ độc lập: danh sách món Bếp đã xong chờ bưng ra bàn (`POST /staff/serving/mark-served`) |
+| `/staff/shifts` | `Staff\ShiftController` | `resources/js/pages/staff/shifts/ShiftsPage.tsx` | Mở/đóng ca làm việc, theo dõi tiền mặt kỳ vọng, ghi nhận chi tiêu & thu ngoài trong ca |
 
 **Các API phụ trợ của POS** (prefix `/staff/pos`, khai báo tại `routes/web.php`):
 | Endpoint | Method | Chức năng |
@@ -69,6 +70,9 @@
 | `/manager/inventory/vouchers` | `Manager\StockVoucherController` | `resources/js/pages/manager/inventory/vouchers/StockVouchersManager.tsx` | Quản lý danh sách phiếu nhập / xuất / điều chỉnh kho |
 | `/manager/inventory/history` | `Manager\StockHistoryController` | `resources/js/pages/manager/inventory/history/StockHistoryManager.tsx` | Lịch sử biến động tồn kho chi tiết theo nguyên liệu |
 | `/manager/promotions` | `Manager\PromotionController` | `resources/js/pages/manager/promotions/PromotionsManager.tsx` | Quản lý chương trình khuyến mãi: chiến dịch (promotion tự động / coupon / voucher), điều kiện & giới hạn, mục tiêu (`target_usage`), analytics (KPI theo hoá đơn distinct), bảng Campaign Performance + modal danh sách hoá đơn đã dùng mã |
+| `/manager/customers` | `Manager\CustomerController` | `resources/js/pages/manager/customers/CustomersManager.tsx` | Quản lý thông tin khách hàng, số đơn, tổng tiền mua, gắn khách hàng khi thanh toán POS |
+| `/manager/suppliers` | `Manager\SupplierController` | `resources/js/pages/manager/suppliers/SuppliersManager.tsx` | Quản lý nhà cung cấp, theo dõi công nợ phiếu nhập kho và ghi nhận thanh toán công nợ |
+| `/manager/orders` | `Manager\OrderListController` | `resources/js/pages/manager/orders/OrderList.tsx` | Quản lý danh sách đơn hàng toàn hệ thống, xem chi tiết và hoàn trả món (Refund) |
 
 > **Kiến trúc Layout Phân hệ Quản lý (`ManagerPageLayout.tsx`)**: Toàn bộ các trang `/manager/*` áp dụng chuẩn layout Top-Down Flow: Top Control Header (Icon, Title, Badge, Action buttons, Toggle thu gọn/mở rộng bộ lọc `defaultFiltersOpen = false`) kết hợp thanh Horizontal Filter Bar và khung bảng dữ liệu `DataTable` tràn viền full-width 100%.
 

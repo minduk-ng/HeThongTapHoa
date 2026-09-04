@@ -63,19 +63,24 @@ export default function SuppliersManager({
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    const safeSuppliers = useMemo(
+        () => (Array.isArray(suppliers) ? suppliers : Object.values(suppliers || {})) as SupplierData[],
+        [suppliers],
+    );
+
     const filteredSuppliers = useMemo(() => {
         const query = searchQuery.trim().toLowerCase();
 
         if (!query) {
-            return suppliers;
+            return safeSuppliers;
         }
 
-        return suppliers.filter(
+        return safeSuppliers.filter(
             (s) =>
                 s.name.toLowerCase().includes(query) ||
                 (s.phone || '').toLowerCase().includes(query),
         );
-    }, [suppliers, searchQuery]);
+    }, [safeSuppliers, searchQuery]);
 
     const handleOpenAddDrawer = () => {
         setSupplierToEdit(null);
@@ -228,8 +233,8 @@ export default function SuppliersManager({
                 title="Nhà cung cấp"
                 subtitle="Quản lý nhà cung cấp và công nợ phiếu nhập"
                 badge={
-                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                        {suppliers.length} nhà cung cấp
+                    <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] font-semibold text-zinc-600 tabular-nums dark:bg-zinc-800 dark:text-zinc-400">
+                        {safeSuppliers.length} nhà cung cấp
                     </span>
                 }
                 hasActiveFilter={hasActiveFilter}
@@ -304,7 +309,7 @@ export default function SuppliersManager({
             <DeleteConfirmModal
                 isOpen={!!deletingSupplier}
                 title="Xác nhận xóa nhà cung cấp"
-                description={`Bạn có chắc chắn muốn xóa nhà cung cấp ${deletingSupplier?.name || ''}?`}
+                description={`Bạn có chắc chắn muốn xóa nhà cung cấp “${deletingSupplier?.name || ''}”? Thao tác này không thể hoàn tác.`}
                 passwordValue={passwordValue}
                 onPasswordChange={setPasswordValue}
                 onClose={() => setDeletingSupplier(null)}

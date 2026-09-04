@@ -47,6 +47,11 @@ export default function RefundModal({ isOpen, invoiceId, lines, onClose }: Refun
 
     const maxQty = (line: RefundLine) => line.quantity - line.refunded_qty;
 
+    const selectedItems = lines
+        .filter((l) => (qtys[l.id] ?? 0) > 0)
+        .map((l) => ({ invoice_line_id: l.id, qty: qtys[l.id] }));
+    const totalRefundQty = selectedItems.reduce((acc, item) => acc + item.qty, 0);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -54,8 +59,18 @@ export default function RefundModal({ isOpen, invoiceId, lines, onClose }: Refun
             return;
         }
 
+        if (selectedItems.length === 0) {
+            setError('Vui lòng chọn số lượng cần hoàn cho ít nhất một món.');
+
+            return;
+        }
+
         setSubmitting(true);
         setError(null);
+
+        const timer = setTimeout(() => {
+            setSubmitting(false);
+        }, 8000);
 
         try {
             const response = await fetch('/staff/pos/refund', {
@@ -68,9 +83,7 @@ export default function RefundModal({ isOpen, invoiceId, lines, onClose }: Refun
                 },
                 body: JSON.stringify({
                     invoice_id: invoiceId,
-                    items: lines
-                        .filter((l) => (qtys[l.id] ?? 0) > 0)
-                        .map((l) => ({ invoice_line_id: l.id, qty: qtys[l.id] })),
+                    items: selectedItems,
                     reason,
                     note: note.trim() || null,
                 }),
@@ -78,12 +91,15 @@ export default function RefundModal({ isOpen, invoiceId, lines, onClose }: Refun
             const data = await response.json().catch(() => ({}));
 
             if (response.ok && data.success) {
+                clearTimeout(timer);
                 onClose();
                 router.reload({ only: ['order'], onError: () => {} });
             } else {
+                clearTimeout(timer);
                 setError(data.error || data.message || 'Hoàn trả thất bại. Vui lòng thử lại.');
             }
         } catch {
+            clearTimeout(timer);
             setError('Không thể kết nối máy chủ. Vui lòng kiểm tra mạng.');
         } finally {
             setSubmitting(false);
@@ -213,10 +229,10 @@ export default function RefundModal({ isOpen, invoiceId, lines, onClose }: Refun
                         </button>
                         <button
                             type="submit"
-                            disabled={submitting}
-                            className="px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-xs disabled:opacity-50"
+                            disabled={submitting || totalRefundQty === 0}
+                            className="px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 transition-colors rounded-xl shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {submitting ? 'Đang xử lý...' : 'Xác nhận hoàn trả'}
+                            {submitting ? 'Đang xử lý...' : `Xác nhận hoàn trả${totalRefundQty > 0 ? ` (${totalRefundQty} món)` : ''}`}
                         </button>
                     </div>
                 </form>

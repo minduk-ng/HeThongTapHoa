@@ -43,6 +43,7 @@ class IngredientController extends Controller
         return Inertia::render('manager/inventory/ingredients/IngredientsManager', [
             'ingredients' => $ingredients,
             'units' => $allUnits,
+            'suppliers' => \App\Models\Supplier::orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['search', 'unit', 'alert']),
         ]);
     }
