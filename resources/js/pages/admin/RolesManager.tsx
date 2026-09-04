@@ -310,7 +310,7 @@ return;
                     <div className="overflow-auto flex-1 min-h-0">
                         <table className="w-full text-left text-xs">
                             <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-800/90 border-b border-zinc-200/80 dark:border-zinc-800">
-                                <tr className="text-zinc-500 dark:text-zinc-400 font-semibold uppercase text-[11px] tracking-wider text-center">
+                                <tr className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs text-center">
                                     <th className="px-4 py-3 text-left">Tên vai trò (Role)</th>
                                     <th className="px-4 py-3 text-left">Mô tả chức trách</th>
                                     <th className="px-4 py-3 text-center">Loại vai trò</th>

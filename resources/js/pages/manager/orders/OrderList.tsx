@@ -343,7 +343,7 @@ export default function OrderList({
                 <div className="min-h-0 flex-1 overflow-auto">
                     <table className="w-full border-collapse text-left">
                         <thead className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50/95 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-800/95">
-                            <tr className="text-[11px] font-medium tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
+                            <tr className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
                                 <th
                                     className="cursor-pointer px-4 py-2.5 select-none text-center border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60"
                                     onClick={() => handleSort('order_code')}

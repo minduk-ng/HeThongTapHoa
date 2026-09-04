@@ -297,7 +297,7 @@ return;
                                 
                                 {isBulkRoleAssignOpen && (
                                     <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200/80 dark:border-zinc-700/80 p-4 z-30 space-y-3">
-                                        <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                                        <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
                                             Chọn các vai trò:
                                         </p>
                                         <div className="space-y-1.5 max-h-40 overflow-y-auto">
@@ -376,7 +376,7 @@ return;
                     <div className="overflow-auto flex-1 min-h-0">
                         <table className="w-full text-left text-xs">
                             <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-800/90 border-b border-zinc-200/80 dark:border-zinc-800">
-                                <tr className="text-zinc-500 dark:text-zinc-400 font-semibold uppercase text-[11px] tracking-wider text-center">
+                                <tr className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs text-center">
                                     {isBulkMode && (
                                         <th className="w-12 px-3 py-3 text-center">
                                             <input

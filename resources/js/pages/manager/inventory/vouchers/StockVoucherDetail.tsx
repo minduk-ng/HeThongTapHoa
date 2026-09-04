@@ -237,7 +237,7 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
 
                                 <div className="overflow-x-auto">
                                     <table className="w-full border-collapse text-left text-sm">
-                                        <thead className="bg-zinc-50/75 dark:bg-zinc-800/60 border-b border-zinc-200/80 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                                        <thead className="bg-zinc-50/75 dark:bg-zinc-800/60 border-b border-zinc-200/80 dark:border-zinc-800 text-xs font-semibold text-zinc-600 dark:text-zinc-400">
                                             <tr>
                                                 <th className="px-4 py-2.5 text-center w-16 border-r border-zinc-200/60 dark:border-zinc-800/60">STT</th>
                                                 <th className="px-4 py-2.5 text-left border-r border-zinc-200/60 dark:border-zinc-800/60">Tên món</th>
@@ -311,7 +311,7 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
 
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse text-left text-sm">
-                                    <thead className="bg-zinc-50/75 dark:bg-zinc-800/60 border-b border-zinc-200/80 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                                    <thead className="bg-zinc-50/75 dark:bg-zinc-800/60 border-b border-zinc-200/80 dark:border-zinc-800 text-xs font-semibold text-zinc-600 dark:text-zinc-400">
                                         <tr>
                                             {isExport && <th className="w-10 px-3 py-2.5 text-center border-r border-zinc-200/60 dark:border-zinc-800/60"></th>}
                                             <th className="px-4 py-2.5 text-center w-28 border-r border-zinc-200/60 dark:border-zinc-800/60">Mã NVL</th>

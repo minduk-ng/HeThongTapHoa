@@ -216,7 +216,7 @@ export default function ShiftsPage() {
                     <header>
                         <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400">
                             <CalendarClock className="h-5 w-5 stroke-[1.5]" />
-                            <span className="text-xs font-semibold tracking-wider uppercase">
+                            <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                                 Vận hành tiền mặt
                             </span>
                         </div>

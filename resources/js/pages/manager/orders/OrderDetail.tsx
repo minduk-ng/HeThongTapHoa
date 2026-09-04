@@ -261,13 +261,13 @@ export default function OrderDetail({ order }: OrderDetailProps) {
 
                                 {/* Items Table - scrollable */}
                                 <div className="flex-1 overflow-auto min-h-0 px-6 pt-4">
-                                    <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
+                                    <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-1.5">
                                         Món ăn ({safeItems.length})
                                     </h2>
                                     <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden">
                                         <table className="w-full border-collapse text-left">
                                             <thead className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50/95 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-800/95">
-                                                <tr className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                                <tr className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
                                                     <th className="px-3 py-2 text-left border-r border-zinc-200/60 dark:border-zinc-800/60">Món</th>
                                                     <th className="px-3 py-2 text-center border-r border-zinc-200/60 dark:border-zinc-800/60">SL</th>
                                                     <th className="px-3 py-2 text-right border-r border-zinc-200/60 dark:border-zinc-800/60">Đơn giá</th>
