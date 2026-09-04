@@ -358,11 +358,11 @@ return;
                 <div className="lg:col-span-4 flex flex-col gap-6">
                     {/* Top Products */}
                     <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs flex-1">
-                        <h5 className="font-display text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4">Top 5 món bán chạy</h5>
+                        <h5 className="font-display text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-4">Top 5 món bán chạy</h5>
                         <div className="space-y-2">
                             {safeTopProducts.map((prod, index) => (
                                 <div key={index} className="flex items-center gap-3 p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-colors">
-                                    <span className={`w-5.5 h-5.5 rounded-lg text-[10px] flex items-center justify-center font-bold shrink-0 ${
+                                    <span className={`w-5.5 h-5.5 rounded-lg text-[11px] flex items-center justify-center font-bold shrink-0 ${
                                         index === 0 ? 'bg-sky-600 text-white' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
                                     }`}>
                                         {index + 1}
@@ -383,17 +383,17 @@ return;
 
                     {/* Stock Warnings widget */}
                     <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs flex-1 flex flex-col">
-                        <h5 className="font-display text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-widest mb-4">Cảnh báo kho nguyên liệu</h5>
+                        <h5 className="font-display text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-4">Cảnh báo kho nguyên liệu</h5>
                         <div className="space-y-3 flex-1 overflow-y-auto max-h-[180px] pr-1">
                             {safeWarnings.map((ing) => (
                                 <div key={ing.code} className="flex justify-between items-center gap-2">
                                     <div className="truncate">
                                         <p className="text-xs font-bold text-zinc-800 dark:text-zinc-250 truncate">{ing.name}</p>
-                                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 font-medium tabular-nums">
+                                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 font-medium tabular-nums">
                                             Tồn: {ing.stock_quantity} / Định mức: {ing.min_stock_alert} {ing.unit}
                                         </p>
                                     </div>
-                                    <span className="px-2 py-0.5 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-450 rounded-full text-[9px] font-bold uppercase shrink-0">
+                                    <span className="px-2 py-0.5 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-450 rounded-full text-[11px] font-bold uppercase shrink-0">
                                         Thiếu
                                     </span>
                                 </div>
