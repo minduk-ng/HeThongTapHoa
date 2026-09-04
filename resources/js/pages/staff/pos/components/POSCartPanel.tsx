@@ -347,6 +347,8 @@ export default function POSCartPanel({
                                                     ? 'text-white/80 hover:bg-white/20 hover:text-white'
                                                     : 'text-zinc-400 hover:bg-zinc-200 hover:text-rose-600 dark:hover:bg-zinc-700'
                                             }`}
+                                            role="button"
+                                            aria-label="Xóa hóa đơn nháp này"
                                             title="Xóa hóa đơn nháp này"
                                         >
                                             <X className="h-3 w-3 stroke-[1.5]" />

@@ -117,7 +117,7 @@ return null;
             >
                 <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3 mb-5">
                     <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Hoá đơn đã dùng mã</h3>
-                    <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-600 p-1 rounded-lg">
+                    <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-600 p-1 rounded-lg" aria-label="Đóng">
                         <X className="w-5 h-5" />
                     </button>
                 </div>

@@ -55,7 +55,7 @@ return null;
                         type="button"
                         onClick={onClose}
                         className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                    >
+                     aria-label="Đóng">
                         <X className="w-4 h-4 stroke-[1.5]" />
                     </button>
                 </div>

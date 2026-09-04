@@ -54,8 +54,10 @@ export default function DashboardLayout({ children, fullWidth = false, hideNavba
                             {notification.message}
                         </div>
                         <button
+                            type="button"
                             onClick={() => setNotification(null)}
-                            className="ml-auto p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                            aria-label="Đóng thông báo"
+                            className="ml-auto p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
                         >
                             <X className="h-4 w-4 stroke-[1.5]" />
                         </button>

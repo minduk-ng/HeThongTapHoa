@@ -32,7 +32,7 @@ return null;
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                >
+                 aria-label="Đóng">
                     <X className="h-5 w-5" />
                 </button>
 

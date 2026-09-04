@@ -386,7 +386,7 @@ return;
                                 type="button"
                                 onClick={closeModal}
                                 className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                            >
+                             aria-label="Đóng">
                                 <X className="w-4 h-4 stroke-[1.5]" />
                             </button>
                         </div>

@@ -424,6 +424,7 @@ export default function ShiftsPage() {
                                 <button
                                     type="button"
                                     onClick={() => setCloseOpen(false)}
+                                    aria-label="Đóng"
                                     className="rounded-xl p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
                                 >
                                     <X className="h-5 w-5 stroke-[1.5]" />
@@ -495,6 +496,7 @@ export default function ShiftsPage() {
                                 <button
                                     type="button"
                                     onClick={() => setMovementOpen(false)}
+                                    aria-label="Đóng"
                                     className="rounded-xl p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
                                 >
                                     <X className="h-5 w-5 stroke-[1.5]" />

@@ -166,7 +166,7 @@ return null;
                             <Download className="h-3.5 w-3.5 stroke-[1.5]" />
                             <span>{exporting ? 'Đang xuất...' : 'Export Excel'}</span>
                         </button>
-                        <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-600 p-1 rounded-lg"><X className="w-5 h-5" /></button>
+                        <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-600 p-1 rounded-lg" aria-label="Đóng"><X className="w-5 h-5" /></button>
                     </div>
                 </div>
                 {loading ? (

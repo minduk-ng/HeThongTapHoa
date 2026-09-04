@@ -161,6 +161,7 @@ export default function POSToolbar({
                             <button
                                 type="button"
                                 onClick={() => onSearchChange('')}
+                                aria-label="Xóa tìm kiếm"
                                 className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-650 dark:text-zinc-550 dark:hover:text-zinc-350 transition-colors"
                             >
                                 <X className="w-3 h-3" />

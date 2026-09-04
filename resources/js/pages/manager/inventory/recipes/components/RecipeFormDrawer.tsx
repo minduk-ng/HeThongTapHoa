@@ -152,7 +152,7 @@ return;
                             type="button"
                             onClick={onClose}
                             className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-                        >
+                         aria-label="Đóng">
                             <X className="w-6 h-6 stroke-[1.5]" />
                         </button>
                     </div>

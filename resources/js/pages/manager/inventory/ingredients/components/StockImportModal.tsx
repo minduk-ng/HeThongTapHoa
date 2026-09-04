@@ -212,7 +212,7 @@ export default function StockImportModal({
                         type="button"
                         onClick={onClose}
                         className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
-                    >
+                     aria-label="Đóng">
                         <X className="h-5 w-5 stroke-[1.5]" />
                     </button>
                 </div>
