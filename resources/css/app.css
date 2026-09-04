@@ -230,6 +230,12 @@
     scrollbar-color: rgba(113, 113, 122, 0.5) transparent;
 }
 
+@media screen {
+    .print-area {
+        display: none;
+    }
+}
+
 @media print {
     body * {
         visibility: hidden;
@@ -242,8 +248,9 @@
 
     .print-area {
         position: absolute;
-        inset: 0 0 auto 0;
-        width: 100%;
+        left: 0;
+        top: 0;
+        width: 58mm;
     }
 
     .print-area table {

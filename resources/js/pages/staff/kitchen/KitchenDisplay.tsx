@@ -17,6 +17,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AvatarDropdown from '../../../components/AvatarDropdown';
 import { useCommandQueue } from '../../../hooks/useCommandQueue';
 import DashboardLayout from '../../../layouts/DashboardLayout';
+import KitchenPrintTicket from '../../../components/KitchenPrintTicket';
 import type { PageProps } from '../../../types/auth';
 import { useReverbStatus } from '../pos/hooks/useReverbStatus';
 import type { KitchenOrderData } from './components/KitchenOrderCard';
@@ -39,6 +40,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
     const [activeStation, setActiveStation] = useState<
         'all' | 'bar' | 'kitchen'
     >('all');
+    const [printOrder, setPrintOrder] = useState<KitchenOrderData | null>(null);
 
     const { status: reverbStatus } = useReverbStatus();
     const { auth } = usePage<PageProps>().props;
@@ -247,6 +249,12 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
             };
         })
         .filter(Boolean) as KitchenOrderData[];
+
+    useEffect(() => {
+        if (printOrder) {
+            window.print();
+        }
+    }, [printOrder]);
 
     return (
         <DashboardLayout fullWidth={true} hideNavbar={true}>
@@ -482,12 +490,30 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                                     onEnqueue={enqueue}
                                     onRetry={retry}
                                     onDiscard={discard}
+                                    onPrint={setPrintOrder}
                                 />
                             ))}
                         </div>
                     )}
                 </div>
             </div>
+
+            {printOrder && (
+                <KitchenPrintTicket
+                    orderNumber={printOrder.order_code}
+                    tableNumber={printOrder.table?.table_number || 'Mang về'}
+                    items={printOrder.items.map((item) => ({
+                        name: item.menu_item?.name || 'Món ăn',
+                        quantity: item.quantity,
+                        note: item.note ?? null,
+                    }))}
+                    note={printOrder.note ?? null}
+                    createdAtLabel={new Date(printOrder.created_at).toLocaleTimeString('vi-VN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                    })}
+                />
+            )}
         </DashboardLayout>
     );
 }

@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Clock, XCircle } from 'lucide-react';
+import { AlertTriangle, Check, Clock, Printer, XCircle } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import type { QueueCommand } from '../../../../lib/commandQueue';
 
@@ -6,6 +6,7 @@ export interface KitchenOrderData {
     id: number;
     order_code: string;
     created_at: string;
+    note?: string | null;
     has_additional_items?: boolean;
     table?: {
         id: number;
@@ -40,6 +41,7 @@ interface KitchenOrderCardProps {
     ) => void;
     onRetry: (commandId: string) => void;
     onDiscard: (commandId: string) => void;
+    onPrint: (order: KitchenOrderData) => void;
 }
 
 export default function KitchenOrderCard({
@@ -48,6 +50,7 @@ export default function KitchenOrderCard({
     onEnqueue,
     onRetry,
     onDiscard,
+    onPrint,
 }: KitchenOrderCardProps) {
     const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>(
         () => {
@@ -317,6 +320,14 @@ return oldest;
                         </div>
                     </div>
                 )}
+                <button
+                    type="button"
+                    onClick={() => onPrint(order)}
+                    className="flex w-full items-center justify-center space-x-2 rounded-lg border border-zinc-200 bg-white py-2 text-xs font-bold text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                    <Printer className="h-4 w-4 stroke-[2]" />
+                    <span>In ticket</span>
+                </button>
                 <button
                     type="button"
                     disabled={hasSyncing}
