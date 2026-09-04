@@ -63,7 +63,7 @@
 | `/` (trang chủ) | `Manager\DashboardController` | `resources/js/pages/manager/dashboard/DashboardManager.tsx` | Trang chủ hệ thống: báo cáo phân tích doanh thu & giám sát KDS/Sơ đồ bàn realtime. `/dashboard` redirect 301 về `/`. Yêu cầu quyền `dashboard.view` |
 | `/manager/categories` | `Manager\CategoryController` | `resources/js/pages/manager/categories/CategoriesManager.tsx` | Quản lý danh mục món ăn / thức uống |
 | `/manager/products` | `Manager\ProductController` | `resources/js/pages/manager/products/ProductsManager.tsx` | Quản lý danh sách sản phẩm, giá bán, thuế VAT, Import/Export Excel |
-| `/manager/tables` | `Manager\TableController` | `resources/js/pages/manager/tables/TableManager.tsx` | Quản lý khu vực & sơ đồ bàn, tạo hàng loạt bàn (batch), đặt bàn kiểu Manager (`TableFormDrawer` — chỉ ghi `tables.reservation_*`, không tạo đơn) |
+| `/manager/tables` | `Manager\TableController` | `resources/js/pages/manager/tables/TableManager.tsx` | Quản lý khu vực & sơ đồ bàn, tạo hàng loạt bàn (batch), đặt bàn kiểu Manager (`TableFormModal` — chỉ ghi `tables.reservation_*`, không tạo đơn) |
 | `/manager/inventory/ingredients` | `Manager\IngredientController` | `resources/js/pages/manager/inventory/ingredients/IngredientsManager.tsx` | Quản lý kho nguyên liệu, tồn kho, đơn vị tính, nhập kho Excel |
 | `/manager/inventory/recipes` | `Manager\RecipeController` | `resources/js/pages/manager/inventory/recipes/RecipesManager.tsx` | Quản lý định lượng công thức món (chế biến) |
 | `/manager/inventory/stocktake` | `Manager\StocktakeController` | `resources/js/pages/manager/inventory/stocktake/StocktakeManager.tsx` | Kiểm kê kho & đối soát tồn lý thuyết - thực tế |
@@ -366,5 +366,25 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
   - Chuyển toàn bộ tiêu đề and eyebrows từ All-Caps sang Sentence Case tự nhiên.
   - Dấu ba chấm sử dụng ký tự typography chuẩn `…` (thay vì ba dấu chấm `...`); cỡ chữ nhỏ có sàn tối thiểu `text-[11px]`.
   - Biểu mẫu Auth (`LoginForm`, `SignupForm`, `ForgotPassword`, `ResetPassword`) và Form Drawers áp dụng cơ chế trễ spinner tối thiểu 300ms chống chớp nháy (spinner flash).
-- **Responsive Drawers**: Toàn bộ 8 form Drawers chuẩn hóa sang `w-full max-w-md` hoặc `w-full max-w-xl` (loại bỏ `w-screen` gây tràn màn hình di động) kèm lớp phủ overlay `z-100` đồng bộ.
+- **Responsive Form Layout**: Toàn bộ các biểu mẫu trong phân hệ quản lý đã được nâng cấp toàn diện từ Drawer sang Centered Form Modal Suite (xem mục 11.5).
+
+### 11.5 Kiến Trúc Centered Form Modal Suite (`ManagerFormModal`) & Loại Bỏ Hoàn Toàn Form Drawers
+
+> Spec chi tiết: [2026-09-05-manager-form-modal-design.md](file:///d:/Projects/TapHoa/docs/superpowers/specs/2026-09-05-manager-form-modal-design.md)
+
+- **Chuyển đổi hoàn toàn từ Drawer sang Centered Modal**:
+  - Khắc phục hoàn toàn nhược điểm bất tiện khi thao tác trên Drawer bám mép phải màn hình bằng bộ component form modal dùng chung hiển thị overlay ở giữa màn hình (`resources/js/components/form/ManagerFormModal.tsx`).
+  - Hỗ trợ các kích thước linh hoạt: `sm` (448px), `md` (512px), `lg` (640px), `xl` (768px), `'2xl'` (896px) phù hợp từng mật độ thông tin.
+- **Tổ chức Form Mạch Lạc Với `FormSection` & `FormField`**:
+  - `FormSection`: Phân nhóm trực quan các trường nhập liệu theo khối chức năng, hỗ trợ header có icon, title, description và responsive grid (`gridCols={1 | 2 | 3}`).
+  - `FormField`: Chuẩn hóa label, dấu sao bắt buộc `*`, tooltip/hint text và thông báo lỗi validation nhất quán.
+- **Cơ Chế Phòng Vệ Dữ Liệu Dirty State & UX Nhắc Nhở**:
+  - Modal chặn đóng khi click ra lớp phủ (backdrop) nếu form đang có dữ liệu (`isDirty = true`), ngăn ngừa việc người dùng vô tình làm mất dữ liệu đã nhập.
+  - Khi người dùng click ra ngoài hoặc nhấn Escape lúc form bẩn, modal kích hoạt hiệu ứng rung nhẹ (`animate-shake`), viền sáng (`ring-4 ring-sky-400/50`) và hiển thị thông báo nhắc nhở tinh tế cạnh nút “Lưu thay đổi”.
+- **Chống Chớp Nháy Spinner & Trợ Năng Tối Đa**:
+  - Nút Submit tích hợp cơ chế trễ spinner tối thiểu 300ms (`useMinDelayLoading`), ngăn chặn chớp nháy giao diện khi kết nối mạng nhanh.
+  - Hỗ trợ đầy đủ Escape key listener, backdrop blur (`backdrop-blur-sm bg-zinc-950/50`), và phím bấm đóng form tiện lợi.
+- **Deadcode Zero**:
+  - Xóa bỏ 100% các file `*Drawer.tsx` cũ trong phân hệ quản lý: `CategoryFormDrawer`, `TableFormDrawer`, `CustomerFormDrawer`, `SupplierFormDrawer`, `IngredientFormDrawer`, `ProductFormDrawer`, `RecipeFormDrawer`, `PromotionFormDrawer`.
+  - Thay thế tương ứng bằng: `CategoryFormModal`, `TableFormModal`, `CustomerFormModal`, `SupplierFormModal`, `IngredientFormModal`, `ProductFormModal`, `RecipeFormModal`, `PromotionFormModal`.
 
