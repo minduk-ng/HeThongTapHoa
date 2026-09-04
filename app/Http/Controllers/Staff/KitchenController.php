@@ -12,17 +12,20 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Table;
 use App\Services\OrderActivityLogger;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class KitchenController extends Controller
 {
     use DispatchesSafely;
 
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         // Load active orders excluding cancelled items
         $activeOrders = Order::with(['table', 'items' => function ($query) {
@@ -75,7 +78,7 @@ class KitchenController extends Controller
         ]);
     }
 
-    public function completeOrder(Request $request, Order $order)
+    public function completeOrder(Request $request, Order $order): RedirectResponse|JsonResponse
     {
         $request->validate(['idempotency_key' => 'nullable|string|max:100']);
 
@@ -155,7 +158,7 @@ class KitchenController extends Controller
         }
     }
 
-    public function completeItems(Request $request)
+    public function completeItems(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'order_id' => 'required|exists:orders,id',
@@ -176,7 +179,7 @@ class KitchenController extends Controller
         }
 
         try {
-            $order = Order::findOrFail($validated['order_id']);
+            $order = Order::query()->where('id', $validated['order_id'])->firstOrFail();
 
             $completedItems = collect();
             $skipped = false;
@@ -240,7 +243,7 @@ class KitchenController extends Controller
         }
     }
 
-    public function cancelItem(Request $request)
+    public function cancelItem(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'order_item_id' => 'required|exists:order_items,id',

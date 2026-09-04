@@ -56,7 +56,7 @@ class ServingController extends Controller
                 // Audit log: served
                 $servedItems = OrderItem::whereIn('id', $validated['item_ids'])->with('menuItem')->get();
                 foreach ($orderIds as $orderId) {
-                    $order = Order::find($orderId);
+                    $order = Order::query()->where('id', $orderId)->first();
                     if ($order) {
                         $items = $servedItems->where('order_id', $orderId)->map(fn (OrderItem $i) => [
                             'name' => $i->menuItem->name ?? 'Món',
@@ -90,6 +90,9 @@ class ServingController extends Controller
         }
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     private function buildServingQueue(): array
     {
         return OrderItem::with(['order.table', 'menuItem'])

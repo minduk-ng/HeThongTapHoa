@@ -15,6 +15,7 @@ use App\Models\Table;
 use App\Services\Checkout\OrderTotals;
 use App\Services\IdempotencyGuard;
 use App\Services\OrderActivityLogger;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,7 @@ class ReservationController extends Controller
 {
     use DispatchesSafely, GeneratesOrderCode;
 
-    public function cancelReservation(Request $request)
+    public function cancelReservation(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'order_id' => 'required|exists:orders,id',
@@ -42,7 +43,7 @@ class ReservationController extends Controller
 
         try {
             $result = DB::transaction(function () use ($validated, $request) {
-                $order = Order::with(['table', 'deposits' => fn ($q) => $q->where('status', 'held')])->findOrFail($validated['order_id']);
+                $order = Order::with(['table', 'deposits' => fn ($q) => $q->where('status', 'held')])->where('id', $validated['order_id'])->firstOrFail();
 
                 if ($order->status !== 'reserved') {
                     throw new \Exception('Chỉ có thể hủy đơn đặt bàn', 422);
@@ -114,7 +115,7 @@ class ReservationController extends Controller
         }
     }
 
-    public function checkInReservation(Request $request)
+    public function checkInReservation(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'order_id' => 'required|exists:orders,id',
@@ -129,7 +130,7 @@ class ReservationController extends Controller
 
         try {
             $result = DB::transaction(function () use ($validated, $request) {
-                $order = Order::with('table')->findOrFail($validated['order_id']);
+                $order = Order::with('table')->where('id', $validated['order_id'])->firstOrFail();
 
                 if ($order->status !== 'reserved') {
                     throw new \Exception('Đơn này không phải đơn đặt bàn chờ check-in', 422);
@@ -174,7 +175,7 @@ class ReservationController extends Controller
         }
     }
 
-    public function reserve(Request $request)
+    public function reserve(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'table_id' => 'required|integer|min:1|exists:tables,id',
@@ -202,7 +203,7 @@ class ReservationController extends Controller
 
         try {
             $result = DB::transaction(function () use ($validated, $request) {
-                $table = Table::findOrFail($validated['table_id']);
+                $table = Table::query()->where('id', $validated['table_id'])->firstOrFail();
 
                 $subtotal = 0;
                 $vatAmount = 0;
@@ -211,7 +212,7 @@ class ReservationController extends Controller
 
                 if (! empty($validated['items'])) {
                     foreach ($validated['items'] as $itemData) {
-                        $menuItem = MenuItem::find($itemData['menu_item_id']);
+                        $menuItem = MenuItem::query()->where('id', $itemData['menu_item_id'])->first();
                         if (! $menuItem) {
                             continue;
                         }
@@ -319,7 +320,7 @@ class ReservationController extends Controller
         }
     }
 
-    public function deposit(Request $request)
+    public function deposit(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'order_id' => 'required|exists:orders,id',
@@ -338,7 +339,7 @@ class ReservationController extends Controller
 
         try {
             $result = DB::transaction(function () use ($validated, $request) {
-                $order = Order::with('table')->lockForUpdate()->findOrFail($validated['order_id']);
+                $order = Order::with('table')->lockForUpdate()->where('id', $validated['order_id'])->firstOrFail();
 
                 if (in_array($order->status, ['paid', 'cancelled'])) {
                     throw new \Exception('Không thể đặt cọc cho đơn đã thanh toán hoặc đã hủy', 422);

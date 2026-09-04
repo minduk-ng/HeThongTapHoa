@@ -12,6 +12,7 @@ use App\Models\ProductRecipe;
 use App\Models\StockVoucher;
 use App\Services\Inventory\LotService;
 use App\Services\OrderActivityLogger;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +21,7 @@ use Illuminate\Support\Str;
 
 class RefundController extends Controller
 {
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'invoice_id' => 'required|exists:invoices,id',
@@ -33,7 +34,7 @@ class RefundController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $request) {
-                $invoice = Invoice::with(['lines', 'orders'])->lockForUpdate()->findOrFail($validated['invoice_id']);
+                $invoice = Invoice::with(['lines', 'orders'])->lockForUpdate()->where('id', $validated['invoice_id'])->firstOrFail();
 
                 if ($invoice->payment_method === '') {
                     throw new \Exception('Hóa đơn không hợp lệ để hoàn.', 422);
@@ -43,7 +44,7 @@ class RefundController extends Controller
                 $linesMap = [];
 
                 foreach ($validated['items'] as $item) {
-                    $line = InvoiceLine::lockForUpdate()->findOrFail($item['invoice_line_id']);
+                    $line = InvoiceLine::query()->lockForUpdate()->where('id', $item['invoice_line_id'])->firstOrFail();
                     if ((int) $line->invoice_id !== (int) $invoice->id) {
                         throw new \Exception('Dòng món không thuộc hóa đơn.', 422);
                     }

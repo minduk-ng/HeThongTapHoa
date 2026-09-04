@@ -317,7 +317,7 @@ class CheckoutService
 
             // 7c. Upsert daily_promotion_stats (realtime) — revenue phân bổ theo tỷ trọng discount
             $invoiceTotal = (float) $invoice->total_amount;
-            $totalDiscountThisInvoice = (float) collect($appliedPromotions)->sum('amount');
+            $totalDiscountThisInvoice = (float) array_sum(array_column($promotionRows, 'amount'));
             $statDate = now()->toDateString();
             $promoCount = count($appliedPromotions);
             $assignedRevenue = 0.0;
@@ -341,13 +341,11 @@ class CheckoutService
                 $attrs = ['promotion_id' => $promo->id, 'stat_date' => $statDate];
                 $row = DB::table('daily_promotion_stats')->where($attrs)->first();
                 if ($row) {
-                    DB::table('daily_promotion_stats')->where($attrs)->update([
-                        'order_count' => DB::raw('order_count + 1'),
-                        'unique_orders' => DB::raw('unique_orders + 1'),
-                        'revenue' => DB::raw('revenue + '.$revenueShare),
-                        'discount_total' => DB::raw('discount_total + '.round($promoAmount, 2)),
-                        'updated_at' => now(),
-                    ]);
+                    DB::table('daily_promotion_stats')->where($attrs)->increment('order_count', 1);
+                    DB::table('daily_promotion_stats')->where($attrs)->increment('unique_orders', 1);
+                    DB::table('daily_promotion_stats')->where($attrs)->increment('revenue', $revenueShare);
+                    DB::table('daily_promotion_stats')->where($attrs)->increment('discount_total', round($promoAmount, 2));
+                    DB::table('daily_promotion_stats')->where($attrs)->update(['updated_at' => now()]);
                 } else {
                     DB::table('daily_promotion_stats')->insert(array_merge($attrs, [
                         'order_count' => 1,
@@ -411,6 +409,9 @@ class CheckoutService
         return $invoice;
     }
 
+    /**
+     * @param  Collection<int, Order>  $orders
+     */
     private static function tableNameFor(Collection $orders): string
     {
         $first = $orders->first();
@@ -426,6 +427,9 @@ class CheckoutService
         return $sub ? "{$primary->table_number} (Gộp {$sub})" : $primary->table_number;
     }
 
+    /**
+     * @param  Collection<int, Order>  $orders
+     */
     private static function createStockExportVoucher(Collection $orders, ?int $userId): void
     {
         $employeeId = Employee::idForUser($userId);

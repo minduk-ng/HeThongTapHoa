@@ -9,6 +9,7 @@ use App\Http\Controllers\Staff\Concerns\DispatchesSafely;
 use App\Models\Order;
 use App\Models\Table;
 use App\Services\IdempotencyGuard;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -16,7 +17,7 @@ class TableOperationController extends Controller
 {
     use DispatchesSafely;
 
-    public function transferTable(Request $request)
+    public function transferTable(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'source_table_id' => 'required|exists:tables,id',
@@ -32,8 +33,8 @@ class TableOperationController extends Controller
 
         try {
             DB::transaction(function () use ($validated) {
-                $sourceTable = Table::lockForUpdate()->findOrFail($validated['source_table_id']);
-                $targetTable = Table::lockForUpdate()->findOrFail($validated['target_table_id']);
+                $sourceTable = Table::query()->lockForUpdate()->where('id', $validated['source_table_id'])->firstOrFail();
+                $targetTable = Table::query()->lockForUpdate()->where('id', $validated['target_table_id'])->firstOrFail();
 
                 if (Order::whereIn('table_id', [$sourceTable->id, $targetTable->id])->where('status', 'reserved')->exists()) {
                     throw new \Exception('Không thể chuyển bàn đang có đơn đặt trước.');
@@ -114,7 +115,7 @@ class TableOperationController extends Controller
         }
     }
 
-    public function mergeTables(Request $request)
+    public function mergeTables(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'source_table_id' => 'required|exists:tables,id',
@@ -130,8 +131,8 @@ class TableOperationController extends Controller
 
         try {
             DB::transaction(function () use ($validated) {
-                $sourceTable = Table::lockForUpdate()->findOrFail($validated['source_table_id']);
-                $targetTable = Table::lockForUpdate()->findOrFail($validated['target_table_id']);
+                $sourceTable = Table::query()->lockForUpdate()->where('id', $validated['source_table_id'])->firstOrFail();
+                $targetTable = Table::query()->lockForUpdate()->where('id', $validated['target_table_id'])->firstOrFail();
 
                 if (Order::whereIn('table_id', [$sourceTable->id, $targetTable->id])->where('status', 'reserved')->exists()) {
                     throw new \Exception('Không thể gộp bàn đang có đơn đặt trước.');
@@ -158,11 +159,13 @@ class TableOperationController extends Controller
                 Table::where('id', $primaryTargetId)->update(['status' => 'occupied']);
 
                 $primaryTargetTable = Table::find($primaryTargetId);
-                $this->safeDispatch(function () use ($sourceTable, $primaryTargetTable) {
-                    TableTransferred::dispatch($sourceTable, $primaryTargetTable, 'merge');
-                    TableStatusUpdated::dispatch($sourceTable);
-                    TableStatusUpdated::dispatch($primaryTargetTable);
-                });
+                if ($primaryTargetTable) {
+                    $this->safeDispatch(function () use ($sourceTable, $primaryTargetTable) {
+                        TableTransferred::dispatch($sourceTable, $primaryTargetTable, 'merge');
+                        TableStatusUpdated::dispatch($sourceTable);
+                        TableStatusUpdated::dispatch($primaryTargetTable);
+                    });
+                }
             });
 
             return back()->with('success', 'Gộp bàn thành công!');
@@ -171,7 +174,7 @@ class TableOperationController extends Controller
         }
     }
 
-    public function unmergeTable(Request $request)
+    public function unmergeTable(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'source_table_id' => 'required|exists:tables,id',
@@ -187,8 +190,8 @@ class TableOperationController extends Controller
 
         try {
             DB::transaction(function () use ($validated) {
-                $sourceTable = Table::lockForUpdate()->findOrFail($validated['source_table_id']);
-                $keepTable = Table::lockForUpdate()->findOrFail($validated['keep_table_id']);
+                $sourceTable = Table::query()->lockForUpdate()->where('id', $validated['source_table_id'])->firstOrFail();
+                $keepTable = Table::query()->lockForUpdate()->where('id', $validated['keep_table_id'])->firstOrFail();
 
                 $groupId = $sourceTable->merged_into_table_id ?? $sourceTable->id;
                 $allGroupTableIds = Table::where('id', $groupId)

@@ -16,18 +16,20 @@ use App\Models\Promotion;
 use App\Models\Table;
 use App\Services\IdempotencyGuard;
 use App\Services\OrderActivityLogger;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class POSController extends Controller
 {
     use DispatchesSafely, GeneratesOrderCode;
 
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $isLocal = app()->environment('local');
 
@@ -46,6 +48,9 @@ class POSController extends Controller
         ]);
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     private function loadTablesPayload(): array
     {
         $tables = Table::with(['mergedIntoTable', 'orders' => function ($query) {
@@ -112,11 +117,17 @@ class POSController extends Controller
         return $result;
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     private function loadCategoriesPayload(): array
     {
         return MenuCategory::orderBy('sort_order', 'asc')->get()->toArray();
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     private function loadProductsPayload(): array
     {
         $prods = MenuItem::with(['category', 'recipes.ingredient'])->where('is_available', true)->get();
@@ -142,6 +153,9 @@ class POSController extends Controller
         return $prods->toArray();
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     private function loadPromotionsPayload(): array
     {
         return Promotion::with(['conditions', 'actions'])
@@ -153,7 +167,10 @@ class POSController extends Controller
             ->toArray();
     }
 
-    private function cachedPayload(bool $isLocal, string $tag, string $key, int $ttl, callable $loader): mixed
+    /**
+     * @param  \Closure(): mixed  $loader
+     */
+    private function cachedPayload(bool $isLocal, string $tag, string $key, int $ttl, \Closure $loader): mixed
     {
         if ($isLocal) {
             return $loader();
@@ -168,7 +185,7 @@ class POSController extends Controller
         }
     }
 
-    public function sendToKitchen(Request $request)
+    public function sendToKitchen(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'table_id' => 'nullable|exists:tables,id',
@@ -188,7 +205,7 @@ class POSController extends Controller
         if (IdempotencyGuard::isDuplicate($request, 'send_to_kitchen', [
             'order_id' => $validated['order_id'] ?? null,
             'table_id' => $validated['table_id'] ?? null,
-            'items_qty' => collect($validated['items'] ?? [])->sum('quantity'),
+            'items_qty' => collect(array_values($validated['items'] ?? []))->sum('quantity'),
         ])) {
             Log::info("Duplicate sendToKitchen request suppressed: {$request->input('idempotency_key')}");
 
@@ -197,17 +214,17 @@ class POSController extends Controller
 
         try {
             $primaryOrder = DB::transaction(function () use ($validated, $request) {
-                $table = ! empty($validated['table_id']) ? Table::findOrFail($validated['table_id']) : null;
+                $table = ! empty($validated['table_id']) ? Table::query()->lockForUpdate()->where('id', $validated['table_id'])->firstOrFail() : null;
 
-                $menuPrices = MenuItem::whereIn('id', collect($validated['items'] ?? [])->pluck('menu_item_id'))->pluck('price', 'id');
-                $computedSubtotal = collect($validated['items'] ?? [])->sum(
+                $menuPrices = MenuItem::whereIn('id', collect(array_values($validated['items'] ?? []))->pluck('menu_item_id'))->pluck('price', 'id');
+                $computedSubtotal = collect(array_values($validated['items'] ?? []))->sum(
                     fn ($i) => (float) $i['quantity'] * (float) ($menuPrices[$i['menu_item_id']] ?? 0)
                 );
 
                 // 1. Handle staged reductions
                 if (! empty($validated['reduced_items'])) {
                     foreach ($validated['reduced_items'] as $red) {
-                        $orderItem = OrderItem::lockForUpdate()->find($red['order_item_id']);
+                        $orderItem = OrderItem::query()->lockForUpdate()->where('id', $red['order_item_id'])->first();
                         if (! $orderItem || $orderItem->status === 'completed' || in_array($orderItem->order->status, ['paid', 'cancelled', 'completed'], true)) {
                             continue;
                         }
@@ -255,7 +272,7 @@ class POSController extends Controller
                 $wasDraft = false;
                 if (! empty($validated['items'])) {
                     if (! empty($validated['order_id'])) {
-                        $createdOrder = Order::lockForUpdate()->findOrFail($validated['order_id']);
+                        $createdOrder = Order::query()->lockForUpdate()->where('id', $validated['order_id'])->firstOrFail();
                         if (in_array($createdOrder->status, ['paid', 'cancelled'], true)) {
                             throw new \Exception('Đơn đã thanh toán hoặc đã hủy, không thể gửi bếp.', 422);
                         }
@@ -317,7 +334,7 @@ class POSController extends Controller
 
                     // Audit log
                     $userId = $request->user()?->id;
-                    $itemMeta = collect($validated['items'])->map(fn ($i) => [
+                    $itemMeta = collect(array_values($validated['items']))->map(fn ($i) => [
                         'name' => MenuItem::find($i['menu_item_id'])->name ?? 'Món',
                         'qty' => $i['quantity'],
                         'price' => $menuPrices[$i['menu_item_id']] ?? 0,
@@ -332,7 +349,7 @@ class POSController extends Controller
                             ]);
                         }
                         OrderActivityLogger::log($createdOrder, 'sent_kitchen', $userId, [
-                            'items' => collect($validated['items'])->map(fn ($i) => ['name' => MenuItem::find($i['menu_item_id'])->name ?? 'Món', 'qty' => $i['quantity']])->toArray(),
+                            'items' => collect(array_values($validated['items']))->map(fn ($i) => ['name' => MenuItem::find($i['menu_item_id'])->name ?? 'Món', 'qty' => $i['quantity']])->toArray(),
                             'is_additional' => false,
                         ]);
                     } else {
@@ -356,7 +373,7 @@ class POSController extends Controller
         }
     }
 
-    public function cancelOrder(Request $request)
+    public function cancelOrder(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'table_id' => 'required|exists:tables,id',
@@ -365,7 +382,7 @@ class POSController extends Controller
         ]);
 
         try {
-            $table = Table::findOrFail($validated['table_id']);
+            $table = Table::query()->where('id', $validated['table_id'])->firstOrFail();
             $primaryId = $table->merged_into_table_id ?? $table->id;
             $allGroupTables = Table::where('id', $primaryId)->orWhere('merged_into_table_id', $primaryId)->get();
 

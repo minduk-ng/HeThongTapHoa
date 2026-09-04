@@ -25,7 +25,7 @@ class PaymentController extends Controller
 {
     use DispatchesSafely;
 
-    public function validatePromotion(Request $request)
+    public function validatePromotion(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'code' => 'nullable|string|max:50',
@@ -40,8 +40,8 @@ class PaymentController extends Controller
             }],
         ]);
 
-        $lines = collect($validated['items'] ?? [])->map(function ($it) {
-            $mi = MenuItem::find($it['menu_item_id']);
+        $lines = collect(array_values($validated['items'] ?? []))->map(function ($it) {
+            $mi = MenuItem::query()->where('id', $it['menu_item_id'])->first();
 
             return [
                 'order_item_id' => null,
@@ -63,7 +63,7 @@ class PaymentController extends Controller
             ]]);
         }
 
-        $codes = collect($validated['codes'] ?? [$validated['code'] ?? null])
+        $codes = collect(array_values($validated['codes'] ?? [$validated['code'] ?? null]))
             ->filter(fn ($c) => $c !== null && trim((string) $c) !== '')
             ->values()
             ->all();
@@ -93,7 +93,7 @@ class PaymentController extends Controller
             ], 422);
         }
 
-        $promotions = collect($resolved['promotions'])->map(fn ($r) => [
+        $promotions = collect(array_values($resolved['promotions']))->map(fn ($r) => [
             'id' => $r['promotion']->id,
             'name' => $r['promotion']->name,
             'code' => $r['code'] ?? $r['promotion']->code,
@@ -109,7 +109,7 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function availablePromotions(Request $request)
+    public function availablePromotions(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'subtotal' => 'nullable|numeric|min:0',
@@ -118,8 +118,8 @@ class PaymentController extends Controller
             'items.*.quantity' => 'required_with:items|integer|min:1',
         ]);
 
-        $lines = collect($validated['items'] ?? [])->map(function ($it) {
-            $mi = MenuItem::find($it['menu_item_id']);
+        $lines = collect(array_values($validated['items'] ?? []))->map(function ($it) {
+            $mi = MenuItem::query()->where('id', $it['menu_item_id'])->first();
 
             return [
                 'order_item_id' => null,
@@ -174,10 +174,7 @@ class PaymentController extends Controller
             $order = null;
             $totalAmount = 0;
             $result = DB::transaction(function () use ($validated, $request, &$order, &$totalAmount) {
-                $order = Order::with(['items.menuItem'])->lockForUpdate()->findOrFail($validated['order_id']);
-                if (! $order instanceof Order) {
-                    throw new \Exception('Không tìm thấy đơn hàng.');
-                }
+                $order = Order::with(['items.menuItem'])->lockForUpdate()->where('id', $validated['order_id'])->firstOrFail();
 
                 if (in_array($order->status, ['paid', 'cancelled'])) {
                     throw new \Exception('Đơn hàng này đã được thanh toán hoặc đã hủy.');
@@ -306,7 +303,7 @@ class PaymentController extends Controller
         }
     }
 
-    public function bulkCheckout(Request $request)
+    public function bulkCheckout(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'order_ids' => 'required|array|min:1',
@@ -324,7 +321,7 @@ class PaymentController extends Controller
         ]);
 
         if (IdempotencyGuard::isDuplicate($request, 'bulk_checkout', [
-            'order_ids' => collect($validated['order_ids'])->sort()->values()->all(),
+            'order_ids' => collect(array_values($validated['order_ids']))->sort()->values()->all(),
             'amount_received' => $validated['amount_received'],
         ])) {
             return $request->wantsJson()
@@ -369,7 +366,7 @@ class PaymentController extends Controller
 
                 // Determine table name
                 $tableId = $validated['table_id'] ?? $orders->first()?->table_id;
-                $targetTable = $tableId ? Table::find($tableId) : null;
+                $targetTable = $tableId ? Table::query()->where('id', $tableId)->first() : null;
 
                 if ($targetTable) {
                     $primaryId = $targetTable->merged_into_table_id ?? $targetTable->id;
@@ -467,7 +464,7 @@ class PaymentController extends Controller
             return back()->with('success', 'Thanh toán gộp thành công!');
         } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'bulk_checkout', [
-                'order_ids' => collect($validated['order_ids'])->sort()->values()->all(),
+                'order_ids' => collect(array_values($validated['order_ids']))->sort()->values()->all(),
                 'amount_received' => $validated['amount_received'],
             ]);
             Log::error('POS bulk checkout error: '.$e->getMessage());
