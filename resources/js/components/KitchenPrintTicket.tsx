@@ -10,7 +10,7 @@ interface KitchenPrintTicketProps {
 
 export default function KitchenPrintTicket({ orderNumber, tableNumber, items, note, createdAtLabel }: KitchenPrintTicketProps) {
     return (
-        <div className="print-area font-mono text-[10px]">
+        <div className="print-area print-ticket font-mono text-[10px]">
             <div className="text-center font-bold mb-1">TẠP HOÁ / QUÁN</div>
             <div>----------------------------</div>
             <div>BẾP · Ticket: {orderNumber}</div>

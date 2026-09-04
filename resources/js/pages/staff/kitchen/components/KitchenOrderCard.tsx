@@ -17,7 +17,7 @@ export interface KitchenOrderData {
         id: number;
         quantity: number;
         unit_price: number;
-        status: 'pending' | 'completed' | 'cancelled';
+        status: 'pending' | 'processing' | 'completed' | 'cancelled';
         note?: string | null;
         created_at?: string;
         menu_item?: {

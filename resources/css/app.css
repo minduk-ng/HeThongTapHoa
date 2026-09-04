@@ -250,6 +250,10 @@
         position: absolute;
         left: 0;
         top: 0;
+        width: 100%;
+    }
+
+    .print-area.print-ticket {
         width: 58mm;
     }
 

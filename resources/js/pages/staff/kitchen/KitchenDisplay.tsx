@@ -502,11 +502,17 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                 <KitchenPrintTicket
                     orderNumber={printOrder.order_code}
                     tableNumber={printOrder.table?.table_number || 'Mang về'}
-                    items={printOrder.items.map((item) => ({
-                        name: item.menu_item?.name || 'Món ăn',
-                        quantity: item.quantity,
-                        note: item.note ?? null,
-                    }))}
+                    items={printOrder.items
+                        .filter(
+                            (item) =>
+                                item.status === 'pending' ||
+                                item.status === 'processing',
+                        )
+                        .map((item) => ({
+                            name: item.menu_item?.name || 'Món ăn',
+                            quantity: item.quantity,
+                            note: item.note ?? null,
+                        }))}
                     note={printOrder.note ?? null}
                     createdAtLabel={new Date(printOrder.created_at).toLocaleTimeString('vi-VN', {
                         hour: '2-digit',
