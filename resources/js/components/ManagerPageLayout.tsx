@@ -36,7 +36,7 @@ export default function ManagerPageLayout({
                 <aside className="w-full lg:w-80 shrink-0 h-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-5 shadow-xs flex flex-col overflow-y-auto min-h-0 space-y-5">
                     {sidebar}
                 </aside>
-                <main className="flex-1 h-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-xs flex flex-col min-w-0 min-h-0 overflow-hidden">
+                <main className="flex-1 min-w-0 min-h-0 overflow-hidden flex flex-col">
                     {children}
                 </main>
             </div>
@@ -51,9 +51,7 @@ export default function ManagerPageLayout({
                     {/* Left: Icon, Title & Badge */}
                     <div className="flex items-center gap-3 min-w-0">
                         {Icon && (
-                            <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 shrink-0">
-                                <Icon className="w-5 h-5 stroke-[1.5]" />
-                            </div>
+                            <Icon className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0 stroke-[1.5]" />
                         )}
                         <div className="min-w-0">
                             <div className="flex items-center gap-2.5 flex-wrap">
@@ -101,14 +99,14 @@ export default function ManagerPageLayout({
 
                 {/* Collapsible Horizontal Filter Row */}
                 {filters && filtersOpen && (
-                    <div className="mt-3.5 pt-3.5 border-t border-zinc-100 dark:border-zinc-800 transition-all duration-200">
+                    <div className="mt-3.5 pt-3.5 border-t border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
                         {filters}
                     </div>
                 )}
             </div>
 
             {/* Main Table Content (Full Width) */}
-            <main className="flex-1 h-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-xs flex flex-col min-w-0 min-h-0 overflow-hidden">
+            <main className="flex-1 min-w-0 min-h-0 overflow-hidden flex flex-col">
                 {children}
             </main>
         </div>
