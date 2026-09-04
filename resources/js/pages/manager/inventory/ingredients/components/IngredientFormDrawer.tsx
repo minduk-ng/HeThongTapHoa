@@ -183,6 +183,14 @@ return null;
                                 );
                             }
 
+                            if (trimmed && trimmed !== unit && conversionNum !== 1) {
+                                return (
+                                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">
+                                        Quy đổi: 1 {trimmed} = {unitConversion} {unit}
+                                    </p>
+                                );
+                            }
+
                             return null;
                         })()}
 

@@ -61,6 +61,29 @@ test('index tra ve danh sach phieu', function () {
     $this->actingAs($admin)->get('/manager/inventory/vouchers')->assertOk();
 });
 
+test('backend luu quantity theo don vi goc — khong nhan them conversion', function () {
+    $admin = posAdmin();
+    $ing = Ingredient::create([
+        'name' => 'Cafe sale '.uniqid(), 'code' => 'cfs'.uniqid(), 'unit' => 'chai',
+        'purchase_unit' => 'thùng', 'unit_conversion' => 24,
+        'stock_quantity' => 0, 'min_stock_alert' => 10, 'cost_price' => 0,
+    ]);
+
+    $this->actingAs($admin)->post('/manager/inventory/vouchers', [
+        'items' => [[
+            'ingredient_id' => $ing->id,
+            'quantity' => 48,          // 2 thùng × 24 = 48 chai (frontend đã quy đổi)
+            'unit_price' => 10000,     // 240000/24 = 10000/chai (frontend đã quy đổi)
+            'expiry_date' => '2026-12-01',
+        ]],
+    ])->assertSessionHasNoErrors();
+
+    expect((float) $ing->fresh()->stock_quantity)->toBe(48.0);
+    $item = StockVoucherItem::where('ingredient_id', $ing->id)->first();
+    expect((float) $item->quantity)->toBe(48.0);
+    expect((float) $item->unit_price)->toBe(10000.0);
+});
+
 test('show van hoat dong khi ingredient cua phieu da bi xoa mem', function () {
     $admin = posAdmin();
     $ing = Ingredient::create(['code' => 'cafe', 'name' => 'Cà phê '.uniqid(), 'unit' => 'g', 'stock_quantity' => 0, 'cost_price' => 0]);

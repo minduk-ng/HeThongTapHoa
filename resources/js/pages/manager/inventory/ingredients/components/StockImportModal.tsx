@@ -13,6 +13,7 @@ interface StockImportModalProps {
 
 interface ImportLine {
     ingredient_id: string;
+    unit_used: 'purchase' | 'base';
     quantity: string;
     unit_price: string;
     expiry_date: string;
@@ -31,7 +32,13 @@ export default function StockImportModal({
     onClose,
 }: StockImportModalProps) {
     const [lines, setLines] = useState<ImportLine[]>([
-        { ingredient_id: '', quantity: '', unit_price: '', expiry_date: '' },
+        {
+            ingredient_id: '',
+            unit_used: 'base',
+            quantity: '',
+            unit_price: '',
+            expiry_date: '',
+        },
     ]);
     const [note, setNote] = useState('');
     const [supplierId, setSupplierId] = useState('');
@@ -58,6 +65,7 @@ export default function StockImportModal({
             ...prev,
             {
                 ingredient_id: '',
+                unit_used: 'base',
                 quantity: '',
                 unit_price: '',
                 expiry_date: '',
@@ -69,6 +77,7 @@ export default function StockImportModal({
             setLines([
                 {
                     ingredient_id: '',
+                    unit_used: 'base',
                     quantity: '',
                     unit_price: '',
                     expiry_date: '',
@@ -92,14 +101,16 @@ export default function StockImportModal({
 
     const toBaseQuantity = (line: ImportLine): number => {
         const ing = getIngredient(line.ingredient_id);
-        const conversion = ing?.unit_conversion ?? 1;
+        const conversion =
+            line.unit_used === 'purchase' ? (ing?.unit_conversion ?? 1) : 1;
 
         return Number(line.quantity) * conversion;
     };
 
     const toBasePrice = (line: ImportLine): number => {
         const ing = getIngredient(line.ingredient_id);
-        const conversion = ing?.unit_conversion ?? 1;
+        const conversion =
+            line.unit_used === 'purchase' ? (ing?.unit_conversion ?? 1) : 1;
 
         return Number(line.unit_price || 0) / conversion;
     };
@@ -156,6 +167,7 @@ export default function StockImportModal({
                     setLines([
                         {
                             ingredient_id: '',
+                            unit_used: 'base',
                             quantity: '',
                             unit_price: '',
                             expiry_date: '',
@@ -229,6 +241,9 @@ export default function StockImportModal({
                                     const unit = displayUnit(
                                         line.ingredient_id,
                                     );
+                                    const ing = getIngredient(
+                                        line.ingredient_id,
+                                    );
                                     const lineSubtotal =
                                         Number(line.quantity || 0) *
                                         Number(line.unit_price || 0);
@@ -253,6 +268,16 @@ export default function StockImportModal({
                                                             idx,
                                                             'ingredient_id',
                                                             newIngId,
+                                                        );
+
+                                                        // Mặc định nhập theo đơn vị mua nếu nguyên liệu có purchase_unit
+                                                        updateLine(
+                                                            idx,
+                                                            'unit_used',
+                                                            targetIng
+                                                                ?.purchase_unit
+                                                                ? 'purchase'
+                                                                : 'base',
                                                         );
 
                                                         // Tự động gợi ý giá vốn hiện tại nếu chưa nhập
@@ -298,7 +323,7 @@ export default function StockImportModal({
                                             </div>
 
                                             {/* 2. Quantity Input (Số -> Căn giữa) */}
-                                            <div className="relative">
+                                            <div className="space-y-1">
                                                 <input
                                                     type="number"
                                                     step="any"
@@ -312,10 +337,40 @@ export default function StockImportModal({
                                                         )
                                                     }
                                                     placeholder={
-                                                        unit ? `0 ${unit}` : '0'
+                                                        unit
+                                                            ? `0 ${unit}`
+                                                            : '0'
                                                     }
                                                     className="w-full rounded-xl border border-zinc-200 bg-white px-2 py-2 text-center text-xs font-semibold text-zinc-900 tabular-nums transition-colors outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                                 />
+                                                {ing?.purchase_unit && (
+                                                    <select
+                                                        value={line.unit_used}
+                                                        onChange={(e) =>
+                                                            updateLine(
+                                                                idx,
+                                                                'unit_used',
+                                                                e.target
+                                                                    .value as
+                                                                    | 'purchase'
+                                                                    | 'base',
+                                                            )
+                                                        }
+                                                        title="Đơn vị nhập"
+                                                        className="w-full rounded-lg border border-zinc-200 bg-white px-1 py-1 text-center text-[10px] font-medium text-zinc-600 transition-colors outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                                                    >
+                                                        <option value="purchase">
+                                                            {ing.purchase_unit}{' '}
+                                                            (×
+                                                            {ing.unit_conversion ??
+                                                                1}
+                                                            )
+                                                        </option>
+                                                        <option value="base">
+                                                            {ing.unit}
+                                                        </option>
+                                                    </select>
+                                                )}
                                             </div>
 
                                             {/* 3. Unit Price Input (Số -> Căn giữa) */}
