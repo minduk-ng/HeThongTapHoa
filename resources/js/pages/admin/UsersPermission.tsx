@@ -165,11 +165,9 @@ return;
                 {/* Top Control Bar Header */}
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-4 shadow-xs shrink-0 flex items-center justify-between flex-wrap gap-3">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400">
-                            <Users className="w-5 h-5 stroke-[1.5]" />
-                        </div>
                         <div>
                             <div className="flex items-center gap-2 flex-wrap">
+                                <Users className="w-5 h-5 stroke-[1.5] text-sky-600 dark:text-sky-400" />
                                 <h1 className="font-display text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                                     Phân quyền Tài khoản Người dùng
                                 </h1>

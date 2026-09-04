@@ -479,9 +479,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                 <div className="flex-1 overflow-y-auto p-4">
                     {filteredOrders.length === 0 ? (
                         <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200 bg-white p-8 text-center shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
-                            <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border border-sky-200/60 bg-sky-50 text-sky-600 dark:border-sky-800/60 dark:bg-sky-950/60">
-                                <Sparkles className="h-8 w-8 stroke-[1.5]" />
-                            </div>
+                            <Sparkles className="mb-3 h-8 w-8 stroke-[1.5] text-sky-500" />
                             <h3 className="font-display text-base font-bold text-zinc-800 dark:text-zinc-200">
                                 Hiện không có món nào chờ chế biến
                             </h3>

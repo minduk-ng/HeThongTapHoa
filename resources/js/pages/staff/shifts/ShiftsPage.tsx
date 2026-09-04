@@ -2,9 +2,7 @@ import { Head } from '@inertiajs/react';
 import {
     Minus,
     Plus,
-    Banknote,
     CalendarClock,
-    Clock,
     LogIn,
     LogOut,
     X,
@@ -304,32 +302,29 @@ export default function ShiftsPage() {
                         </section>
                     ) : (
                         <section className="grid gap-4 md:grid-cols-3">
-                            <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-                                <Clock className="h-5 w-5 stroke-[1.5] text-sky-600" />
-                                <div className="mt-4 text-xs text-zinc-500">
-                                    Thời điểm mở
+                            <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
+                                <div className="text-xs font-medium text-zinc-500">
+                                    Thời điểm mở ca
                                 </div>
-                                <div className="mt-1 font-semibold">
+                                <div className="mt-1 font-display text-lg font-bold text-zinc-900 dark:text-zinc-100">
                                     {new Date(shift.opened_at).toLocaleString(
                                         'vi-VN',
                                     )}
                                 </div>
                             </div>
-                            <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-                                <Banknote className="h-5 w-5 stroke-[1.5] text-sky-600" />
-                                <div className="mt-4 text-xs text-zinc-500">
+                            <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
+                                <div className="text-xs font-medium text-zinc-500">
                                     Tiền đầu ca
                                 </div>
-                                <div className="mt-1 font-display text-2xl tabular-nums">
+                                <div className="mt-1 font-display text-2xl font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
                                     {money(shift.opening_cash)}
                                 </div>
                             </div>
-                            <div className="rounded-2xl border border-sky-200 bg-sky-50 p-5 dark:border-sky-900 dark:bg-sky-950/50">
-                                <Banknote className="h-5 w-5 stroke-[1.5] text-sky-600" />
-                                <div className="mt-4 text-xs text-zinc-500">
+                            <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
+                                <div className="text-xs font-medium text-zinc-500">
                                     Tiền mặt kỳ vọng
                                 </div>
-                                <div className="mt-1 font-display text-2xl text-sky-700 tabular-nums dark:text-sky-300">
+                                <div className="mt-1 font-display text-2xl font-bold text-sky-600 tabular-nums dark:text-sky-400">
                                     {money(expectedCash)}
                                 </div>
                             </div>

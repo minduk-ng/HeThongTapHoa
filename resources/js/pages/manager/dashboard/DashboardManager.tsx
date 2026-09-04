@@ -1,7 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { 
-    TrendingUp, TrendingDown, ShoppingBag, CreditCard, 
-    LayoutGrid, AlertTriangle, ChefHat, ConciergeBell, CheckCircle2 
+    TrendingUp, TrendingDown, 
+    ChefHat, ConciergeBell, CheckCircle2 
 } from 'lucide-react';
 import React, { useEffect } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
@@ -152,18 +152,11 @@ return;
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 {/* KPI 1: Doanh thu */}
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs hover:border-sky-500/50 transition-colors duration-150">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Doanh thu</p>
-                            <h3 className="font-display text-xl font-bold mt-1 text-zinc-900 dark:text-white tabular-nums">
-                                {formatCurrency(kpis.revenue.value)}
-                            </h3>
-                        </div>
-                        <div className="p-2.5 bg-sky-50 dark:bg-sky-950/40 rounded-xl text-sky-600 dark:text-sky-400">
-                            <CreditCard className="w-5 h-5 stroke-[1.5]" />
-                        </div>
+                    <p className="text-xs font-medium text-zinc-500">Doanh thu</p>
+                    <div className="font-display text-3xl font-semibold mt-1 text-zinc-900 dark:text-white tabular-nums">
+                        {formatCurrency(kpis.revenue.value)}
                     </div>
-                    <div className="mt-4 flex items-center gap-1">
+                    <div className="mt-3 flex items-center gap-1">
                         {kpis.revenue.trend === 'up' ? (
                             <TrendingUp className="w-4 h-4 text-emerald-500" />
                         ) : (
@@ -178,19 +171,12 @@ return;
 
                 {/* KPI 2: Tổng đơn */}
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs hover:border-sky-500/50 transition-colors duration-150">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Tổng Đơn Hàng</p>
-                            <h3 className="font-display text-xl font-bold mt-1 text-zinc-900 dark:text-white tabular-nums">
-                                {kpis.orders.value} đơn
-                            </h3>
-                        </div>
-                        <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-amber-600 dark:text-amber-400">
-                            <ShoppingBag className="w-5 h-5 stroke-[1.5]" />
-                        </div>
+                    <p className="text-xs font-medium text-zinc-500">Tổng đơn hàng</p>
+                    <div className="font-display text-3xl font-semibold mt-1 text-zinc-900 dark:text-white tabular-nums">
+                        {kpis.orders.value} <span className="text-sm font-normal text-zinc-500">đơn</span>
                     </div>
-                    <div className="mt-4 flex items-center gap-1">
-                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 rounded-full text-[10px] font-bold">
+                    <div className="mt-3 flex items-center gap-1">
+                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 rounded-full text-[11px] font-semibold">
                             {kpis.orders.pending_count} đơn đang xử lý
                         </span>
                     </div>
@@ -198,39 +184,25 @@ return;
 
                 {/* KPI 3: Bàn bận */}
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs hover:border-sky-500/50 transition-colors duration-150">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Trạng thái Bàn</p>
-                            <h3 className="font-display text-xl font-bold mt-1 text-zinc-900 dark:text-white tabular-nums">
-                                {kpis.tables.occupied}/{kpis.tables.total} bàn bận
-                            </h3>
-                        </div>
-                        <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-600 dark:text-emerald-400">
-                            <LayoutGrid className="w-5 h-5 stroke-[1.5]" />
-                        </div>
+                    <p className="text-xs font-medium text-zinc-500">Trạng thái bàn</p>
+                    <div className="font-display text-3xl font-semibold mt-1 text-zinc-900 dark:text-white tabular-nums">
+                        {kpis.tables.occupied}/{kpis.tables.total} <span className="text-sm font-normal text-zinc-500">bàn bận</span>
                     </div>
-                    <div className="mt-4 w-full">
+                    <div className="mt-3 w-full">
                         <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
                             <div className="bg-emerald-500 h-full rounded-full transition-all duration-300" style={{ width: `${tableOccupancyPercent}%` }}></div>
                         </div>
-                        <p className="mt-1 text-[10px] text-zinc-400 font-medium tabular-nums">{Math.round(tableOccupancyPercent)}% occupancy</p>
+                        <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium tabular-nums">{Math.round(tableOccupancyPercent)}% công suất</p>
                     </div>
                 </div>
 
                 {/* KPI 4: Nguyên liệu hết */}
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs hover:border-sky-500/50 transition-colors duration-150 border-l-4 border-l-rose-500">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Kho Nguyên Liệu</p>
-                            <h3 className="font-display text-xl font-bold mt-1 text-rose-600 dark:text-rose-450 tabular-nums">
-                                {kpis.inventory_warnings_count} mặt hàng hết
-                            </h3>
-                        </div>
-                        <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 rounded-xl text-rose-600 dark:text-rose-450">
-                            <AlertTriangle className="w-5 h-5 stroke-[1.5]" />
-                        </div>
+                    <p className="text-xs font-medium text-zinc-500">Kho nguyên liệu</p>
+                    <div className="font-display text-3xl font-semibold mt-1 text-rose-600 dark:text-rose-400 tabular-nums">
+                        {kpis.inventory_warnings_count} <span className="text-sm font-normal text-zinc-500">mặt hàng hết</span>
                     </div>
-                    <div className="mt-4">
+                    <div className="mt-3">
                         <span className="text-rose-500 font-semibold text-xs">Cần nhập kho ngay</span>
                     </div>
                 </div>
