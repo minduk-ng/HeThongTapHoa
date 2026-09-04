@@ -344,6 +344,27 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
 
 ### 11.3 Chuẩn Hóa Toàn Diện Anti-Slop (Hallmark Audit Zero-Slop)
 - **100% Lucide Icons**: Thay thế toàn bộ thẻ `<svg>` viết tay inline trong Auth, Admin, Drawers và Sidebar bằng icon SVG chuẩn từ thư viện `lucide-react`.
-- **Đồng bộ Bảng màu Hệ thống**: Xóa bỏ hoàn toàn hiện tượng trôi màu (`indigo-600`, `blue-600`) sang bảng màu chuẩn `sky-600`.
+- **Đồng bộ Bảng màu Hệ thống**: Xóa bỏ hoàn toàn hiện tượng trôi màu (`indigo-600`, `blue-600`) sang bảng màu chuẩn `sky-600`. Đồng bộ nền trung tính toàn hệ thống về `zinc` (loại bỏ `slate`/`gray` không đồng bộ và sửa triệt để mã màu Tailwind không hợp lệ `zinc-850` thành `zinc-900`/`zinc-800`).
 - **Display Font Nhất quán**: Tất cả tiêu đề Card, Drawer, Modal áp dụng font `Plus Jakarta Sans` (`.font-display`).
+- **Trợ Năng & Tương Tác**: Áp dụng `focus-visible:ring-2` kèm `focus-visible:ring-sky-500`, hiệu ứng chuyển đổi `transition-colors`, gán đầy đủ `aria-label` cho tất cả các nút icon-only (đặc biệt là nút đóng `<X />`), bổ sung `aria-sort` trên tiêu đề cột sắp xếp bảng.
+
+### 11.4 Chuẩn Hóa Thiết Kế Hallmark Chuyên Sâu (Hallmark Plan 1 & Plan 2)
+- **Loại Bỏ Icon-Tile & Nested Card-in-Card**:
+  - `ManagerPageLayout` lược bỏ khối icon-tile nền phụ bọc icon tiêu đề, chuyển icon về kích thước chuẩn không viền hộp.
+  - `ReportPage` hợp nhất thanh lọc dữ liệu và bảng hiển thị thành một bề mặt thống nhất (single surface), loại bỏ cấu trúc bọc card trong card.
+- **Bố Cục Chuyên Biệt Theo Phân Hệ**:
+  - Quản lý Khuyến mãi (`PromotionsManager.tsx`): Triển khai chế độ Kanban 3 cột trực quan (Nháp, Đang chạy, Đã kết thúc/Tạm dừng).
+  - Quản lý Bàn (`TableManager.tsx`): Bổ sung dải màu trạng thái (status strip) nhận diện nhanh bàn trống/đang dùng.
+  - Quản lý Nguyên liệu (`IngredientsManager.tsx`): Bổ sung thanh tóm tắt định lượng ở đầu trang.
+- **Hóa Đơn & Thao Tác POS Chuẩn Xác**:
+  - `ReceiptPrintModal`: Hiển thị thông tin cửa hàng thực tế từ cơ sở dữ liệu thay vì dữ liệu mock rỗng; phương thức thanh toán hiển thị rõ ràng thay vì checkbox ASCII `[X]`.
+  - Giỏ hàng POS: Nút xóa dòng món luôn hiển thị trực quan (touch-visible), hỗ trợ tối đa màn hình cảm ứng POS thay vì phụ thuộc hover chuột.
+- **Chỉ Số KPI/Stat & Lưới Bất Đối Xứng**:
+  - Số liệu KPI hiển thị lớn, nổi bật (`text-2xl`/`text-3xl font-bold tabular-nums`), lược bỏ các hộp icon-tile sặc sỡ nền phụ (`DashboardManager`, `ShiftsPage`, `KitchenDisplay`, `UsersPermission`).
+  - Lưới bố cục bất đối xứng: `DashboardManager` sử dụng grid 7 cột tỉ lệ 2-2-3; `ShiftsPage` sử dụng grid 12 cột tỉ lệ 4-3-5.
+- **Typography Chuẩn Mực & Spinner Chống Chớp Nháy**:
+  - Chuyển toàn bộ tiêu đề and eyebrows từ All-Caps sang Sentence Case tự nhiên.
+  - Dấu ba chấm sử dụng ký tự typography chuẩn `…` (thay vì ba dấu chấm `...`); cỡ chữ nhỏ có sàn tối thiểu `text-[11px]`.
+  - Biểu mẫu Auth (`LoginForm`, `SignupForm`, `ForgotPassword`, `ResetPassword`) và Form Drawers áp dụng cơ chế trễ spinner tối thiểu 300ms chống chớp nháy (spinner flash).
+- **Responsive Drawers**: Toàn bộ 8 form Drawers chuẩn hóa sang `w-full max-w-md` hoặc `w-full max-w-xl` (loại bỏ `w-screen` gây tràn màn hình di động) kèm lớp phủ overlay `z-100` đồng bộ.
 
