@@ -235,7 +235,7 @@ return null;
             />
 
             <div className="absolute inset-y-0 right-0 max-w-full flex pl-10 z-101">
-                <div className="w-screen max-w-xl bg-white dark:bg-zinc-900 border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-lg flex flex-col justify-between">
+                <div className="w-full max-w-xl bg-white dark:bg-zinc-900 border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-lg flex flex-col justify-between">
                     {/* Header */}
                     <div className="p-6 border-b border-zinc-200/80 dark:border-zinc-800/80 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
                         <h2 className="text-xl font-bold font-display text-zinc-900 dark:text-zinc-100">
