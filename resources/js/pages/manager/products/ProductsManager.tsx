@@ -6,7 +6,7 @@ import ManagerPageLayout from '../../../components/ManagerPageLayout';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import CategoryFormModal from './components/CategoryFormModal';
 import ExcelImportModal from './components/ExcelImportModal';
-import ProductFormDrawer from './components/ProductFormDrawer';
+import ProductFormModal from './components/ProductFormModal';
 import type { MenuItemData } from './components/ProductTable';
 import ProductTable from './components/ProductTable';
 
@@ -41,8 +41,8 @@ export default function ProductsManager({
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [selectedCategory, setSelectedCategory] = useState(filters.category_id || 'all');
 
-    // Modals and Drawer States
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    // Modals States
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [productToEdit, setProductToEdit] = useState<MenuItemData | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -99,14 +99,14 @@ export default function ProductsManager({
         setSelectedCategory(catId);
     };
 
-    const handleOpenAddDrawer = () => {
+    const handleOpenAddModal = () => {
         setProductToEdit(null);
-        setIsDrawerOpen(true);
+        setIsModalOpen(true);
     };
 
     const handleEditProduct = (product: MenuItemData) => {
         setProductToEdit(product);
-        setIsDrawerOpen(true);
+        setIsModalOpen(true);
     };
 
     const handleDeleteProduct = (product: MenuItemData) => {
@@ -190,7 +190,7 @@ return;
                         </button>
                         <button
                             type="button"
-                            onClick={handleOpenAddDrawer}
+                            onClick={handleOpenAddModal}
                             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors shadow-xs"
                         >
                             <Plus className="w-3.5 h-3.5 stroke-2" />
@@ -268,10 +268,10 @@ return;
                 />
             </ManagerPageLayout>
 
-            {/* Product Form Drawer */}
-            <ProductFormDrawer
-                isOpen={isDrawerOpen}
-                onClose={() => setIsDrawerOpen(false)}
+            {/* Product Form Modal */}
+            <ProductFormModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
                 productToEdit={productToEdit}
                 categories={categories}
                 onOpenAddCategoryModal={() => setIsCategoryModalOpen(true)}

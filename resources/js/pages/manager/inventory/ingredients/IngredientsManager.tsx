@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import DeleteConfirmModal from '../../../../components/DeleteConfirmModal';
 import ManagerPageLayout from '../../../../components/ManagerPageLayout';
 import DashboardLayout from '../../../../layouts/DashboardLayout';
-import IngredientFormDrawer from './components/IngredientFormDrawer';
+import IngredientFormModal from './components/IngredientFormModal';
 import type { IngredientData } from './components/IngredientTable';
 import IngredientTable from './components/IngredientTable';
 import StockImportModal from './components/StockImportModal';
@@ -30,8 +30,8 @@ export default function IngredientsManager({
     const [selectedUnit, setSelectedUnit] = useState(filters.unit || 'all');
     const [alertFilter, setAlertFilter] = useState(filters.alert || 'all');
 
-    // Modals and Drawer States
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    // Modals States
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [ingredientToEdit, setIngredientToEdit] = useState<IngredientData | null>(null);
     const [isImportOpen, setIsImportOpen] = useState(false);
 
@@ -77,14 +77,14 @@ export default function IngredientsManager({
         setAlertFilter(alert);
     };
 
-    const handleOpenAddDrawer = () => {
+    const handleOpenAddModal = () => {
         setIngredientToEdit(null);
-        setIsDrawerOpen(true);
+        setIsModalOpen(true);
     };
 
     const handleEditIngredient = (ingredient: IngredientData) => {
         setIngredientToEdit(ingredient);
-        setIsDrawerOpen(true);
+        setIsModalOpen(true);
     };
 
     const handleDeleteIngredient = (ingredient: IngredientData) => {
@@ -172,7 +172,7 @@ return;
                         </button>
                         <button
                             type="button"
-                            onClick={handleOpenAddDrawer}
+                            onClick={handleOpenAddModal}
                             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors shadow-xs"
                         >
                             <Plus className="w-3.5 h-3.5 stroke-2" />
@@ -282,10 +282,10 @@ return;
                 </div>
             </ManagerPageLayout>
 
-            {/* Ingredient Add/Edit Drawer */}
-            <IngredientFormDrawer
-                isOpen={isDrawerOpen}
-                onClose={() => setIsDrawerOpen(false)}
+            {/* Ingredient Add/Edit Modal */}
+            <IngredientFormModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
                 ingredientToEdit={ingredientToEdit}
             />
 
