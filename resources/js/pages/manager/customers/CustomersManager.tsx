@@ -6,7 +6,7 @@ import type { DataTableColumn } from '../../../components/DataTable';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal';
 import ManagerPageLayout from '../../../components/ManagerPageLayout';
 import DashboardLayout from '../../../layouts/DashboardLayout';
-import CustomerFormDrawer from './components/CustomerFormDrawer';
+import CustomerFormModal from './components/CustomerFormModal';
 
 export interface CustomerData {
     id: number;
@@ -30,7 +30,7 @@ export default function CustomersManager({
 }: CustomersManagerProps) {
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
 
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [customerToEdit, setCustomerToEdit] = useState<CustomerData | null>(
         null,
     );
@@ -60,14 +60,14 @@ export default function CustomersManager({
         );
     }, [safeCustomers, searchQuery]);
 
-    const handleOpenAddDrawer = () => {
+    const handleOpenAddModal = () => {
         setCustomerToEdit(null);
-        setIsDrawerOpen(true);
+        setIsModalOpen(true);
     };
 
     const handleEditCustomer = (customer: CustomerData) => {
         setCustomerToEdit(customer);
-        setIsDrawerOpen(true);
+        setIsModalOpen(true);
     };
 
     const handleDeleteCustomer = (customer: CustomerData) => {
@@ -211,7 +211,7 @@ export default function CustomersManager({
                 actions={
                     <button
                         type="button"
-                        onClick={handleOpenAddDrawer}
+                        onClick={handleOpenAddModal}
                         className="flex items-center gap-1.5 rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-sky-700 active:bg-sky-800"
                     >
                         <Plus className="h-3.5 w-3.5 stroke-2" />
@@ -265,9 +265,9 @@ export default function CustomersManager({
                 </div>
             </ManagerPageLayout>
 
-            <CustomerFormDrawer
-                isOpen={isDrawerOpen}
-                onClose={() => setIsDrawerOpen(false)}
+            <CustomerFormModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
                 customerToEdit={customerToEdit}
             />
 

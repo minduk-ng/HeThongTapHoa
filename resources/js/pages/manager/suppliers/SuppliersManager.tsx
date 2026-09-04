@@ -13,7 +13,7 @@ import type { DataTableColumn } from '../../../components/DataTable';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal';
 import ManagerPageLayout from '../../../components/ManagerPageLayout';
 import DashboardLayout from '../../../layouts/DashboardLayout';
-import SupplierFormDrawer from './components/SupplierFormDrawer';
+import SupplierFormModal from './components/SupplierFormModal';
 import SupplierPaymentsModal from './components/SupplierPaymentsModal';
 
 export interface SupplierData {
@@ -48,7 +48,7 @@ export default function SuppliersManager({
 }: SuppliersManagerProps) {
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
 
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [supplierToEdit, setSupplierToEdit] = useState<SupplierData | null>(
         null,
     );
@@ -82,14 +82,14 @@ export default function SuppliersManager({
         );
     }, [safeSuppliers, searchQuery]);
 
-    const handleOpenAddDrawer = () => {
+    const handleOpenAddModal = () => {
         setSupplierToEdit(null);
-        setIsDrawerOpen(true);
+        setIsModalOpen(true);
     };
 
     const handleEditSupplier = (supplier: SupplierData) => {
         setSupplierToEdit(supplier);
-        setIsDrawerOpen(true);
+        setIsModalOpen(true);
     };
 
     const handleDeleteSupplier = (supplier: SupplierData) => {
@@ -241,7 +241,7 @@ export default function SuppliersManager({
                 actions={
                     <button
                         type="button"
-                        onClick={handleOpenAddDrawer}
+                        onClick={handleOpenAddModal}
                         className="flex items-center gap-1.5 rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-sky-700 active:bg-sky-800"
                     >
                         <Plus className="h-3.5 w-3.5 stroke-2" />
@@ -295,9 +295,9 @@ export default function SuppliersManager({
                 </div>
             </ManagerPageLayout>
 
-            <SupplierFormDrawer
-                isOpen={isDrawerOpen}
-                onClose={() => setIsDrawerOpen(false)}
+            <SupplierFormModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
                 supplierToEdit={supplierToEdit}
             />
 
