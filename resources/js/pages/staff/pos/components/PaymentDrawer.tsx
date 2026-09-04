@@ -1,7 +1,15 @@
 import { Banknote, QrCode, X, Printer, CalendarClock, Tag, Ticket, ChevronDown, Check, Users, User } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+import { usePage } from '@inertiajs/react';
 import { useSubmitGuard } from '../../../../hooks/useSubmitGuard';
 import type { POSTableData, CartItem, PosCustomer, ReservationDraft, PromotionCandidate } from '../types/pos.types';
+
+interface PaymentQrConfig {
+    enabled?: boolean;
+    bank_code?: string;
+    account_no?: string;
+    account_name?: string;
+}
 
 interface PaymentDrawerProps {
     isOpen: boolean;
@@ -69,6 +77,7 @@ export default function PaymentDrawer({
     const [createError, setCreateError] = useState<string | null>(null);
     const [createLoading, setCreateLoading] = useState(false);
     const { isSubmitting, guard } = useSubmitGuard();
+    const { payment_qr: paymentQr } = usePage<{ payment_qr?: PaymentQrConfig }>().props;
 
     const subtotal = cartItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
     // VAT trong giá: thuế nằm trong line, không cộng thêm vào payable (giá đã gồm thuế).
@@ -775,11 +784,14 @@ setAmountReceived(totalAmount);
                                             </div>
                                         )}
 
-                                        {((mode === 'reservation' && amountReceived > 0) || mode !== 'reservation') && (() => {
+                                        {paymentQr?.enabled && paymentQr?.account_no && ((mode === 'reservation' && amountReceived > 0) || mode !== 'reservation') && (() => {
                                             const qrAmount = Math.max(0, Math.round(mode === 'payment' ? payable : amountReceived));
                                             const tableLabel = selectedTable ? selectedTable.table_number : '';
                                             const addInfo = `${mode === 'payment' ? 'Thanh toan' : 'Dat coc'} ${tableLabel}`.trim();
-                                            const vietQrUrl = `https://img.vietqr.io/image/970422-0368192905-qr_only.png?amount=${qrAmount}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent('NGUYEN MINH DUC')}`;
+                                            const bankCode = paymentQr?.bank_code ?? '970422';
+                                            const accountNo = paymentQr?.account_no ?? '';
+                                            const accountName = paymentQr?.account_name ?? '';
+                                            const vietQrUrl = `https://img.vietqr.io/image/${bankCode}-${accountNo}-qr_only.png?amount=${qrAmount}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent(accountName)}`;
 
                                             return (
                                                 <div className="p-3.5 border border-zinc-200/80 dark:border-zinc-700/80 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 flex flex-col items-center">
@@ -795,7 +807,7 @@ setAmountReceived(totalAmount);
                                                         />
                                                     </div>
                                                     <div className="text-xs space-y-1 text-zinc-600 dark:text-zinc-300 font-medium text-center">
-                                                        <p><span className="text-zinc-400">MBBank:</span> <strong className="tabular-nums">0368192905</strong> — NGUYEN MINH DUC</p>
+                                                        <p><span className="text-zinc-400">Ngân hàng:</span> <strong className="tabular-nums">{bankCode}</strong> · <strong className="tabular-nums">{accountNo}</strong> — {accountName}</p>
                                                         <p><span className="text-zinc-400">Số tiền:</span> <strong className="text-sky-600 dark:text-sky-400 tabular-nums">{qrAmount.toLocaleString('vi-VN')} đ</strong></p>
                                                     </div>
                                                 </div>

@@ -150,6 +150,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'navigation' => $cachedData['navigation'],
             'cdn_url' => cdn_asset(''),
+            'payment_qr' => config('payment.qr'),
             'failedAttempts' => 0,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
