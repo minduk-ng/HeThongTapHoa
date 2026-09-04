@@ -181,45 +181,45 @@ return;
                 left: 0,
                 right: 0,
                 bottom: 0,
-                zIndex: 9999,
+                zIndex: 100,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                backgroundColor: 'rgba(24, 24, 27, 0.6)',
                 backdropFilter: 'blur(4px)',
                 padding: '1rem',
             }}
         >
-            <div className="w-full max-w-md rounded-2xl border border-gray-100 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-800 animate-in fade-in zoom-in-95 duration-200">
                 <div className="text-center">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Xác thực OTP</h3>
-                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    <h3 className="font-display text-lg font-bold text-zinc-900 dark:text-zinc-100">Xác thực OTP</h3>
+                    <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
                         Nhập mã 6 số đã được gửi đến <span className="font-semibold">{email}</span>
                     </p>
                 </div>
 
                 <div className="my-6 flex justify-center gap-2">
                     {otp.map((v, i) => {
-                        let fieldClass = 'otp-input-field transition-all duration-200';
+                        let fieldClass = 'otp-input-field transition-colors duration-200';
 
                         if (status === 'error') {
-fieldClass += ' otp-input-error';
-}
+                            fieldClass += ' otp-input-error';
+                        }
 
                         if (status === 'success') {
-fieldClass += ' otp-input-success';
-}
+                            fieldClass += ' otp-input-success';
+                        }
 
                         if (status === 'processing') {
-fieldClass += ' animate-pulse border-indigo-400';
-}
+                            fieldClass += ' animate-pulse border-sky-400';
+                        }
 
                         return (
                             <input
                                 key={i}
                                 ref={(el) => {
- inputs.current[i] = el; 
-}}
+                                    inputs.current[i] = el;
+                                }}
                                 type="text"
                                 maxLength={1}
                                 className={fieldClass}
@@ -239,7 +239,7 @@ fieldClass += ' animate-pulse border-indigo-400';
                     <button
                         type="button"
                         onClick={onClose}
-                        className="btn-secondary flex-1 py-2.5 text-xs font-semibold hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20 dark:hover:text-red-400 border-gray-200 dark:border-slate-700"
+                        className="btn-secondary flex-1 py-2.5 text-xs font-semibold hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/20 dark:hover:text-rose-400 border-zinc-200 dark:border-zinc-700"
                     >
                         Hủy bỏ
                     </button>

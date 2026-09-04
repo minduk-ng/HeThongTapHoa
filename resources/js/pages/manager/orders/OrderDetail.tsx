@@ -235,25 +235,25 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                 <div className="mx-6 mt-4 grid grid-cols-2 md:grid-cols-5 gap-4 bg-zinc-50 dark:bg-zinc-800/40 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 text-sm">
                                     <div>
                                         <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Bàn / Đơn</span>
-                                        <span className="font-semibold text-zinc-850 dark:text-zinc-100">{order.table_number ?? 'Mang đi'}</span>
+                                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">{order.table_number ?? 'Mang đi'}</span>
                                     </div>
                                     <div>
                                         <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Khách hàng</span>
-                                        <span className="font-semibold text-zinc-850 dark:text-zinc-100">{order.customer_name ?? '—'}</span>
+                                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">{order.customer_name ?? '—'}</span>
                                     </div>
                                     <div>
                                         <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Thời gian đặt</span>
-                                        <span className="font-semibold text-zinc-850 dark:text-zinc-100 tabular-nums">{formatDateTime(order.created_at)}</span>
+                                        <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">{formatDateTime(order.created_at)}</span>
                                     </div>
                                     {order.invoice && (
                                         <>
                                             <div>
                                                 <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Mã Hóa đơn</span>
-                                                <span className="font-semibold text-zinc-850 dark:text-zinc-100 tabular-nums">{order.invoice.invoice_code}</span>
+                                                <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">{order.invoice.invoice_code}</span>
                                             </div>
                                             <div>
                                                 <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Thời gian thanh toán</span>
-                                                <span className="font-semibold text-zinc-850 dark:text-zinc-100 tabular-nums">{formatDateTime(order.invoice.issued_at)}</span>
+                                                <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">{formatDateTime(order.invoice.issued_at)}</span>
                                             </div>
                                         </>
                                     )}

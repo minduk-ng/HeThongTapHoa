@@ -177,7 +177,7 @@ return;
             )}
 
             <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                     <input
                         type="checkbox"
                         checked={data.remember}

@@ -215,7 +215,7 @@ return;
                 <h2 className="auth-heading">Xác thực OTP</h2>
                 <p className="mt-2 auth-subtitle">
                     Vui lòng nhập mã gồm 6 chữ số đã được gửi đến <br />
-                    <span className="font-medium text-gray-900 dark:text-gray-200">{email}</span>
+                    <span className="font-medium text-zinc-900 dark:text-zinc-200">{email}</span>
                 </p>
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 font-semibold">
                     {otpExpirationCooldown > 0 

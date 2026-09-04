@@ -180,7 +180,7 @@ return;
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
                             <div className="flex flex-col items-center justify-center space-y-2 pointer-events-none">
-                                <div className="p-3 rounded-full bg-white dark:bg-zinc-850 shadow-xs border border-zinc-200/80 dark:border-zinc-700/80 text-sky-600 dark:text-sky-400">
+                                <div className="p-3 rounded-full bg-white dark:bg-zinc-900 shadow-xs border border-zinc-200/80 dark:border-zinc-700/80 text-sky-600 dark:text-sky-400">
                                     <UploadCloud className="w-6 h-6 stroke-[1.5]" />
                                 </div>
                                 <div>

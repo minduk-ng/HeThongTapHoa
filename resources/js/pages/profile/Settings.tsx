@@ -212,8 +212,8 @@ export default function Settings() {
         <>
             <DashboardLayout>
                 <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Cài đặt tài khoản</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Quản lý thông tin hồ sơ và bảo mật của bạn</p>
+                    <h1 className="font-display text-2xl font-bold text-zinc-900 dark:text-zinc-100">Cài đặt tài khoản</h1>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Quản lý thông tin hồ sơ và bảo mật của bạn</p>
                 </div>
 
                 {/* Outer container wrapping both panels - 1:2 column ratio split */}
@@ -221,12 +221,12 @@ export default function Settings() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         
                         {/* Left Column (1/3 width) - Profile Details */}
-                        <div className="md:col-span-1 flex flex-col items-center justify-center text-center space-y-6 md:border-r md:border-gray-100 dark:md:border-slate-800 md:pr-8 py-4">
+                        <div className="md:col-span-1 flex flex-col items-center justify-center text-center space-y-6 md:border-r md:border-zinc-100 dark:md:border-zinc-800 md:pr-8 py-4">
                             <div className="relative">
                                 {user.avatar ? (
-                                    <img src={user.avatar} alt="Avatar" className="h-28 w-28 rounded-full border-4 border-indigo-50 dark:border-indigo-950/40 object-cover shadow-sm" />
+                                    <img src={user.avatar} alt="Avatar" className="h-28 w-28 rounded-full border-4 border-sky-50 dark:border-sky-950/40 object-cover shadow-sm" />
                                 ) : (
-                                    <div className="avatar-placeholder h-28 w-28 text-3xl font-bold rounded-full border-4 border-indigo-50 dark:border-indigo-950/40 shadow-sm">
+                                    <div className="avatar-placeholder h-28 w-28 text-3xl font-bold rounded-full border-4 border-sky-50 dark:border-sky-950/40 shadow-sm">
                                         {user.name.charAt(0).toUpperCase()}
                                     </div>
                                 )}
@@ -261,13 +261,13 @@ export default function Settings() {
                                 ) : (
                                     <div className="space-y-3">
                                         <div>
-                                            <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+                                            <h3 className="font-display text-xl font-bold text-zinc-800 dark:text-zinc-100">
                                                 {user.name}
                                             </h3>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-1">
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-1">
                                                 {user.email}
                                             </p>
-                                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Người dùng</p>
+                                            <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">Người dùng</p>
                                         </div>
                                         <button onClick={() => setIsEditingName(true)} className="btn-secondary py-1.5 text-xs w-auto px-6">
                                             Sửa thông tin
@@ -279,14 +279,14 @@ export default function Settings() {
 
                         {/* Right Column (2/3 width) - Security Settings */}
                         <div className="md:col-span-2 space-y-6 md:pl-8 py-4">
-                            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-100 dark:border-slate-800 pb-3">
+                            <h2 className="font-display text-lg font-semibold text-zinc-800 dark:text-zinc-200 border-b border-zinc-100 dark:border-zinc-800 pb-3">
                                 Bảo mật tài khoản
                             </h2>
 
                             {/* Email Section */}
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                                    Địa chỉ Email
+                                <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                                    Địa chỉ email
                                 </label>
                                 {isEditingEmail ? (
                                     <div className="space-y-2">
@@ -314,8 +314,8 @@ export default function Settings() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                                        <span className="text-sm text-gray-700 dark:text-gray-300 font-mono">
+                                    <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
+                                        <span className="text-sm text-zinc-700 dark:text-zinc-300 font-mono">
                                             {user.email}
                                         </span>
                                         <button onClick={() => setIsEditingEmail(true)} className="btn-secondary py-1.5 text-xs w-auto px-4">
@@ -326,12 +326,12 @@ export default function Settings() {
                             </div>
 
                             {/* Password Section */}
-                            <div className="space-y-4 border-t border-gray-100 dark:border-slate-800 pt-6 ">
+                            <div className="space-y-4 border-t border-zinc-100 dark:border-zinc-800 pt-6">
                                 <div>
-                                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 ">
+                                    <h3 className="font-display text-lg font-semibold text-zinc-800 dark:text-zinc-200">
                                         {user.has_password ? 'Đổi mật khẩu' : 'Thiết lập mật khẩu'}
                                     </h3>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
                                         {user.has_password
                                             ? 'Yêu cầu xác nhận mật khẩu cũ.'
                                             : 'Tài khoản chưa cài đặt mật khẩu. Hãy thiết lập mật khẩu ngay.'}
@@ -341,7 +341,7 @@ export default function Settings() {
                                 <div className="space-y-3">
                                     {user.has_password && (
                                         <div className="space-y-1.5">
-                                            <label className="text-xs text-gray-500 dark:text-gray-400">Mật khẩu cũ</label>
+                                            <label className="text-xs text-zinc-500 dark:text-zinc-400">Mật khẩu cũ</label>
                                             <input
                                                 type="password"
                                                 value={currentPass}
@@ -352,7 +352,7 @@ export default function Settings() {
                                         </div>
                                     )}
                                     <div className="space-y-1.5">
-                                        <label className="text-xs text-gray-500 dark:text-gray-400">Mật khẩu mới</label>
+                                        <label className="text-xs text-zinc-500 dark:text-zinc-400">Mật khẩu mới</label>
                                         <input
                                             type="password"
                                             value={newPass}
@@ -362,7 +362,7 @@ export default function Settings() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs text-gray-500 dark:text-gray-400">Xác nhận mật khẩu mới</label>
+                                        <label className="text-xs text-zinc-500 dark:text-zinc-400">Xác nhận mật khẩu mới</label>
                                         <input
                                             type="password"
                                             value={confirmPass}

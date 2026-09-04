@@ -264,7 +264,7 @@ return oldest;
                                         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-all duration-150 ${
                                             isChecked
                                                 ? 'border-sky-600 bg-sky-600 text-white dark:border-sky-500 dark:bg-sky-500'
-                                                : 'border-zinc-300 bg-white hover:border-sky-500 dark:border-zinc-700 dark:bg-zinc-850 dark:hover:border-sky-400'
+                                                : 'border-zinc-300 bg-white hover:border-sky-500 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-sky-400'
                                         }`}
                                     >
                                         {isChecked && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}

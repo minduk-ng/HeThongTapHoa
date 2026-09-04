@@ -131,14 +131,14 @@ return;
             {/* Header section with Toolbar filter */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
                 <div>
-                    <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white">Tổng quan</h1>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Giám sát hoạt động và doanh thu cửa hàng</p>
+                    <h1 className="font-display text-2xl font-bold text-zinc-900 dark:text-white">Tổng quan</h1>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Giám sát hoạt động và doanh thu cửa hàng</p>
                 </div>
                 <div className="flex gap-2">
                     <select 
                         value={filters.date_range} 
                         onChange={handleRangeChange}
-                        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold px-4 py-2 focus:border-sky-500 focus:outline-hidden"
+                        className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-semibold px-4 py-2 focus:border-sky-500 focus:outline-hidden"
                     >
                         <option value="today">Hôm nay</option>
                         <option value="yesterday">Hôm qua</option>
@@ -151,11 +151,11 @@ return;
             {/* Row 1: KPI Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 {/* KPI 1: Doanh thu */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-5 rounded-2xl shadow-xs hover:border-sky-500/50 transition-colors duration-150">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs hover:border-sky-500/50 transition-colors duration-150">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Doanh thu</p>
-                            <h3 className="font-display text-xl font-bold mt-1 text-slate-900 dark:text-white tabular-nums">
+                            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Doanh thu</p>
+                            <h3 className="font-display text-xl font-bold mt-1 text-zinc-900 dark:text-white tabular-nums">
                                 {formatCurrency(kpis.revenue.value)}
                             </h3>
                         </div>
@@ -172,16 +172,16 @@ return;
                         <span className={`font-bold text-xs ${kpis.revenue.comparison_percentage >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {kpis.revenue.comparison_percentage >= 0 ? '+' : ''}{kpis.revenue.comparison_percentage}%
                         </span>
-                        <span className="text-slate-400 text-xs ml-1">vs kỳ trước</span>
+                        <span className="text-zinc-400 text-xs ml-1">vs kỳ trước</span>
                     </div>
                 </div>
 
                 {/* KPI 2: Tổng đơn */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-5 rounded-2xl shadow-xs hover:border-sky-500/50 transition-colors duration-150">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs hover:border-sky-500/50 transition-colors duration-150">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tổng Đơn Hàng</p>
-                            <h3 className="font-display text-xl font-bold mt-1 text-slate-900 dark:text-white tabular-nums">
+                            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Tổng Đơn Hàng</p>
+                            <h3 className="font-display text-xl font-bold mt-1 text-zinc-900 dark:text-white tabular-nums">
                                 {kpis.orders.value} đơn
                             </h3>
                         </div>
@@ -197,11 +197,11 @@ return;
                 </div>
 
                 {/* KPI 3: Bàn bận */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-5 rounded-2xl shadow-xs hover:border-sky-500/50 transition-colors duration-150">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs hover:border-sky-500/50 transition-colors duration-150">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Trạng thái Bàn</p>
-                            <h3 className="font-display text-xl font-bold mt-1 text-slate-900 dark:text-white tabular-nums">
+                            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Trạng thái Bàn</p>
+                            <h3 className="font-display text-xl font-bold mt-1 text-zinc-900 dark:text-white tabular-nums">
                                 {kpis.tables.occupied}/{kpis.tables.total} bàn bận
                             </h3>
                         </div>
@@ -210,18 +210,18 @@ return;
                         </div>
                     </div>
                     <div className="mt-4 w-full">
-                        <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
                             <div className="bg-emerald-500 h-full rounded-full transition-all duration-300" style={{ width: `${tableOccupancyPercent}%` }}></div>
                         </div>
-                        <p className="mt-1 text-[10px] text-slate-400 font-medium tabular-nums">{Math.round(tableOccupancyPercent)}% occupancy</p>
+                        <p className="mt-1 text-[10px] text-zinc-400 font-medium tabular-nums">{Math.round(tableOccupancyPercent)}% occupancy</p>
                     </div>
                 </div>
 
                 {/* KPI 4: Nguyên liệu hết */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-5 rounded-2xl shadow-xs hover:border-sky-500/50 transition-colors duration-150 border-l-4 border-l-rose-500">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs hover:border-sky-500/50 transition-colors duration-150 border-l-4 border-l-rose-500">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Kho Nguyên Liệu</p>
+                            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Kho Nguyên Liệu</p>
                             <h3 className="font-display text-xl font-bold mt-1 text-rose-600 dark:text-rose-450 tabular-nums">
                                 {kpis.inventory_warnings_count} mặt hàng hết
                             </h3>
@@ -240,11 +240,11 @@ return;
             {filters.date_range === 'today' && live_operations && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4 animate-fade-in">
                     {/* Kitchen Display Monitor */}
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
-                        <div className="p-4 border-b border-slate-100 dark:border-slate-850 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
+                        <div className="p-4 border-b border-zinc-100 dark:border-zinc-900 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50">
                             <div className="flex items-center gap-2">
                                 <ChefHat className="w-5 h-5 text-sky-600" />
-                                <h4 className="font-display text-sm font-bold text-slate-900 dark:text-white">Giám sát Bếp</h4>
+                                <h4 className="font-display text-sm font-bold text-zinc-900 dark:text-white">Giám sát Bếp</h4>
                             </div>
                             <button 
                                 onClick={() => router.get('/staff/kitchen')} 
@@ -254,14 +254,14 @@ return;
                             </button>
                         </div>
                         <div className="p-5 flex-1 flex flex-col gap-4">
-                            <div className="flex items-center justify-around py-4 bg-slate-50 dark:bg-slate-800/20 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                            <div className="flex items-center justify-around py-4 bg-zinc-50 dark:bg-zinc-800/20 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl">
                                 <div className="text-center">
                                     <p className="font-display text-3xl font-black text-amber-500 tabular-nums">
                                         {String(live_operations.kds.pending_count).padStart(2, '0')}
                                     </p>
                                     <span className="px-2 py-0.5 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 rounded-full text-[9px] font-bold uppercase tracking-wider">Đang chờ</span>
                                 </div>
-                                <div className="w-px h-12 bg-slate-200 dark:bg-slate-800"></div>
+                                <div className="w-px h-12 bg-zinc-200 dark:bg-zinc-800"></div>
                                 <div className="text-center">
                                     <p className="font-display text-3xl font-black text-emerald-500 tabular-nums">
                                         {String(live_operations.kds.completed_count).padStart(2, '0')}
@@ -271,11 +271,11 @@ return;
                             </div>
                             <div className="space-y-2">
                                 {safeRecentKds.map((kdsItem) => (
-                                    <div key={kdsItem.id} className="p-3 bg-slate-50 dark:bg-slate-800/10 rounded-xl flex justify-between items-center border border-slate-100 dark:border-slate-800/40">
-                                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate pr-2">
+                                    <div key={kdsItem.id} className="p-3 bg-zinc-50 dark:bg-zinc-800/10 rounded-xl flex justify-between items-center border border-zinc-100 dark:border-zinc-800/40">
+                                        <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 truncate pr-2">
                                             {kdsItem.name} (x{kdsItem.quantity})
                                         </span>
-                                        <span className="text-[10px] text-slate-400 shrink-0 font-medium tabular-nums">{kdsItem.time_ago}</span>
+                                        <span className="text-[10px] text-zinc-400 shrink-0 font-medium tabular-nums">{kdsItem.time_ago}</span>
                                     </div>
                                 ))}
                             </div>
@@ -283,29 +283,29 @@ return;
                     </div>
 
                     {/* Serving Status Card */}
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
-                        <div className="p-4 border-b border-slate-100 dark:border-slate-850 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
+                        <div className="p-4 border-b border-zinc-100 dark:border-zinc-900 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50">
                             <div className="flex items-center gap-2">
                                 <ConciergeBell className="w-5 h-5 text-sky-600" />
-                                <h4 className="font-display text-sm font-bold text-slate-900 dark:text-white">Khu vực Phục vụ</h4>
+                                <h4 className="font-display text-sm font-bold text-zinc-900 dark:text-white">Khu vực Phục vụ</h4>
                             </div>
                         </div>
                         <div className="p-5 flex-1 flex flex-col justify-center items-center text-center gap-6">
                             <div className="relative">
                                 <div className="w-24 h-24 rounded-full border-4 border-sky-100 dark:border-sky-950/60 flex items-center justify-center">
-                                    <span className="font-display text-3xl font-black text-slate-800 dark:text-white tabular-nums">
+                                    <span className="font-display text-3xl font-black text-zinc-800 dark:text-white tabular-nums">
                                         {String(live_operations.serving.queue_count).padStart(2, '0')}
                                     </span>
                                 </div>
                                 {live_operations.serving.queue_count > 0 && (
-                                    <div className="absolute -top-1 -right-1 w-5.5 h-5.5 bg-rose-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white dark:border-slate-900 animate-bounce">
+                                    <div className="absolute -top-1 -right-1 w-5.5 h-5.5 bg-rose-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white dark:border-zinc-900 animate-bounce">
                                         !
                                     </div>
                                 )}
                             </div>
                             <div>
-                                <h5 className="font-display text-sm font-bold text-slate-800 dark:text-slate-100">Món ăn chờ phục vụ</h5>
-                                <p className="text-xs text-slate-400 mt-1">Đang chờ nhân viên chạy bàn phân phối</p>
+                                <h5 className="font-display text-sm font-bold text-zinc-800 dark:text-zinc-100">Món ăn chờ phục vụ</h5>
+                                <p className="text-xs text-zinc-400 mt-1">Đang chờ nhân viên chạy bàn phân phối</p>
                             </div>
                             <button 
                                 onClick={() => router.get('/staff/serving')}
@@ -317,9 +317,9 @@ return;
                     </div>
 
                     {/* Active Tables Map Layout */}
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
-                        <div className="p-4 border-b border-slate-100 dark:border-slate-850 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
-                            <h4 className="font-display text-sm font-bold text-slate-900 dark:text-white">Sơ đồ bàn thực tế</h4>
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
+                        <div className="p-4 border-b border-zinc-100 dark:border-zinc-900 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50">
+                            <h4 className="font-display text-sm font-bold text-zinc-900 dark:text-white">Sơ đồ bàn thực tế</h4>
                             <div className="flex gap-2">
                                 <div className="flex items-center gap-1 text-[9px] font-bold"><span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Bận</div>
                                 <div className="flex items-center gap-1 text-[9px] font-bold"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Trả</div>
@@ -347,11 +347,11 @@ return;
             {/* Row 3: Charts & Analytics Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 {/* Revenue hourly chart block */}
-                <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
-                    <div className="p-5 border-b border-slate-100 dark:border-slate-850 flex justify-between items-center">
+                <div className="lg:col-span-8 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
+                    <div className="p-5 border-b border-zinc-100 dark:border-zinc-900 flex justify-between items-center">
                         <div>
-                            <h4 className="font-display text-sm font-bold text-slate-900 dark:text-white">Phân tích doanh thu</h4>
-                            <p className="text-xs text-slate-400 mt-0.5">Thống kê biểu đồ cột / miền</p>
+                            <h4 className="font-display text-sm font-bold text-zinc-900 dark:text-white">Phân tích doanh thu</h4>
+                            <p className="text-xs text-zinc-400 mt-0.5">Thống kê biểu đồ cột / miền</p>
                         </div>
                     </div>
                     <div className="p-5 flex-1 min-h-[300px]">
@@ -363,7 +363,7 @@ return;
                                         <stop offset="95%" stopColor="#0284c7" stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" className="dark:stroke-slate-800/50" />
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" className="dark:stroke-zinc-800/50" />
                                 <XAxis 
                                     dataKey="label" 
                                     stroke="#94a3b8" 
@@ -385,17 +385,17 @@ return;
                 {/* Sidebar stats list: Top Products & Stock warnings */}
                 <div className="lg:col-span-4 flex flex-col gap-6">
                     {/* Top Products */}
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-5 rounded-2xl shadow-xs flex-1">
-                        <h5 className="font-display text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Top 5 món bán chạy</h5>
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs flex-1">
+                        <h5 className="font-display text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4">Top 5 món bán chạy</h5>
                         <div className="space-y-2">
                             {safeTopProducts.map((prod, index) => (
-                                <div key={index} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+                                <div key={index} className="flex items-center gap-3 p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-colors">
                                     <span className={`w-5.5 h-5.5 rounded-lg text-[10px] flex items-center justify-center font-bold shrink-0 ${
-                                        index === 0 ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                        index === 0 ? 'bg-sky-600 text-white' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
                                     }`}>
                                         {index + 1}
                                     </span>
-                                    <span className="flex-1 text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                    <span className="flex-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200 truncate">
                                         {prod.name}
                                     </span>
                                     <span className="text-sky-600 dark:text-sky-400 font-black text-xs tabular-nums">
@@ -404,20 +404,20 @@ return;
                                 </div>
                             ))}
                             {safeTopProducts.length === 0 && (
-                                <p className="text-xs text-slate-400 italic text-center py-6">Chưa có dữ liệu đơn hàng trong kỳ</p>
+                                <p className="text-xs text-zinc-400 italic text-center py-6">Chưa có dữ liệu đơn hàng trong kỳ</p>
                             )}
                         </div>
                     </div>
 
                     {/* Stock Warnings widget */}
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-5 rounded-2xl shadow-xs flex-1 flex flex-col">
-                        <h5 className="font-display text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Cảnh báo kho nguyên liệu</h5>
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs flex-1 flex flex-col">
+                        <h5 className="font-display text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4">Cảnh báo kho nguyên liệu</h5>
                         <div className="space-y-3 flex-1 overflow-y-auto max-h-[180px] pr-1">
                             {safeWarnings.map((ing) => (
                                 <div key={ing.code} className="flex justify-between items-center gap-2">
                                     <div className="truncate">
-                                        <p className="text-xs font-bold text-slate-800 dark:text-slate-250 truncate">{ing.name}</p>
-                                        <p className="text-[10px] text-slate-400 mt-0.5 font-medium tabular-nums">
+                                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-250 truncate">{ing.name}</p>
+                                        <p className="text-[10px] text-zinc-400 mt-0.5 font-medium tabular-nums">
                                             Tồn: {ing.stock_quantity} / Định mức: {ing.min_stock_alert} {ing.unit}
                                         </p>
                                     </div>
@@ -436,7 +436,7 @@ return;
                         {safeWarnings.length > 0 && (
                             <button 
                                 onClick={() => router.get('/manager/inventory/ingredients')}
-                                className="w-full mt-4 py-2 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-xs transition-colors"
+                                className="w-full mt-4 py-2 bg-zinc-50 dark:bg-zinc-800/40 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold rounded-xl text-xs transition-colors"
                             >
                                 Nhập nguyên liệu ngay
                             </button>

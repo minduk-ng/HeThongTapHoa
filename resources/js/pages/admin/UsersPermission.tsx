@@ -298,7 +298,7 @@ return;
                                 </button>
                                 
                                 {isBulkRoleAssignOpen && (
-                                    <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-zinc-850 rounded-2xl shadow-xl border border-zinc-200/80 dark:border-zinc-700/80 p-4 z-30 space-y-3">
+                                    <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200/80 dark:border-zinc-700/80 p-4 z-30 space-y-3">
                                         <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
                                             Chọn các vai trò:
                                         </p>

@@ -491,7 +491,7 @@ return;
                                         {/* Group Header */}
                                         <div
                                             onClick={() => toggleListGroup(groupName)}
-                                            className="px-4 py-3 bg-white dark:bg-zinc-850 border-b border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-between cursor-pointer select-none hover:bg-zinc-50/80 dark:hover:bg-zinc-800 transition-colors"
+                                            className="px-4 py-3 bg-white dark:bg-zinc-900 border-b border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-between cursor-pointer select-none hover:bg-zinc-50/80 dark:hover:bg-zinc-800 transition-colors"
                                         >
                                             <div className="flex items-center gap-2">
                                                 {isCollapsed ? (

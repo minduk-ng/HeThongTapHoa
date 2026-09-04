@@ -9,12 +9,12 @@ export default function Welcome() {
         <DashboardLayout>
             <Head title="Trang chủ" />
             
-            <div className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-900/5 dark:bg-slate-800 dark:ring-white/10 text-center space-y-6 max-w-2xl">
+            <div className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-zinc-900/5 dark:bg-zinc-800 dark:ring-white/10 text-center space-y-6 max-w-2xl">
                 <div>
                     <h1 className="page-heading text-3xl">
                         Chào mừng trở lại, {user?.name}!
                     </h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-4 text-lg">
+                    <p className="text-zinc-500 dark:text-zinc-400 mt-4 text-lg">
                         Đây là trang tổng quan. Hãy chọn chức năng từ menu bên trái.
                     </p>
                 </div>
