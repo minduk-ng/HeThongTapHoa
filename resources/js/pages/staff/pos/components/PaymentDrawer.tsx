@@ -1,6 +1,6 @@
+import { usePage } from '@inertiajs/react';
 import { Banknote, QrCode, X, Printer, CalendarClock, Tag, Ticket, ChevronDown, Check, Users, User } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import { usePage } from '@inertiajs/react';
 import { useSubmitGuard } from '../../../../hooks/useSubmitGuard';
 import type { POSTableData, CartItem, PosCustomer, ReservationDraft, PromotionCandidate } from '../types/pos.types';
 

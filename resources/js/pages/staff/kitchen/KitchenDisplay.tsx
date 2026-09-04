@@ -15,9 +15,9 @@ import {
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AvatarDropdown from '../../../components/AvatarDropdown';
+import KitchenPrintTicket from '../../../components/KitchenPrintTicket';
 import { useCommandQueue } from '../../../hooks/useCommandQueue';
 import DashboardLayout from '../../../layouts/DashboardLayout';
-import KitchenPrintTicket from '../../../components/KitchenPrintTicket';
 import type { PageProps } from '../../../types/auth';
 import { useReverbStatus } from '../pos/hooks/useReverbStatus';
 import type { KitchenOrderData } from './components/KitchenOrderCard';
