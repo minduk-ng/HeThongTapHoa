@@ -3,7 +3,7 @@ import { ChefHat, Search, RotateCcw } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 import ManagerPageLayout from '../../../../components/ManagerPageLayout';
 import DashboardLayout from '../../../../layouts/DashboardLayout';
-import RecipeFormDrawer from './components/RecipeFormDrawer';
+import RecipeFormModal from './components/RecipeFormModal';
 import type { ProductRecipeData } from './components/RecipeTable';
 import RecipeTable from './components/RecipeTable';
 
@@ -152,8 +152,8 @@ export default function RecipesManager({
                 />
             </ManagerPageLayout>
 
-            {/* Recipe Form Drawer */}
-            <RecipeFormDrawer
+            {/* Recipe Form Modal */}
+            <RecipeFormModal
                 isOpen={!!selectedProduct}
                 onClose={() => setSelectedProduct(null)}
                 product={selectedProduct}

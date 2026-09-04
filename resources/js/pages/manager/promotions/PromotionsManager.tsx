@@ -5,7 +5,7 @@ import ManagerPageLayout from '../../../components/ManagerPageLayout';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import PromotionAnalyticsCharts from './components/PromotionAnalyticsCharts';
 import PromotionCodesModal from './components/PromotionCodesModal';
-import PromotionFormDrawer from './components/PromotionFormDrawer';
+import PromotionFormModal from './components/PromotionFormModal';
 import PromotionInvoicesModal from './components/PromotionInvoicesModal';
 import PromotionStatsCards from './components/PromotionStatsCards';
 
@@ -65,7 +65,7 @@ const TYPE_CLASS: Record<string, string> = {
 export default function PromotionsManager({ promotions, stats, filters, menu_items, menu_categories }: Props) {
     const [search, setSearch] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
-    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<PromotionData | null>(null);
     const [invoiceView, setInvoiceView] = useState<number | null>(null);
     const [codeView, setCodeView] = useState<PromotionData | null>(null);
@@ -221,8 +221,9 @@ return false;
                     <button
                         type="button"
                         onClick={() => {
- setEditing(null); setDrawerOpen(true); 
-}}
+                            setEditing(null);
+                            setModalOpen(true);
+                        }}
                         className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors shadow-xs"
                     >
                         <Plus className="w-3.5 h-3.5 stroke-2" />
@@ -370,7 +371,7 @@ return false;
                                                             type="button"
                                                             onClick={() => {
                                                                 setEditing(p);
-                                                                setDrawerOpen(true);
+                                                                setModalOpen(true);
                                                             }}
                                                             title="Sửa"
                                                             className="p-1.5 rounded-lg text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/60 transition-colors"
@@ -405,9 +406,9 @@ return false;
                 </div>
             </ManagerPageLayout>
 
-            <PromotionFormDrawer
-                isOpen={drawerOpen}
-                onClose={() => setDrawerOpen(false)}
+            <PromotionFormModal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
                 promotionToEdit={editing}
                 menuItems={menu_items}
                 menuCategories={menu_categories}
