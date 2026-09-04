@@ -1,6 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 import { useState, useRef, useEffect } from 'react';
-import type { POSTableData, CartItem, ReceiptModalState, PromotionCandidate } from '../types/pos.types';
+import type { POSTableData, CartItem, PosCustomer, ReceiptModalState, PromotionCandidate } from '../types/pos.types';
 import { usePOSCheckoutLock } from './usePOSCheckoutLock';
 
 function getCsrfTokenFromCookie(): string {
@@ -43,6 +43,7 @@ export function usePOSCheckout(
     const [promotionCode, setPromotionCode] = useState<string | null>(null);
     const [promotionDiscount, setPromotionDiscount] = useState(0);
     const [promotionName, setPromotionName] = useState<string | null>(null);
+    const [customer, setCustomer] = useState<PosCustomer | null>(null);
 
     const submitting = kitchenSubmitting || (selectedTable
         ? (() => {
@@ -86,6 +87,7 @@ export function usePOSCheckout(
             setPromotionDiscount(0);
             setPromotionName(null);
             setSelectedAutoId(null);
+            setCustomer(null);
         }
 
         if (selectedTable) {
@@ -351,6 +353,46 @@ syncApplied(data);
         } catch { /* bỏ qua */ }
     };
 
+    const searchCustomers = async (q: string): Promise<PosCustomer[]> => {
+        const csrfToken = getCsrfTokenFromCookie();
+
+        try {
+            const response = await fetch('/staff/pos/customers/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ q }),
+            });
+            const data = await response.json().catch(() => ({}));
+
+            if (response.ok && data.ok && Array.isArray(data.customers)) {
+                return data.customers;
+            }
+        } catch { /* bỏ qua */ }
+
+        return [];
+    };
+
+    const createCustomer = async (full_name: string, phone: string): Promise<{ ok: boolean; customer?: PosCustomer; error?: string }> => {
+        const csrfToken = getCsrfTokenFromCookie();
+
+        try {
+            const response = await fetch('/staff/pos/customers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ full_name, phone }),
+            });
+            const data = await response.json().catch(() => ({}));
+
+            if (response.ok && data.ok && data.customer) {
+                return { ok: true, customer: data.customer };
+            }
+
+            return { ok: false, error: data.error || 'Tạo khách hàng thất bại.' };
+        } catch {
+            return { ok: false, error: 'Không thể kết nối máy chủ.' };
+        }
+    };
+
     const handleConfirmPayment = (
         selectedTable: POSTableData | null,
         currentCart: CartItem[],
@@ -359,6 +401,7 @@ syncApplied(data);
         amountReceived: number,
         changeAmount: number,
         shouldPrint: boolean,
+        customerId: number | null,
         onSuccessClearCart: () => void,
         onLogEntry?: (type: 'sent' | 'received' | 'error', message: string, details?: string) => void
     ) => {
@@ -423,6 +466,7 @@ clearTimeout(timeoutRef.current);
             change_amount: changeAmount,
             ...(promotionCode ? { promotion_code: promotionCode } : {}),
             ...(selectedAutoId !== null ? { selected_promotion_id: selectedAutoId } : {}),
+            ...(customerId !== null ? { customer_id: customerId } : {}),
             idempotency_key: idempotencyKey,
         };
 
@@ -522,6 +566,7 @@ clearTimeout(timeoutRef.current);
         snapshotCart: CartItem[],
         snapshotTable: POSTableData | null,
         depositTotal: number,
+        customerId: number | null,
         onSuccess: () => void,
     ) => {
         if (!selectedTable || allConfirmedOrders.length === 0) {
@@ -547,6 +592,7 @@ return;
                 change_amount: changeAmount,
                 ...(promotionCode ? { promotion_code: promotionCode } : {}),
                 ...(selectedAutoId !== null ? { selected_promotion_id: selectedAutoId } : {}),
+                ...(customerId !== null ? { customer_id: customerId } : {}),
                 idempotency_key: idempotencyKey,
             }),
         })
@@ -608,5 +654,9 @@ return;
         handleSendToKitchen,
         handleConfirmPayment,
         handleBulkCheckout,
+        customer,
+        setCustomer,
+        searchCustomers,
+        createCustomer,
     };
 }

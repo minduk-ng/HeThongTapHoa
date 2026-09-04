@@ -1,7 +1,7 @@
-import { Banknote, QrCode, X, Printer, CalendarClock, Tag, Ticket, ChevronDown, Check } from 'lucide-react';
+import { Banknote, QrCode, X, Printer, CalendarClock, Tag, Ticket, ChevronDown, Check, Users, User } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useSubmitGuard } from '../../../../hooks/useSubmitGuard';
-import type { POSTableData, CartItem, ReservationDraft, PromotionCandidate } from '../types/pos.types';
+import type { POSTableData, CartItem, PosCustomer, ReservationDraft, PromotionCandidate } from '../types/pos.types';
 
 interface PaymentDrawerProps {
     isOpen: boolean;
@@ -19,6 +19,10 @@ interface PaymentDrawerProps {
     totalDiscount: number;
     onApplyPromotion?: (code: string, subtotal: number, items: { menu_item_id: number; quantity: number; unit_price: number }[]) => Promise<{ ok: boolean; discount_amount?: number; total?: number; error?: string }>;
     onClearPromotion?: () => void;
+    customer?: PosCustomer | null;
+    onSelectCustomer?: (customer: PosCustomer | null) => void;
+    onSearchCustomers?: (q: string) => Promise<PosCustomer[]>;
+    onCreateCustomer?: (fullName: string, phone: string) => Promise<{ ok: boolean; customer?: PosCustomer; error?: string }>;
     onConfirmPayment: (paymentMethod: 'cash' | 'bank_transfer', amountReceived: number, changeAmount: number, shouldPrint: boolean) => void;
     onConfirmDeposit?: (amount: number, method: 'cash' | 'bank_transfer') => Promise<void> | void;
     onConfirmReservation?: (deposit: { amount: number; method: 'cash' | 'bank_transfer' } | null) => Promise<void> | void;
@@ -41,6 +45,10 @@ export default function PaymentDrawer({
     totalDiscount,
     onApplyPromotion,
     onClearPromotion,
+    customer = null,
+    onSelectCustomer = () => {},
+    onSearchCustomers = async () => [],
+    onCreateCustomer = async () => ({ ok: false, error: 'Tạo khách hàng thất bại.' }),
     onConfirmPayment,
     onConfirmDeposit,
     onConfirmReservation,
@@ -52,6 +60,14 @@ export default function PaymentDrawer({
     const [promotionError, setPromotionError] = useState<string | null>(null);
     const [promotionLoading, setPromotionLoading] = useState(false);
     const [showCouponInput, setShowCouponInput] = useState(false);
+    const [customerQuery, setCustomerQuery] = useState('');
+    const [customerResults, setCustomerResults] = useState<PosCustomer[]>([]);
+    const [customerSearching, setCustomerSearching] = useState(false);
+    const [showCreateForm, setShowCreateForm] = useState(false);
+    const [createName, setCreateName] = useState('');
+    const [createPhone, setCreatePhone] = useState('');
+    const [createError, setCreateError] = useState<string | null>(null);
+    const [createLoading, setCreateLoading] = useState(false);
     const { isSubmitting, guard } = useSubmitGuard();
 
     const subtotal = cartItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
@@ -81,6 +97,13 @@ export default function PaymentDrawer({
                 setPromotionInput('');
                 setPromotionError(null);
                 setShowCouponInput(false);
+                setCustomerQuery('');
+                setCustomerResults([]);
+                setCustomerSearching(false);
+                setShowCreateForm(false);
+                setCreateName('');
+                setCreatePhone('');
+                setCreateError(null);
 
                 if (mode === 'payment') {
                     setAmountReceived(payable);
@@ -158,6 +181,38 @@ return;
         }
 
         setPromotionLoading(false);
+    };
+
+    const handleCustomerSearch = async () => {
+        if (customerSearching) {
+            return;
+        }
+
+        setCustomerSearching(true);
+        const found = await onSearchCustomers(customerQuery.trim());
+        setCustomerResults(found);
+        setCustomerSearching(false);
+    };
+
+    const handleCustomerCreate = async () => {
+        if (createLoading) {
+            return;
+        }
+
+        setCreateLoading(true);
+        setCreateError(null);
+        const result = await onCreateCustomer(createName.trim(), createPhone.trim());
+        setCreateLoading(false);
+
+        if (result.ok && result.customer) {
+            onSelectCustomer(result.customer);
+            setShowCreateForm(false);
+            setCreateName('');
+            setCreatePhone('');
+            setCustomerResults([]);
+        } else {
+            setCreateError(result.error || 'Tạo khách hàng thất bại.');
+        }
     };
 
     const handleConfirm = async (shouldPrint: boolean) => {
@@ -366,6 +421,143 @@ return null;
                                         <span className="font-display text-base font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
                                             {depositRefund.toLocaleString('vi-VN')} đ
                                         </span>
+                                    </div>
+                                )}
+
+                                {/* Khách hàng */}
+                                {mode === 'payment' && (
+                                    <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/80 dark:border-zinc-800 space-y-2.5">
+                                        <div className="flex items-center justify-between">
+                                            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                                <Users className="h-3.5 w-3.5 text-sky-600 stroke-[1.5]" />
+                                                <span>Khách hàng</span>
+                                            </label>
+                                            {customer && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onSelectCustomer(null)}
+                                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-600 transition-colors"
+                                                >
+                                                    <X className="w-3 h-3 stroke-[1.5]" />
+                                                    <span>Xóa</span>
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {customer ? (
+                                            <div className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/60 flex items-center justify-between">
+                                                <div className="min-w-0 pr-2">
+                                                    <div className="text-xs font-bold text-sky-800 dark:text-sky-200 truncate">
+                                                        {customer.full_name}
+                                                    </div>
+                                                    <div className="text-[11px] text-sky-600 dark:text-sky-400 tabular-nums">
+                                                        {customer.phone}
+                                                    </div>
+                                                </div>
+                                                <span className="inline-flex items-center rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold text-white whitespace-nowrap">
+                                                    Đã chọn
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        value={customerQuery}
+                                                        onChange={(e) => setCustomerQuery(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                handleCustomerSearch();
+                                                            }
+                                                        }}
+                                                        placeholder="Nhập SĐT hoặc tên..."
+                                                        className="min-w-0 flex-1 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs outline-none focus:border-sky-500 text-zinc-900 dark:text-zinc-100"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleCustomerSearch}
+                                                        disabled={customerSearching}
+                                                        className="rounded-xl border border-zinc-200 dark:border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shrink-0 disabled:opacity-50"
+                                                    >
+                                                        {customerSearching ? '...' : 'Tìm'}
+                                                    </button>
+                                                </div>
+
+                                                {customerResults.length > 0 && (
+                                                    <div className="max-h-40 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800/60 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                                                        {customerResults.map((c) => (
+                                                            <button
+                                                                key={c.id}
+                                                                type="button"
+                                                                onClick={() => onSelectCustomer(c)}
+                                                                className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                                            >
+                                                                <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 truncate pr-2">
+                                                                    {c.full_name}
+                                                                </span>
+                                                                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 tabular-nums shrink-0">
+                                                                    {c.phone}
+                                                                </span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {customerResults.length === 0 && customerQuery.trim() !== '' && !customerSearching && (
+                                                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                                        Không tìm thấy khách hàng phù hợp.
+                                                    </p>
+                                                )}
+
+                                                {showCreateForm ? (
+                                                    <div className="space-y-2 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 animate-in fade-in duration-150">
+                                                        <input
+                                                            value={createName}
+                                                            onChange={(e) => setCreateName(e.target.value)}
+                                                            placeholder="Tên khách hàng..."
+                                                            className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs outline-none focus:border-sky-500 text-zinc-900 dark:text-zinc-100"
+                                                        />
+                                                        <input
+                                                            value={createPhone}
+                                                            onChange={(e) => setCreatePhone(e.target.value)}
+                                                            placeholder="Số điện thoại..."
+                                                            className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs outline-none focus:border-sky-500 text-zinc-900 dark:text-zinc-100"
+                                                        />
+                                                        {createError && <p className="text-xs text-rose-500">{createError}</p>}
+                                                        <div className="flex gap-1.5">
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleCustomerCreate}
+                                                                disabled={createLoading || !createName.trim() || !createPhone.trim()}
+                                                                className="rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-50 hover:bg-sky-700 transition-colors"
+                                                            >
+                                                                {createLoading ? '...' : 'Tạo & chọn'}
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setShowCreateForm(false);
+                                                                    setCreateName('');
+                                                                    setCreatePhone('');
+                                                                    setCreateError(null);
+                                                                }}
+                                                                className="p-2 rounded-xl text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/60 dark:hover:bg-zinc-700 transition-colors"
+                                                                title="Đóng form tạo khách"
+                                                            >
+                                                                <X className="w-3.5 h-3.5 stroke-[1.5]" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowCreateForm(true)}
+                                                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors"
+                                                    >
+                                                        <User className="w-3 h-3 stroke-[1.5]" />
+                                                        <span>+ Tạo khách hàng mới</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

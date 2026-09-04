@@ -2,6 +2,7 @@
 
 namespace App\Services\Manager;
 
+use App\Models\CashMovement;
 use App\Models\Deposit;
 use App\Models\Payment;
 use App\Models\Shift;
@@ -18,8 +19,16 @@ final class ShiftService
         $checkoutCash = Payment::query()
             ->join('invoices', 'invoices.id', '=', 'payments.invoice_id')
             ->where('payments.method', 'cash')
+            ->where('payments.amount', '>=', 0)
             ->where(fn ($q) => $q->whereNull('payments.note')->orWhere('payments.note', 'not like', 'Tiền cọc%'))
             ->whereBetween('invoices.issued_at', [$shift->opened_at, $until])
+            ->sum('payments.amount');
+
+        // Payment âm (hoàn trả / hoàn cọc thừa) theo created_at của payment, tránh trừ nhầm
+        // refund của hóa đơn do ca trước phát hành (issued_at ngoài cửa sổ nhưng tiền ra ca này)
+        $negativePayments = Payment::query()
+            ->where('payments.amount', '<', 0)
+            ->whereBetween('payments.created_at', [$shift->opened_at, $until])
             ->sum('payments.amount');
 
         $depositCash = Deposit::query()
@@ -34,6 +43,11 @@ final class ShiftService
             ->whereBetween('resolved_at', [$shift->opened_at, $until])
             ->sum('amount');
 
-        return round((float) $shift->opening_cash + (float) $checkoutCash + (float) $depositCash - (float) $refundedCash, 2);
+        $adjustment = CashMovement::query()
+            ->where('shift_id', $shift->id)
+            ->get()
+            ->reduce(fn ($carry, $m) => $carry + ($m->type === 'income' ? (float) $m->amount : -(float) $m->amount), 0.0);
+
+        return round((float) $shift->opening_cash + (float) $checkoutCash + (float) $depositCash - (float) $refundedCash + (float) $negativePayments + $adjustment, 2);
     }
 }

@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -49,6 +50,7 @@ class Invoice extends Model
         'external_no',
         'external_ref',
         'issued_at',
+        'customer_id',
     ];
 
     protected $casts = [
@@ -66,6 +68,12 @@ class Invoice extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class, 'invoice_id');
+    }
+
+    /** @return BelongsTo<Customer, $this> */
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 
     /** @return HasMany<Payment, $this> */

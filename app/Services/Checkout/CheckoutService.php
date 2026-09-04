@@ -33,9 +33,9 @@ class CheckoutService
      * @param  array<int,array{method:string,amount:float,reference?:?string,note?:?string}>  $paymentRows
      * @param  array<string>  $promotionCodes
      */
-    public static function run(Order $order, array $paymentRows, array $promotionCodes, ?int $userId, ?int $selectedPromotionId = null): Invoice
+    public static function run(Order $order, array $paymentRows, array $promotionCodes, ?int $userId, ?int $selectedPromotionId = null, ?int $customerId = null): Invoice
     {
-        return static::runBulk(collect([$order]), $paymentRows, $promotionCodes, $userId, null, $selectedPromotionId);
+        return static::runBulk(collect([$order]), $paymentRows, $promotionCodes, $userId, null, $selectedPromotionId, $customerId);
     }
 
     /**
@@ -45,9 +45,9 @@ class CheckoutService
      * @param  array<int,array{method:string,amount:float,reference?:?string,note?:?string}>  $paymentRows
      * @param  array<string>  $promotionCodes
      */
-    public static function runBulk(Collection $orders, array $paymentRows, array $promotionCodes, ?int $userId, ?string $tableName = null, ?int $selectedPromotionId = null): Invoice
+    public static function runBulk(Collection $orders, array $paymentRows, array $promotionCodes, ?int $userId, ?string $tableName = null, ?int $selectedPromotionId = null, ?int $customerId = null): Invoice
     {
-        $invoice = DB::transaction(function () use ($orders, $paymentRows, $promotionCodes, $userId, $tableName, $selectedPromotionId) {
+        $invoice = DB::transaction(function () use ($orders, $paymentRows, $promotionCodes, $userId, $tableName, $selectedPromotionId, $customerId) {
             $orders = $orders->values();
 
             // 1. Build lines từ tất cả orders
@@ -208,6 +208,7 @@ class CheckoutService
                 'vat_amount' => $vatTotal,
                 'discount_amount' => $totalDiscount,
                 'issued_at' => now(),
+                'customer_id' => $customerId,
             ]);
 
             // 5. Ghi payments: ưu tiên paymentRows; cọc applied thành payment row
@@ -372,6 +373,7 @@ class CheckoutService
                 $order->update([
                     'status' => 'paid',
                     'invoice_id' => $invoice->id,
+                    'customer_id' => $customerId,
                     'subtotal' => $orderSubtotal,
                     'vat_amount' => $orderVat,
                     'discount_amount' => $orderDiscount,

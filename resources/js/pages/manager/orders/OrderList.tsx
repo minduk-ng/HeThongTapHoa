@@ -16,6 +16,7 @@ interface OrderData {
     id: number;
     order_code: string;
     table_number: string | null;
+    customer_name: string | null;
     status: string;
     total: number;
     item_count: number;
@@ -118,7 +119,8 @@ export default function OrderList({
             const matchesSearch =
                 !query ||
                 order.order_code.toLowerCase().includes(query) ||
-                (order.invoice_code ?? '').toLowerCase().includes(query);
+                (order.invoice_code ?? '').toLowerCase().includes(query) ||
+                (order.customer_name ?? '').toLowerCase().includes(query);
 
             const matchesType =
                 typeFilter === 'all' ||
@@ -369,6 +371,7 @@ export default function OrderList({
                                         {renderSortIcon('status')}
                                     </span>
                                 </th>
+                                <th className="px-4 py-2.5 text-center">Khách hàng</th>
                                 <th className="px-4 py-2.5 text-center">Món</th>
                                 <th
                                     className="cursor-pointer px-4 py-2.5 select-none text-center"
@@ -395,7 +398,7 @@ export default function OrderList({
                             {paginatedOrders.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={7}
+                                        colSpan={8}
                                         className="px-4 py-12 text-center"
                                     >
                                         <p className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -443,6 +446,11 @@ export default function OrderList({
                                                 >
                                                     {statusInfo.label}
                                                 </span>
+                                            </td>
+                                            <td
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs text-zinc-600 dark:text-zinc-400`}
+                                            >
+                                                {order.customer_name || '—'}
                                             </td>
                                             <td
                                                 className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs text-zinc-600 tabular-nums dark:text-zinc-400`}

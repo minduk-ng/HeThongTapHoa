@@ -1,5 +1,14 @@
 import { Head } from '@inertiajs/react';
-import { Banknote, CalendarClock, Clock, LogIn, LogOut, X } from 'lucide-react';
+import {
+    Minus,
+    Plus,
+    Banknote,
+    CalendarClock,
+    Clock,
+    LogIn,
+    LogOut,
+    X,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 
@@ -10,7 +19,19 @@ type Shift = {
     note: string | null;
     status: 'open' | 'closed';
 };
+type CashMovement = {
+    id: number;
+    type: 'expense' | 'income';
+    category: string;
+    amount: number;
+    note: string | null;
+    created_at: string;
+};
 const money = (value: number) => `${Number(value).toLocaleString('vi-VN')} đ`;
+const movementCategories: Record<'expense' | 'income', string[]> = {
+    expense: ['mua_nguyen_lieu', 'mua_vat_dung', 'dien_nuoc', 'khac'],
+    income: ['thu_ngoai', 'thu_cong_no', 'khac'],
+};
 const csrf = () =>
     decodeURIComponent(
         document.cookie
@@ -22,6 +43,7 @@ const csrf = () =>
 export default function ShiftsPage() {
     const [shift, setShift] = useState<Shift | null>(null);
     const [expectedCash, setExpectedCash] = useState(0);
+    const [movements, setMovements] = useState<CashMovement[]>([]);
     const [openingCash, setOpeningCash] = useState('');
     const [actualCash, setActualCash] = useState('');
     const [note, setNote] = useState('');
@@ -30,6 +52,13 @@ export default function ShiftsPage() {
     const [closeOpen, setCloseOpen] = useState(false);
     const [lastDifference, setLastDifference] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [movementOpen, setMovementOpen] = useState(false);
+    const [movementType, setMovementType] = useState<'expense' | 'income'>(
+        'expense',
+    );
+    const [movementCategory, setMovementCategory] = useState('');
+    const [movementAmount, setMovementAmount] = useState('');
+    const [movementNote, setMovementNote] = useState('');
     const difference = useMemo(
         () => (actualCash === '' ? 0 : Number(actualCash) - expectedCash),
         [actualCash, expectedCash],
@@ -48,10 +77,10 @@ export default function ShiftsPage() {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-throw new Error(
+            throw new Error(
                 data.error || data.message || 'Không thể xử lý yêu cầu.',
             );
-}
+        }
 
         return data;
     };
@@ -63,6 +92,7 @@ throw new Error(
             const data = await request('/staff/shifts/current');
             setShift(data.shift);
             setExpectedCash(Number(data.expected_cash) || 0);
+            setMovements(data.movements || []);
         } catch (value) {
             setError(
                 value instanceof Error
@@ -78,8 +108,8 @@ throw new Error(
     }, [load]);
     const openShift = async () => {
         if (submitting) {
-return;
-}
+            return;
+        }
 
         setSubmitting(true);
         setError(null);
@@ -106,8 +136,8 @@ return;
     };
     const closeShift = async () => {
         if (submitting) {
-return;
-}
+            return;
+        }
 
         setSubmitting(true);
         setError(null);
@@ -128,6 +158,44 @@ return;
         } catch (value) {
             setError(
                 value instanceof Error ? value.message : 'Đóng ca thất bại.',
+            );
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const openMovement = (type: 'expense' | 'income') => {
+        setMovementType(type);
+        setMovementCategory('');
+        setMovementAmount('');
+        setMovementNote('');
+        setMovementOpen(true);
+    };
+    const saveMovement = async () => {
+        if (submitting) {
+            return;
+        }
+
+        setSubmitting(true);
+        setError(null);
+
+        try {
+            await request('/staff/shifts/movements', {
+                method: 'POST',
+                body: JSON.stringify({
+                    type: movementType,
+                    category: movementCategory,
+                    amount: Number(movementAmount),
+                    note: movementNote || null,
+                }),
+            });
+            setMovementOpen(false);
+            await load();
+        } catch (value) {
+            setError(
+                value instanceof Error
+                    ? value.message
+                    : 'Ghi chi/thu ngoài thất bại.',
             );
         } finally {
             setSubmitting(false);
@@ -257,6 +325,76 @@ return;
                                     {money(expectedCash)}
                                 </div>
                             </div>
+                            <div className="grid gap-3 md:col-span-3 md:grid-cols-2">
+                                <button
+                                    type="button"
+                                    onClick={() => openMovement('expense')}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white"
+                                >
+                                    <Minus className="h-4 w-4 stroke-[1.5]" />
+                                    Ghi chi trong ca
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => openMovement('income')}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white"
+                                >
+                                    <Plus className="h-4 w-4 stroke-[1.5]" />
+                                    Ghi thu trong ca
+                                </button>
+                            </div>
+                            {movements.length > 0 && (
+                                <div className="rounded-2xl border border-zinc-200 bg-white p-5 md:col-span-3 dark:border-zinc-800 dark:bg-zinc-900">
+                                    <h3 className="text-sm font-semibold text-zinc-500">
+                                        Chi tiết ghi nợ ngoài ca
+                                    </h3>
+                                    <ul className="mt-3 space-y-2">
+                                        {movements.map((movement) => (
+                                            <li
+                                                key={movement.id}
+                                                className="flex items-center justify-between gap-3 text-sm"
+                                            >
+                                                <span className="flex items-center gap-2">
+                                                    <span
+                                                        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
+                                                            movement.type ===
+                                                            'expense'
+                                                                ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                                                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                                                        }`}
+                                                    >
+                                                        {movement.type ===
+                                                        'expense'
+                                                            ? 'chi'
+                                                            : 'thu'}
+                                                    </span>
+                                                    <span className="font-medium">
+                                                        {movement.category}
+                                                    </span>
+                                                    {movement.note && (
+                                                        <span className="text-xs text-zinc-500">
+                                                            {movement.note}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                <span
+                                                    className={`font-semibold tabular-nums ${
+                                                        movement.type ===
+                                                        'expense'
+                                                            ? 'text-rose-600'
+                                                            : 'text-emerald-600'
+                                                    }`}
+                                                >
+                                                    {movement.type === 'expense'
+                                                        ? '-'
+                                                        : '+'}
+                                                    {money(movement.amount)}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
                             <button
                                 type="button"
                                 onClick={() => setCloseOpen(true)}
@@ -332,6 +470,85 @@ return;
                                 {submitting
                                     ? 'Đang đóng ca…'
                                     : 'Xác nhận đóng ca'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+                {movementOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+                        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
+                            <div className="flex items-center justify-between">
+                                <h2 className="font-display text-xl">
+                                    {movementType === 'expense'
+                                        ? 'Ghi chi trong ca'
+                                        : 'Ghi thu trong ca'}
+                                </h2>
+                                <button
+                                    type="button"
+                                    onClick={() => setMovementOpen(false)}
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            <label className="mt-5 block text-sm font-semibold">
+                                Loại chi tiêu
+                                <select
+                                    value={movementCategory}
+                                    onChange={(e) =>
+                                        setMovementCategory(e.target.value)
+                                    }
+                                    className="mt-2 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800"
+                                >
+                                    <option value="" disabled>
+                                        Chọn loại…
+                                    </option>
+                                    {movementCategories[movementType].map(
+                                        (category) => (
+                                            <option
+                                                key={category}
+                                                value={category}
+                                            >
+                                                {category}
+                                            </option>
+                                        ),
+                                    )}
+                                </select>
+                            </label>
+                            <label className="mt-4 block text-sm font-semibold">
+                                Số tiền
+                                <input
+                                    autoFocus
+                                    type="number"
+                                    min="0"
+                                    value={movementAmount}
+                                    onChange={(e) =>
+                                        setMovementAmount(e.target.value)
+                                    }
+                                    className="mt-2 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-3 text-lg font-bold tabular-nums dark:border-zinc-700 dark:bg-zinc-800"
+                                />
+                            </label>
+                            <label className="mt-4 block text-sm font-semibold">
+                                Ghi chú
+                                <input
+                                    value={movementNote}
+                                    onChange={(e) =>
+                                        setMovementNote(e.target.value)
+                                    }
+                                    className="mt-2 w-full rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800"
+                                />
+                            </label>
+                            <button
+                                type="button"
+                                onClick={saveMovement}
+                                disabled={
+                                    submitting ||
+                                    movementCategory === '' ||
+                                    movementAmount === '' ||
+                                    Number(movementAmount) <= 0
+                                }
+                                className="mt-5 w-full rounded-xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                            >
+                                {submitting ? 'Đang ghi…' : 'Lưu'}
                             </button>
                         </div>
                     </div>

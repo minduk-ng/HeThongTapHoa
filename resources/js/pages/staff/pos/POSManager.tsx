@@ -217,6 +217,10 @@ return;
         totalDiscount,
         applyAutoPromotions,
         loadAvailablePromotions,
+        customer,
+        setCustomer,
+        searchCustomers,
+        createCustomer,
     } = usePOSCheckout(selectedTable, safeTables, safePromotions);
 
     const {
@@ -457,6 +461,10 @@ return '';
                 totalDiscount={totalDiscount}
                 onApplyPromotion={applyPromotion}
                 onClearPromotion={clearPromotion}
+                customer={customer}
+                onSelectCustomer={setCustomer}
+                onSearchCustomers={searchCustomers}
+                onCreateCustomer={createCustomer}
                 onConfirmPayment={(paymentMethod, amountReceived, changeAmount, shouldPrint) => {
                     if (selectedTable) {
                         if (paymentMode === 'bulk') {
@@ -470,6 +478,7 @@ return '';
                                 bulkCartItems,
                                 selectedTable,
                                 bulkDepositTotal,
+                                customer?.id ?? null,
                                 () => clearTableCart(selectedTable.id),
                             );
                         } else {
@@ -481,6 +490,7 @@ return '';
                                 amountReceived,
                                 changeAmount,
                                 shouldPrint,
+                                customer?.id ?? null,
                                 () => clearTableCart(selectedTable.id, activeInvoiceIdForTable),
                                 addLogEntry
                             );

@@ -10,15 +10,17 @@ use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\SignupController;
 use App\Http\Controllers\Manager\CategoryController;
+use App\Http\Controllers\Manager\CustomerController;
 use App\Http\Controllers\Manager\DashboardController;
 use App\Http\Controllers\Manager\IngredientController;
 use App\Http\Controllers\Manager\OrderListController;
 use App\Http\Controllers\Manager\ProductController;
 use App\Http\Controllers\Manager\PromotionController;
 use App\Http\Controllers\Manager\RecipeController;
-use App\Http\Controllers\Manager\StockVoucherController;
 use App\Http\Controllers\Manager\StockHistoryController;
 use App\Http\Controllers\Manager\StocktakeController;
+use App\Http\Controllers\Manager\StockVoucherController;
+use App\Http\Controllers\Manager\SupplierController;
 use App\Http\Controllers\Manager\TableController;
 use App\Http\Controllers\Reports\CancelledReportController;
 use App\Http\Controllers\Reports\ConsumptionReportController;
@@ -33,9 +35,11 @@ use App\Http\Controllers\Reports\ReservationsReportController;
 use App\Http\Controllers\Reports\SalesInvoiceReportController;
 use App\Http\Controllers\Reports\ShiftReportController;
 use App\Http\Controllers\Reports\StockMovementReportController;
+use App\Http\Controllers\Staff\CustomerController as StaffCustomerController;
 use App\Http\Controllers\Staff\KitchenController;
 use App\Http\Controllers\Staff\PaymentController;
 use App\Http\Controllers\Staff\POSController;
+use App\Http\Controllers\Staff\RefundController;
 use App\Http\Controllers\Staff\ReservationController;
 use App\Http\Controllers\Staff\ServingController;
 use App\Http\Controllers\Staff\ShiftController;
@@ -123,6 +127,19 @@ Route::middleware('auth')->group(function () {
         Route::post('/categories/{category}', [CategoryController::class, 'update'])->middleware('permission:categories.edit');
         Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->middleware('permission:categories.delete');
 
+        // Customers Management
+        Route::get('/customers', [CustomerController::class, 'index'])->middleware('permission:customers.view');
+        Route::post('/customers', [CustomerController::class, 'store'])->middleware('permission:customers.create');
+        Route::post('/customers/{customer}', [CustomerController::class, 'update'])->middleware('permission:customers.edit');
+        Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware('permission:customers.delete');
+
+        // Suppliers Management
+        Route::get('/suppliers', [SupplierController::class, 'index'])->middleware('permission:suppliers.view');
+        Route::post('/suppliers', [SupplierController::class, 'store'])->middleware('permission:suppliers.create');
+        Route::post('/suppliers/{supplier}', [SupplierController::class, 'update'])->middleware('permission:suppliers.edit');
+        Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->middleware('permission:suppliers.delete');
+        Route::post('/suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->middleware('permission:suppliers.edit');
+
         // Promotions Management
         Route::get('/promotions', [PromotionController::class, 'index'])->middleware('permission:promotions.view');
         Route::post('/promotions', [PromotionController::class, 'store'])->middleware('permission:promotions.create');
@@ -195,7 +212,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/pos/validate-promotion', [PaymentController::class, 'validatePromotion'])->middleware('permission:pos.create');
         Route::post('/pos/available-promotions', [PaymentController::class, 'availablePromotions'])->middleware('permission:pos.create');
         Route::post('/pos/checkout', [PaymentController::class, 'checkout'])->middleware('permission:pos.create');
+        Route::post('/pos/refund', [RefundController::class, 'store'])->middleware('permission:pos.create');
         Route::post('/pos/bulk-checkout', [PaymentController::class, 'bulkCheckout'])->middleware('permission:pos.create');
+        Route::post('/pos/customers/search', [StaffCustomerController::class, 'search'])->middleware('permission:pos.create');
+        Route::post('/pos/customers', [StaffCustomerController::class, 'store'])->middleware('permission:pos.create');
         Route::post('/pos/transfer-table', [TableOperationController::class, 'transferTable'])->middleware('permission:pos.create');
         Route::post('/pos/merge-tables', [TableOperationController::class, 'mergeTables'])->middleware('permission:pos.create');
         Route::post('/pos/unmerge-table', [TableOperationController::class, 'unmergeTable'])->middleware('permission:pos.create');
@@ -204,6 +224,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/shifts', [ShiftController::class, 'index'])->middleware('permission:shifts.view');
         Route::post('/shifts/open', [ShiftController::class, 'open'])->middleware('permission:shifts.open');
         Route::get('/shifts/current', [ShiftController::class, 'current'])->middleware('permission:shifts.view');
+        Route::post('/shifts/movements', [ShiftController::class, 'storeMovement'])->middleware('permission:shifts.view');
         Route::post('/shifts/close', [ShiftController::class, 'close'])->middleware('permission:shifts.close');
 
         Route::get('/kitchen', [KitchenController::class, 'index'])->middleware('permission:kitchen.view');

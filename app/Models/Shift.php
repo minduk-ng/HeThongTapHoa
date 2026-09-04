@@ -49,6 +49,11 @@ class Shift extends Model
         return $query->where('status', 'open');
     }
 
+    public function movements(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CashMovement::class);
+    }
+
     public function openedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class, 'opened_by');

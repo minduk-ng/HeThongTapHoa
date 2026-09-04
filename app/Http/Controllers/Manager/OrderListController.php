@@ -14,7 +14,7 @@ class OrderListController extends Controller
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
 
-        $orders = Order::with(['table', 'items.menuItem', 'invoice'])
+        $orders = Order::with(['table', 'items.menuItem', 'invoice', 'customer'])
             ->whereBetween('created_at', [
                 "{$startDate} 00:00:00",
                 "{$endDate} 23:59:59",
@@ -26,6 +26,7 @@ class OrderListController extends Controller
                     'id' => $order->id,
                     'order_code' => $order->order_code,
                     'table_number' => $order->table?->table_number,
+                    'customer_name' => $order->customer?->full_name,
                     'status' => $order->status,
                     'total' => (float) $order->total,
                     'item_count' => $order->items->where('status', '!=', 'cancelled')->count(),
@@ -58,6 +59,7 @@ class OrderListController extends Controller
             'invoice',
             'activities.user',
             'deposits.receivedBy',
+            'customer',
         ]);
 
         return Inertia::render('manager/orders/OrderDetail', [
@@ -65,6 +67,7 @@ class OrderListController extends Controller
                 'id' => $order->id,
                 'order_code' => $order->order_code,
                 'table_number' => $order->table?->table_number,
+                'customer_name' => $order->customer?->full_name,
                 'status' => $order->status,
                 'subtotal' => (float) $order->subtotal,
                 'vat_amount' => (float) $order->vat_amount,
@@ -94,6 +97,7 @@ class OrderListController extends Controller
                     'cancellation_reason' => $item->cancellation_reason,
                 ]),
                 'invoice' => $order->invoice ? [
+                    'id' => $order->invoice->id,
                     'invoice_code' => $order->invoice->invoice_code,
                     'payment_method' => $order->invoice->payment_method,
                     'total_amount' => (float) $order->invoice->total_amount,
@@ -101,6 +105,15 @@ class OrderListController extends Controller
                     'amount_received' => (float) $order->invoice->amount_received,
                     'change_amount' => (float) $order->invoice->change_amount,
                     'issued_at' => $order->invoice->issued_at->toIso8601String(),
+                    'lines' => $order->invoice->lines->map(fn ($l) => [
+                        'id' => $l->id,
+                        'name' => $l->name_snapshot,
+                        'quantity' => $l->quantity,
+                        'unit_price' => (float) $l->unit_price,
+                        'subtotal' => (float) $l->subtotal,
+                        'discount_amount' => (float) $l->discount_amount,
+                        'refunded_qty' => $l->refunded_qty,
+                    ]),
                 ] : null,
                 'invoice_sibling_count' => $order->invoice_id
                     ? Order::where('invoice_id', $order->invoice_id)->where('id', '!=', $order->id)->count()

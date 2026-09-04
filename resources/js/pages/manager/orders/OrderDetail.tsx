@@ -11,9 +11,12 @@ import {
     XCircle,
     Truck,
     CircleDollarSign,
+    RotateCcw,
 } from 'lucide-react';
 import React, { useState } from 'react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
+import RefundModal from './components/RefundModal';
+import type {RefundLine} from './components/RefundModal';
 
 interface OrderItemData {
     id: number;
@@ -29,6 +32,7 @@ interface OrderItemData {
 }
 
 interface InvoiceData {
+    id: number;
     invoice_code: string;
     payment_method: string;
     total_amount: number;
@@ -36,6 +40,7 @@ interface InvoiceData {
     amount_received: number;
     change_amount: number;
     issued_at: string;
+    lines: RefundLine[];
 }
 
 interface ActivityData {
@@ -60,6 +65,7 @@ interface OrderDetailData {
     id: number;
     order_code: string;
     table_number: string | null;
+    customer_name: string | null;
     status: string;
     subtotal: number;
     vat_amount: number;
@@ -96,6 +102,7 @@ const ACTION_CONFIG: Record<string, { label: string; icon: React.ElementType; co
     item_cancel: { label: 'Hủy món', icon: XCircle, color: 'text-rose-500' },
     order_cancelled: { label: 'Hủy đơn hàng', icon: XCircle, color: 'text-rose-500' },
     checkout: { label: 'Thanh toán', icon: CircleDollarSign, color: 'text-emerald-600' },
+    refund: { label: 'Hoàn trả', icon: RotateCcw, color: 'text-rose-500' },
     deposit_received: { label: 'Nhận đặt cọc', icon: CircleDollarSign, color: 'text-violet-600 dark:text-violet-400' },
 };
 
@@ -106,6 +113,7 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 export default function OrderDetail({ order }: OrderDetailProps) {
     const [activeTab, setActiveTab] = useState<'detail' | 'history'>('detail');
+    const [refundOpen, setRefundOpen] = useState(false);
 
     const safeItems = Array.isArray(order.items) ? order.items : [];
     const safeActivities = Array.isArray(order.activities) ? order.activities : [];
@@ -206,6 +214,16 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                     {safeActivities.length}
                                 </span>
                             </button>
+                            {order.status === 'paid' && order.invoice && (
+                                <button
+                                    type="button"
+                                    onClick={() => setRefundOpen(true)}
+                                    className="ml-auto flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-xl transition-colors bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50"
+                                >
+                                    <RotateCcw className="w-4.5 h-4.5" />
+                                    <span>Hoàn trả</span>
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -214,10 +232,14 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                         {activeTab === 'detail' ? (
                             <>
                                 {/* Info Banner */}
-                                <div className="mx-6 mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-50 dark:bg-zinc-800/40 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 text-sm">
+                                <div className="mx-6 mt-4 grid grid-cols-2 md:grid-cols-5 gap-4 bg-zinc-50 dark:bg-zinc-800/40 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 text-sm">
                                     <div>
                                         <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Bàn / Đơn</span>
                                         <span className="font-semibold text-zinc-850 dark:text-zinc-100">{order.table_number ?? 'Mang đi'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Khách hàng</span>
+                                        <span className="font-semibold text-zinc-850 dark:text-zinc-100">{order.customer_name ?? '—'}</span>
                                     </div>
                                     <div>
                                         <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Thời gian đặt</span>
@@ -445,12 +467,12 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                                                         {activity.meta.partial && (
                                                                             <p className="text-sm text-amber-500">(Hoàn thành một phần)</p>
                                                                         )}
-                                                                        {activity.meta.amount != null && (
-                                                                            <p className="text-sm text-zinc-650 dark:text-zinc-400 tabular-nums font-semibold mt-1">
-                                                                                Số tiền cọc: <span className="text-violet-600 dark:text-violet-400 font-bold">{formatCurrency(activity.meta.amount)}</span>
-                                                                                {activity.meta.method && ` • Hình thức: ${PAYMENT_LABELS[activity.meta.method] || activity.meta.method}`}
-                                                                            </p>
-                                                                        )}
+                                        {activity.meta.amount != null && (
+                                            <p className="text-sm text-zinc-650 dark:text-zinc-400 tabular-nums font-semibold mt-1">
+                                                {activity.action === 'refund' ? 'Số tiền hoàn: ' : 'Số tiền cọc: '}<span className="text-violet-600 dark:text-violet-400 font-bold">{formatCurrency(activity.meta.amount)}</span>
+                                                {activity.meta.method && ` • Hình thức: ${PAYMENT_LABELS[activity.meta.method] || activity.meta.method}`}
+                                            </p>
+                                        )}
                                                                     </div>
                                                                 )}
                                                                 {activity.action === 'deposit_received' && activity.meta?.amount == null && (
@@ -476,6 +498,12 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                     </div>
                 </div>
             </div>
+            <RefundModal
+                isOpen={refundOpen}
+                invoiceId={order.invoice?.id ?? 0}
+                lines={Array.isArray(order.invoice?.lines) ? order.invoice.lines : []}
+                onClose={() => setRefundOpen(false)}
+            />
         </DashboardLayout>
     );
 }

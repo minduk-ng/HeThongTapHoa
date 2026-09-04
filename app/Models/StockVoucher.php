@@ -10,10 +10,12 @@ class StockVoucher extends Model
 {
     protected $fillable = [
         'voucher_code', 'type', 'employee_id', 'transacted_at', 'note', 'created_by',
+        'supplier_id', 'is_paid',
     ];
 
     protected $casts = [
         'transacted_at' => 'datetime',
+        'is_paid' => 'bool',
     ];
 
     /** @return HasMany<StockVoucherItem, $this> */
@@ -32,5 +34,11 @@ class StockVoucher extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** @return BelongsTo<Supplier, $this> */
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
     }
 }
