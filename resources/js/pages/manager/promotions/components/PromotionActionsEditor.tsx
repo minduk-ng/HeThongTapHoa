@@ -120,7 +120,7 @@ return true;
                     return (
                         <div
                             key={i}
-                            className="group relative rounded-xl border border-zinc-200/80 bg-zinc-50/50 p-3.5 transition-all dark:border-zinc-800/80 dark:bg-zinc-800/40 hover:border-zinc-300 dark:hover:border-zinc-700"
+                            className="group relative rounded-xl border border-zinc-200/80 bg-zinc-50/50 p-3.5 transition-colors dark:border-zinc-800/80 dark:bg-zinc-800/40 hover:border-zinc-300 dark:hover:border-zinc-700"
                         >
                             <div className="flex flex-wrap items-start justify-between gap-3">
                                 {/* Action Type Selector */}

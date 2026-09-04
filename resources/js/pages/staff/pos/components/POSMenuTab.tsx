@@ -108,15 +108,23 @@ export default function POSMenuTab({
                         return (
                             <div
                                 key={product.id}
+                                role="button"
+                                tabIndex={isOutOfStock ? -1 : 0}
                                 onClick={() =>
                                     !isOutOfStock && onToggleProduct(product)
                                 }
-                                className={`relative flex cursor-pointer flex-col justify-between rounded-xl border p-2 transition-all duration-200 ease-out select-none hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] hover:shadow-xs ${
+                                onKeyDown={(e) => {
+                                    if (!isOutOfStock && (e.key === 'Enter' || e.key === ' ')) {
+                                        e.preventDefault();
+                                        onToggleProduct(product);
+                                    }
+                                }}
+                                className={`relative flex cursor-pointer flex-col justify-between rounded-xl border p-2 transition-colors duration-150 select-none outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                                     isOutOfStock
                                         ? 'cursor-not-allowed border-rose-200 bg-zinc-50 opacity-50 dark:border-rose-900 dark:bg-zinc-800/40'
                                         : inCart
                                           ? 'border-sky-600 bg-sky-50/60 dark:bg-sky-950/40'
-                                          : 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700'
+                                          : 'border-zinc-200 bg-white hover:border-sky-400 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-500'
                                 }`}
                             >
                                 <div className="relative mb-1.5 aspect-[4/3] w-full overflow-hidden rounded-lg border border-zinc-100 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800">

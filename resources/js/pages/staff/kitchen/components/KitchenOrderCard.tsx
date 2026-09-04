@@ -207,13 +207,13 @@ return oldest;
 
     return (
         <div
-            className={`border bg-white dark:bg-zinc-900 ${cardBorderClass} flex h-full min-h-[300px] flex-col justify-between overflow-hidden rounded-2xl shadow-sm transition-all hover:shadow-md duration-200`}
+            className={`border bg-white dark:bg-zinc-900 ${cardBorderClass} flex h-full min-h-[300px] flex-col justify-between overflow-hidden rounded-2xl shadow-sm transition-shadow hover:shadow-md duration-200`}
         >
             {/* Order Card Header */}
             <div className={`p-3 ${headerBgClass} space-y-1.5 shadow-xs`}>
                 <div className="flex items-start justify-between">
                     <div>
-                        <span className="block text-[10px] font-bold tracking-wider text-white/70 uppercase font-mono">
+                        <span className="block text-[10px] font-bold tracking-wider text-white/85 uppercase font-mono">
                             {order.order_code}
                         </span>
                         <h3 className="font-display text-lg font-bold leading-tight text-white mt-1 flex flex-wrap items-center gap-1.5">

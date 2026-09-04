@@ -270,7 +270,7 @@ return null;
             />
 
             {/* Sliding Drawer - Expanded Width */}
-            <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 h-full border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl flex flex-col justify-between z-10 animate-in slide-in-from-right duration-300">
+            <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 h-full border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-lg flex flex-col justify-between z-10 animate-in slide-in-from-right duration-300">
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-800/40 flex items-center justify-between shrink-0">
                     <div>
@@ -688,12 +688,12 @@ return null;
                                                 setPaymentMethod('cash');
 
                                                 if (mode === 'payment') {
-setAmountReceived(payable);
-} else if (mode === 'deposit') {
-setAmountReceived(totalAmount);
-}
+                                                    setAmountReceived(payable);
+                                                } else if (mode === 'deposit') {
+                                                    setAmountReceived(totalAmount);
+                                                }
                                             }}
-                                            className={`py-2.5 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all ${
+                                            className={`py-2.5 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                                                 paymentMethod === 'cash'
                                                     ? 'border-sky-600 bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 shadow-xs ring-1 ring-sky-600'
                                                     : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
@@ -706,7 +706,7 @@ setAmountReceived(totalAmount);
                                         <button
                                             type="button"
                                             onClick={() => setPaymentMethod('bank_transfer')}
-                                            className={`py-2.5 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all ${
+                                            className={`py-2.5 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                                                 paymentMethod === 'bank_transfer'
                                                     ? 'border-sky-600 bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 shadow-xs ring-1 ring-sky-600'
                                                     : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
@@ -730,7 +730,7 @@ setAmountReceived(totalAmount);
                                                 value={amountReceived || ''}
                                                 onChange={(e) => setAmountReceived(Number(e.target.value))}
                                                 placeholder="Nhập số tiền..."
-                                                className="w-full px-3.5 py-2.5 text-lg font-bold text-center border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:border-sky-500 outline-none tabular-nums"
+                                                className="w-full px-3.5 py-2.5 text-lg font-bold text-center border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-500 outline-none tabular-nums"
                                             />
                                         </div>
 
@@ -741,7 +741,7 @@ setAmountReceived(totalAmount);
                                                         key={idx}
                                                         type="button"
                                                         onClick={() => setAmountReceived(preset)}
-                                                        className={`py-2 px-1 border rounded-xl text-xs font-bold transition-all text-center tabular-nums ${
+                                                        className={`py-2 px-1 border rounded-xl text-xs font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sky-500 text-center tabular-nums ${
                                                             amountReceived === preset
                                                                 ? 'border-sky-600 bg-sky-600 text-white shadow-xs'
                                                                 : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700'
@@ -828,7 +828,7 @@ setAmountReceived(totalAmount);
                                 type="button"
                                 disabled={submitting || isSubmitting || (paymentMethod === 'cash' && amountReceived < payable)}
                                 onClick={() => handleConfirm(true)}
-                                className="py-3 px-4 text-xs font-bold text-sky-600 dark:text-sky-400 bg-white dark:bg-zinc-800 border border-sky-300 dark:border-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center space-x-1.5 active:scale-95"
+                                className="py-3 px-4 text-xs font-bold text-sky-600 dark:text-sky-400 bg-white dark:bg-zinc-800 border border-sky-300 dark:border-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center space-x-1.5"
                             >
                                 <Printer className="w-4 h-4 stroke-[1.5]" />
                                 <span>{submitting ? 'Đang lưu...' : 'In phiếu K80'}</span>
@@ -837,7 +837,7 @@ setAmountReceived(totalAmount);
                                 type="button"
                                 disabled={submitting || isSubmitting || (paymentMethod === 'cash' && amountReceived < payable)}
                                 onClick={() => handleConfirm(false)}
-                                className="py-3 px-4 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs disabled:opacity-40 transition-colors flex items-center justify-center space-x-1.5 active:scale-95"
+                                className="py-3 px-4 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs disabled:opacity-40 transition-colors flex items-center justify-center space-x-1.5"
                             >
                                 <Check className="w-4 h-4 stroke-2" />
                                 <span>{submitting ? 'Đang lưu...' : 'Xác nhận thanh toán'}</span>
@@ -850,7 +850,7 @@ setAmountReceived(totalAmount);
                             type="button"
                             disabled={submitting || isSubmitting || amountReceived <= 0}
                             onClick={() => handleConfirm(false)}
-                            className="w-full py-3 px-4 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-xs disabled:opacity-40 transition-colors flex items-center justify-center space-x-1.5 active:scale-95"
+                            className="w-full py-3 px-4 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-xs disabled:opacity-40 transition-colors flex items-center justify-center space-x-1.5"
                         >
                             <Banknote className="w-4 h-4 stroke-[1.5]" />
                             <span>{submitting ? 'Đang lưu...' : 'Xác nhận đặt cọc'}</span>
@@ -862,7 +862,7 @@ setAmountReceived(totalAmount);
                             type="button"
                             disabled={submitting || isSubmitting}
                             onClick={() => handleConfirm(false)}
-                            className="w-full py-3 px-4 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-xs disabled:opacity-40 transition-colors flex items-center justify-center space-x-1.5 active:scale-95"
+                            className="w-full py-3 px-4 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-xs disabled:opacity-40 transition-colors flex items-center justify-center space-x-1.5"
                         >
                             <CalendarClock className="w-4 h-4 stroke-[1.5]" />
                             <span>{submitting ? 'Đang lưu...' : 'Hoàn tất đặt bàn'}</span>

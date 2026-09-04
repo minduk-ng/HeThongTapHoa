@@ -203,10 +203,10 @@ export default function DataTable<T>({
                                     colSpan={columns.length}
                                     className="px-4 py-16 text-center"
                                 >
-                                    <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                                    <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                                         {emptyMessage}
                                     </p>
-                                    <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                         {emptyHint}
                                     </p>
                                 </td>
@@ -240,7 +240,7 @@ export default function DataTable<T>({
             {/* Footer */}
             <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-3 dark:border-zinc-800 bg-white dark:bg-zinc-900">
                 <div className="flex items-center space-x-3">
-                    <span className="text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">
+                    <span className="text-[11px] text-zinc-600 tabular-nums dark:text-zinc-400">
                         {sortedRows.length} bản ghi
                     </span>
                     {showCompactToggle && (

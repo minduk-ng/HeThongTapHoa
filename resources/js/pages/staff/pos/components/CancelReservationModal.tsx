@@ -28,7 +28,7 @@ return null;
                 onClick={onClose}
             />
 
-            <div className="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-150 dark:bg-zinc-900">
+            <div className="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-lg animate-in zoom-in-95 duration-150 dark:bg-zinc-900">
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
@@ -120,7 +120,7 @@ return null;
                         onClick={() => {
                             onConfirm(resolution, note);
                         }}
-                        className="rounded-xl bg-rose-600 px-6 py-2 text-sm font-semibold text-white transition-all hover:bg-rose-700 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:opacity-50 dark:focus:ring-offset-zinc-900"
+                        className="rounded-xl bg-rose-600 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-700 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:opacity-50 dark:focus:ring-offset-zinc-900"
                     >
                         Xác nhận hủy
                     </button>

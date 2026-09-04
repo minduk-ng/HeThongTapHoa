@@ -409,7 +409,7 @@ return;
                                         onDragOver={(e) => handleGroupDragOver(e, groupIndex)}
                                         onDrop={(e) => handleGroupDrop(e, groupIndex)}
                                         onDragEnd={handleDragEnd}
-                                        className={`rounded-2xl border p-4 transition-all bg-zinc-50/70 dark:bg-zinc-800/40 border-zinc-200/80 dark:border-zinc-700/80 ${
+                                        className={`rounded-2xl border p-4 transition-colors bg-zinc-50/70 dark:bg-zinc-800/40 border-zinc-200/80 dark:border-zinc-700/80 ${
                                             isGroupDragOver ? 'ring-2 ring-sky-500 bg-sky-50/20 dark:bg-sky-950/20 shadow-md' : ''
                                         } ${
                                             isGroupHeaderDragOver && dropPosition === 'top' ? '!border-t-4 !border-t-sky-500' : ''
@@ -448,7 +448,7 @@ return;
                                                             onDragOver={(e) => handlePageDragOver(e, groupIndex, pageIndex)}
                                                             onDrop={(e) => handlePageDrop(e, groupIndex, pageIndex)}
                                                             onDragEnd={handleDragEnd}
-                                                            className={`flex items-center justify-between p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-700/60 bg-white dark:bg-zinc-800/80 hover:shadow-sm transition-all cursor-move select-none ${
+                                                            className={`flex items-center justify-between p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-700/60 bg-white dark:bg-zinc-800/80 hover:shadow-sm transition-colors cursor-move select-none ${
                                                                 isPageDragOver && dropPosition === 'top' ? '!border-t-4 !border-t-sky-500' : ''
                                                             } ${
                                                                 isPageDragOver && dropPosition === 'bottom' ? '!border-b-4 !border-b-sky-500' : ''

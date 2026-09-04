@@ -44,7 +44,7 @@ export default function AvatarDropdown({ user }: AvatarDropdownProps) {
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-1.5 rounded-lg px-1.5 py-1 transition-all duration-150 ${
+                className={`flex items-center gap-1.5 rounded-lg px-1.5 py-1 transition-colors duration-150 ${
                     isOpen
                         ? 'bg-sky-50 dark:bg-sky-950/50'
                         : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'

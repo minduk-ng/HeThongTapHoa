@@ -325,7 +325,7 @@ export default function POSCartPanel({
                                     key={invoiceId}
                                     type="button"
                                     onClick={() => onSelectInvoice(invoiceId)}
-                                    className={`group flex shrink-0 items-center space-x-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all duration-150 ${
+                                    className={`group flex shrink-0 items-center space-x-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors duration-150 ${
                                         isActive
                                             ? isDraft
                                                 ? 'bg-sky-600 text-white shadow-xs'
@@ -594,7 +594,7 @@ prevSentTime = t;
                                                     item,
                                                 })
                                             }
-                                            className="mt-0.5 cursor-pointer text-[11px] text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
+                                            className="mt-0.5 cursor-pointer text-[11px] text-zinc-500 dark:text-zinc-400 transition-colors hover:text-zinc-700 dark:hover:text-zinc-200"
                                         >
                                             {item.note ? (
                                                 <span className="line-clamp-1">

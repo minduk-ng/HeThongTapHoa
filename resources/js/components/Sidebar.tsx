@@ -282,7 +282,7 @@ export default function Sidebar() {
                 <div className="relative" ref={avatarRef}>
                     <button
                         onClick={() => setIsAvatarOpen(!isAvatarOpen)}
-                        className={`flex items-center gap-2 rounded-full p-0.5 transition-all duration-200 focus:outline-none ${
+                        className={`flex items-center gap-2 rounded-full p-0.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                             isAvatarOpen 
                                 ? 'ring-2 ring-sky-500 shadow-xs' 
                                 : 'ring-2 ring-transparent hover:ring-sky-400'

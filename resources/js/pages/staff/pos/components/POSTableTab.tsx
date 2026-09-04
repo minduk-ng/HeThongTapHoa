@@ -180,8 +180,16 @@ return true;
                         return (
                             <div
                                 key={table.id}
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => onSelectTable(table)}
-                                className={`relative flex h-28 cursor-pointer flex-col justify-between rounded-xl border p-3.5 transition-all duration-200 ease-out select-none hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] hover:shadow-sm ${
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        onSelectTable(table);
+                                    }
+                                }}
+                                className={`relative flex h-28 cursor-pointer flex-col justify-between rounded-xl border p-3.5 transition-colors duration-150 select-none outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                                     isSelected
                                         ? 'border-sky-600 bg-sky-50/70 dark:bg-sky-950/50'
                                         : isOccupied
@@ -190,7 +198,7 @@ return true;
                                             ? 'border-purple-300 bg-purple-50/60 hover:border-purple-400 dark:bg-purple-950/30'
                                             : isDrafting
                                               ? 'border-amber-200 bg-amber-50/40 hover:border-amber-300 dark:bg-amber-950/20'
-                                              : 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700'
+                                              : 'border-zinc-200 bg-white hover:border-sky-400 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-500'
                                 }`}
                             >
                                 <div className="flex items-start justify-between">

@@ -89,7 +89,7 @@ return;
             />
 
             <div className="absolute inset-y-0 right-0 z-101 flex max-w-full pl-10">
-                <div className="flex w-screen max-w-md flex-col justify-between border-l border-zinc-200/80 bg-white shadow-2xl dark:border-zinc-800/80 dark:bg-zinc-900">
+                <div className="flex w-screen max-w-md flex-col justify-between border-l border-zinc-200/80 bg-white shadow-lg dark:border-zinc-800/80 dark:bg-zinc-900">
                     <div className="flex items-center justify-between border-b border-zinc-200/80 bg-zinc-50/50 p-6 dark:border-zinc-800/80 dark:bg-zinc-800/50">
                         <h2 className="font-display text-lg font-bold text-zinc-900 dark:text-zinc-100">
                             {supplierToEdit

@@ -309,7 +309,7 @@ return;
                             </div>
                             <button 
                                 onClick={() => router.get('/staff/serving')}
-                                className="w-full py-2.5 bg-sky-600 text-white font-bold rounded-xl shadow-xs hover:bg-sky-500 active:scale-[0.98] transition-all text-xs"
+                                className="w-full py-2.5 bg-sky-600 text-white font-bold rounded-xl shadow-xs hover:bg-sky-500 active:scale-[0.98] transition-colors text-xs"
                             >
                                 Đến màn hình phục vụ
                             </button>
@@ -330,7 +330,7 @@ return;
                             {safeTablesMap.map((tbl) => (
                                 <div 
                                     key={tbl.id} 
-                                    className={`aspect-square border rounded-xl flex flex-col items-center justify-center text-center p-1.5 transition-all duration-150 ${getTableColorClass(tbl.status)}`}
+                                    className={`aspect-square border rounded-xl flex flex-col items-center justify-center text-center p-1.5 transition-colors duration-150 ${getTableColorClass(tbl.status)}`}
                                     title={tbl.reservation_name ? `Cọc: ${tbl.reservation_name}` : tbl.status}
                                 >
                                     <span className="text-[10px] font-bold tracking-tight">{tbl.name}</span>
@@ -404,20 +404,20 @@ return;
                                 </div>
                             ))}
                             {safeTopProducts.length === 0 && (
-                                <p className="text-xs text-zinc-400 italic text-center py-6">Chưa có dữ liệu đơn hàng trong kỳ</p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 italic text-center py-6">Chưa có dữ liệu đơn hàng trong kỳ</p>
                             )}
                         </div>
                     </div>
 
                     {/* Stock Warnings widget */}
                     <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs flex-1 flex flex-col">
-                        <h5 className="font-display text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4">Cảnh báo kho nguyên liệu</h5>
+                        <h5 className="font-display text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-widest mb-4">Cảnh báo kho nguyên liệu</h5>
                         <div className="space-y-3 flex-1 overflow-y-auto max-h-[180px] pr-1">
                             {safeWarnings.map((ing) => (
                                 <div key={ing.code} className="flex justify-between items-center gap-2">
                                     <div className="truncate">
                                         <p className="text-xs font-bold text-zinc-800 dark:text-zinc-250 truncate">{ing.name}</p>
-                                        <p className="text-[10px] text-zinc-400 mt-0.5 font-medium tabular-nums">
+                                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 font-medium tabular-nums">
                                             Tồn: {ing.stock_quantity} / Định mức: {ing.min_stock_alert} {ing.unit}
                                         </p>
                                     </div>

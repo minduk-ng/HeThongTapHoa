@@ -416,7 +416,7 @@ export default function ShiftsPage() {
                 </div>
                 {closeOpen && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-                        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
+                        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg dark:bg-zinc-900">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-display text-xl font-bold text-zinc-900 dark:text-zinc-100">
                                     Đóng ca
@@ -485,7 +485,7 @@ export default function ShiftsPage() {
                 )}
                 {movementOpen && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-                        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
+                        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg dark:bg-zinc-900">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-display text-xl font-bold text-zinc-900 dark:text-zinc-100">
                                     {movementType === 'expense'

@@ -539,7 +539,7 @@ return;
                                 return (
                                     <div
                                         key={card.id}
-                                        className={`bg-white dark:bg-zinc-900 border rounded-2xl shadow-xs flex flex-col overflow-hidden cursor-pointer transition-all duration-150 ${
+                                        className={`bg-white dark:bg-zinc-900 border rounded-2xl shadow-xs flex flex-col overflow-hidden cursor-pointer transition-colors duration-150 ${
                                             isSelected
                                                 ? 'border-sky-300 ring-2 ring-sky-500 dark:border-sky-700'
                                                 : 'border-zinc-200/80 dark:border-zinc-800/80'

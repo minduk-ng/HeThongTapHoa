@@ -43,7 +43,7 @@ export default function SearchableSelect({
             <button
                 type="button"
                 onClick={() => (open ? setOpen(false) : openList())}
-                className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-800 transition-all hover:bg-zinc-50/50 hover:border-zinc-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800/50 dark:hover:border-zinc-700 dark:focus:border-sky-500 dark:focus:ring-sky-950/50 outline-none"
+                className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-800 transition-colors hover:bg-zinc-50/50 hover:border-zinc-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800/50 dark:hover:border-zinc-700 dark:focus:border-sky-500 dark:focus:ring-sky-950/50 outline-none"
             >
                 <span className={selected ? 'font-medium' : 'text-zinc-400'}>
                     {selected ? selected.name : placeholder}

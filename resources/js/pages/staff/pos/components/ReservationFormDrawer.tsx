@@ -70,7 +70,7 @@ return;
             />
 
             {/* Panel */}
-            <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 h-full border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl flex flex-col justify-between z-10 animate-in slide-in-from-right duration-300">
+            <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 h-full border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-lg flex flex-col justify-between z-10 animate-in slide-in-from-right duration-300">
                 
                 {/* Header */}
                 <div className="flex-none p-5 pb-4 border-b border-zinc-100 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/50">
@@ -166,7 +166,7 @@ return;
                         type="submit"
                         form="reservation-form"
                         disabled={!isFormValid}
-                        className={`w-full py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 font-bold text-base transition-all shadow-sm ${
+                        className={`w-full py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 font-bold text-base transition-colors shadow-sm ${
                             isFormValid
                                 ? 'bg-violet-600 hover:bg-violet-700 text-white'
                                 : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed'

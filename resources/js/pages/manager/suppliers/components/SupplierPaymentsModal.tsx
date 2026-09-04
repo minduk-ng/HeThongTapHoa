@@ -86,7 +86,7 @@ return;
                 onClick={onClose}
             />
 
-            <div className="relative z-101 flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl bg-white shadow-2xl dark:bg-zinc-900">
+            <div className="relative z-101 flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl bg-white shadow-lg dark:bg-zinc-900">
                 <div className="flex items-center justify-between border-b border-zinc-200/80 bg-zinc-50/50 px-6 py-4 dark:border-zinc-800/80 dark:bg-zinc-800/50">
                     <h2 className="font-display text-base font-bold text-zinc-900 dark:text-zinc-100">
                         Thanh toán công nợ — {supplier.name}

@@ -317,7 +317,7 @@ return;
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 sm:p-6">
-            <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-2xl dark:border-zinc-800/80 dark:bg-zinc-900">
+            <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-lg dark:border-zinc-800/80 dark:bg-zinc-900">
                 {/* Modal Header */}
                 <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 px-6 py-4 dark:border-zinc-800">
                     <div className="flex items-center space-x-3">
@@ -389,7 +389,7 @@ return;
                                                     setCodePrefix('');
                                                     setCodeQuantity('');
                                                 }}
-                                                className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                                                className={`flex flex-col items-start p-3 rounded-xl border text-left transition-colors ${
                                                     type === 'promotion'
                                                         ? 'border-sky-500 bg-sky-50/60 dark:bg-sky-950/40 ring-1 ring-sky-500 text-sky-900 dark:text-sky-200'
                                                         : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/40 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100/70'
@@ -412,7 +412,7 @@ return;
                                                     setCodeQuantity('');
                                                     setCodeRandom(false);
                                                 }}
-                                                className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                                                className={`flex flex-col items-start p-3 rounded-xl border text-left transition-colors ${
                                                     type === 'coupon'
                                                         ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 ring-1 ring-emerald-500 text-emerald-900 dark:text-emerald-200'
                                                         : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/40 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100/70'
@@ -434,7 +434,7 @@ return;
                                                     setCode('');
                                                     setCodeRandom(true);
                                                 }}
-                                                className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                                                className={`flex flex-col items-start p-3 rounded-xl border text-left transition-colors ${
                                                     type === 'voucher'
                                                         ? 'border-purple-500 bg-purple-50/60 dark:bg-purple-950/40 ring-1 ring-purple-500 text-purple-900 dark:text-purple-200'
                                                         : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/40 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100/70'
