@@ -1,3 +1,4 @@
+import { usePage } from '@inertiajs/react';
 import { Printer, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import type { POSTableData, CartItem } from '../types/pos.types';
@@ -14,6 +15,11 @@ interface ReceiptPrintModalProps {
     depositAmount?: number;
     depositRefund?: number;
     promotionDiscount?: number;
+    storeName?: string;
+    storeAddress?: string;
+    storePhone?: string;
+    storeWifi?: string;
+    staffName?: string;
 }
 
 export default function ReceiptPrintModal({
@@ -28,8 +34,20 @@ export default function ReceiptPrintModal({
     depositAmount = 0,
     depositRefund = 0,
     promotionDiscount = 0,
+    storeName,
+    storeAddress,
+    storePhone,
+    storeWifi,
+    staffName,
 }: ReceiptPrintModalProps) {
+    const pageProps = usePage<{ auth?: { user?: { name?: string } }; store_info?: { name?: string; address?: string; phone?: string; wifi?: string } }>().props;
     const [fallbackInvoiceCode, setFallbackInvoiceCode] = useState('');
+
+    const storeNameDisplay = storeName || pageProps?.store_info?.name || 'HỆ THỐNG TẠP HÓA';
+    const storeAddressDisplay = storeAddress || pageProps?.store_info?.address || '';
+    const storePhoneDisplay = storePhone || pageProps?.store_info?.phone || '';
+    const storeWifiDisplay = storeWifi || pageProps?.store_info?.wifi || '';
+    const staffNameDisplay = staffName || pageProps?.auth?.user?.name || 'Thu ngân';
 
     useEffect(() => {
         if (isOpen && !invoiceCode) {
@@ -51,8 +69,8 @@ export default function ReceiptPrintModal({
     }, [isOpen]);
 
     if (!isOpen || !selectedTable) {
-return null;
-}
+        return null;
+    }
 
     const subtotal = cartItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
     const vatInTotal = cartItems.reduce((sum, item) => {
@@ -67,8 +85,9 @@ return null;
 
         return sum + (line - net);
     }, 0);
-    const appliedVatRate = cartItems.find((item) => (item.vat_rate || 0) > 0)?.vat_rate || 0;
-    const totalAmount = Math.max(0, subtotal - promotionDiscount);
+
+    const discountAmount = promotionDiscount > 0 ? promotionDiscount : 0;
+    const finalTotal = Math.max(0, subtotal - discountAmount);
 
     const todayStr = new Date().toLocaleDateString('vi-VN');
     const timeNowStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -113,24 +132,27 @@ return null;
                 }
             `}</style>
 
-            <div className="bg-white text-zinc-900 rounded-2xl shadow-2xl overflow-hidden max-w-md w-full max-h-[90vh] flex flex-col relative animate-in zoom-in-95 duration-150">
-                {/* Fixed Action Bar at Top */}
-                <div className="no-print shrink-0 p-4 bg-zinc-100 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 flex justify-between items-center z-10">
-                    <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center space-x-1.5">
-                        <Printer className="w-4 h-4 text-zinc-500 stroke-[1.5]" />
-                        <span>Mẫu Hóa đơn K80 (Khổ 80mm)</span>
-                    </span>
-                    <div className="flex space-x-2">
+            <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+                {/* Modal Toolbar (Not printed) */}
+                <div className="no-print flex items-center justify-between px-5 py-3.5 border-b border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80">
+                    <div className="flex items-center space-x-2">
+                        <Printer className="w-5 h-5 text-sky-600 dark:text-sky-400 stroke-[1.5]" />
+                        <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                            Xem trước & In hóa đơn K80
+                        </h3>
+                    </div>
+                    <div className="flex items-center space-x-2">
                         <button
                             type="button"
                             onClick={() => window.print()}
-                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center space-x-1"
+                            className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center space-x-1"
                         >
                             <span>In lại</span>
                         </button>
                         <button
                             type="button"
                             onClick={onClose}
+                            aria-label="Đóng"
                             className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center space-x-1"
                         >
                             <X className="w-3.5 h-3.5 stroke-[1.5]" />
@@ -148,12 +170,18 @@ return null;
                         {/* Header */}
                         <div className="text-center space-y-1 pb-3 border-b border-dashed border-black">
                             <h2 className="text-base font-black tracking-wide uppercase">
-                                ĐỨC'S COFFEE & CÀ PHÊ
+                                {storeNameDisplay}
                             </h2>
-                            <p className="text-[11px] italic">Nhà hàng — Cafe — Lounge</p>
-                            <p className="text-[10px] text-zinc-600">
-                                Địa chỉ: Hà Nội | Hotline: 0988 xxx xxx | Wi-Fi: duc_coffee
-                            </p>
+                            <p className="text-[11px] italic">Phiếu thanh toán dịch vụ</p>
+                            {(storeAddressDisplay || storePhoneDisplay || storeWifiDisplay) && (
+                                <p className="text-[10px] text-zinc-600">
+                                    {[
+                                        storeAddressDisplay ? `Đ/C: ${storeAddressDisplay}` : '',
+                                        storePhoneDisplay ? `ĐT: ${storePhoneDisplay}` : '',
+                                        storeWifiDisplay ? `Wi-Fi: ${storeWifiDisplay}` : '',
+                                    ].filter(Boolean).join(' | ')}
+                                </p>
+                            )}
                         </div>
 
                         {/* Bill Title & Metadata */}
@@ -174,7 +202,7 @@ return null;
                                 <div className="text-right">
                                     <p><span className="font-bold">Khu:</span> {selectedTable.area || 'Trong nhà'}</p>
                                     <p><span className="font-bold">Giờ ra:</span> <span className="tabular-nums">{timeNowStr}</span></p>
-                                    <p><span className="font-bold">NV:</span> Admin</p>
+                                    <p><span className="font-bold">NV:</span> {staffNameDisplay}</p>
                                 </div>
                             </div>
                         </div>
@@ -186,65 +214,67 @@ return null;
                                     <th className="py-1 w-6">STT</th>
                                     <th className="py-1">Món / Đồ uống</th>
                                     <th className="py-1 text-center w-6">SL</th>
-                                    <th className="py-1 text-right">Đơn giá</th>
+                                    <th className="py-1 text-right">Đ.Giá</th>
                                     <th className="py-1 text-right">T.Tiền</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-dashed divide-zinc-300">
-                                {cartItems.map((item, idx) => (
-                                    <tr key={idx} className="align-top">
-                                        <td className="py-1 font-mono text-[10px] tabular-nums">{idx + 1}</td>
-                                        <td className="py-1 font-semibold pr-1">
-                                            {item.name}
-                                            {item.note && (
-                                                <span className="block text-[9px] font-normal italic text-zinc-500">
-                                                    ({item.note})
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="py-1 text-center font-bold tabular-nums">{item.quantity}</td>
-                                        <td className="py-1 text-right font-mono tabular-nums">{item.unit_price.toLocaleString('vi-VN')}</td>
-                                        <td className="py-1 text-right font-bold font-mono tabular-nums">
-                                            {(item.quantity * item.unit_price).toLocaleString('vi-VN')}
-                                        </td>
-                                    </tr>
-                                ))}
+                            <tbody>
+                                {cartItems.map((item, idx) => {
+                                    const itemTotal = item.quantity * item.unit_price;
+
+                                    return (
+                                        <tr key={item.menu_item_id ?? idx} className="border-b border-dotted border-zinc-200">
+                                            <td className="py-1.5 align-top font-mono tabular-nums">{idx + 1}</td>
+                                            <td className="py-1.5 align-top pr-1">
+                                                <div className="font-bold">{item.name}</div>
+                                                {item.note && (
+                                                    <div className="text-[10px] text-zinc-500 italic pl-1">
+                                                        Ghi chú: {item.note}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="py-1.5 align-top text-center font-bold tabular-nums">
+                                                {item.quantity}
+                                            </td>
+                                            <td className="py-1.5 align-top text-right font-mono tabular-nums">
+                                                {item.unit_price.toLocaleString('vi-VN')}
+                                            </td>
+                                            <td className="py-1.5 align-top text-right font-mono font-bold tabular-nums">
+                                                {itemTotal.toLocaleString('vi-VN')}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
 
-                        {/* Financial Summary */}
-                        <div className="space-y-1 text-[11px] py-1 border-b border-dashed border-black">
+                        {/* Summary & Totals */}
+                        <div className="py-1 space-y-1 text-[11px] border-b border-black">
                             <div className="flex justify-between">
-                                <span>Cộng tiền món:</span>
-                                <span className="font-mono font-bold tabular-nums">{subtotal.toLocaleString('vi-VN')}</span>
+                                <span>Cộng tiền hàng:</span>
+                                <span className="font-mono tabular-nums">{subtotal.toLocaleString('vi-VN')} đ</span>
                             </div>
-                            <div className="flex justify-between text-zinc-600">
-                                <span>Phí dịch vụ (0%):</span>
-                                <span className="font-mono tabular-nums">0</span>
-                            </div>
-                            {promotionDiscount > 0 && (
-                                <div className="flex justify-between text-zinc-600">
-                                    <span>Giảm giá:</span>
-                                    <span className="font-mono tabular-nums">-{promotionDiscount.toLocaleString('vi-VN')} đ</span>
+                            {discountAmount > 0 && (
+                                <div className="flex justify-between text-rose-600 font-bold">
+                                    <span>Chiết khấu khuyến mãi:</span>
+                                    <span className="font-mono tabular-nums">-{discountAmount.toLocaleString('vi-VN')} đ</span>
                                 </div>
                             )}
-                            <div className="flex justify-between text-zinc-600">
-                                <span>Thuế GTGT ({appliedVatRate}%):</span>
-                                <span className="font-mono tabular-nums">{vatInTotal.toLocaleString('vi-VN')}</span>
-                            </div>
-                            <div className="flex justify-between font-bold text-zinc-900 border-t border-dotted border-zinc-400 pt-1">
-                                <span>Vị trí / Bàn thực hiện:</span>
-                                <span>{selectedTable.table_number} ({selectedTable.area || 'Trong nhà'})</span>
-                            </div>
                             {depositAmount > 0 && (
-                                <div className="flex justify-between font-bold text-zinc-900">
-                                    <span>Đã cọc:</span>
+                                <div className="flex justify-between text-amber-700">
+                                    <span>Đã cọc trước:</span>
                                     <span className="font-mono tabular-nums">-{depositAmount.toLocaleString('vi-VN')} đ</span>
                                 </div>
                             )}
-                            <div className="flex justify-between text-xs font-black pt-1 border-t border-black">
+                            {vatInTotal > 0 && (
+                                <div className="flex justify-between text-[10px] text-zinc-600">
+                                    <span>(Trong đó gồm VAT):</span>
+                                    <span className="font-mono tabular-nums">{vatInTotal.toLocaleString('vi-VN')} đ</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between font-black text-sm pt-1 border-t border-dotted border-black">
                                 <span>TỔNG THANH TOÁN:</span>
-                                <span className="font-mono text-sm tabular-nums">{Math.max(0, totalAmount - depositAmount).toLocaleString('vi-VN')} đ</span>
+                                <span className="font-mono tabular-nums">{finalTotal.toLocaleString('vi-VN')} đ</span>
                             </div>
                             {depositRefund > 0 && (
                                 <div className="flex justify-between font-bold text-zinc-900">
@@ -259,7 +289,7 @@ return null;
                             <div className="flex justify-between">
                                 <span>Thanh toán:</span>
                                 <span className="font-bold">
-                                    {paymentMethod === 'cash' ? '[X] Tiền mặt' : '[X] Chuyển khoản QR'}
+                                    {paymentMethod === 'cash' ? 'Tiền mặt' : 'Chuyển khoản QR'}
                                 </span>
                             </div>
                             <div className="flex justify-between">

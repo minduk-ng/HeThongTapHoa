@@ -186,6 +186,12 @@ class HandleInertiaRequests extends Middleware
             'navigation' => $cachedData['navigation'],
             'cdn_url' => cdn_asset(''),
             'payment_qr' => config('payment.qr'),
+            'store_info' => [
+                'name' => (string) config('app.name', 'Hệ Thống Tạp Hóa'),
+                'address' => (string) config('app.store_address', 'Hà Nội, Việt Nam'),
+                'phone' => (string) config('app.store_phone', '0988 000 000'),
+                'wifi' => (string) config('app.store_wifi', 'Free Wi-Fi'),
+            ],
             'failedAttempts' => 0,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

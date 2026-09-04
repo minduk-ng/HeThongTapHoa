@@ -156,16 +156,37 @@ export default function DataTable<T>({
             <div className="min-h-0 flex-1 overflow-auto">
                 <table className="w-full border-collapse text-left">
                     <thead className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50/95 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-800/95">
-                        <tr className="text-xs font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
+                        <tr className="text-xs font-semibold tracking-wider text-zinc-600 uppercase dark:text-zinc-400">
                             {columns.map((col) => (
                                 <th
                                     key={col.key}
+                                    role={col.sortable ? 'button' : undefined}
+                                    tabIndex={col.sortable ? 0 : undefined}
+                                    aria-sort={
+                                        col.sortable
+                                            ? sortField === col.key
+                                                ? sortDirection === 'desc'
+                                                    ? 'descending'
+                                                    : 'ascending'
+                                                : 'none'
+                                            : undefined
+                                    }
                                     onClick={
                                         col.sortable
                                             ? () => handleSort(col.key)
                                             : undefined
                                     }
-                                    className={`relative px-4 ${isCompact ? 'py-2' : 'py-3'} ${alignClass(col.align)} select-none border-r border-zinc-200/60 dark:border-zinc-800/60 last:border-r-0 ${col.headerClassName ?? ''} ${col.sortable ? 'cursor-pointer hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60' : ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
+                                    onKeyDown={
+                                        col.sortable
+                                            ? (e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    handleSort(col.key);
+                                                }
+                                            }
+                                            : undefined
+                                    }
+                                    className={`relative px-4 ${isCompact ? 'py-2' : 'py-3'} ${alignClass(col.align)} select-none border-r border-zinc-200/60 dark:border-zinc-800/60 last:border-r-0 ${col.headerClassName ?? ''} ${col.sortable ? 'cursor-pointer hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500' : ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
                                 >
                                     <div className={`flex items-center space-x-1.5 ${justifyClass(col.align)}`}>
                                         <span>{col.header}</span>

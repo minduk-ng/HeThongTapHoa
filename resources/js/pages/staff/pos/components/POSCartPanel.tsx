@@ -662,13 +662,14 @@ prevSentTime = t;
                                         <span className="text-sm font-bold text-zinc-900 tabular-nums transition-opacity duration-150 group-hover:opacity-0 dark:text-zinc-100">
                                             {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
                                         </span>
-                                        <div className="absolute inset-0 flex items-center justify-end opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                                        <div className="absolute inset-0 flex items-center justify-end opacity-60 transition-opacity duration-150 group-hover:opacity-100">
                                             {!isDeleteDisabled ? (
                                                 <button
                                                     type="button"
                                                     onClick={() =>
                                                         onRemoveItem(item.menu_item_id)
                                                     }
+                                                    aria-label="Xóa món"
                                                     className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
                                                     title="Hủy chọn món nháp"
                                                 >
@@ -686,6 +687,7 @@ prevSentTime = t;
                                                             item,
                                                         })
                                                     }
+                                                    aria-label="Xóa món"
                                                     className="rounded-lg p-1.5 text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/50 dark:hover:text-rose-300"
                                                     title="Giảm / Hủy món đang chế biến kèm lý do"
                                                 >

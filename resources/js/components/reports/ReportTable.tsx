@@ -234,15 +234,36 @@ return 'text-center';
                         ))}
                     </colgroup>
                     <thead className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-800/90">
-                        <tr className="text-xs font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400 text-center">
+                        <tr className="text-xs font-semibold tracking-wider text-zinc-600 uppercase dark:text-zinc-400 text-center">
                             {visibleColumns.map((c, idx) => (
                                 <th
                                     key={c.key}
+                                    role={c.sortable !== false ? 'button' : undefined}
+                                    tabIndex={c.sortable !== false ? 0 : undefined}
+                                    aria-sort={
+                                        c.sortable !== false
+                                            ? sortKey === c.key
+                                                ? sortDir === 'desc'
+                                                    ? 'descending'
+                                                    : 'ascending'
+                                                : 'none'
+                                            : undefined
+                                    }
                                     onClick={() =>
                                         c.sortable !== false &&
                                         handleSort(c.key)
                                     }
-                                    className={`relative px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} select-none text-center ${c.sortable !== false ? 'cursor-pointer hover:bg-zinc-100/70 dark:hover:bg-zinc-700/50' : ''}`}
+                                    onKeyDown={
+                                        c.sortable !== false
+                                            ? (e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    handleSort(c.key);
+                                                }
+                                            }
+                                            : undefined
+                                    }
+                                    className={`relative px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} select-none text-center ${c.sortable !== false ? 'cursor-pointer hover:bg-zinc-100/70 dark:hover:bg-zinc-700/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500' : ''}`}
                                 >
                                     <div
                                         className="flex items-center justify-center space-x-1"
