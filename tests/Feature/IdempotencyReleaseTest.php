@@ -1,9 +1,5 @@
 <?php
 
-use App\Models\Ingredient;
-use App\Models\ProductRecipe;
-use App\Models\StockVoucher;
-
 test('checkout that bai khong bi chan boi idempotency key', function () {
     $admin = posAdmin();
     $item = posMenuItem(['price' => 50000, 'vat_rate' => 0]);

@@ -3,6 +3,7 @@
 use App\Models\CashMovement;
 use App\Models\InvoiceLine;
 use App\Models\Shift;
+use App\Services\Manager\ShiftService;
 
 test('refund cua ca truoc khong lam lech expectedCash ca hien tai', function () {
     $this->actingAs(posAdmin());
@@ -61,7 +62,7 @@ test('ghi chi trong ca va expectedCash tru di', function () {
 
     expect(CashMovement::where('shift_id', $shift->id)->exists())->toBeTrue();
 
-    $expected = (new \App\Services\Manager\ShiftService)->expectedCash($shift, now());
+    $expected = (new ShiftService)->expectedCash($shift, now());
     expect($expected)->toBe(50000.0); // 100000 opening - 50000 expense
 });
 
@@ -76,7 +77,7 @@ test('ghi thu ngoai tuong duong cong', function () {
         'type' => 'income', 'category' => 'thu_ngoai', 'amount' => 30000, 'note' => 'thu cò nợ',
     ])->assertOk();
 
-    $expected = (new \App\Services\Manager\ShiftService)->expectedCash($shift, now());
+    $expected = (new ShiftService)->expectedCash($shift, now());
     expect($expected)->toBe(130000.0);
 });
 

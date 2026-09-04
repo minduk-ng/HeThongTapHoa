@@ -3,6 +3,9 @@
 namespace Tests\Feature\Reports;
 
 use App\Models\Invoice;
+use App\Models\InvoiceLine;
+use App\Models\OrderItem;
+use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,7 +24,7 @@ class ProductDetailsReportTest extends TestCase
     private function adminUser(): User
     {
         $adminUser = User::factory()->create();
-        $adminUser->roles()->attach(\App\Models\Role::where('name', 'admin')->first());
+        $adminUser->roles()->attach(Role::where('name', 'admin')->first());
 
         return $adminUser;
     }
@@ -41,7 +44,7 @@ class ProductDetailsReportTest extends TestCase
         $invoice->forceFill(['issued_at' => $issuedAt])->save();
         $order = posOrder(posTable(), $specs, ['invoice_id' => $invoice->id, 'status' => 'paid']);
         foreach ($order->items as $oi) {
-            \App\Models\InvoiceLine::create([
+            InvoiceLine::create([
                 'invoice_id' => $invoice->id,
                 'order_item_id' => $oi->id,
                 'menu_item_id' => $oi->menu_item_id,
@@ -98,9 +101,9 @@ class ProductDetailsReportTest extends TestCase
         ]);
 
         // Giảm giá 15.000 phân bổ xuống dòng Cà phê đen (vd: 1 đơn có mã KM)
-        \App\Models\OrderItem::where('menu_item_id', $itemA->id)
+        OrderItem::where('menu_item_id', $itemA->id)
             ->update(['discount_amount' => 15000]);
-        \App\Models\InvoiceLine::where('menu_item_id', $itemA->id)
+        InvoiceLine::where('menu_item_id', $itemA->id)
             ->update(['discount_amount' => 15000]);
 
         $this->actingAs($this->adminUser())
@@ -140,7 +143,7 @@ class ProductDetailsReportTest extends TestCase
         $invoice->forceFill(['issued_at' => '2026-07-15 10:00:00'])->save();
 
         $mi = posMenuItem(['name' => 'Cà phê đen']);
-        \App\Models\InvoiceLine::create([
+        InvoiceLine::create([
             'invoice_id' => $invoice->id, 'menu_item_id' => $mi->id, 'name_snapshot' => 'Cà phê đen',
             'quantity' => 2, 'unit_price' => 15000, 'subtotal' => 30000, 'vat_rate' => 0, 'vat_amount' => 0, 'discount_amount' => 15000,
         ]);

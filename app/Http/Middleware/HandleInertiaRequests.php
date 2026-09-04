@@ -70,13 +70,13 @@ class HandleInertiaRequests extends Middleware
                                     'name' => $page->name,
                                     'route_path' => $page->route_path,
                                 ];
-                                    $slots = $navigation[$page->group_name] ?? ['__subs' => [], 'plain' => []];
-                                    if ($page->sub_group) {
-                                        $slots['__subs'][$page->sub_group][] = $item;
-                                    } else {
-                                        $slots['plain'][] = $item;
-                                    }
-                                    $navigation[$page->group_name] = $slots;
+                                $slots = $navigation[$page->group_name] ?? ['__subs' => [], 'plain' => []];
+                                if ($page->sub_group) {
+                                    $slots['__subs'][$page->sub_group][] = $item;
+                                } else {
+                                    $slots['plain'][] = $item;
+                                }
+                                $navigation[$page->group_name] = $slots;
                             }
                         }
 
@@ -129,13 +129,13 @@ class HandleInertiaRequests extends Middleware
                             'name' => $page->name,
                             'route_path' => $page->route_path,
                         ];
-                            $slots = $navigation[$page->group_name] ?? ['__subs' => [], 'plain' => []];
-                            if ($page->sub_group) {
-                                $slots['__subs'][$page->sub_group][] = $item;
-                            } else {
-                                $slots['plain'][] = $item;
-                            }
-                            $navigation[$page->group_name] = $slots;
+                        $slots = $navigation[$page->group_name] ?? ['__subs' => [], 'plain' => []];
+                        if ($page->sub_group) {
+                            $slots['__subs'][$page->sub_group][] = $item;
+                        } else {
+                            $slots['plain'][] = $item;
+                        }
+                        $navigation[$page->group_name] = $slots;
                     }
                 }
 

@@ -14,7 +14,7 @@ class TableStatusUpdated implements ShouldBroadcastNow
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     /**
-     * @param array<string, mixed>|null $meta
+     * @param  array<string, mixed>|null  $meta
      */
     public function __construct(
         public Table $table,

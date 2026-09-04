@@ -40,7 +40,7 @@ class InvoiceLine extends Model
     }
 
     /** Giới hạn lines thuộc các hóa đơn phát hành trong khoảng ngày.
-     * @param Builder<InvoiceLine> $query
+     * @param  Builder<InvoiceLine>  $query
      * @return Builder<InvoiceLine>
      */
     public function scopeSettledBetween(Builder $query, string $from, string $to): Builder

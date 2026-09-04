@@ -1,11 +1,11 @@
 <?php
 
-use App\Models\User;
-use App\Models\Role;
-use App\Models\MenuItem;
 use App\Models\MenuCategory;
-use Illuminate\Support\Facades\Cache;
+use App\Models\MenuItem;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 

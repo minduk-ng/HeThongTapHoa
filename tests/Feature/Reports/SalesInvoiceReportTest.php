@@ -3,6 +3,7 @@
 namespace Tests\Feature\Reports;
 
 use App\Models\Invoice;
+use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,7 +22,7 @@ class SalesInvoiceReportTest extends TestCase
     private function adminUser(): User
     {
         $adminUser = User::factory()->create();
-        $adminRole = \App\Models\Role::where('name', 'admin')->first();
+        $adminRole = Role::where('name', 'admin')->first();
         $adminUser->roles()->attach($adminRole);
 
         return $adminUser;
@@ -92,7 +93,7 @@ class SalesInvoiceReportTest extends TestCase
     public function test_gross_discount_doc_tu_invoice_snapshot_khong_phai_orders_child()
     {
         $this->actingAs($this->adminUser());
-        $invoice = \App\Models\Invoice::create([
+        $invoice = Invoice::create([
             'invoice_code' => 'SIR1', 'table_name' => 'B01', 'payment_method' => 'cash',
             'amount_received' => 90000, 'change_amount' => 0, 'total_amount' => 90000,
             'subtotal_amount' => 100000, 'discount_amount' => 10000,

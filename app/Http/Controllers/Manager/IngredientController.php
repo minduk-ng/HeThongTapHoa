@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Manager;
 use App\Events\IngredientStockUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
+use App\Models\Supplier;
 use App\Services\Inventory\LotService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -43,7 +44,7 @@ class IngredientController extends Controller
         return Inertia::render('manager/inventory/ingredients/IngredientsManager', [
             'ingredients' => $ingredients,
             'units' => $allUnits,
-            'suppliers' => \App\Models\Supplier::orderBy('name')->get(['id', 'name']),
+            'suppliers' => Supplier::orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['search', 'unit', 'alert']),
         ]);
     }

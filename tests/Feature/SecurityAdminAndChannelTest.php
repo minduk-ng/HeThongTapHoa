@@ -1,8 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
-
 test('config admin khong co default password', function () {
     // Bỏ env (test chạy không env ADMIN_*) → phải ra null, không phải '244466666'
     foreach (['ADMIN_EMAIL', 'ADMIN_DEFAULT_PASSWORD'] as $var) {

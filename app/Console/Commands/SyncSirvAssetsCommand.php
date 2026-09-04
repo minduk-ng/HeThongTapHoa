@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\MenuItem;
 use App\Services\Sirv\SirvClientService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\File;
 class SyncSirvAssetsCommand extends Command
 {
     protected $signature = 'sirv:sync';
+
     protected $description = 'Upload local static assets (logo, banner, QR) to Sirv CDN';
 
     public function handle(SirvClientService $sirvClient): int
@@ -26,13 +28,13 @@ class SyncSirvAssetsCommand extends Command
         $filesToUpload = [];
 
         foreach ($directories as $localDir => $targetPrefix) {
-            if (!File::exists($localDir)) {
+            if (! File::exists($localDir)) {
                 continue;
             }
 
             $files = File::allFiles($localDir);
             foreach ($files as $file) {
-                $relativePath = $targetPrefix . '/' . $file->getRelativePathname();
+                $relativePath = $targetPrefix.'/'.$file->getRelativePathname();
                 $filesToUpload[] = [
                     'full_path' => $file->getRealPath(),
                     'sirv_path' => str_replace('\\', '/', $relativePath),
@@ -42,6 +44,7 @@ class SyncSirvAssetsCommand extends Command
 
         if (empty($filesToUpload)) {
             $this->warn('No local asset files found to upload.');
+
             return Command::SUCCESS;
         }
 
@@ -71,20 +74,20 @@ class SyncSirvAssetsCommand extends Command
 
         // Sync MenuItem records in Database with local image paths
         $this->info('Updating MenuItem image records in Database...');
-        $localProducts = \App\Models\MenuItem::whereNotNull('image')
+        $localProducts = MenuItem::whereNotNull('image')
             ->where(function ($q) {
                 $q->where('image', 'like', '/storage/%')
-                  ->orWhere('image', 'like', 'storage/%');
+                    ->orWhere('image', 'like', 'storage/%');
             })->get();
 
         $dbUpdatedCount = 0;
         foreach ($localProducts as $product) {
             $relativePath = str_replace(['/storage/', 'storage/'], '', $product->image);
-            $localFullPath = storage_path('app/public/' . $relativePath);
+            $localFullPath = storage_path('app/public/'.$relativePath);
 
             if (File::exists($localFullPath)) {
                 $filename = basename($relativePath);
-                $sirvPath = 'products/' . $filename;
+                $sirvPath = 'products/'.$filename;
                 $contents = file_get_contents($localFullPath);
 
                 if ($sirvClient->uploadFile($sirvPath, $contents)) {

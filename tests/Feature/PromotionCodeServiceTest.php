@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\Promotion;
-use App\Models\PromotionCode;
 use App\Services\Promotions\PromotionCodeService;
 
 test('coupon sinh ma so thu tu dung format prefix-001...', function () {
@@ -33,5 +31,5 @@ test('prefix da dung thi nem InvalidArgumentException', function () {
 
     $p2 = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'DUPX', 'code_quantity' => 1, 'code_random' => false]);
 
-    expect(fn () => PromotionCodeService::generate($p2))->toThrow(\InvalidArgumentException::class);
+    expect(fn () => PromotionCodeService::generate($p2))->toThrow(InvalidArgumentException::class);
 });

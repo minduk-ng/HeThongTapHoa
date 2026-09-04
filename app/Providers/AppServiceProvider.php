@@ -2,9 +2,20 @@
 
 namespace App\Providers;
 
+use App\Models\Ingredient;
+use App\Models\MenuCategory;
+use App\Models\MenuItem;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Page;
+use App\Models\Role;
+use App\Models\Table;
+use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -31,48 +42,48 @@ class AppServiceProvider extends ServiceProvider
     {
         $flushUserCache = function () {
             try {
-                \Illuminate\Support\Facades\Cache::tags(['user_inertia'])->flush();
+                Cache::tags(['user_inertia'])->flush();
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::warning("Redis flush failed for user_inertia: " . $e->getMessage());
+                Log::warning('Redis flush failed for user_inertia: '.$e->getMessage());
             }
         };
 
-        \App\Models\User::saved($flushUserCache);
-        \App\Models\User::deleted($flushUserCache);
-        \App\Models\Role::saved($flushUserCache);
-        \App\Models\Role::deleted($flushUserCache);
-        \App\Models\Page::saved($flushUserCache);
-        \App\Models\Page::deleted($flushUserCache);
+        User::saved($flushUserCache);
+        User::deleted($flushUserCache);
+        Role::saved($flushUserCache);
+        Role::deleted($flushUserCache);
+        Page::saved($flushUserCache);
+        Page::deleted($flushUserCache);
 
         $flushTablesCache = function () {
             try {
-                \Illuminate\Support\Facades\Cache::tags(['pos_tables'])->flush();
+                Cache::tags(['pos_tables'])->flush();
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::warning("Redis flush failed for pos_tables: " . $e->getMessage());
+                Log::warning('Redis flush failed for pos_tables: '.$e->getMessage());
             }
         };
 
-        \App\Models\Table::saved($flushTablesCache);
-        \App\Models\Table::deleted($flushTablesCache);
-        \App\Models\Order::saved($flushTablesCache);
-        \App\Models\Order::deleted($flushTablesCache);
-        \App\Models\OrderItem::saved($flushTablesCache);
-        \App\Models\OrderItem::deleted($flushTablesCache);
+        Table::saved($flushTablesCache);
+        Table::deleted($flushTablesCache);
+        Order::saved($flushTablesCache);
+        Order::deleted($flushTablesCache);
+        OrderItem::saved($flushTablesCache);
+        OrderItem::deleted($flushTablesCache);
 
         $flushProductsCache = function () {
             try {
-                \Illuminate\Support\Facades\Cache::tags(['pos_products_and_categories'])->flush();
+                Cache::tags(['pos_products_and_categories'])->flush();
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::warning("Redis flush failed for pos_products_and_categories: " . $e->getMessage());
+                Log::warning('Redis flush failed for pos_products_and_categories: '.$e->getMessage());
             }
         };
 
-        \App\Models\MenuItem::saved($flushProductsCache);
-        \App\Models\MenuItem::deleted($flushProductsCache);
-        \App\Models\MenuCategory::saved($flushProductsCache);
-        \App\Models\MenuCategory::deleted($flushProductsCache);
-        \App\Models\Ingredient::saved($flushProductsCache);
-        \App\Models\Ingredient::deleted($flushProductsCache);
+        MenuItem::saved($flushProductsCache);
+        MenuItem::deleted($flushProductsCache);
+        MenuCategory::saved($flushProductsCache);
+        MenuCategory::deleted($flushProductsCache);
+        Ingredient::saved($flushProductsCache);
+        Ingredient::deleted($flushProductsCache);
     }
 
     /**

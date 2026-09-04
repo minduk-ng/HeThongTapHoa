@@ -40,6 +40,7 @@ class StockHistoryController extends Controller
         $running = $initialBalance;
         $rows = $items->map(function ($it) use (&$running) {
             $running += (float) $it->quantity;
+
             return [
                 'id' => $it->id,
                 'transacted_at' => $it->voucher?->transacted_at?->format('d/m/Y H:i'),

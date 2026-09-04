@@ -27,6 +27,7 @@ class StockMovementReportController extends Controller
             $ing = $group->first()->ingredient;
             $end = (float) $ing->stock_quantity;
             $begin = round($end - $in + $outAbs - $adj, 2);
+
             return [
                 'ingredient_id' => $ingId,
                 'name' => $ing->name,

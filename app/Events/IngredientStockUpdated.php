@@ -13,7 +13,7 @@ class IngredientStockUpdated implements ShouldBroadcastNow
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     /**
-     * @param array<string, mixed> $meta
+     * @param  array<string, mixed>  $meta
      */
     public function __construct(public array $meta = []) {}
 

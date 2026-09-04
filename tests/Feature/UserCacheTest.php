@@ -1,12 +1,10 @@
 <?php
 
-use App\Models\User;
-use App\Models\Role;
 use App\Models\Permission;
-use App\Models\Page;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
@@ -35,7 +33,8 @@ test('user inertia shared data is cached and invalidated on changes', function (
     $user->roles()->detach();
     try {
         Cache::tags(["user_{$user->id}"])->flush();
-    } catch (\Exception $e) {}
-    
+    } catch (Exception $e) {
+    }
+
     expect(Cache::tags(['user_inertia'])->has($cacheKey))->toBeFalse();
 });

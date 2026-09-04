@@ -5,20 +5,22 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\OtpMail;
 use App\Models\OtpCode;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ProfileController extends Controller
 {
-    public function show(Request $request): \Inertia\Response
+    public function show(Request $request): Response
     {
         return Inertia::render('profile/Settings');
     }
 
-    public function updateName(Request $request): \Illuminate\Http\JsonResponse
+    public function updateName(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -39,7 +41,7 @@ class ProfileController extends Controller
         ]);
     }
 
-    public function updateEmail(Request $request): \Illuminate\Http\JsonResponse
+    public function updateEmail(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'email' => ['required', 'email', 'unique:users,email,'.Auth::id()],
@@ -80,7 +82,7 @@ class ProfileController extends Controller
         return response()->json(['success' => true, 'requires_otp' => true]);
     }
 
-    public function verifyEmailOtp(Request $request): \Illuminate\Http\JsonResponse
+    public function verifyEmailOtp(Request $request): JsonResponse
     {
         $request->validate([
             'code' => ['required', 'string', 'size:6'],
@@ -119,7 +121,7 @@ class ProfileController extends Controller
         ]);
     }
 
-    public function setupPassword(Request $request): \Illuminate\Http\JsonResponse
+    public function setupPassword(Request $request): JsonResponse
     {
         $user = Auth::user();
         if ($user->password !== null) {
@@ -146,7 +148,7 @@ class ProfileController extends Controller
         ]);
     }
 
-    public function changePassword(Request $request): \Illuminate\Http\JsonResponse
+    public function changePassword(Request $request): JsonResponse
     {
         $user = Auth::user();
         if ($user->password === null) {
@@ -197,7 +199,7 @@ class ProfileController extends Controller
         return response()->json(['success' => true, 'requires_otp' => true]);
     }
 
-    public function verifyPasswordOtp(Request $request): \Illuminate\Http\JsonResponse
+    public function verifyPasswordOtp(Request $request): JsonResponse
     {
         $request->validate([
             'code' => ['required', 'string', 'size:6'],

@@ -1,11 +1,13 @@
 <?php
 
-use App\Models\User;
+use App\Models\Order;
 use App\Models\Role;
 use App\Models\Table;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
@@ -29,7 +31,7 @@ test('pos table list is cached and flushed on table updates', function () {
     // Kiểm tra tables prop trong Inertia là mảng có key tuần tự từ 0
     $pageData = $response->original->getData()['page'];
     $tablesProp = $pageData['props']['tables'];
-    $array = $tablesProp instanceof \Illuminate\Support\Collection ? $tablesProp->all() : $tablesProp;
+    $array = $tablesProp instanceof Collection ? $tablesProp->all() : $tablesProp;
     $keys = array_keys($array);
     expect($keys)->toEqual(range(0, count($array) - 1));
 
@@ -43,7 +45,7 @@ test('pos table list is cached and flushed on table updates', function () {
     $newResponse = $this->get('/staff/pos');
     $newResponse->assertStatus(200);
     $newTablesProp = $newResponse->original->getData()['page']['props']['tables'];
-    $newArray = $newTablesProp instanceof \Illuminate\Support\Collection ? $newTablesProp->all() : $newTablesProp;
+    $newArray = $newTablesProp instanceof Collection ? $newTablesProp->all() : $newTablesProp;
     $newKeys = array_keys($newArray);
     expect($newKeys)->toEqual(range(0, count($newArray) - 1));
 });
@@ -72,10 +74,10 @@ test('multi-invoice checkout releases table only when all orders are paid', func
         'table_number' => 'Bàn 01',
         'capacity' => 4,
         'area' => 'Tầng 1',
-        'status' => 'occupied'
+        'status' => 'occupied',
     ]);
 
-    $order1 = App\Models\Order::create([
+    $order1 = Order::create([
         'order_code' => 'BAN01-260725-01',
         'table_id' => $table->id,
         'employee_id' => $user->id,
@@ -85,7 +87,7 @@ test('multi-invoice checkout releases table only when all orders are paid', func
         'total' => 110000,
     ]);
 
-    $order2 = App\Models\Order::create([
+    $order2 = Order::create([
         'order_code' => 'BAN01-260725-02',
         'table_id' => $table->id,
         'employee_id' => $user->id,
@@ -105,7 +107,7 @@ test('multi-invoice checkout releases table only when all orders are paid', func
         'idempotency_key' => 'idemp_key_1',
     ]);
     $response->assertSessionHasNoErrors();
-    
+
     expect($order1->fresh()->status)->toEqual('paid');
     expect($table->fresh()->status)->toEqual('occupied');
 
@@ -121,4 +123,3 @@ test('multi-invoice checkout releases table only when all orders are paid', func
     expect($order2->fresh()->status)->toEqual('paid');
     expect($table->fresh()->status)->toEqual('available');
 });
-

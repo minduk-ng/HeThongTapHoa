@@ -4,6 +4,7 @@ namespace Tests;
 
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
+use Illuminate\Contracts\Broadcasting\Factory;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
@@ -55,7 +56,7 @@ abstract class TestCase extends BaseTestCase
             // withBroadcasting (bootstrap/app.php) không load channels.php trong test.
             // Làm đúng thứ tự: Broadcast::routes() rồi require channels.php để channel
             // đăng ký lên PusherBroadcaster (broadcasting.default đã = pusher).
-            $broadcast = $app->make(\Illuminate\Contracts\Broadcasting\Factory::class);
+            $broadcast = $app->make(Factory::class);
             $broadcast->routes();
             if (file_exists($channels = $app->basePath('routes/channels.php'))) {
                 require $channels;

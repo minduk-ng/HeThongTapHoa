@@ -3,7 +3,6 @@
 use App\Models\Ingredient;
 use App\Models\ProductRecipe;
 use App\Models\StockVoucher;
-use App\Models\StockVoucherItem;
 
 test('checkout thieu nguyen lieu tra 422 va khong ghi gi', function () {
     $admin = posAdmin();

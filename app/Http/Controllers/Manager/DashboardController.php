@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Manager\DashboardService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class DashboardController extends Controller
 {
@@ -13,7 +14,7 @@ class DashboardController extends Controller
         private DashboardService $service
     ) {}
 
-    public function index(Request $request): \Inertia\Response
+    public function index(Request $request): Response
     {
         $range = $request->input('date_range', 'today');
         [$startDate, $endDate, $prevStartDate, $prevEndDate] = $this->service->getDateBounds($range);

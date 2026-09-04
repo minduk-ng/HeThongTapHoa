@@ -3,22 +3,24 @@
 namespace App\Events;
 
 use App\Models\Order;
+use App\Models\OrderItem;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Collection;
 
 class ItemsReadyToServe implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     /**
-     * @param \Illuminate\Support\Collection<int, \App\Models\OrderItem> $completedItems
+     * @param  Collection<int, OrderItem>  $completedItems
      */
     public function __construct(
         public Order $order,
-        public \Illuminate\Support\Collection $completedItems,
+        public Collection $completedItems,
     ) {}
 
     public function broadcastOn(): array

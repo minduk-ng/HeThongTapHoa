@@ -1,8 +1,8 @@
 <?php
 
 use App\Services\Sirv\SirvClientService;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     config()->set('filesystems.disks.sirv', [
@@ -20,7 +20,7 @@ test('sirv client gets access token and caches it', function () {
         'api.sirv.com/v2/token' => Http::response(['token' => 'fake-jwt-token', 'expiresIn' => 1200], 200),
     ]);
 
-    $service = new SirvClientService();
+    $service = new SirvClientService;
     $token = $service->getAccessToken();
 
     expect($token)->toBe('fake-jwt-token');
@@ -28,7 +28,7 @@ test('sirv client gets access token and caches it', function () {
 });
 
 test('sirv client builds cdn url correctly', function () {
-    $service = new SirvClientService();
+    $service = new SirvClientService;
     $url = $service->getUrl('logo/minilogo.png');
 
     expect($url)->toBe('https://ngminduk-191.sirv.com/TapHoa/logo/minilogo.png');
@@ -40,7 +40,7 @@ test('sirv client uploads file to sirv api', function () {
         'api.sirv.com/v2/files/upload*' => Http::response([], 200),
     ]);
 
-    $service = new SirvClientService();
+    $service = new SirvClientService;
     $result = $service->uploadFile('logo/minilogo.png', 'binary-content');
 
     expect($result)->toBeTrue();

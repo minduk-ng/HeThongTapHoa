@@ -1,9 +1,10 @@
 <?php
 
 use App\Models\Ingredient;
+use Illuminate\Support\Facades\Schema;
 
 test('ingredient co cot purchase_unit va unit_conversion', function () {
-    expect(\Illuminate\Support\Facades\Schema::hasColumns('ingredients', ['purchase_unit', 'unit_conversion']))->toBeTrue();
+    expect(Schema::hasColumns('ingredients', ['purchase_unit', 'unit_conversion']))->toBeTrue();
 });
 
 test('store ingredient luu purchase_unit va unit_conversion', function () {

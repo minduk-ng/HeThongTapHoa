@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Reports;
 
+use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,7 +21,7 @@ class CancelledReportTest extends TestCase
     private function adminUser(): User
     {
         $adminUser = User::factory()->create();
-        $adminUser->roles()->attach(\App\Models\Role::where('name', 'admin')->first());
+        $adminUser->roles()->attach(Role::where('name', 'admin')->first());
 
         return $adminUser;
     }

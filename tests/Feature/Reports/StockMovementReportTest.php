@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Models\Ingredient;
 use App\Models\StockVoucher;
@@ -44,4 +44,3 @@ test('report stock-movement loc theo from/to', function () {
 test('report stock-movement nguoi dung khong co quyen bi tu choi', function () {
     $this->actingAs(User::factory()->create())->get('/reports/stock-movement')->assertStatus(403);
 });
-

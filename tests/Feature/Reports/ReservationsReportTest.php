@@ -3,6 +3,8 @@
 namespace Tests\Feature\Reports;
 
 use App\Models\Deposit;
+use App\Models\Order;
+use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,12 +23,12 @@ class ReservationsReportTest extends TestCase
     private function adminUser(): User
     {
         $adminUser = User::factory()->create();
-        $adminUser->roles()->attach(\App\Models\Role::where('name', 'admin')->first());
+        $adminUser->roles()->attach(Role::where('name', 'admin')->first());
 
         return $adminUser;
     }
 
-    private function makeReservation(string $time, string $status, float $deposit = 0): \App\Models\Order
+    private function makeReservation(string $time, string $status, float $deposit = 0): Order
     {
         $order = posOrder(posTable(), [], [
             'status' => $status,

@@ -1,6 +1,7 @@
 <?php
 
-use App\Models\OrderItem;
+use App\Services\Manager\DashboardService;
+use Carbon\Carbon;
 
 test('dashboard kds dem processing la dang che bien va completed la xong', function () {
     $this->actingAs(posAdmin());
@@ -11,8 +12,8 @@ test('dashboard kds dem processing la dang che bien va completed la xong', funct
         ['item' => $item, 'qty' => 2, 'price' => 30000, 'status' => 'completed'],
     ], ['status' => 'processing']);
 
-    $service = new App\Services\Manager\DashboardService;
-    $today = \Carbon\Carbon::today();
+    $service = new DashboardService;
+    $today = Carbon::today();
     $ops = $service->liveOperations('today');
 
     expect($ops['kds']['pending_count'])->toBe(1);

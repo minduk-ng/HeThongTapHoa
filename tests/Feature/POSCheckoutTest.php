@@ -1,9 +1,13 @@
 <?php
 
+use App\Models\Ingredient;
 use App\Models\Invoice;
 use App\Models\MenuCategory;
 use App\Models\OrderActivity;
 use App\Models\OrderPromotion;
+use App\Models\PromotionCode;
+use App\Models\StockVoucher;
+use App\Services\Promotions\PromotionCodeService;
 
 /*
 |--------------------------------------------------------------------------
@@ -365,7 +369,7 @@ test('checkout voi ma con chi dung duoc 1 lan', function () {
     $admin = posAdmin();
     $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'POS1', 'code_quantity' => 1, 'code_random' => false]);
     addAction($p, 'discount_amount', 5000);
-    \App\Services\Promotions\PromotionCodeService::generate($p);
+    PromotionCodeService::generate($p);
     $code = $p->codes()->first()->code;
 
     $item = posMenuItem(['price' => 20000, 'vat_rate' => 0]);
@@ -395,7 +399,7 @@ test('validate-promotion ma con da dung tra loi ro rang', function () {
     $admin = posAdmin();
     $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'POSV', 'code_quantity' => 1, 'code_random' => false]);
     addAction($p, 'discount_amount', 5000);
-    \App\Services\Promotions\PromotionCodeService::generate($p);
+    PromotionCodeService::generate($p);
     $pc = $p->codes()->first();
     $pc->update(['status' => 'used', 'used_at' => now()]);
 
@@ -407,8 +411,8 @@ test('validate-promotion ma con da dung tra loi ro rang', function () {
 
 test('free product: mon tang trong order bi set 0 va kho van tru', function () {
     $free = posMenuItem(['price' => 20000, 'vat_rate' => 0]);
-    $ingredient = \App\Models\Ingredient::create(['name' => 'Ngl free '.uniqid(), 'stock_quantity' => 100, 'unit' => 'g']);
-    $vIng = \App\Models\StockVoucher::create(['voucher_code' => 'PN-FREE-'.uniqid(), 'type' => 'import', 'transacted_at' => now()]);
+    $ingredient = Ingredient::create(['name' => 'Ngl free '.uniqid(), 'stock_quantity' => 100, 'unit' => 'g']);
+    $vIng = StockVoucher::create(['voucher_code' => 'PN-FREE-'.uniqid(), 'type' => 'import', 'transacted_at' => now()]);
     $vIng->items()->create(['ingredient_id' => $ingredient->id, 'quantity' => 100, 'unit_price' => 10000, 'quantity_remaining' => 100]);
     $free->recipes()->create(['ingredient_id' => $ingredient->id, 'amount' => 10, 'unit' => 'g']);
 
@@ -447,8 +451,8 @@ test('free product: mon tang trong order bi set 0 va kho van tru', function () {
 test('checkout: voucher disabled bi tu choi', function () {
     $admin = posAdmin();
     $p = promoV2(['type' => 'voucher', 'code' => null, 'code_prefix' => 'DSBL'.substr(uniqid(), -4), 'code_quantity' => 1, 'code_random' => false]);
-    \App\Services\Promotions\PromotionCodeService::generate($p);
-    $pc = \App\Models\PromotionCode::where('promotion_id', $p->id)->first();
+    PromotionCodeService::generate($p);
+    $pc = PromotionCode::where('promotion_id', $p->id)->first();
     $pc->update(['status' => 'disabled']);
     $item = posMenuItem(['price' => 20000, 'vat_rate' => 0]);
     $table = posTable();

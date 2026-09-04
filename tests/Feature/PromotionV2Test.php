@@ -2,6 +2,8 @@
 
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
+use App\Models\MenuCategory;
+use App\Models\MenuItem;
 use App\Models\OrderPromotion;
 use App\Services\Promotions\PromotionEngine;
 
@@ -51,9 +53,9 @@ test('condition min_quantity + specific_product: AND', function () {
 });
 
 test('condition specific_category: ap dung khi don co mon thuoc danh muc', function () {
-    $cat = App\Models\MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
-    $itemIn = App\Models\MenuItem::create(['category_id' => $cat->id, 'name' => 'Mon trong cat '.uniqid(), 'price' => 25000, 'vat_rate' => 0, 'is_available' => true]);
-    $itemOut = App\Models\MenuItem::create(['category_id' => null, 'name' => 'Mon ngoai '.uniqid(), 'price' => 25000, 'vat_rate' => 0, 'is_available' => true]);
+    $cat = MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
+    $itemIn = MenuItem::create(['category_id' => $cat->id, 'name' => 'Mon trong cat '.uniqid(), 'price' => 25000, 'vat_rate' => 0, 'is_available' => true]);
+    $itemOut = MenuItem::create(['category_id' => null, 'name' => 'Mon ngoai '.uniqid(), 'price' => 25000, 'vat_rate' => 0, 'is_available' => true]);
 
     $p = promoV2();
     addCond($p, 'specific_category', (string) $cat->id);

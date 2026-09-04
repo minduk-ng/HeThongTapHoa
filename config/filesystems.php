@@ -66,7 +66,7 @@ return [
             'client_id' => env('SIRV_CLIENT_ID'),
             'client_secret' => env('SIRV_CLIENT_SECRET'),
             'cdn_url' => rtrim((string) env('SIRV_CDN_URL', 'https://ngminduk-191.sirv.com'), '/'),
-            'base_folder' => '/' . ltrim((string) env('SIRV_BASE_FOLDER', '/TapHoa'), '/'),
+            'base_folder' => '/'.ltrim((string) env('SIRV_BASE_FOLDER', '/TapHoa'), '/'),
         ],
 
     ],

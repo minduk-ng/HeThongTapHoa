@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class AggregateDailyPromotionStats extends Command
@@ -29,14 +30,14 @@ class AggregateDailyPromotionStats extends Command
     }
 
     /**
-     * @return array<string>  danh sách ngày Y-m-d cần rebuild
+     * @return array<string> danh sách ngày Y-m-d cần rebuild
      */
     private function resolveDates(): array
     {
         if ($from = $this->option('from')) {
             $to = $this->option('to') ?? $from;
-            $cursor = \Illuminate\Support\Carbon::parse($from);
-            $end = \Illuminate\Support\Carbon::parse($to);
+            $cursor = Carbon::parse($from);
+            $end = Carbon::parse($to);
             if ($cursor->gt($end)) {
                 $this->error('--from phải trước hoặc bằng --to.');
 
@@ -52,7 +53,7 @@ class AggregateDailyPromotionStats extends Command
         }
 
         if ($date = $this->option('date')) {
-            return [\Illuminate\Support\Carbon::parse($date)->toDateString()];
+            return [Carbon::parse($date)->toDateString()];
         }
 
         return [now()->subDay()->toDateString()];

@@ -2,16 +2,16 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property string $email
  * @property string $code
  * @property string $type
- * @property \Carbon\CarbonInterface $expires_at
- * @property \Carbon\CarbonInterface|null $created_at
+ * @property CarbonInterface $expires_at
+ * @property CarbonInterface|null $created_at
  */
 class OtpCode extends Model
 {

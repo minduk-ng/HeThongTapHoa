@@ -64,8 +64,9 @@ class UserPermissionController extends Controller
         }
 
         try {
-            \Illuminate\Support\Facades\Cache::tags(["user_{$user->id}"])->flush();
-        } catch (\Exception $e) {}
+            Cache::tags(["user_{$user->id}"])->flush();
+        } catch (\Exception $e) {
+        }
         Cache::forget("user_permissions:{$user->id}");
 
         return redirect()->back()->with('success', 'Cập nhật quyền người dùng thành công.');
@@ -124,8 +125,9 @@ class UserPermissionController extends Controller
 
         foreach ($userIds as $id) {
             try {
-                \Illuminate\Support\Facades\Cache::tags(["user_{$id}"])->flush();
-            } catch (\Exception $e) {}
+                Cache::tags(["user_{$id}"])->flush();
+            } catch (\Exception $e) {
+            }
             Cache::forget("user_permissions:{$id}");
         }
 

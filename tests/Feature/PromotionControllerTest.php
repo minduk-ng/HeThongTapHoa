@@ -1,6 +1,9 @@
 <?php
 
 use App\Models\Promotion;
+use App\Models\PromotionCode;
+use App\Models\PromotionTimeSlot;
+use App\Services\Promotions\PromotionCodeService;
 use App\Services\Promotions\PromotionEngine;
 use Illuminate\Support\Carbon;
 
@@ -314,7 +317,7 @@ test('GET codes tra danh sach ma con + bo dem', function () {
     $this->actingAs(posAdmin());
     $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'CODES1', 'code_quantity' => 3, 'code_random' => false]);
     addAction($p, 'discount_amount', 1000);
-    \App\Services\Promotions\PromotionCodeService::generate($p);
+    PromotionCodeService::generate($p);
     $p->codes()->first()->update(['status' => 'used', 'used_at' => now()]);
 
     $res = $this->getJson("/manager/promotions/{$p->id}/codes")->assertOk();
@@ -328,7 +331,7 @@ test('GET codes export=1 tra toan bo khong phan trang', function () {
     $this->actingAs(posAdmin());
     $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'CODESX', 'code_quantity' => 5, 'code_random' => false]);
     addAction($p, 'discount_amount', 1000);
-    \App\Services\Promotions\PromotionCodeService::generate($p);
+    PromotionCodeService::generate($p);
 
     $res = $this->getJson("/manager/promotions/{$p->id}/codes?export=1")->assertOk();
     expect($res->json('codes'))->toHaveCount(5);
@@ -348,7 +351,7 @@ test('store luu time_slots: tao dung so dong promotion_time_slots', function () 
         'actions' => [['action_type' => 'discount_percent', 'action_value' => 30]],
     ])->assertSessionHasNoErrors();
 
-    $promo = \App\Models\Promotion::where('name', 'Slot campaign')->first();
+    $promo = Promotion::where('name', 'Slot campaign')->first();
     expect($promo->timeSlots)->toHaveCount(3);
     expect($promo->timeSlots->pluck('day_of_week')->sort()->values()->all())->toBe([1, 2, 3]);
 });
@@ -369,7 +372,7 @@ test('index tra time_slots trong payload', function () {
     $this->actingAs(posAdmin());
     $promo = promoV2(['type' => 'coupon', 'code' => 'SLOTIDX']);
     addAction($promo, 'discount_amount', 5000);
-    \App\Models\PromotionTimeSlot::create([
+    PromotionTimeSlot::create([
         'promotion_id' => $promo->id,
         'day_of_week' => 5,
         'start_time' => '17:00',
@@ -437,7 +440,7 @@ test('voucher hop le duoc ep code_random=true', function () {
         'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000, 'max_discount_amount' => null]],
     ])->assertSessionHasNoErrors();
 
-    $p = \App\Models\Promotion::where('name', 'Voucher dung')->first();
+    $p = Promotion::where('name', 'Voucher dung')->first();
     expect($p->code_random)->toBeTrue();
 });
 
@@ -447,7 +450,7 @@ test('coupon hop le chi luu code don, khong prefix', function () {
         'actions' => [['action_type' => 'discount_amount', 'action_value' => 5000, 'max_discount_amount' => null]],
     ])->assertSessionHasNoErrors();
 
-    $p = \App\Models\Promotion::where('name', 'Coupon dung')->first();
+    $p = Promotion::where('name', 'Coupon dung')->first();
     expect($p->code)->not->toBeNull();
     expect($p->code_prefix)->toBeNull();
     expect($p->code_quantity)->toBeNull();
@@ -502,15 +505,15 @@ test('sua voucher cu van luu duoc', function () {
 test('toggle codes: disable unused -> disabled, enable -> unused, used giu nguyen', function () {
     $admin = posAdmin();
     $p = promoV2(['type' => 'coupon', 'code' => null, 'code_prefix' => 'TOG'.substr(uniqid(), -4), 'code_quantity' => 3, 'code_random' => false]);
-    \App\Services\Promotions\PromotionCodeService::generate($p);
-    $codes = \App\Models\PromotionCode::where('promotion_id', $p->id)->get();
+    PromotionCodeService::generate($p);
+    $codes = PromotionCode::where('promotion_id', $p->id)->get();
     $codes[0]->update(['status' => 'used']);   // 1 mã đã dùng
 
     $this->actingAs($admin)->post("/manager/promotions/{$p->id}/codes/toggle", ['action' => 'disable'])->assertSessionHasNoErrors();
-    expect(\App\Models\PromotionCode::where('promotion_id', $p->id)->where('status', 'disabled')->count())->toBe(2);
-    expect(\App\Models\PromotionCode::where('promotion_id', $p->id)->where('status', 'used')->count())->toBe(1);
+    expect(PromotionCode::where('promotion_id', $p->id)->where('status', 'disabled')->count())->toBe(2);
+    expect(PromotionCode::where('promotion_id', $p->id)->where('status', 'used')->count())->toBe(1);
 
     $this->actingAs($admin)->post("/manager/promotions/{$p->id}/codes/toggle", ['action' => 'enable'])->assertSessionHasNoErrors();
-    expect(\App\Models\PromotionCode::where('promotion_id', $p->id)->where('status', 'unused')->count())->toBe(2);
-    expect(\App\Models\PromotionCode::where('promotion_id', $p->id)->where('status', 'used')->count())->toBe(1);
+    expect(PromotionCode::where('promotion_id', $p->id)->where('status', 'unused')->count())->toBe(2);
+    expect(PromotionCode::where('promotion_id', $p->id)->where('status', 'used')->count())->toBe(1);
 });

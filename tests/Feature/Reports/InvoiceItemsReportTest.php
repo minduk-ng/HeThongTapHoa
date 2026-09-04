@@ -3,6 +3,8 @@
 namespace Tests\Feature\Reports;
 
 use App\Models\Invoice;
+use App\Models\InvoiceLine;
+use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,7 +23,7 @@ class InvoiceItemsReportTest extends TestCase
     private function adminUser(): User
     {
         $adminUser = User::factory()->create();
-        $adminUser->roles()->attach(\App\Models\Role::where('name', 'admin')->first());
+        $adminUser->roles()->attach(Role::where('name', 'admin')->first());
 
         return $adminUser;
     }
@@ -53,7 +55,7 @@ class InvoiceItemsReportTest extends TestCase
         ];
         foreach ($specs as $i => $spec) {
             $oi = $order->items[$i];
-            \App\Models\InvoiceLine::create([
+            InvoiceLine::create([
                 'invoice_id' => $invoice->id,
                 'order_item_id' => $oi->id,
                 'menu_item_id' => $spec['item']->id,
@@ -95,7 +97,7 @@ class InvoiceItemsReportTest extends TestCase
         [$invoice, $items] = $this->makeInvoiceWithItems('2026-07-15 12:00:00');
         // Huỷ 1 dòng (qty 1, giá 50000) — còn 2×20000 = 40000. Snapshot cũng không chứa dòng huỷ.
         $items->last()->forceFill(['status' => 'cancelled', 'cancelled_at' => now()])->save();
-        \App\Models\InvoiceLine::where('order_item_id', $items->last()->id)->delete();
+        InvoiceLine::where('order_item_id', $items->last()->id)->delete();
 
         $this->actingAs($this->adminUser())
             ->get('/reports/invoice-items?start_date=2026-07-01&end_date=2026-07-31')

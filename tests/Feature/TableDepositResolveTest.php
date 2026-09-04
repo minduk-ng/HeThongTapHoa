@@ -1,8 +1,6 @@
 <?php
 
 use App\Models\Deposit;
-use App\Models\Order;
-use App\Models\Table;
 
 test('chuyen ban reserved sang occupied giu coc va don, khong huy', function () {
     $admin = posAdmin();

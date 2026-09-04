@@ -4,13 +4,14 @@ namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\OrderItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class CancelledReportController extends Controller
 {
-    public function index(Request $request): \Inertia\Response
+    public function index(Request $request): Response
     {
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
@@ -33,7 +34,7 @@ class CancelledReportController extends Controller
                 'note' => $o->note,
             ]);
 
-        $cancelledItems = \Illuminate\Support\Facades\DB::table('order_items')
+        $cancelledItems = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->join('menu_items', 'menu_items.id', '=', 'order_items.menu_item_id')
             ->leftJoin('users', 'users.id', '=', 'order_items.cancelled_by_user_id')

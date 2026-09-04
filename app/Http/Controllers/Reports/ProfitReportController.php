@@ -3,15 +3,17 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
-use App\Models\InvoiceLine;
 use App\Models\ProductRecipe;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ProfitReportController extends Controller
 {
-    public function index(Request $request): \Inertia\Response
+    public function index(Request $request): Response
     {
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
@@ -24,7 +26,7 @@ class ProfitReportController extends Controller
             ->pluck('cost', 'menu_item_id');
 
         // Món bán trong kỳ kèm ngày phát hành (để dựng daily series).
-        $items = \Illuminate\Support\Facades\DB::table('invoice_lines')
+        $items = DB::table('invoice_lines')
             ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
             ->whereBetween('invoices.issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
             ->join('menu_items', 'menu_items.id', '=', 'invoice_lines.menu_item_id')
@@ -39,7 +41,7 @@ class ProfitReportController extends Controller
         // Gom theo món.
         $rows = $items
             ->groupBy('menu_item_id')
-            ->map(function (\Illuminate\Support\Collection $group) use ($recipeCost) {
+            ->map(function (Collection $group) use ($recipeCost) {
                 /** @var \stdClass $first */
                 $first = $group->first();
                 $qty = (int) $group->sum('quantity');
@@ -63,7 +65,7 @@ class ProfitReportController extends Controller
         // Daily series theo ngày.
         $daily = $items
             ->groupBy('day')
-            ->map(function (\Illuminate\Support\Collection $group, $day) use ($recipeCost) {
+            ->map(function (Collection $group, $day) use ($recipeCost) {
                 $revenue = (float) $group->sum('revenue');
                 $cost = (float) $group->sum(
                     fn (\stdClass $r) => (int) $r->quantity * (float) ($recipeCost[$r->menu_item_id] ?? 0),

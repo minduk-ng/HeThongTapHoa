@@ -1,12 +1,13 @@
 <?php
 
 use App\Models\Deposit;
-use Illuminate\Support\Facades\Cache;
+use App\Models\Order;
 
 // Tạo đơn để đặt cọc.
-function idemDepositOrder(): \App\Models\Order
+function idemDepositOrder(): Order
 {
     $item = posMenuItem(['price' => 100000]);
+
     return posOrder(posTable(), [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']]);
 }
 

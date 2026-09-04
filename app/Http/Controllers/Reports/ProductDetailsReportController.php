@@ -3,19 +3,20 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
-use App\Models\InvoiceLine;
 use App\Models\MenuCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ProductDetailsReportController extends Controller
 {
-    public function index(Request $request): \Inertia\Response
+    public function index(Request $request): Response
     {
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
 
-        $rows = \Illuminate\Support\Facades\DB::table('invoice_lines')
+        $rows = DB::table('invoice_lines')
             ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
             ->whereBetween('invoices.issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
             ->join('menu_items', 'menu_items.id', '=', 'invoice_lines.menu_item_id')

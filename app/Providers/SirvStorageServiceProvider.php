@@ -14,7 +14,7 @@ class SirvStorageServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(SirvClientService::class, function () {
-            return new SirvClientService();
+            return new SirvClientService;
         });
     }
 

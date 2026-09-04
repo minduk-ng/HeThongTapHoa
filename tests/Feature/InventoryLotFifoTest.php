@@ -3,6 +3,7 @@
 use App\Models\Ingredient;
 use App\Models\StockVoucher;
 use App\Models\StockVoucherItem;
+use Illuminate\Support\Facades\DB;
 
 test('nhan kho voi HSD luu quantity_remaining bang quantity', function () {
     $admin = posAdmin();
@@ -75,11 +76,11 @@ test('backfill: phieu nhap cu khong co quantity_remaining duoc gan bang quantity
 
     // RefreshDatabase re-runs migrations on an empty DB → backfill in up() has nothing to fill.
     // So invoke the same backfill query directly to verify it works.
-    \Illuminate\Support\Facades\DB::table('stock_voucher_items')
+    DB::table('stock_voucher_items')
         ->join('stock_vouchers', 'stock_vouchers.id', '=', 'stock_voucher_items.voucher_id')
         ->where('stock_vouchers.type', 'import')
         ->whereNull('stock_voucher_items.quantity_remaining')
-        ->update(['stock_voucher_items.quantity_remaining' => \Illuminate\Support\Facades\DB::raw('stock_voucher_items.quantity')]);
+        ->update(['stock_voucher_items.quantity_remaining' => DB::raw('stock_voucher_items.quantity')]);
 
     $item = StockVoucherItem::where('ingredient_id', $ing->id)->first();
     expect((float) $item->quantity_remaining)->toBe(100.0);

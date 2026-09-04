@@ -4,7 +4,10 @@ namespace Tests\Feature\Reports;
 
 use App\Models\Ingredient;
 use App\Models\Invoice;
+use App\Models\InvoiceLine;
+use App\Models\Order;
 use App\Models\ProductRecipe;
+use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,16 +26,16 @@ class ProfitReportTest extends TestCase
     private function adminUser(): User
     {
         $adminUser = User::factory()->create();
-        $adminUser->roles()->attach(\App\Models\Role::where('name', 'admin')->first());
+        $adminUser->roles()->attach(Role::where('name', 'admin')->first());
 
         return $adminUser;
     }
 
     /** Ghi snapshot invoice_lines theo các dòng đơn; $discounts theo index dòng. */
-    private function snapshotLines(Invoice $invoice, \App\Models\Order $order, array $discounts = []): void
+    private function snapshotLines(Invoice $invoice, Order $order, array $discounts = []): void
     {
         foreach ($order->items as $i => $oi) {
-            \App\Models\InvoiceLine::create([
+            InvoiceLine::create([
                 'invoice_id' => $invoice->id,
                 'order_item_id' => $oi->id,
                 'menu_item_id' => $oi->menu_item_id,

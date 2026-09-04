@@ -8,13 +8,15 @@ use App\Models\Ingredient;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\ProductRecipe;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class RecipeController extends Controller
 {
-    public function index(Request $request): \Inertia\Response
+    public function index(Request $request): Response
     {
         $query = MenuItem::with(['category', 'recipes.ingredient']);
 
@@ -39,7 +41,7 @@ class RecipeController extends Controller
         ]);
     }
 
-    public function updateRecipe(Request $request, MenuItem $product): \Illuminate\Http\RedirectResponse
+    public function updateRecipe(Request $request, MenuItem $product): RedirectResponse
     {
         $request->validate([
             'items' => 'array',

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\MenuCategory;
 use App\Services\Checkout\OrderTotals;
 
 test('vatInPrice tinh phan vat chua trong gia, net + vat = subtotal', function (float $subtotal, float $rate, float $expectNet, float $expectVat) {
@@ -15,7 +16,7 @@ test('vatInPrice tinh phan vat chua trong gia, net + vat = subtotal', function (
 ]);
 
 test('preview gom subtotal va vat tu items', function () {
-    $category = \App\Models\MenuCategory::firstOrCreate(['name' => 'Cat T'], ['sort_order' => 1]);
+    $category = MenuCategory::firstOrCreate(['name' => 'Cat T'], ['sort_order' => 1]);
     $itemA = posMenuItem(['category_id' => $category->id, 'price' => 50000, 'vat_rate' => 10]);
     $itemB = posMenuItem(['category_id' => $category->id, 'price' => 33000, 'vat_rate' => 0]);
     $order = posOrder(posTable(), [

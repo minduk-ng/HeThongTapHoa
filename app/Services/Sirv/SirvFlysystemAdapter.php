@@ -2,16 +2,13 @@
 
 namespace App\Services\Sirv;
 
-use League\Flysystem\ChecksumAlgoIsNotSupported;
 use League\Flysystem\Config;
 use League\Flysystem\FileAttributes;
 use League\Flysystem\FilesystemAdapter;
 
 class SirvFlysystemAdapter implements FilesystemAdapter
 {
-    public function __construct(protected SirvClientService $client)
-    {
-    }
+    public function __construct(protected SirvClientService $client) {}
 
     public function fileExists(string $path): bool
     {
@@ -47,6 +44,7 @@ class SirvFlysystemAdapter implements FilesystemAdapter
         if ($stream === false) {
             throw new \RuntimeException('Failed to open temporary stream.');
         }
+
         return $stream;
     }
 
@@ -55,17 +53,11 @@ class SirvFlysystemAdapter implements FilesystemAdapter
         $this->client->deleteFile($path);
     }
 
-    public function deleteDirectory(string $path): void
-    {
-    }
+    public function deleteDirectory(string $path): void {}
 
-    public function createDirectory(string $path, Config $config): void
-    {
-    }
+    public function createDirectory(string $path, Config $config): void {}
 
-    public function setVisibility(string $path, string $visibility): void
-    {
-    }
+    public function setVisibility(string $path, string $visibility): void {}
 
     public function visibility(string $path): FileAttributes
     {
@@ -92,13 +84,9 @@ class SirvFlysystemAdapter implements FilesystemAdapter
         return [];
     }
 
-    public function move(string $source, string $destination, Config $config): void
-    {
-    }
+    public function move(string $source, string $destination, Config $config): void {}
 
-    public function copy(string $source, string $destination, Config $config): void
-    {
-    }
+    public function copy(string $source, string $destination, Config $config): void {}
 
     public function publicUrl(string $path): string
     {

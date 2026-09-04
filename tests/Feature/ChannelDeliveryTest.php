@@ -6,6 +6,7 @@ use App\Events\OrderCompleted;
 use App\Events\OrderSentToKitchen;
 use App\Events\TableStatusUpdated;
 use App\Events\TableTransferred;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Support\Facades\Event;
 
 function privateChannelNames(object $event): array
@@ -18,7 +19,7 @@ function privateChannelNames(object $event): array
 // PrivateChannel('pos-channel')->name = 'private-pos-channel' (wire name mà Echo.private('pos-channel') đăng ký)
 function assertPrivateChannel($ch, string $wireName): bool
 {
-    return $ch instanceof \Illuminate\Broadcasting\PrivateChannel && $ch->name === $wireName;
+    return $ch instanceof PrivateChannel && $ch->name === $wireName;
 }
 
 test('event checkout dispatch den private channel de client nhan duoc', function () {

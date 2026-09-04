@@ -13,8 +13,8 @@ class ItemsServed implements ShouldBroadcastNow
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     /**
-     * @param array<int, int> $itemIds
-     * @param array<int, int> $orderIds
+     * @param  array<int, int>  $itemIds
+     * @param  array<int, int>  $orderIds
      */
     public function __construct(
         public array $itemIds,

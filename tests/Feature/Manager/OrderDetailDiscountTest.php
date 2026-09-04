@@ -1,11 +1,10 @@
 <?php
 
-use App\Models\Order;
-use App\Models\OrderItem;
+use App\Models\MenuCategory;
 
 test('order detail tra ve discount_amount cua order va tung item', function () {
     $this->actingAs(posAdmin());
-    $cat = \App\Models\MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
+    $cat = MenuCategory::create(['name' => 'Cat '.uniqid(), 'sort_order' => 1]);
     $item = posMenuItem(['category_id' => $cat->id, 'price' => 100000]);
     $order = posOrder(posTable(), [
         ['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed'],

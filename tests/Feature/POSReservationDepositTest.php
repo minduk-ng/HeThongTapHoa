@@ -2,7 +2,6 @@
 
 use App\Models\Deposit;
 use App\Models\Order;
-use App\Models\Table;
 
 it('reserves an available table with customer info only', function () {
     $staff = posStaff();

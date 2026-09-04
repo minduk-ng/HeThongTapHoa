@@ -2,7 +2,13 @@
 
 namespace Tests\Feature\Reports;
 
+use App\Models\Deposit;
 use App\Models\Invoice;
+use App\Models\MenuItem;
+use App\Models\Order;
+use App\Models\Payment;
+use App\Models\Role;
+use App\Models\Table;
 use App\Models\User;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,7 +27,7 @@ class PaymentsReportTest extends TestCase
     private function adminUser(): User
     {
         $adminUser = User::factory()->create();
-        $adminUser->roles()->attach(\App\Models\Role::where('name', 'admin')->first());
+        $adminUser->roles()->attach(Role::where('name', 'admin')->first());
 
         return $adminUser;
     }
@@ -39,7 +45,7 @@ class PaymentsReportTest extends TestCase
             'deposit_amount' => 0,
         ]);
         $invoice->forceFill(['issued_at' => $issuedAt])->save();
-        \App\Models\Payment::create([
+        Payment::create([
             'invoice_id' => $invoice->id,
             'method' => $method,
             'amount' => $total,
@@ -51,15 +57,15 @@ class PaymentsReportTest extends TestCase
         $this->actingAs($this->adminUser());
 
         // Tạo 2 đơn tối thiểu để có order_id hợp lệ cho deposits
-        $item = \App\Models\MenuItem::firstOrCreate(['name' => 'Cf held'], ['price' => 100000, 'vat_rate' => 0, 'is_available' => true]);
-        $table = \App\Models\Table::create(['table_number' => 'BH'.uniqid(), 'area' => 'Trong nhà', 'status' => 'available', 'capacity' => 4]);
+        $item = MenuItem::firstOrCreate(['name' => 'Cf held'], ['price' => 100000, 'vat_rate' => 0, 'is_available' => true]);
+        $table = Table::create(['table_number' => 'BH'.uniqid(), 'area' => 'Trong nhà', 'status' => 'available', 'capacity' => 4]);
 
-        $order1 = \App\Models\Order::create(['order_code' => 'H1'.uniqid(), 'table_id' => $table->id, 'status' => 'pending', 'total' => 100000]);
-        $order2 = \App\Models\Order::create(['order_code' => 'H2'.uniqid(), 'table_id' => $table->id, 'status' => 'pending', 'total' => 100000]);
+        $order1 = Order::create(['order_code' => 'H1'.uniqid(), 'table_id' => $table->id, 'status' => 'pending', 'total' => 100000]);
+        $order2 = Order::create(['order_code' => 'H2'.uniqid(), 'table_id' => $table->id, 'status' => 'pending', 'total' => 100000]);
 
-        \App\Models\Deposit::create(['order_id' => $order1->id, 'amount' => 30000, 'method' => 'cash', 'status' => 'held']);
-        \App\Models\Deposit::create(['order_id' => $order2->id, 'amount' => 50000, 'method' => 'bank_transfer', 'status' => 'held']);
-        \App\Models\Deposit::create(['order_id' => $order2->id, 'amount' => 20000, 'method' => 'cash', 'status' => 'applied']);
+        Deposit::create(['order_id' => $order1->id, 'amount' => 30000, 'method' => 'cash', 'status' => 'held']);
+        Deposit::create(['order_id' => $order2->id, 'amount' => 50000, 'method' => 'bank_transfer', 'status' => 'held']);
+        Deposit::create(['order_id' => $order2->id, 'amount' => 20000, 'method' => 'cash', 'status' => 'applied']);
 
         $this->get('/reports/payments?start_date='.today()->toDateString().'&end_date='.today()->toDateString())
             ->assertInertia(fn ($page) => $page
@@ -122,7 +128,7 @@ class PaymentsReportTest extends TestCase
             'deposit_amount' => 0,
         ]);
         $inv1->forceFill(['issued_at' => '2026-07-10 10:00:00'])->save();
-        \App\Models\Payment::create(['invoice_id' => $inv1->id, 'method' => 'cash', 'amount' => 90000]);
+        Payment::create(['invoice_id' => $inv1->id, 'method' => 'cash', 'amount' => 90000]);
 
         $inv2 = Invoice::create([
             'invoice_code' => 'HD2',
@@ -136,7 +142,7 @@ class PaymentsReportTest extends TestCase
             'deposit_amount' => 0,
         ]);
         $inv2->forceFill(['issued_at' => '2026-07-11 10:00:00'])->save();
-        \App\Models\Payment::create(['invoice_id' => $inv2->id, 'method' => 'bank_transfer', 'amount' => 50000]);
+        Payment::create(['invoice_id' => $inv2->id, 'method' => 'bank_transfer', 'amount' => 50000]);
 
         $this->actingAs($this->adminUser())
             ->get('/reports/payments?start_date=2026-07-01&end_date=2026-07-31')

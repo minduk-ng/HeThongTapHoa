@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Staff\Concerns\GeneratesOrderCode;
 use App\Models\Order;
 use App\Models\Table;
+use App\Services\OrderActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -14,7 +15,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
-use App\Services\OrderActivityLogger;
 
 class TableController extends Controller
 {
