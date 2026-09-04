@@ -210,9 +210,9 @@ return;
 
             {/* Row 2: Live Operations Monitor (Only if range is 'today') */}
             {filters.date_range === 'today' && live_operations && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4 animate-fade-in">
+                <div className="grid grid-cols-1 lg:grid-cols-7 gap-4 mb-4 animate-fade-in">
                     {/* Kitchen Display Monitor */}
-                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
+                    <div className="lg:col-span-2 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
                         <div className="p-4 border-b border-zinc-100 dark:border-zinc-900 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50">
                             <div className="flex items-center gap-2">
                                 <ChefHat className="w-5 h-5 text-sky-600" />
@@ -255,7 +255,7 @@ return;
                     </div>
 
                     {/* Serving Status Card */}
-                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
+                    <div className="lg:col-span-2 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
                         <div className="p-4 border-b border-zinc-100 dark:border-zinc-900 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50">
                             <div className="flex items-center gap-2">
                                 <ConciergeBell className="w-5 h-5 text-sky-600" />
@@ -289,7 +289,7 @@ return;
                     </div>
 
                     {/* Active Tables Map Layout */}
-                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
+                    <div className="lg:col-span-3 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xs">
                         <div className="p-4 border-b border-zinc-100 dark:border-zinc-900 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50">
                             <h4 className="font-display text-sm font-bold text-zinc-900 dark:text-white">Sơ đồ bàn thực tế</h4>
                             <div className="flex gap-2">

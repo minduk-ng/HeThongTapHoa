@@ -301,8 +301,8 @@ export default function ShiftsPage() {
                             </button>
                         </section>
                     ) : (
-                        <section className="grid gap-4 md:grid-cols-3">
-                            <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
+                        <section className="grid gap-4 md:grid-cols-12">
+                            <div className="md:col-span-4 rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
                                 <div className="text-xs font-medium text-zinc-500">
                                     Thời điểm mở ca
                                 </div>
@@ -312,7 +312,7 @@ export default function ShiftsPage() {
                                     )}
                                 </div>
                             </div>
-                            <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
+                            <div className="md:col-span-3 rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
                                 <div className="text-xs font-medium text-zinc-500">
                                     Tiền đầu ca
                                 </div>
@@ -320,7 +320,7 @@ export default function ShiftsPage() {
                                     {money(shift.opening_cash)}
                                 </div>
                             </div>
-                            <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
+                            <div className="md:col-span-5 rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
                                 <div className="text-xs font-medium text-zinc-500">
                                     Tiền mặt kỳ vọng
                                 </div>
@@ -328,7 +328,7 @@ export default function ShiftsPage() {
                                     {money(expectedCash)}
                                 </div>
                             </div>
-                            <div className="grid gap-3 md:col-span-3 md:grid-cols-2">
+                            <div className="grid gap-3 md:col-span-12 md:grid-cols-2">
                                 <button
                                     type="button"
                                     onClick={() => openMovement('expense')}
