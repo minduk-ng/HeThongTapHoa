@@ -242,12 +242,44 @@ return;
                     </div>
                 }
             >
-                {/* Ingredient Data Table */}
-                <IngredientTable
-                    ingredients={filteredIngredients}
-                    onEdit={handleEditIngredient}
-                    onDelete={handleDeleteIngredient}
-                />
+                {/* Summary Strip & Ingredient Data Table */}
+                <div className="flex flex-col h-full min-h-0">
+                    <div className="flex flex-wrap items-center gap-6 mb-3 shrink-0 px-1">
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-display font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                                {totalCount}
+                            </span>
+                            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                loại nguyên liệu
+                            </span>
+                        </div>
+                        <span className="text-zinc-300 dark:text-zinc-700 select-none">•</span>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-display font-semibold tabular-nums text-amber-600 dark:text-amber-400">
+                                {lowStockCount}
+                            </span>
+                            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                sắp hết hàng
+                            </span>
+                        </div>
+                        <span className="text-zinc-300 dark:text-zinc-700 select-none">•</span>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-display font-semibold tabular-nums text-rose-600 dark:text-rose-400">
+                                {outOfStockCount}
+                            </span>
+                            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                đã hết hàng
+                            </span>
+                        </div>
+                    </div>
+                    <div className="flex-1 min-h-0 overflow-hidden">
+                        <IngredientTable
+                            ingredients={filteredIngredients}
+                            onEdit={handleEditIngredient}
+                            onDelete={handleDeleteIngredient}
+                        />
+                    </div>
+                </div>
             </ManagerPageLayout>
 
             {/* Ingredient Add/Edit Drawer */}

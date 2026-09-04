@@ -1,8 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { Plus, Search, Ticket, Pencil, Eye, Filter, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import type { DataTableColumn } from '../../../components/DataTable';
-import DataTable from '../../../components/DataTable';
 import ManagerPageLayout from '../../../components/ManagerPageLayout';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import PromotionAnalyticsCharts from './components/PromotionAnalyticsCharts';
@@ -154,52 +152,55 @@ return false;
         });
     }, [promotions, search, statusFilter, now]);
 
-    const columns: DataTableColumn<PromotionData>[] = [
-        { key: 'name', header: 'Mã / Tên chiến dịch', align: 'left', render: (p) => (
-            <div>
-                <div className="font-medium text-zinc-900 dark:text-zinc-100">{p.code || `KM_${p.id}`}</div>
-                <div className="text-xs text-zinc-500">{p.name}</div>
-            </div>
-        )},
-        { key: 'type', header: 'Loại', align: 'center', sortable: true, render: (p) => (
-            <span className={`px-2.5 py-1 rounded text-xs font-medium ${TYPE_CLASS[p.type]}`}>{TYPE_LABEL[p.type]}</span>
-        )},
-        { key: 'used_count', header: 'Số đơn', align: 'center', sortable: true, render: (p) => <span className="font-medium tabular-nums">{p.used_count}</span> },
-        { key: 'revenue', header: 'Tổng doanh thu', align: 'right', sortable: true, render: (p) => <span className="tabular-nums">{(p.revenue ?? 0).toLocaleString('vi-VN')} đ</span> },
-        { key: 'discount_total', header: 'Tổng giảm giá', align: 'right', sortable: true, render: (p) => <span className="tabular-nums">{(p.discount_total ?? 0).toLocaleString('vi-VN')} đ</span> },
-        { key: 'perf', header: 'Hiệu suất', align: 'center', render: (p) => {
-                    const perf = p.codes_count > 0
-                        ? (p.codes_count ? Math.min(100, Math.round((p.codes_used / p.codes_count) * 100)) : null)
-                        : ((p.target_usage ?? p.max_usage) ? Math.min(100, Math.round((p.used_count / (p.target_usage ?? p.max_usage!)) * 100)) : null);
+    const kanbanGroups = useMemo(() => {
+        const toTimestamp = (v: string | null) => {
+            if (!v) {
+                return null;
+            }
 
-            return perf === null ? <span className="text-xs text-zinc-400">—</span> : (
-                <div className="flex items-center gap-2">
-                    <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
-                        <div className="bg-sky-600 h-full rounded-full" style={{ width: `${perf}%` }} />
-                    </div>
-                    <span className="text-xs font-medium text-sky-600 w-8 text-right">{perf}%</span>
-                </div>
-            );
-        }},
-        { key: 'actions', header: 'Thao tác', align: 'center', render: (p) => (
-            <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <button type="button" onClick={() => {
- setEditing(p); setDrawerOpen(true); 
-}} title="Sửa"
-                    className="p-1.5 rounded-lg text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/60">
-                    <Pencil className="w-4 h-4" />
-                </button>
-                <button type="button" onClick={() => setInvoiceView(p.id)} title="Xem hoá đơn đã dùng mã"
-                    className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                    <Eye className="w-4 h-4" />
-                </button>
-                <button type="button" onClick={() => setCodeView(p)} title="Xem danh sách mã"
-                    className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                    <Ticket className="w-4 h-4" />
-                </button>
-            </div>
-        )},
-    ];
+            const [d, m, y] = v.split('/').map(Number);
+
+            if (!d || !m || !y) {
+                return null;
+            }
+
+            return new Date(y, m - 1, d, 23, 59, 59).getTime();
+        };
+
+        return [
+            {
+                title: 'Đang chạy',
+                countBadge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
+                color: 'border-emerald-200/80 bg-emerald-50/40 dark:border-emerald-900/60 dark:bg-emerald-950/20',
+                items: filteredPromotions.filter((p) => {
+                    const end = toTimestamp(p.end_date);
+                    const isNearEnd = p.status && end !== null && end - now >= 0 && end - now <= 7 * 86400000;
+
+                    return p.status && (!end || end >= now) && !isNearEnd;
+                }),
+            },
+            {
+                title: 'Sắp kết thúc (≤ 7 ngày)',
+                countBadge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
+                color: 'border-amber-200/80 bg-amber-50/40 dark:border-amber-900/60 dark:bg-amber-950/20',
+                items: filteredPromotions.filter((p) => {
+                    const end = toTimestamp(p.end_date);
+
+                    return p.status && end !== null && end - now >= 0 && end - now <= 7 * 86400000;
+                }),
+            },
+            {
+                title: 'Đã kết thúc',
+                countBadge: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400',
+                color: 'border-zinc-200/80 bg-zinc-50/40 dark:border-zinc-800/80 dark:bg-zinc-900/40',
+                items: filteredPromotions.filter((p) => {
+                    const end = toTimestamp(p.end_date);
+
+                    return !p.status || (end !== null && end < now);
+                }),
+            },
+        ];
+    }, [filteredPromotions, now]);
 
     const hasActiveFilter = Boolean(search || statusFilter !== 'all');
 
@@ -292,44 +293,114 @@ return false;
             >
                 <div className="space-y-4 flex-1 min-h-0 overflow-y-auto p-4">
                     <PromotionStatsCards stats={analytics?.kpis ?? stats} />
-                    {analytics && <PromotionAnalyticsCharts daily={analytics.daily_chart} types={analytics.type_breakdown} />}
-                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-xs overflow-hidden">
-                        <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
-                            <h3 className="font-display text-base font-medium text-zinc-900 dark:text-zinc-100">Danh sách chiến dịch khuyến mãi</h3>
-                        </div>
-                        <div>
-                            <DataTable<PromotionData>
-                                columns={columns}
-                                rows={filteredPromotions}
-                                rowKey={(p) => p.id}
-                                emptyMessage="Chưa có chiến dịch nào"
-                                defaultSortKey="id"
-                                defaultSortDirection="desc"
-                                getSortValue={(p, key) => {
-                                    if (key === 'name') {
-return p.name;
-}
+                    {analytics && (
+                        <PromotionAnalyticsCharts
+                            daily={analytics.daily_chart}
+                            types={analytics.type_breakdown}
+                        />
+                    )}
+                    {/* Kanban Board 3 cột theo trạng thái */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                        {kanbanGroups.map((group) => (
+                            <div
+                                key={group.title}
+                                className={`flex flex-col rounded-2xl border p-3.5 min-h-[280px] ${group.color}`}
+                            >
+                                <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-zinc-200/60 dark:border-zinc-800/60">
+                                    <h3 className="font-display text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                        {group.title}
+                                    </h3>
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold tabular-nums ${group.countBadge}`}>
+                                        {group.items.length}
+                                    </span>
+                                </div>
 
-                                    if (key === 'type') {
-return p.type;
-}
+                                {group.items.length === 0 ? (
+                                    <div className="flex-1 flex items-center justify-center p-6 text-xs text-zinc-400 dark:text-zinc-500">
+                                        Không có chiến dịch nào
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2.5">
+                                        {group.items.map((p) => {
+                                            const perf = p.codes_count > 0
+                                                ? (p.codes_count ? Math.min(100, Math.round((p.codes_used / p.codes_count) * 100)) : null)
+                                                : ((p.target_usage ?? p.max_usage) ? Math.min(100, Math.round((p.used_count / (p.target_usage ?? p.max_usage!)) * 100)) : null);
 
-                                    if (key === 'revenue') {
-return p.revenue ?? 0;
-}
+                                            return (
+                                                <div
+                                                    key={p.id}
+                                                    className="rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-3 shadow-2xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+                                                >
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                            <div className="font-medium text-xs text-zinc-900 dark:text-zinc-100 truncate" title={p.name}>
+                                                                {p.name}
+                                                            </div>
+                                                            <div className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                                                {p.code || `KM_${p.id}`}
+                                                            </div>
+                                                        </div>
+                                                        <span className={`shrink-0 px-2 py-0.5 rounded text-[11px] font-medium ${TYPE_CLASS[p.type]}`}>
+                                                            {TYPE_LABEL[p.type]}
+                                                        </span>
+                                                    </div>
 
-                                    if (key === 'discount_total') {
-return p.discount_total ?? 0;
-}
+                                                    <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                                                        <span>Số đơn: <strong className="text-zinc-800 dark:text-zinc-200 tabular-nums">{p.used_count}</strong></span>
+                                                        <span className="tabular-nums font-medium text-zinc-800 dark:text-zinc-200">{(p.revenue ?? 0).toLocaleString('vi-VN')} đ</span>
+                                                    </div>
 
-                                    if (key === 'used_count') {
-return p.used_count;
-}
+                                                    {perf !== null && (
+                                                        <div className="mt-2 flex items-center gap-2">
+                                                            <div className="flex-1 bg-zinc-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                                                                <div className="bg-sky-600 h-full rounded-full" style={{ width: `${perf}%` }} />
+                                                            </div>
+                                                            <span className="text-[11px] font-medium text-sky-600 tabular-nums">{perf}%</span>
+                                                        </div>
+                                                    )}
 
-                                    return p.id;
-                                }}
-                            />
-                        </div>
+                                                    {p.end_date && (
+                                                        <div className="mt-2 text-[11px] text-zinc-400">
+                                                            <span>Đến: {p.end_date}</span>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-end gap-1.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setEditing(p);
+                                                                setDrawerOpen(true);
+                                                            }}
+                                                            title="Sửa"
+                                                            className="p-1.5 rounded-lg text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/60 transition-colors"
+                                                        >
+                                                            <Pencil className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setInvoiceView(p.id)}
+                                                            title="Xem hoá đơn đã dùng mã"
+                                                            className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                                        >
+                                                            <Eye className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setCodeView(p)}
+                                                            title="Xem danh sách mã"
+                                                            className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                                        >
+                                                            <Ticket className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </ManagerPageLayout>

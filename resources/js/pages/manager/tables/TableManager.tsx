@@ -155,6 +155,39 @@ return;
     const availableCount = tables.filter((t) => t.status === 'available').length;
     const hasActiveFilter = Boolean(searchQuery || selectedArea !== 'all' || selectedStatus !== 'all');
 
+    // Status strip counts
+    const statusCounts = (['available', 'occupied', 'reserved', 'maintenance'] as const).map((s) => ({
+        status: s,
+        count: tables.filter((t) => t.status === s).length,
+    }));
+
+    const statusConfig: Record<string, { label: string; bg: string; text: string; border: string }> = {
+        available: {
+            label: 'Trống',
+            bg: 'bg-emerald-50 dark:bg-emerald-950/30',
+            text: 'text-emerald-700 dark:text-emerald-400',
+            border: 'border-emerald-200/80 dark:border-emerald-900/60',
+        },
+        occupied: {
+            label: 'Đang phục vụ',
+            bg: 'bg-rose-50 dark:bg-rose-950/30',
+            text: 'text-rose-700 dark:text-rose-400',
+            border: 'border-rose-200/80 dark:border-rose-900/60',
+        },
+        reserved: {
+            label: 'Đặt bàn',
+            bg: 'bg-purple-50 dark:bg-purple-950/30',
+            text: 'text-purple-700 dark:text-purple-400',
+            border: 'border-purple-200/80 dark:border-purple-900/60',
+        },
+        maintenance: {
+            label: 'Bảo trì',
+            bg: 'bg-zinc-50 dark:bg-zinc-800/40',
+            text: 'text-zinc-600 dark:text-zinc-400',
+            border: 'border-zinc-200/80 dark:border-zinc-700',
+        },
+    };
+
     return (
         <DashboardLayout fullWidth={true}>
             <Head title="Quản lý Bàn & Sơ đồ khu vực" />
@@ -253,12 +286,31 @@ return;
                     </div>
                 }
             >
-                {/* Table List Table with Instant Frontend Filtering */}
-                <TableListTable
-                    tables={filteredTables}
-                    onEdit={handleEditTable}
-                    onDelete={handleDeleteTable}
-                />
+                {/* Table List Table with status strip and Instant Frontend Filtering */}
+                <div className="flex flex-col h-full min-h-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-3 shrink-0">
+                        {statusCounts.map(({ status, count }) => {
+                            const conf = statusConfig[status];
+
+                            return (
+                                <div
+                                    key={status}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium ${conf.bg} ${conf.border} ${conf.text}`}
+                                >
+                                    <span>{conf.label}:</span>
+                                    <span className="font-semibold tabular-nums">{count}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="flex-1 min-h-0 overflow-hidden">
+                        <TableListTable
+                            tables={filteredTables}
+                            onEdit={handleEditTable}
+                            onDelete={handleDeleteTable}
+                        />
+                    </div>
+                </div>
             </ManagerPageLayout>
 
             {/* Table Form Drawer */}
