@@ -265,32 +265,32 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                         Món ăn ({safeItems.length})
                                     </h2>
                                     <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden">
-                                        <table className="w-full text-left">
-                                            <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-800/90">
-                                                <tr className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-center">
-                                                    <th className="px-3 py-2 text-center">Món</th>
-                                                    <th className="px-3 py-2 text-center">SL</th>
-                                                    <th className="px-3 py-2 text-center">Đơn giá</th>
-                                                    <th className="px-3 py-2 text-center">Thành tiền</th>
-                                                    <th className="px-3 py-2 text-center">Giảm giá</th>
-                                                    <th className="px-3 py-2 text-center">Trạng thái</th>
+                                        <table className="w-full border-collapse text-left">
+                                            <thead className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50/95 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-800/95">
+                                                <tr className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                                    <th className="px-3 py-2 text-left border-r border-zinc-200/60 dark:border-zinc-800/60">Món</th>
+                                                    <th className="px-3 py-2 text-center border-r border-zinc-200/60 dark:border-zinc-800/60">SL</th>
+                                                    <th className="px-3 py-2 text-right border-r border-zinc-200/60 dark:border-zinc-800/60">Đơn giá</th>
+                                                    <th className="px-3 py-2 text-right border-r border-zinc-200/60 dark:border-zinc-800/60">Thành tiền</th>
+                                                    <th className="px-3 py-2 text-right border-r border-zinc-200/60 dark:border-zinc-800/60">Giảm giá</th>
+                                                    <th className="px-3 py-2 text-center border-r border-zinc-200/60 dark:border-zinc-800/60">Trạng thái</th>
                                                     <th className="px-3 py-2 text-center">Thời gian</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
                                                 {safeItems.map((item) => (
-                                                    <tr key={item.id} className={item.status === 'cancelled' ? 'opacity-50' : ''}>
-                                                        <td className="px-3 py-2 text-left">
+                                                    <tr key={item.id} className={`transition-colors hover:bg-sky-50/30 dark:hover:bg-sky-950/20 ${item.status === 'cancelled' ? 'opacity-50' : ''}`}>
+                                                        <td className="px-3 py-2 text-left border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                             <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 leading-tight">{item.name}</p>
                                                             {item.note && <p className="text-[11px] text-zinc-400 leading-tight">{item.note}</p>}
                                                             {item.cancellation_reason && (
                                                                 <p className="text-[11px] text-rose-500 leading-tight">Lý do: {item.cancellation_reason}</p>
                                                             )}
                                                         </td>
-                                                        <td className="px-3 py-2 text-center text-sm text-zinc-600 dark:text-zinc-400 tabular-nums">{item.quantity}</td>
-                                                        <td className="px-3 py-2 text-center text-sm text-zinc-600 dark:text-zinc-400 tabular-nums">{formatCurrency(item.unit_price)}</td>
-                                                        <td className="px-3 py-2 text-center text-sm font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(item.subtotal)}</td>
-                                                        <td className="px-3 py-2 text-center text-sm tabular-nums">
+                                                        <td className="px-3 py-2 text-center text-sm text-zinc-600 dark:text-zinc-400 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40">{item.quantity}</td>
+                                                        <td className="px-3 py-2 text-right text-sm text-zinc-600 dark:text-zinc-400 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40">{formatCurrency(item.unit_price)}</td>
+                                                        <td className="px-3 py-2 text-right text-sm font-medium text-zinc-900 dark:text-zinc-100 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40">{formatCurrency(item.subtotal)}</td>
+                                                        <td className="px-3 py-2 text-right text-sm tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                             {item.discount_amount > 0 ? (
                                                                 <span className="font-medium text-rose-600 dark:text-rose-400">
                                                                     −{formatCurrency(item.discount_amount)}
@@ -299,7 +299,7 @@ export default function OrderDetail({ order }: OrderDetailProps) {
                                                                 <span className="text-zinc-300 dark:text-zinc-600">—</span>
                                                             )}
                                                         </td>
-                                                        <td className="px-3 py-2 text-center">
+                                                        <td className="px-3 py-2 text-center border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                             <span className={`text-xs font-medium ${
                                                                 item.status === 'cancelled' ? 'text-rose-500'
                                                                 : item.served_at ? 'text-emerald-600'

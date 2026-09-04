@@ -87,7 +87,7 @@ const columns: DataTableColumn<HistoryRow>[] = [
     {
         key: 'change_qty',
         header: 'Biến động',
-        align: 'center',
+        align: 'right',
         sortable: true,
         render: (r) => {
             const isPos = r.change_qty > 0;
@@ -102,7 +102,7 @@ const columns: DataTableColumn<HistoryRow>[] = [
     {
         key: 'balance',
         header: 'Số dư tồn',
-        align: 'center',
+        align: 'right',
         sortable: true,
         render: (r) => (
             <span className="tabular-nums font-semibold text-zinc-900 dark:text-zinc-100 text-xs">

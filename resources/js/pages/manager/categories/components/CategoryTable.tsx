@@ -123,60 +123,60 @@ return '0 đ';
     return (
         <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-zinc-900 rounded-2xl shadow-xs">
             <div className="flex-1 overflow-auto min-h-0">
-                <table className="w-full text-left text-sm relative">
-                    <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-800/90 backdrop-blur-xs text-zinc-600 dark:text-zinc-400 font-medium border-b border-zinc-200 dark:border-zinc-800 select-none">
+                <table className="w-full border-collapse text-left text-sm relative">
+                    <thead className="sticky top-0 z-10 bg-zinc-50/95 dark:bg-zinc-800/95 backdrop-blur-xs text-zinc-600 dark:text-zinc-400 font-medium border-b border-zinc-200/80 dark:border-zinc-800 select-none">
                         <tr>
                             <th
                                 onClick={() => handleSort('display_order')}
-                                className={`px-4 text-center cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
-                                    isCompact ? 'py-2.5 w-16' : 'py-4 w-20'
+                                className={`px-4 text-center cursor-pointer border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60 ${
+                                    isCompact ? 'py-2.5 w-16' : 'py-3.5 w-20'
                                 }`}
                             >
-                                <div className="flex items-center justify-center">
+                                <div className="flex items-center justify-center space-x-1">
                                     <span>STT</span>
                                     {renderSortIcon('display_order')}
                                 </div>
                             </th>
                             <th
                                 onClick={() => handleSort('name')}
-                                className={`px-4 text-center cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
-                                    isCompact ? 'py-2.5' : 'py-4'
+                                className={`px-4 text-left cursor-pointer border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60 ${
+                                    isCompact ? 'py-2.5' : 'py-3.5'
                                 }`}
                             >
-                                <div className="flex items-center justify-center">
+                                <div className="flex items-center justify-start space-x-1">
                                     <span>Tên danh mục</span>
                                     {renderSortIcon('name')}
                                 </div>
                             </th>
                             <th
                                 onClick={() => handleSort('items_count')}
-                                className={`px-4 text-center cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
-                                    isCompact ? 'py-2.5' : 'py-4'
+                                className={`px-4 text-center cursor-pointer border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60 ${
+                                    isCompact ? 'py-2.5' : 'py-3.5'
                                 }`}
                             >
-                                <div className="flex items-center justify-center">
+                                <div className="flex items-center justify-center space-x-1">
                                     <span>Tổng sản phẩm</span>
                                     {renderSortIcon('items_count')}
                                 </div>
                             </th>
                             <th
                                 onClick={() => handleSort('items_sum_price')}
-                                className={`px-4 text-center cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
-                                    isCompact ? 'py-2.5' : 'py-4'
+                                className={`px-4 text-right cursor-pointer border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60 ${
+                                    isCompact ? 'py-2.5' : 'py-3.5'
                                 }`}
                             >
-                                <div className="flex items-center justify-center">
+                                <div className="flex items-center justify-end space-x-1">
                                     <span>Tổng đơn giá</span>
                                     {renderSortIcon('items_sum_price')}
                                 </div>
                             </th>
-                            <th className={`px-4 text-center ${isCompact ? 'py-2.5 w-24' : 'py-4 w-28'}`}>Thao tác</th>
+                            <th className={`px-4 text-center ${isCompact ? 'py-2.5 w-24' : 'py-3.5 w-28'}`}>Thao tác</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 text-zinc-800 dark:text-zinc-200">
                         {paginatedCategories.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="py-12 px-6">
+                                <td colSpan={5} className="py-16 px-6">
                                     <div className="flex items-start space-x-4 max-w-md mx-auto">
                                         <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 flex items-center justify-center shrink-0">
                                             <FolderTree className="w-5 h-5 stroke-[1.5]" />
@@ -202,12 +202,12 @@ return '0 đ';
                                     <React.Fragment key={category.id}>
                                         {/* Category Parent Row */}
                                         <tr
-                                            className={`hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer ${
-                                                isExpanded ? 'bg-sky-50/40 dark:bg-sky-950/30' : ''
+                                            className={`hover:bg-sky-50/40 dark:hover:bg-sky-950/20 transition-colors cursor-pointer ${
+                                                isExpanded ? 'bg-sky-50/30 dark:bg-sky-950/30' : ''
                                             }`}
                                             onClick={() => toggleExpand(category.id)}
                                         >
-                                            <td className={`px-4 text-center ${isCompact ? 'py-2.5' : 'py-5'}`}>
+                                            <td className={`px-4 text-center border-r border-zinc-100/80 dark:border-zinc-800/40 ${isCompact ? 'py-2.5' : 'py-4'}`}>
                                                 <div className="flex items-center justify-center space-x-2">
                                                     <button
                                                         type="button"
@@ -227,7 +227,7 @@ return '0 đ';
                                                 </div>
                                             </td>
 
-                                            <td className={`px-4 text-left font-semibold text-zinc-900 dark:text-zinc-100 ${isCompact ? 'py-2.5' : 'py-5'}`}>
+                                            <td className={`px-4 text-left font-semibold text-zinc-900 dark:text-zinc-100 border-r border-zinc-100/80 dark:border-zinc-800/40 ${isCompact ? 'py-2.5' : 'py-4'}`}>
                                                 <div className="flex items-center space-x-2">
                                                     <Folder className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0 stroke-[1.5]" />
                                                     <span>{category.name}</span>
@@ -239,17 +239,17 @@ return '0 đ';
                                                 </div>
                                             </td>
 
-                                            <td className={`px-4 text-center ${isCompact ? 'py-2.5' : 'py-5'}`}>
+                                            <td className={`px-4 text-center border-r border-zinc-100/80 dark:border-zinc-800/40 ${isCompact ? 'py-2.5' : 'py-4'}`}>
                                                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 tabular-nums">
                                                     {category.items_count ?? category.items?.length ?? 0} sản phẩm
                                                 </span>
                                             </td>
 
-                                            <td className={`px-4 text-center font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums ${isCompact ? 'py-2.5' : 'py-5'}`}>
+                                            <td className={`px-4 text-right font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40 ${isCompact ? 'py-2.5' : 'py-4'}`}>
                                                 {formatCurrency(category.items_sum_price)}
                                             </td>
 
-                                            <td className={`px-4 text-center ${isCompact ? 'py-2.5' : 'py-5'}`} onClick={(e) => e.stopPropagation()}>
+                                            <td className={`px-4 text-center ${isCompact ? 'py-2.5' : 'py-4'}`} onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex items-center justify-center space-x-1">
                                                     <button
                                                         type="button"
@@ -277,10 +277,10 @@ return '0 đ';
                                         {isExpanded && (
                                             <tr className="bg-zinc-50/90 dark:bg-zinc-950/80 border-t border-b border-zinc-200 dark:border-zinc-800">
                                                 <td colSpan={5} className="py-3 px-6 pl-12">
-                                                    <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden bg-white dark:bg-zinc-900 shadow-xs">
+                                                    <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-900 shadow-xs">
                                                         <div className="bg-zinc-100/90 dark:bg-zinc-800/90 px-4 py-2 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
                                                             <span>Danh sách sản phẩm thuộc: {category.name}</span>
-                                                            <span>Tổng: {category.items?.length ?? 0} món</span>
+                                                            <span className="tabular-nums">Tổng: {category.items?.length ?? 0} món</span>
                                                         </div>
 
                                                         {!hasChildren ? (
@@ -288,12 +288,12 @@ return '0 đ';
                                                                 Danh mục này chưa có sản phẩm nào.
                                                             </div>
                                                         ) : (
-                                                            <table className="w-full text-left text-xs">
+                                                            <table className="w-full border-collapse text-left text-xs">
                                                                 <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 font-medium">
-                                                                    <tr className="text-center">
-                                                                        <th className="py-2 px-4 w-28 text-center">Mã SP</th>
-                                                                        <th className="py-2 px-4 text-center">Tên sản phẩm</th>
-                                                                        <th className="py-2 px-4 text-center">Giá bán</th>
+                                                                    <tr>
+                                                                        <th className="py-2 px-4 w-28 text-center border-r border-zinc-200/60 dark:border-zinc-800/60">Mã SP</th>
+                                                                        <th className="py-2 px-4 text-left border-r border-zinc-200/60 dark:border-zinc-800/60">Tên sản phẩm</th>
+                                                                        <th className="py-2 px-4 text-right border-r border-zinc-200/60 dark:border-zinc-800/60">Giá bán</th>
                                                                         <th className="py-2 px-4 text-center">Trạng thái</th>
                                                                     </tr>
                                                                 </thead>
@@ -303,13 +303,13 @@ return '0 đ';
                                                                             key={child.id}
                                                                             className="hover:bg-zinc-100/80 dark:hover:bg-zinc-800/90 transition-colors"
                                                                         >
-                                                                            <td className="py-2 px-4 text-center font-mono text-sky-600 dark:text-sky-400 font-medium">
+                                                                            <td className="py-2 px-4 text-center font-mono text-sky-600 dark:text-sky-400 font-medium border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                                                 SP{String(child.id).padStart(5, '0')}
                                                                             </td>
-                                                                            <td className="py-2 px-4 text-left font-medium text-zinc-900 dark:text-zinc-100">
+                                                                            <td className="py-2 px-4 text-left font-medium text-zinc-900 dark:text-zinc-100 border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                                                 {child.name}
                                                                             </td>
-                                                                            <td className="py-2 px-4 text-center font-medium text-emerald-600 dark:text-emerald-400 tabular-nums">
+                                                                            <td className="py-2 px-4 text-right font-medium text-emerald-600 dark:text-emerald-400 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                                                 {formatCurrency(child.price)}
                                                                             </td>
                                                                             <td className="py-2 px-4 text-center">

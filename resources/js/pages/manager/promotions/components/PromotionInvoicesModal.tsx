@@ -103,9 +103,9 @@ return null;
         { key: 'invoice_code', header: 'Mã hoá đơn', align: 'center', render: (i) => <span className="font-mono font-medium text-sky-600 dark:text-sky-400">{i.invoice_code}</span> },
         { key: 'issued_at', header: 'Thời gian', align: 'center', render: (i) => <span className="tabular-nums">{new Date(i.issued_at).toLocaleString('vi-VN')}</span> },
         { key: 'table_name', header: 'Bàn', align: 'center', render: (i) => i.table_name || 'Mang đi' },
-        { key: 'subtotal_amount', header: 'Tổng tiền', align: 'center', render: (i) => <span className="tabular-nums">{Number(i.subtotal_amount).toLocaleString('vi-VN')} đ</span> },
-        { key: 'discount_amount', header: 'Tiền giảm', align: 'center', render: (i) => <span className="tabular-nums text-rose-600 dark:text-rose-400">−{Number(i.discount_amount).toLocaleString('vi-VN')} đ</span> },
-        { key: 'total_amount', header: 'Thực thu', align: 'center', render: (i) => <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{Number(i.total_amount).toLocaleString('vi-VN')} đ</span> },
+        { key: 'subtotal_amount', header: 'Tổng tiền', align: 'right', render: (i) => <span className="tabular-nums">{Number(i.subtotal_amount).toLocaleString('vi-VN')} đ</span> },
+        { key: 'discount_amount', header: 'Tiền giảm', align: 'right', render: (i) => <span className="tabular-nums text-rose-600 dark:text-rose-400">−{Number(i.discount_amount).toLocaleString('vi-VN')} đ</span> },
+        { key: 'total_amount', header: 'Thực thu', align: 'right', render: (i) => <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{Number(i.total_amount).toLocaleString('vi-VN')} đ</span> },
         { key: 'payment_method', header: 'PTTT', align: 'center', render: (i) => ({ cash: 'Tiền mặt', bank_transfer: 'Chuyển khoản', e_wallet: 'Ví điện tử', mixed: 'Hỗn hợp' })[i.payment_method] || i.payment_method },
     ];
 

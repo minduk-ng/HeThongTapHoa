@@ -236,28 +236,28 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
                                 </div>
 
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-zinc-50/50 dark:bg-zinc-800/40 border-b border-zinc-100 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                                    <table className="w-full border-collapse text-left text-sm">
+                                        <thead className="bg-zinc-50/75 dark:bg-zinc-800/60 border-b border-zinc-200/80 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                                             <tr>
-                                                <th className="px-4 py-2.5 text-center w-16">STT</th>
-                                                <th className="px-4 py-2.5 text-left">Tên món</th>
-                                                <th className="px-4 py-2.5 text-center w-36">Số lượng bán</th>
+                                                <th className="px-4 py-2.5 text-center w-16 border-r border-zinc-200/60 dark:border-zinc-800/60">STT</th>
+                                                <th className="px-4 py-2.5 text-left border-r border-zinc-200/60 dark:border-zinc-800/60">Tên món</th>
+                                                <th className="px-4 py-2.5 text-center w-36 border-r border-zinc-200/60 dark:border-zinc-800/60">Số lượng bán</th>
                                                 <th className="px-4 py-2.5 text-center w-44">Trạng thái trừ kho</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
                                             {products.map((p, idx) => (
                                                 <tr key={p.id || idx} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/40 transition-colors">
-                                                    <td className="px-4 py-2.5 text-center text-xs text-zinc-400 tabular-nums">
+                                                    <td className="px-4 py-2.5 text-center text-xs text-zinc-400 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                         {idx + 1}
                                                     </td>
-                                                    <td className="px-4 py-2.5 text-left font-medium text-zinc-900 dark:text-zinc-100">
+                                                    <td className="px-4 py-2.5 text-left font-medium text-zinc-900 dark:text-zinc-100 border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                         <div className="flex items-center gap-2">
                                                             <UtensilsCrossed className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                                                             <span>{p.name}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-4 py-2.5 text-center font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                                                    <td className="px-4 py-2.5 text-center font-bold text-zinc-900 dark:text-zinc-100 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                         {p.quantity.toLocaleString('vi-VN')} phần/ly
                                                     </td>
                                                     <td className="px-4 py-2.5 text-center">
@@ -310,17 +310,17 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
                             </div>
 
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-zinc-50/50 dark:bg-zinc-800/40 border-b border-zinc-100 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                                <table className="w-full border-collapse text-left text-sm">
+                                    <thead className="bg-zinc-50/75 dark:bg-zinc-800/60 border-b border-zinc-200/80 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                                         <tr>
-                                            {isExport && <th className="w-10 px-3 py-2.5 text-center"></th>}
-                                            <th className="px-4 py-2.5 text-center w-28">Mã NVL</th>
-                                            <th className="px-4 py-2.5 text-left">Tên nguyên liệu / Món tiêu hao</th>
-                                            <th className="px-4 py-2.5 text-center w-36">
+                                            {isExport && <th className="w-10 px-3 py-2.5 text-center border-r border-zinc-200/60 dark:border-zinc-800/60"></th>}
+                                            <th className="px-4 py-2.5 text-center w-28 border-r border-zinc-200/60 dark:border-zinc-800/60">Mã NVL</th>
+                                            <th className="px-4 py-2.5 text-left border-r border-zinc-200/60 dark:border-zinc-800/60">Tên nguyên liệu / Món tiêu hao</th>
+                                            <th className="px-4 py-2.5 text-right w-36 border-r border-zinc-200/60 dark:border-zinc-800/60">
                                                 {isExport ? 'Tổng lượng xuất' : 'Số lượng'}
                                             </th>
-                                            <th className="px-4 py-2.5 text-center w-36">Đơn giá</th>
-                                            <th className="px-4 py-2.5 text-center w-40">Thành tiền</th>
+                                            <th className="px-4 py-2.5 text-right w-36 border-r border-zinc-200/60 dark:border-zinc-800/60">Đơn giá</th>
+                                            <th className="px-4 py-2.5 text-right w-40">Thành tiền</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
@@ -340,7 +340,7 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
                                                         } ${isExpanded ? 'bg-sky-50/20 dark:bg-sky-950/10' : ''}`}
                                                     >
                                                         {isExport && (
-                                                            <td className="px-3 py-3 text-center">
+                                                            <td className="px-3 py-3 text-center border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                                 {hasChildren ? (
                                                                     <div className="flex items-center justify-center">
                                                                         <ChevronRight
@@ -354,10 +354,10 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
                                                                 )}
                                                             </td>
                                                         )}
-                                                        <td className="px-4 py-3 text-center font-mono text-xs font-semibold text-sky-600 dark:text-sky-400">
+                                                        <td className="px-4 py-3 text-center font-mono text-xs font-semibold text-sky-600 dark:text-sky-400 border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                             {it.code || `NVL${String(it.ingredient_id).padStart(5, '0')}`}
                                                         </td>
-                                                        <td className="px-4 py-3 text-left">
+                                                        <td className="px-4 py-3 text-left border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="font-semibold text-zinc-900 dark:text-zinc-100">
                                                                     {it.name}
@@ -370,17 +370,17 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
                                                             </div>
                                                         </td>
                                                         <td
-                                                            className={`px-4 py-3 text-center font-bold tabular-nums ${
+                                                            className={`px-4 py-3 text-right font-bold tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40 ${
                                                                 it.quantity < 0 ? 'text-rose-600' : 'text-emerald-600'
                                                             }`}
                                                         >
                                                             {it.quantity > 0 ? '+' : ''}
                                                             {it.quantity.toLocaleString('vi-VN')} {it.unit}
                                                         </td>
-                                                        <td className="px-4 py-3 text-center text-zinc-600 dark:text-zinc-400 tabular-nums">
+                                                        <td className="px-4 py-3 text-right text-zinc-600 dark:text-zinc-400 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                             {it.unit_price != null ? formatCurrency(it.unit_price) : '—'}
                                                         </td>
-                                                        <td className="px-4 py-3 text-center text-zinc-600 dark:text-zinc-400 tabular-nums font-semibold">
+                                                        <td className="px-4 py-3 text-right text-zinc-900 dark:text-zinc-100 tabular-nums font-semibold">
                                                             {isImport ? formatCurrency(it.total) : '—'}
                                                         </td>
                                                     </tr>
@@ -393,13 +393,13 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
                                                                     key={`${it.ingredient_id}-${c.product_id}-${cIdx}`}
                                                                     className="bg-zinc-50/70 dark:bg-zinc-800/30 text-xs border-l-4 border-l-sky-500"
                                                                 >
-                                                                    <td className="px-3 py-2 text-center text-zinc-300 dark:text-zinc-600">
+                                                                    <td className="px-3 py-2 text-center text-zinc-300 dark:text-zinc-600 border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                                         ↳
                                                                     </td>
-                                                                    <td className="px-4 py-2 text-center text-[11px] text-zinc-400 font-mono">
+                                                                    <td className="px-4 py-2 text-center text-[11px] text-zinc-400 font-mono border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                                         Món #{c.product_id}
                                                                     </td>
-                                                                    <td className="px-4 py-2 text-left pl-6">
+                                                                    <td className="px-4 py-2 text-left pl-6 border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                                         <div className="flex items-center gap-2">
                                                                             <UtensilsCrossed className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                                                                             <span className="font-medium text-zinc-800 dark:text-zinc-200">
@@ -410,13 +410,13 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
                                                                             </span>
                                                                         </div>
                                                                     </td>
-                                                                    <td className="px-4 py-2 text-center font-semibold text-rose-600/90 dark:text-rose-400 tabular-nums">
+                                                                    <td className="px-4 py-2 text-right font-semibold text-rose-600/90 dark:text-rose-400 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                                         -{(c.total_quantity).toLocaleString('vi-VN')} {c.unit}
                                                                     </td>
-                                                                    <td className="px-4 py-2 text-center text-zinc-400 text-[11px]">
+                                                                    <td className="px-4 py-2 text-right text-zinc-400 text-[11px] border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                                         Định lượng công thức
                                                                     </td>
-                                                                    <td className="px-4 py-2 text-center text-zinc-400 text-[11px]">
+                                                                    <td className="px-4 py-2 text-right text-zinc-400 text-[11px]">
                                                                         —
                                                                     </td>
                                                                 </tr>

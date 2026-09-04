@@ -134,12 +134,12 @@ export default function RefundModal({ isOpen, invoiceId, lines, onClose }: Refun
                     )}
 
                     <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-zinc-50 dark:bg-zinc-800/80">
+                        <table className="w-full border-collapse text-left text-sm">
+                            <thead className="bg-zinc-50 dark:bg-zinc-800/80 border-b border-zinc-200/80 dark:border-zinc-800">
                                 <tr className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                                    <th className="px-3 py-2 text-left">Món</th>
-                                    <th className="px-3 py-2 text-center">Đã mua</th>
-                                    <th className="px-3 py-2 text-center">Đã hoàn</th>
+                                    <th className="px-3 py-2 text-left border-r border-zinc-200/60 dark:border-zinc-800/60">Món</th>
+                                    <th className="px-3 py-2 text-center border-r border-zinc-200/60 dark:border-zinc-800/60">Đã mua</th>
+                                    <th className="px-3 py-2 text-center border-r border-zinc-200/60 dark:border-zinc-800/60">Đã hoàn</th>
                                     <th className="px-3 py-2 text-center">Hoàn ngay</th>
                                 </tr>
                             </thead>
@@ -148,8 +148,8 @@ export default function RefundModal({ isOpen, invoiceId, lines, onClose }: Refun
                                     const max = maxQty(line);
 
                                     return (
-                                        <tr key={line.id} className={max <= 0 ? 'opacity-50' : ''}>
-                                            <td className="px-3 py-2">
+                                        <tr key={line.id} className={`transition-colors hover:bg-zinc-50/60 dark:hover:bg-zinc-800/40 ${max <= 0 ? 'opacity-50' : ''}`}>
+                                            <td className="px-3 py-2 border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                 <p className="font-medium text-zinc-900 dark:text-zinc-100 leading-tight">
                                                     {line.name}
                                                 </p>
@@ -157,10 +157,10 @@ export default function RefundModal({ isOpen, invoiceId, lines, onClose }: Refun
                                                     {formatCurrency(line.unit_price)}
                                                 </p>
                                             </td>
-                                            <td className="px-3 py-2 text-center tabular-nums text-zinc-600 dark:text-zinc-400">
+                                            <td className="px-3 py-2 text-center tabular-nums text-zinc-600 dark:text-zinc-400 border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                 {line.quantity}
                                             </td>
-                                            <td className="px-3 py-2 text-center tabular-nums text-zinc-600 dark:text-zinc-400">
+                                            <td className="px-3 py-2 text-center tabular-nums text-zinc-600 dark:text-zinc-400 border-r border-zinc-100/80 dark:border-zinc-800/40">
                                                 {line.refunded_qty}
                                             </td>
                                             <td className="px-3 py-2">
@@ -179,7 +179,7 @@ export default function RefundModal({ isOpen, invoiceId, lines, onClose }: Refun
                                                             ),
                                                         }))
                                                     }
-                                                    className="w-20 ml-auto block px-2 py-1.5 text-center text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+                                                    className="w-20 mx-auto block px-2 py-1.5 text-center text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-rose-500 tabular-nums"
                                                 />
                                             </td>
                                         </tr>

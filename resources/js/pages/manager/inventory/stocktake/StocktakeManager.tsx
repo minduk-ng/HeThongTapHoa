@@ -32,7 +32,7 @@ const staticColumns: DataTableColumn<Ingredient>[] = [
         key: 'stock_quantity',
         header: 'Tồn lý thuyết',
         sortable: true,
-        align: 'center',
+        align: 'right',
         render: (r) => (
             <span className="tabular-nums font-semibold">
                 {Number(r.stock_quantity).toLocaleString('vi-VN')} {r.unit}

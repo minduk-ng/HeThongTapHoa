@@ -341,11 +341,11 @@ export default function OrderList({
 
                 {/* Table */}
                 <div className="min-h-0 flex-1 overflow-auto">
-                    <table className="w-full text-left">
-                        <thead className="sticky top-0 z-10 bg-zinc-50 backdrop-blur-sm dark:bg-zinc-800/90">
-                            <tr className="text-[11px] font-medium tracking-wider text-zinc-500 uppercase dark:text-zinc-400 text-center">
+                    <table className="w-full border-collapse text-left">
+                        <thead className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50/95 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-800/95">
+                            <tr className="text-[11px] font-medium tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 select-none text-center"
+                                    className="cursor-pointer px-4 py-2.5 select-none text-center border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60"
                                     onClick={() => handleSort('order_code')}
                                 >
                                     <span className="flex items-center justify-center space-x-1">
@@ -354,7 +354,7 @@ export default function OrderList({
                                     </span>
                                 </th>
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 select-none text-center"
+                                    className="cursor-pointer px-4 py-2.5 select-none text-center border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60"
                                     onClick={() => handleSort('table_number')}
                                 >
                                     <span className="flex items-center justify-center space-x-1">
@@ -363,7 +363,7 @@ export default function OrderList({
                                     </span>
                                 </th>
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 select-none text-center"
+                                    className="cursor-pointer px-4 py-2.5 select-none text-center border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60"
                                     onClick={() => handleSort('status')}
                                 >
                                     <span className="flex items-center justify-center space-x-1">
@@ -371,20 +371,20 @@ export default function OrderList({
                                         {renderSortIcon('status')}
                                     </span>
                                 </th>
-                                <th className="px-4 py-2.5 text-center">Khách hàng</th>
-                                <th className="px-4 py-2.5 text-center">Món</th>
+                                <th className="px-4 py-2.5 text-left border-r border-zinc-200/60 dark:border-zinc-800/60">Khách hàng</th>
+                                <th className="px-4 py-2.5 text-center border-r border-zinc-200/60 dark:border-zinc-800/60">Món</th>
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 select-none text-center"
+                                    className="cursor-pointer px-4 py-2.5 select-none text-right border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60"
                                     onClick={() => handleSort('total')}
                                 >
-                                    <span className="flex items-center justify-center space-x-1">
+                                    <span className="flex items-center justify-end space-x-1">
                                         <span>Tổng tiền</span>
                                         {renderSortIcon('total')}
                                     </span>
                                 </th>
-                                <th className="px-4 py-2.5 text-center">Thanh toán</th>
+                                <th className="px-4 py-2.5 text-center border-r border-zinc-200/60 dark:border-zinc-800/60">Thanh toán</th>
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 select-none text-center"
+                                    className="cursor-pointer px-4 py-2.5 select-none text-center hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60"
                                     onClick={() => handleSort('created_at')}
                                 >
                                     <span className="flex items-center justify-center space-x-1">
@@ -399,9 +399,9 @@ export default function OrderList({
                                 <tr>
                                     <td
                                         colSpan={8}
-                                        className="px-4 py-12 text-center"
+                                        className="px-4 py-16 text-center"
                                     >
-                                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
                                             Không có đơn hàng nào trong khoảng
                                             thời gian này
                                         </p>
@@ -425,21 +425,21 @@ export default function OrderList({
                                                     `/manager/orders/${order.id}`,
                                                 )
                                             }
-                                            className="cursor-pointer transition-colors hover:bg-sky-50/50 dark:hover:bg-sky-900/10"
+                                            className="cursor-pointer transition-colors hover:bg-sky-50/40 dark:hover:bg-sky-900/15"
                                         >
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs font-mono font-medium text-sky-600 dark:text-sky-400 tabular-nums`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs font-mono font-medium text-sky-600 dark:text-sky-400 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40`}
                                             >
                                                 {order.order_code}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs font-medium text-zinc-700 dark:text-zinc-300`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs font-medium text-zinc-700 dark:text-zinc-300 border-r border-zinc-100/80 dark:border-zinc-800/40`}
                                             >
                                                 {order.table_number ??
                                                     'Mang đi'}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center border-r border-zinc-100/80 dark:border-zinc-800/40`}
                                             >
                                                 <span
                                                     className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${statusInfo.className}`}
@@ -448,22 +448,22 @@ export default function OrderList({
                                                 </span>
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs text-zinc-600 dark:text-zinc-400`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-left text-xs font-medium text-zinc-800 dark:text-zinc-200 border-r border-zinc-100/80 dark:border-zinc-800/40`}
                                             >
                                                 {order.customer_name || '—'}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs text-zinc-600 tabular-nums dark:text-zinc-400`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs text-zinc-600 tabular-nums dark:text-zinc-400 border-r border-zinc-100/80 dark:border-zinc-800/40`}
                                             >
                                                 {order.item_count}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs font-semibold text-zinc-900 tabular-nums dark:text-zinc-100`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-right text-xs font-semibold text-zinc-900 tabular-nums dark:text-zinc-100 border-r border-zinc-100/80 dark:border-zinc-800/40`}
                                             >
                                                 {formatCurrency(order.total)}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs text-zinc-600 dark:text-zinc-400`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs text-zinc-600 dark:text-zinc-400 border-r border-zinc-100/80 dark:border-zinc-800/40`}
                                             >
                                                 {order.payment_method
                                                     ? (PAYMENT_LABELS[

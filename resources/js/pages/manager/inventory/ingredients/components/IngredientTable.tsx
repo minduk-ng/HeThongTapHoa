@@ -55,7 +55,7 @@ export default function IngredientTable({ ingredients, onEdit, onDelete }: Ingre
             key: 'stock_quantity',
             header: 'Tồn kho',
             sortable: true,
-            align: 'center',
+            align: 'right',
             render: (item) => (
                 <span className={`font-bold tabular-nums ${item.stock_quantity <= item.min_stock_alert ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-zinc-100'}`}>
                     {item.stock_quantity.toLocaleString('vi-VN')} {item.unit}
@@ -66,7 +66,7 @@ export default function IngredientTable({ ingredients, onEdit, onDelete }: Ingre
             key: 'cost_price',
             header: 'Giá vốn đơn vị',
             sortable: true,
-            align: 'center',
+            align: 'right',
             render: (item) => <span className="font-medium text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(item.cost_price)}/{item.unit}</span>,
         },
         {

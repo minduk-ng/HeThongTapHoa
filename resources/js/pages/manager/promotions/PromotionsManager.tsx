@@ -155,7 +155,7 @@ return false;
     }, [promotions, search, statusFilter, now]);
 
     const columns: DataTableColumn<PromotionData>[] = [
-        { key: 'name', header: 'Mã / Tên chiến dịch', render: (p) => (
+        { key: 'name', header: 'Mã / Tên chiến dịch', align: 'left', render: (p) => (
             <div>
                 <div className="font-medium text-zinc-900 dark:text-zinc-100">{p.code || `KM_${p.id}`}</div>
                 <div className="text-xs text-zinc-500">{p.name}</div>
@@ -165,8 +165,8 @@ return false;
             <span className={`px-2.5 py-1 rounded text-xs font-medium ${TYPE_CLASS[p.type]}`}>{TYPE_LABEL[p.type]}</span>
         )},
         { key: 'used_count', header: 'Số đơn', align: 'center', sortable: true, render: (p) => <span className="font-medium tabular-nums">{p.used_count}</span> },
-        { key: 'revenue', header: 'Tổng doanh thu', align: 'center', sortable: true, render: (p) => <span className="tabular-nums">{(p.revenue ?? 0).toLocaleString('vi-VN')} đ</span> },
-        { key: 'discount_total', header: 'Tổng giảm giá', align: 'center', sortable: true, render: (p) => <span className="tabular-nums">{(p.discount_total ?? 0).toLocaleString('vi-VN')} đ</span> },
+        { key: 'revenue', header: 'Tổng doanh thu', align: 'right', sortable: true, render: (p) => <span className="tabular-nums">{(p.revenue ?? 0).toLocaleString('vi-VN')} đ</span> },
+        { key: 'discount_total', header: 'Tổng giảm giá', align: 'right', sortable: true, render: (p) => <span className="tabular-nums">{(p.discount_total ?? 0).toLocaleString('vi-VN')} đ</span> },
         { key: 'perf', header: 'Hiệu suất', align: 'center', render: (p) => {
                     const perf = p.codes_count > 0
                         ? (p.codes_count ? Math.min(100, Math.round((p.codes_used / p.codes_count) * 100)) : null)
@@ -186,7 +186,7 @@ return false;
                 <button type="button" onClick={() => {
  setEditing(p); setDrawerOpen(true); 
 }} title="Sửa"
-                    className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950">
+                    className="p-1.5 rounded-lg text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/60">
                     <Pencil className="w-4 h-4" />
                 </button>
                 <button type="button" onClick={() => setInvoiceView(p.id)} title="Xem hoá đơn đã dùng mã"

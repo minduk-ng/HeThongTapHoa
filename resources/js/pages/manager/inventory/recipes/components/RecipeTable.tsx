@@ -101,14 +101,14 @@ return 0;
             key: 'price',
             header: 'Giá bán',
             sortable: true,
-            align: 'center',
+            align: 'right',
             render: (product) => <span className="font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(product.price)}</span>,
         },
         {
             key: 'cogs',
             header: 'Giá vốn ước tính (COGS)',
             sortable: true,
-            align: 'center',
+            align: 'right',
             render: (product) => {
                 const hasRecipes = product.recipes && product.recipes.length > 0;
 
@@ -121,7 +121,7 @@ return 0;
             key: 'margin',
             header: 'Tỷ suất lợi nhuận',
             sortable: true,
-            align: 'center',
+            align: 'right',
             render: (product) => {
                 const hasRecipes = product.recipes && product.recipes.length > 0;
 

@@ -60,20 +60,32 @@ export default function DataTable<T>({
 
     const alignClass = (align?: 'left' | 'center' | 'right') => {
         if (align === 'center') {
-return 'text-center';
-}
+            return 'text-center';
+        }
 
         if (align === 'right') {
-return 'text-right';
-}
+            return 'text-right';
+        }
 
         return 'text-left';
     };
 
+    const justifyClass = (align?: 'left' | 'center' | 'right') => {
+        if (align === 'center') {
+            return 'justify-center';
+        }
+
+        if (align === 'right') {
+            return 'justify-end';
+        }
+
+        return 'justify-start';
+    };
+
     const sortedRows = useMemo(() => {
         if (!sortField || !getSortValue) {
-return rows;
-}
+            return rows;
+        }
 
         const sorted = [...rows];
         sorted.sort((a, b) => {
@@ -92,12 +104,12 @@ return rows;
             const numB = Number(valB);
 
             if (numA < numB) {
-return sortDirection === 'asc' ? -1 : 1;
-}
+                return sortDirection === 'asc' ? -1 : 1;
+            }
 
             if (numA > numB) {
-return sortDirection === 'asc' ? 1 : -1;
-}
+                return sortDirection === 'asc' ? 1 : -1;
+            }
 
             return 0;
         });
@@ -128,23 +140,23 @@ return sortDirection === 'asc' ? 1 : -1;
     const renderSortIcon = (field: string) => {
         if (sortField !== field) {
             return (
-                <ChevronUp className="h-3 w-3 text-zinc-300 dark:text-zinc-600" />
+                <ChevronUp className="h-3 w-3 shrink-0 text-zinc-300 dark:text-zinc-600" />
             );
         }
 
         return sortDirection === 'asc' ? (
-            <ChevronUp className="h-3 w-3 text-sky-500" />
+            <ChevronUp className="h-3 w-3 shrink-0 text-sky-500" />
         ) : (
-            <ChevronDown className="h-3 w-3 text-sky-500" />
+            <ChevronDown className="h-3 w-3 shrink-0 text-sky-500" />
         );
     };
 
     return (
         <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
             <div className="min-h-0 flex-1 overflow-auto">
-                <table className="w-full text-left">
-                    <thead className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-800/90">
-                        <tr className="text-xs font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400 text-center">
+                <table className="w-full border-collapse text-left">
+                    <thead className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50/95 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-800/95">
+                        <tr className="text-xs font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
                             {columns.map((col) => (
                                 <th
                                     key={col.key}
@@ -153,9 +165,9 @@ return sortDirection === 'asc' ? 1 : -1;
                                             ? () => handleSort(col.key)
                                             : undefined
                                     }
-                                    className={`relative px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center select-none ${col.headerClassName ?? ''} ${col.sortable ? 'cursor-pointer hover:bg-zinc-100/70 dark:hover:bg-zinc-700/50' : ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
+                                    className={`relative px-4 ${isCompact ? 'py-2' : 'py-3'} ${alignClass(col.align)} select-none border-r border-zinc-200/60 dark:border-zinc-800/60 last:border-r-0 ${col.headerClassName ?? ''} ${col.sortable ? 'cursor-pointer hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60' : ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
                                 >
-                                    <div className="flex items-center justify-center space-x-1">
+                                    <div className={`flex items-center space-x-1.5 ${justifyClass(col.align)}`}>
                                         <span>{col.header}</span>
                                         {col.sortable && renderSortIcon(col.key)}
                                     </div>
@@ -168,7 +180,7 @@ return sortDirection === 'asc' ? 1 : -1;
                             <tr>
                                 <td
                                     colSpan={columns.length}
-                                    className="px-4 py-12 text-center"
+                                    className="px-4 py-16 text-center"
                                 >
                                     <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
                                         {emptyMessage}
@@ -187,12 +199,12 @@ return sortDirection === 'asc' ? 1 : -1;
                                             ? () => onRowClick(row)
                                             : undefined
                                     }
-                                    className={`transition-colors hover:bg-sky-50/50 dark:hover:bg-sky-900/10 ${onRowClick ? 'cursor-pointer' : ''} ${rowClassName?.(row) ?? ''}`}
+                                    className={`transition-colors hover:bg-sky-50/40 dark:hover:bg-sky-900/15 ${onRowClick ? 'cursor-pointer' : ''} ${rowClassName?.(row) ?? ''}`}
                                 >
                                     {columns.map((col) => (
                                         <td
                                             key={col.key}
-                                            className={`px-4 ${isCompact ? (col.compactClassName ?? 'py-1.5') : 'py-2.5'} text-sm tabular-nums text-zinc-700 dark:text-zinc-300 ${alignClass(col.align)} ${col.className ?? ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
+                                            className={`px-4 ${isCompact ? (col.compactClassName ?? 'py-1.5') : 'py-3'} text-sm tabular-nums text-zinc-700 dark:text-zinc-300 ${alignClass(col.align)} border-r border-zinc-100/80 dark:border-zinc-800/40 last:border-r-0 ${col.className ?? ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
                                         >
                                             {col.render(row)}
                                         </td>

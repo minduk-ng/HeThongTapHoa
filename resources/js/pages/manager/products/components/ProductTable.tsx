@@ -80,7 +80,7 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
             key: 'price',
             header: 'Giá bán',
             sortable: true,
-            align: 'center',
+            align: 'right',
             render: (item) => <span className="font-medium text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(item.price)}</span>,
         },
         {
