@@ -19,7 +19,7 @@ export const WEEKDAY_LABELS = [
 ] as const;
 
 export function pad2(n: number): string {
-    return n < 10 ? `0${n}` : String(n);
+    return String(n).padStart(2, '0');
 }
 
 function isRealDate(year: number, month: number, day: number): boolean {

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Staff;
 use App\Events\IngredientStockUpdated;
 use App\Events\TableStatusUpdated;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Staff\Concerns\DispatchesSafely;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\Promotion;
@@ -23,8 +22,6 @@ use Illuminate\Validation\Rule;
 
 class PaymentController extends Controller
 {
-    use DispatchesSafely;
-
     public function validatePromotion(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -260,13 +257,13 @@ class PaymentController extends Controller
                 return ['table' => $targetTable, 'deposit_total' => $depositTotal, 'deposit_refund' => $depositRefund, 'all_group_tables' => $allGroupTables->values()->all()];
             });
 
-            $this->safeDispatch(fn () => Cache::tags(['pos_tables'])->flush());
+            rescue(fn () => Cache::tags(['pos_tables'])->flush());
 
             $targetTable = $result['table'];
             $depositTotal = $result['deposit_total'];
             $depositRefund = $result['deposit_refund'];
 
-            $this->safeDispatch(function () use ($result, $order, $totalAmount) {
+            rescue(function () use ($result, $order, $totalAmount) {
                 foreach ($result['all_group_tables'] as $grpTable) {
                     TableStatusUpdated::dispatch($grpTable, 'checkout', [
                         'order_code' => $order->order_code,
@@ -274,7 +271,7 @@ class PaymentController extends Controller
                     ]);
                 }
             });
-            $this->safeDispatch(fn () => IngredientStockUpdated::dispatch(['source' => 'checkout']));
+            rescue(fn () => IngredientStockUpdated::dispatch(['source' => 'checkout']));
 
             if ($request->wantsJson()) {
                 return response()->json([
@@ -436,13 +433,13 @@ class PaymentController extends Controller
                 return ['table' => $targetTable, 'deposit_total' => $depositTotal, 'deposit_refund' => $depositRefund];
             });
 
-            $this->safeDispatch(fn () => Cache::tags(['pos_tables'])->flush());
+            rescue(fn () => Cache::tags(['pos_tables'])->flush());
 
             $targetTable = $result['table'];
             $depositTotal = $result['deposit_total'];
             $depositRefund = $result['deposit_refund'];
 
-            $this->safeDispatch(function () use ($targetTable, $orders, $totalAmount) {
+            rescue(function () use ($targetTable, $orders, $totalAmount) {
                 if ($targetTable) {
                     TableStatusUpdated::dispatch($targetTable, 'checkout', [
                         'order_code' => $orders->pluck('order_code')->implode(', '),
@@ -450,7 +447,7 @@ class PaymentController extends Controller
                     ]);
                 }
             });
-            $this->safeDispatch(fn () => IngredientStockUpdated::dispatch(['source' => 'bulk_checkout']));
+            rescue(fn () => IngredientStockUpdated::dispatch(['source' => 'bulk_checkout']));
 
             if ($request->wantsJson()) {
                 return response()->json([

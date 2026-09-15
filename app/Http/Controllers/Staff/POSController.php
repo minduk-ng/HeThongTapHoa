@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Staff;
 use App\Events\OrderSentToKitchen;
 use App\Events\TableStatusUpdated;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Staff\Concerns\DispatchesSafely;
 use App\Http\Controllers\Staff\Concerns\GeneratesOrderCode;
 use App\Models\Employee;
 use App\Models\MenuCategory;
@@ -27,7 +26,7 @@ use Inertia\Response;
 
 class POSController extends Controller
 {
-    use DispatchesSafely, GeneratesOrderCode;
+    use GeneratesOrderCode;
 
     public function index(Request $request): Response
     {
@@ -363,7 +362,7 @@ class POSController extends Controller
                 return $createdOrder ?? ($table ? Order::where('table_id', $table->id)->latest()->first() : null) ?? new Order;
             });
 
-            $this->safeDispatch(fn () => OrderSentToKitchen::dispatch($primaryOrder));
+            rescue(fn () => OrderSentToKitchen::dispatch($primaryOrder));
 
             return back()->with('success', 'Đã cập nhật đơn order và gửi xuống bếp chế biến thành công!');
         } catch (\Throwable $e) {
@@ -429,7 +428,7 @@ class POSController extends Controller
                 return $orders;
             });
 
-            $this->safeDispatch(function () use ($allGroupTables, $activeOrders, $validated) {
+            rescue(function () use ($allGroupTables, $activeOrders, $validated) {
                 $primaryOrder = $activeOrders->first() ?? Order::first() ?? new Order;
                 $cancelMsg = 'Hủy toàn bộ đơn hàng (Lý do: '.$validated['cancellation_reason'].')';
                 OrderSentToKitchen::dispatch($primaryOrder, 'cancel_order', $cancelMsg);

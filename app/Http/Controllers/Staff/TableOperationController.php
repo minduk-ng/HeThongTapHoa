@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Staff;
 use App\Events\TableStatusUpdated;
 use App\Events\TableTransferred;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Staff\Concerns\DispatchesSafely;
 use App\Models\Order;
 use App\Models\Table;
 use App\Services\IdempotencyGuard;
@@ -15,8 +14,6 @@ use Illuminate\Support\Facades\DB;
 
 class TableOperationController extends Controller
 {
-    use DispatchesSafely;
-
     public function transferTable(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -60,7 +57,7 @@ class TableOperationController extends Controller
 
                     $primaryTable = Table::find($primaryId);
                     if ($primaryTable) {
-                        $this->safeDispatch(fn () => TableStatusUpdated::dispatch($primaryTable));
+                        rescue(fn () => TableStatusUpdated::dispatch($primaryTable));
                     }
                 } elseif (Table::where('merged_into_table_id', $sourceTable->id)->exists()) {
                     // Case 2: Source table is the primary table of a merged group
@@ -73,7 +70,7 @@ class TableOperationController extends Controller
                     $subTables = Table::where('merged_into_table_id', $sourceTable->id)->get();
                     foreach ($subTables as $subTable) {
                         $subTable->update(['merged_into_table_id' => $targetTable->id]);
-                        $this->safeDispatch(fn () => TableStatusUpdated::dispatch($subTable));
+                        rescue(fn () => TableStatusUpdated::dispatch($subTable));
                     }
 
                     $targetTable->update([
@@ -102,7 +99,7 @@ class TableOperationController extends Controller
                     ]);
                 }
 
-                $this->safeDispatch(function () use ($sourceTable, $targetTable) {
+                rescue(function () use ($sourceTable, $targetTable) {
                     TableTransferred::dispatch($sourceTable, $targetTable, 'transfer');
                     TableStatusUpdated::dispatch($sourceTable);
                     TableStatusUpdated::dispatch($targetTable);
@@ -160,7 +157,7 @@ class TableOperationController extends Controller
 
                 $primaryTargetTable = Table::find($primaryTargetId);
                 if ($primaryTargetTable) {
-                    $this->safeDispatch(function () use ($sourceTable, $primaryTargetTable) {
+                    rescue(function () use ($sourceTable, $primaryTargetTable) {
                         TableTransferred::dispatch($sourceTable, $primaryTargetTable, 'merge');
                         TableStatusUpdated::dispatch($sourceTable);
                         TableStatusUpdated::dispatch($primaryTargetTable);
@@ -226,7 +223,7 @@ class TableOperationController extends Controller
                         'merged_into_table_id' => null,
                     ]);
 
-                $this->safeDispatch(function () use ($sourceTable, $keepTable) {
+                rescue(function () use ($sourceTable, $keepTable) {
                     TableTransferred::dispatch($sourceTable, $keepTable, 'unmerge');
                     TableStatusUpdated::dispatch($sourceTable);
                     TableStatusUpdated::dispatch($keepTable);

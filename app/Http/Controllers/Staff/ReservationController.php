@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Staff;
 
 use App\Events\TableStatusUpdated;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Staff\Concerns\DispatchesSafely;
 use App\Http\Controllers\Staff\Concerns\GeneratesOrderCode;
 use App\Models\Deposit;
 use App\Models\Employee;
@@ -23,7 +22,7 @@ use Illuminate\Support\Facades\Log;
 
 class ReservationController extends Controller
 {
-    use DispatchesSafely, GeneratesOrderCode;
+    use GeneratesOrderCode;
 
     public function cancelReservation(Request $request): JsonResponse
     {
@@ -98,7 +97,7 @@ class ReservationController extends Controller
             Cache::tags(['pos_tables'])->flush();
 
             if ($result) {
-                $this->safeDispatch(fn () => TableStatusUpdated::dispatch($result));
+                rescue(fn () => TableStatusUpdated::dispatch($result));
             }
 
             return response()->json(['success' => true]);
@@ -157,7 +156,7 @@ class ReservationController extends Controller
             Cache::tags(['pos_tables'])->flush();
 
             if ($result) {
-                $this->safeDispatch(fn () => TableStatusUpdated::dispatch($result));
+                rescue(fn () => TableStatusUpdated::dispatch($result));
             }
 
             return response()->json(['success' => true]);
@@ -301,7 +300,7 @@ class ReservationController extends Controller
 
             Cache::tags(['pos_tables'])->flush();
 
-            $this->safeDispatch(fn () => TableStatusUpdated::dispatch($result['table']));
+            rescue(fn () => TableStatusUpdated::dispatch($result['table']));
 
             return response()->json([
                 'success' => true,
@@ -363,7 +362,7 @@ class ReservationController extends Controller
             Cache::tags(['pos_tables'])->flush();
 
             if ($result) {
-                $this->safeDispatch(fn () => TableStatusUpdated::dispatch($result));
+                rescue(fn () => TableStatusUpdated::dispatch($result));
             }
 
             return response()->json(['success' => true]);

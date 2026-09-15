@@ -7,7 +7,6 @@ use App\Events\OrderCompleted;
 use App\Events\OrderSentToKitchen;
 use App\Events\TableStatusUpdated;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Staff\Concerns\DispatchesSafely;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Table;
@@ -23,8 +22,6 @@ use Inertia\Response;
 
 class KitchenController extends Controller
 {
-    use DispatchesSafely;
-
     public function index(Request $request): Response
     {
         // Load active orders excluding cancelled items
@@ -137,10 +134,10 @@ class KitchenController extends Controller
             });
 
             if (! $skipped) {
-                $this->safeDispatch(fn () => OrderCompleted::dispatch($order));
+                rescue(fn () => OrderCompleted::dispatch($order));
 
                 if ($completedItems->isNotEmpty()) {
-                    $this->safeDispatch(fn () => ItemsReadyToServe::dispatch($order, $completedItems));
+                    rescue(fn () => ItemsReadyToServe::dispatch($order, $completedItems));
                 }
             }
 
@@ -222,10 +219,10 @@ class KitchenController extends Controller
             });
 
             if (! $skipped) {
-                $this->safeDispatch(fn () => OrderCompleted::dispatch($order));
+                rescue(fn () => OrderCompleted::dispatch($order));
 
                 if ($completedItems->isNotEmpty()) {
-                    $this->safeDispatch(fn () => ItemsReadyToServe::dispatch($order, $completedItems));
+                    rescue(fn () => ItemsReadyToServe::dispatch($order, $completedItems));
                 }
             }
 
@@ -299,7 +296,7 @@ class KitchenController extends Controller
                 }
             });
 
-            $this->safeDispatch(function () use ($targetTable, $targetOrder, $validated) {
+            rescue(function () use ($targetTable, $targetOrder, $validated) {
                 $cancelMsg = 'Hủy / giảm món (Lý do: '.$validated['cancellation_reason'].')';
                 OrderSentToKitchen::dispatch(
                     $targetOrder ?? Order::first() ?? new Order,
