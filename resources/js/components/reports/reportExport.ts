@@ -63,7 +63,7 @@ const LIGHT_YELLOW_BG = 'FFF2CC';
 const BLUE_BG = '4472C4';
 const BORDER_COLOR = 'D4D4D8';
 
-function toXlsxCell(v: string | number): string | number {
+export function toXlsxCell(v: string | number): string | number {
     // ponytail: explicit string cells — exceljs emits <f> only for { formula }
     // objects, so primitive strings can never execute; coerce defensively.
     return typeof v === 'number' ? v : `${v}`;
