@@ -159,7 +159,7 @@ test('coupon stackable=true: ap chung auto promotion (chong tang)', function () 
     expect($res['total_discount'])->toBe(19500.0);
 });
 
-test('free_product: mon tang co trong gio duoc tru subtotal + tra free_item_ids', function () {
+test('free_product: mon tang co trong gio duoc tru 1 unit + tra free_items', function () {
     $mi = posMenuItem(['price' => 20000]);
     $p = promoV2();
     addAction($p, 'free_product', $mi->id);
@@ -169,7 +169,9 @@ test('free_product: mon tang co trong gio duoc tru subtotal + tra free_item_ids'
     ]), 20000);
 
     expect($res['status'])->toBe('ok');
-    expect($res['free_item_ids'])->toContain($mi->id);
+    expect($res['free_items'])->toBe([
+        ['menu_item_id' => $mi->id, 'quantity' => 1],
+    ]);
     expect($res['total_discount'])->toBe(20000.0);
 });
 
@@ -185,16 +187,18 @@ test('free_product khi mon tang KHONG co trong gio -> rejected', function () {
     expect($res['reason'])->toBe('free_product_not_in_cart');
 });
 
-test('free_product khi mon tang co trong gio -> free_item_ids + amount = subtotal mon tang', function () {
+test('free_product khi mon tang co trong gio -> free_items + amount = 1 unit price', function () {
     $p = promoV2(['type' => 'coupon', 'code' => 'FREE2'.substr(uniqid(), -4)]);
     addAction($p, 'free_product', 10);
 
     $res = PromotionEngine::resolveAll([$p->code], linesV2(), 150000);
 
     expect($res['status'])->toBe('ok');
-    expect($res['free_item_ids'])->toContain(10);
-    // amount của promotion free_product = subtotal line món tặng (linesV2 line 10 = 100000)
-    expect($res['promotions'][0]['amount'])->toBe(100000.0);
+    expect($res['free_items'])->toBe([
+        ['menu_item_id' => 10, 'quantity' => 1],
+    ]);
+    // amount của promotion free_product = 1 unit line món tặng (linesV2 line 10 có qty 2 subtotal 100000 -> 1 unit = 50000)
+    expect($res['promotions'][0]['amount'])->toBe(50000.0);
 });
 
 test('validate-promotion: condition min_quantity tinh tu quantity cua line', function () {

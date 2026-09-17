@@ -118,7 +118,7 @@ class PromotionEngine
         $applied = [];
         $totalDiscount = 0.0;
         $base = $subtotal;
-        $freeItemIds = [];
+        $freeItems = [];
         foreach ($pool as $p) {
             $discount = 0.0;
             $actionsApplied = [];
@@ -135,12 +135,13 @@ class PromotionEngine
                     $actionsApplied[] = ['type' => 'discount_amount', 'value' => (float) $action->action_value];
                 } elseif ($action->action_type === 'free_product') {
                     $freeMenuId = (int) $action->action_value;
-                    if (! $lines->contains(fn ($l) => (int) ($l['menu_item_id'] ?? 0) === $freeMenuId)) {
+                    $matchingLine = $lines->first(fn ($l) => (int) ($l['menu_item_id'] ?? 0) === $freeMenuId);
+                    if (! $matchingLine) {
                         return ['status' => 'rejected', 'reason' => 'free_product_not_in_cart', 'code' => null];
                     }
-                    $freeSubtotal = (float) $lines->where('menu_item_id', $freeMenuId)->sum('subtotal');
-                    $discount += $freeSubtotal;
-                    $freeItemIds[] = $freeMenuId;
+                    $unitPrice = (float) $matchingLine['subtotal'] / max(1, (int) ($matchingLine['quantity'] ?? 1));
+                    $discount += $unitPrice;
+                    $freeItems[] = ['menu_item_id' => $freeMenuId, 'quantity' => 1];
                     $actionsApplied[] = ['type' => 'free_product', 'value' => $freeMenuId];
                 }
             }
@@ -174,7 +175,7 @@ class PromotionEngine
             'status' => 'ok',
             'promotions' => $applied,
             'total_discount' => round($totalDiscount, 2),
-            'free_item_ids' => array_values(array_unique($freeItemIds)),
+            'free_items' => $freeItems,
         ];
     }
 
@@ -281,6 +282,13 @@ class PromotionEngine
                 $total += $d;
             } elseif ($action->action_type === 'discount_amount') {
                 $total += (float) $action->action_value;
+            } elseif ($action->action_type === 'free_product') {
+                $freeMenuId = (int) $action->action_value;
+                $matchingLine = $lines->first(fn ($l) => (int) ($l['menu_item_id'] ?? 0) === $freeMenuId);
+                if ($matchingLine) {
+                    $qty = max(1, (int) ($matchingLine['quantity'] ?? 1));
+                    $total += (float) $matchingLine['subtotal'] / $qty;
+                }
             }
         }
 
