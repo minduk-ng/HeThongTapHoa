@@ -64,6 +64,14 @@ class StockVoucher extends Model
 
     public function outstandingAmount(): float
     {
-        return round($this->totalAmount() - $this->allocatedAmount(), 2);
+        $allocated = $this->allocatedAmount();
+
+        // Guard chuyển tiếp: phiếu is_paid=true từ code cũ chưa có allocation nào
+        // (được backfill ở migration 000006) — coi như hết nợ để không "sống lại".
+        if ($this->is_paid && round($allocated, 2) == 0.0) {
+            return 0.0;
+        }
+
+        return round($this->totalAmount() - $allocated, 2);
     }
 }

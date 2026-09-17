@@ -101,10 +101,10 @@ class SupplierController extends Controller
         $validated = $request->validate([
             'amount' => 'required|numeric|gt:0',
             'note' => 'nullable|string|max:255',
-            'allocations' => 'required_without:voucher_ids|array|min:1',
+            'allocations' => 'required_without:voucher_ids|prohibits:voucher_ids|array|min:1',
             'allocations.*.voucher_id' => 'required|exists:stock_vouchers,id',
             'allocations.*.amount' => 'required|numeric|gt:0',
-            'voucher_ids' => 'required_without:allocations|array|min:1',
+            'voucher_ids' => 'required_without:allocations|prohibits:allocations|array|min:1',
             'voucher_ids.*' => 'exists:stock_vouchers,id',
         ]);
 
@@ -149,7 +149,8 @@ class SupplierController extends Controller
                 }
             }
 
-            if (round(array_sum($allocInput), 2) !== round((float) $validated['amount'], 2)) {
+            // So sánh theo cents (epsilon 0.005) thay vì === float để tránh lỗi làm tròn.
+            if (abs(array_sum($allocInput) - (float) $validated['amount']) > 0.005) {
                 throw ValidationException::withMessages([
                     'amount' => 'Số tiền thanh toán phải bằng tổng phân bổ theo phiếu.',
                 ]);
