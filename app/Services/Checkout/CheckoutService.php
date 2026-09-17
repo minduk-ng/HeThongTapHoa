@@ -220,6 +220,23 @@ class CheckoutService
                 throw new \Exception('Số tiền khách đưa không đủ.', 422);
             }
 
+            // ponytail: cap cash at remaining payable; reject non-cash overpayment
+            $remainingPayable = $payable;
+            $normalizedPayments = [];
+            foreach ($paymentRows as $row) {
+                $rowAmount = (float) $row['amount'];
+                $method = (string) $row['method'];
+
+                if ($method !== 'cash' && $rowAmount > $remainingPayable) {
+                    throw new \Exception('Số tiền thanh toán không dùng tiền mặt không được vượt quá số tiền cần thanh toán.', 422);
+                }
+
+                $netAmount = round(min($rowAmount, $remainingPayable), 2);
+                $remainingPayable = round(max(0.0, $remainingPayable - $netAmount), 2);
+
+                $normalizedPayments[] = array_merge($row, ['net_amount' => $netAmount]);
+            }
+
             // 4. Tạo invoice
             $invoiceCode = 'INV-'.date('Ymd').strtoupper(Str::random(4));
             $invoice = Invoice::create([
@@ -238,11 +255,11 @@ class CheckoutService
             ]);
 
             // 5. Ghi payments: ưu tiên paymentRows; cọc applied thành payment row
-            foreach ($paymentRows as $row) {
+            foreach ($normalizedPayments as $row) {
                 Payment::create([
                     'invoice_id' => $invoice->id,
                     'method' => $row['method'],
-                    'amount' => (float) $row['amount'],
+                    'amount' => (float) $row['net_amount'],
                     'reference' => $row['reference'] ?? null,
                     'note' => $row['note'] ?? null,
                     'received_by' => $userId,
@@ -279,10 +296,10 @@ class CheckoutService
             // Cọc applied bỏ qua (đã ghi 'deposit' lúc nhận cọc) để không trùng lặp.
             $ledger = app(MoneyLedgerService::class);
             $actor = $userId ? User::find($userId) : null;
-            foreach ($paymentRows as $row) {
-                if ((float) $row['amount'] > 0) {
+            foreach ($normalizedPayments as $row) {
+                if ((float) $row['net_amount'] > 0) {
                     $ledger->recordIn(
-                        'sale', (float) $row['amount'], $row['method'], $actor,
+                        'sale', (float) $row['net_amount'], $row['method'], $actor,
                         ['invoice_id' => $invoice->id],
                         array_filter(['note' => $row['note'] ?? null])
                     );
