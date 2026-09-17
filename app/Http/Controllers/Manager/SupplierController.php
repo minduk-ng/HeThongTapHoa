@@ -117,7 +117,8 @@ class SupplierController extends Controller
 
             app(MoneyLedgerService::class)->recordOut(
                 'supplier_payment', (float) $validated['amount'], 'cash', $request->user(),
-                ['supplier_id' => $supplier->id]
+                ['supplier_id' => $supplier->id],
+                array_filter(['note' => $validated['note'] ?? null])
             );
         });
 

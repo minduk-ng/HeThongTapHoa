@@ -58,6 +58,7 @@ class CashFlowController extends Controller
 
         $totalIn = (float) (clone $query)->where('direction', 'in')->sum('amount');
         $totalOut = (float) (clone $query)->where('direction', 'out')->sum('amount');
+        $warnedCount = (clone $query)->whereJsonLength('warning_flags', '>', 0)->count();
 
         return Inertia::render('manager/cash-flow/CashFlowManager', [
             'entries' => $entries,
@@ -65,7 +66,7 @@ class CashFlowController extends Controller
                 'total_in' => $totalIn,
                 'total_out' => $totalOut,
                 'net' => round($totalIn - $totalOut, 2),
-                'warned_count' => $entries->filter(fn ($e) => $e['warning_flags'] !== [])->count(),
+                'warned_count' => $warnedCount,
             ],
             'filters' => [
                 'start_date' => $startDate,

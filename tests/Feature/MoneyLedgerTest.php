@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Deposit;
 use App\Models\Ingredient;
 use App\Models\InvoiceLine;
 use App\Models\MoneyLedgerEntry;
@@ -130,10 +131,130 @@ test('deposit and supplier payment and shift movement write ledger rows', functi
     $voucher->items()->create(['ingredient_id' => $ingredient->id, 'quantity' => 2, 'unit_price' => 50000]);
 
     $this->actingAs($staff)->post("/manager/suppliers/{$supplier->id}/payments", [
-        'amount' => 100000, 'voucher_ids' => [$voucher->id],
+        'amount' => 100000, 'voucher_ids' => [$voucher->id], 'note' => 'Tra no dot 1',
     ])->assertStatus(302);
 
     expect(MoneyLedgerEntry::where('type', 'deposit')->count())->toBe(1)
         ->and(MoneyLedgerEntry::where('type', 'shift_expense')->count())->toBe(1)
-        ->and(MoneyLedgerEntry::where('type', 'supplier_payment')->count())->toBe(1);
+        ->and(MoneyLedgerEntry::where('type', 'supplier_payment')->count())->toBe(1)
+        ->and(MoneyLedgerEntry::where('type', 'supplier_payment')->first()->meta['note'] ?? null)->toBe('Tra no dot 1');
+});
+
+test('large cash out threshold boundary is 1_000_000', function () {
+    $admin = posAdmin();
+    $justBelow = app(MoneyLedgerService::class)->recordOut('order_refund', 999_999, 'cash', $admin);
+
+    expect($justBelow->warning_flags)->not->toContain('large_cash_out');
+
+    $atThreshold = app(MoneyLedgerService::class)->recordOut('order_refund', 1_000_000, 'cash', $admin);
+
+    expect($atThreshold->warning_flags)->toContain('large_cash_out');
+});
+
+test('cash deposit refund does not raise bank_to_cash_refund', function () {
+    $admin = posAdmin();
+    $entry = app(MoneyLedgerService::class)->recordOut(
+        'deposit_refund', 50000, 'cash', $admin, [], ['source_method' => 'cash']
+    );
+
+    expect($entry->method)->toBe('cash')
+        ->and($entry->warning_flags)->not->toContain('bank_to_cash_refund');
+});
+
+test('reservation cancel refund writes cash payout ledger, forfeit writes nothing', function () {
+    $staff = posStaff(
+        ['pos.view', 'pos.create', 'orders.cancel', 'deposits.refund'],
+        ['/staff/pos']
+    );
+
+    $bankOrder = posOrder(posTable(['status' => 'reserved']), [], ['status' => 'reserved']);
+    Deposit::create(['order_id' => $bankOrder->id, 'amount' => 100000, 'method' => 'bank_transfer', 'status' => 'held']);
+    $this->actingAs($staff)->postJson('/staff/pos/reservation/cancel', [
+        'order_id' => $bankOrder->id, 'deposit_resolution' => 'refund', 'note' => 'Khach huy',
+    ])->assertOk();
+
+    $bankEntry = MoneyLedgerEntry::where('type', 'deposit_refund')->where('order_id', $bankOrder->id)->first();
+    expect($bankEntry)->not->toBeNull()
+        ->and($bankEntry->method)->toBe('cash')
+        ->and($bankEntry->warning_flags)->toContain('bank_to_cash_refund')
+        ->and($bankEntry->meta['source_method'] ?? null)->toBe('bank_transfer')
+        ->and($bankEntry->meta['note'] ?? null)->toBe('Khach huy');
+
+    $cashOrder = posOrder(posTable(['status' => 'reserved']), [], ['status' => 'reserved']);
+    Deposit::create(['order_id' => $cashOrder->id, 'amount' => 50000, 'method' => 'cash', 'status' => 'held']);
+    $this->actingAs($staff)->postJson('/staff/pos/reservation/cancel', [
+        'order_id' => $cashOrder->id, 'deposit_resolution' => 'refund',
+    ])->assertOk();
+
+    $cashEntry = MoneyLedgerEntry::where('type', 'deposit_refund')->where('order_id', $cashOrder->id)->first();
+    expect($cashEntry)->not->toBeNull()
+        ->and($cashEntry->warning_flags)->not->toContain('bank_to_cash_refund');
+
+    $forfeitOrder = posOrder(posTable(['status' => 'reserved']), [], ['status' => 'reserved']);
+    Deposit::create(['order_id' => $forfeitOrder->id, 'amount' => 50000, 'method' => 'cash', 'status' => 'held']);
+    $this->actingAs($staff)->postJson('/staff/pos/reservation/cancel', [
+        'order_id' => $forfeitOrder->id, 'deposit_resolution' => 'forfeit',
+    ])->assertOk();
+
+    expect(MoneyLedgerEntry::where('type', 'deposit_refund')->where('order_id', $forfeitOrder->id)->count())->toBe(0);
+});
+
+test('manager table set to available refunds deposits to cash ledger', function () {
+    $this->actingAs(posAdmin());
+    $table = posTable(['table_number' => 'T1'.substr(uniqid(), -3), 'status' => 'reserved', 'area' => 'Trong nhà', 'capacity' => 4]);
+    $order = posOrder($table, [], ['status' => 'reserved', 'reservation_name' => 'An A']);
+    Deposit::create(['order_id' => $order->id, 'amount' => 30000, 'method' => 'bank_transfer', 'status' => 'held']);
+
+    $this->post("/manager/tables/{$table->id}", [
+        'table_number' => $table->table_number,
+        'area' => $table->area ?? 'Trong nhà',
+        'capacity' => $table->capacity,
+        'status' => 'available',
+    ])->assertSessionHasNoErrors();
+
+    $entry = MoneyLedgerEntry::where('type', 'deposit_refund')->where('order_id', $order->id)->first();
+    expect($entry)->not->toBeNull()
+        ->and($entry->method)->toBe('cash')
+        ->and($entry->warning_flags)->toContain('bank_to_cash_refund');
+});
+
+test('shift income movement writes shift_income ledger row with meta', function () {
+    $staff = posStaff(['shifts.view', 'shifts.movement'], ['/staff/shifts']);
+    Shift::create(['opened_at' => now(), 'opening_cash' => 100000, 'status' => 'open', 'opened_by' => $staff->id]);
+
+    $this->actingAs($staff)->postJson('/staff/shifts/movements', [
+        'type' => 'income', 'category' => 'boa', 'amount' => 20000, 'note' => 'Tien boa',
+    ])->assertOk();
+
+    $entry = MoneyLedgerEntry::where('type', 'shift_income')->first();
+    expect($entry)->not->toBeNull()
+        ->and($entry->direction)->toBe('in')
+        ->and($entry->meta['category'] ?? null)->toBe('boa')
+        ->and($entry->meta['note'] ?? null)->toBe('Tien boa');
+});
+
+test('warned_count covers the full filtered set, not the display slice', function () {
+    $admin = posAdmin();
+    $now = now()->format('Y-m-d H:i:s');
+    $rows = [];
+    for ($i = 0; $i < 600; $i++) {
+        $rows[] = [
+            'direction' => 'out',
+            'type' => 'order_refund',
+            'amount' => 1000,
+            'method' => 'cash',
+            'actor_id' => $admin->id,
+            'warning_flags' => json_encode($i % 2 === 0 ? ['large_cash_out'] : []),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+    }
+    MoneyLedgerEntry::insert($rows);
+
+    $this->actingAs($admin)->get('/manager/cash-flow')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('entries', 500)
+            ->where('totals.warned_count', 300)
+            ->where('totals.total_out', 600000));
 });

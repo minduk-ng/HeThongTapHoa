@@ -257,11 +257,20 @@ class CheckoutService
             $actor = $userId ? User::find($userId) : null;
             foreach ($paymentRows as $row) {
                 if ((float) $row['amount'] > 0) {
-                    $ledger->recordIn('sale', (float) $row['amount'], $row['method'], $actor, ['invoice_id' => $invoice->id]);
+                    $ledger->recordIn(
+                        'sale', (float) $row['amount'], $row['method'] ?? 'cash', $actor,
+                        ['invoice_id' => $invoice->id],
+                        array_filter(['note' => $row['note'] ?? null])
+                    );
                 }
             }
             if ($depositTotal > $total) {
-                $ledger->recordOut('deposit_refund', round($depositTotal - $total, 2), 'cash', $actor, ['invoice_id' => $invoice->id]);
+                $depositMethods = collect($heldDeposits)->map(fn ($d) => $d->method)->unique()->values();
+                $ledger->recordOut(
+                    'deposit_refund', round($depositTotal - $total, 2), 'cash', $actor,
+                    ['invoice_id' => $invoice->id],
+                    ['source_method' => $depositMethods->count() === 1 ? $depositMethods->first() : 'mixed']
+                );
             }
             if ((float) $invoice->change_amount > 0) {
                 $ledger->recordOut('cash_change', (float) $invoice->change_amount, 'cash', $actor, ['invoice_id' => $invoice->id]);

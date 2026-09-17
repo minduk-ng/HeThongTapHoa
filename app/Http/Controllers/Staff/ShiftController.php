@@ -102,10 +102,14 @@ class ShiftController extends Controller
 
             $ledger = app(MoneyLedgerService::class);
             $links = ['shift_id' => $shift->id];
+            $meta = array_filter([
+                'category' => $validated['category'] ?? null,
+                'note' => $validated['note'] ?? null,
+            ]);
             if ($validated['type'] === 'income') {
-                $ledger->recordIn('shift_income', (float) $validated['amount'], 'cash', $request->user(), $links);
+                $ledger->recordIn('shift_income', (float) $validated['amount'], 'cash', $request->user(), $links, $meta);
             } else {
-                $ledger->recordOut('shift_expense', (float) $validated['amount'], 'cash', $request->user(), $links);
+                $ledger->recordOut('shift_expense', (float) $validated['amount'], 'cash', $request->user(), $links, $meta);
             }
 
             return $movement;

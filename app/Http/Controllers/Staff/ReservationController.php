@@ -72,9 +72,12 @@ class ReservationController extends Controller
                         ]);
                         if (($validated['deposit_resolution'] ?? null) === 'refund') {
                             app(MoneyLedgerService::class)->recordOut(
-                                'deposit_refund', (float) $deposit->amount, $deposit->method, $request->user(),
+                                'deposit_refund', (float) $deposit->amount, 'cash', $request->user(),
                                 ['order_id' => $order->id],
-                                ['source_method' => $deposit->method]
+                                array_filter([
+                                    'source_method' => $deposit->method,
+                                    'note' => $validated['note'] ?? null,
+                                ])
                             );
                         }
                     }

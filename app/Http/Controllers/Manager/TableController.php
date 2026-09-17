@@ -182,7 +182,7 @@ class TableController extends Controller
                         'resolved_by_user_id' => $request->user()?->id,
                     ]);
                     app(MoneyLedgerService::class)->recordOut(
-                        'deposit_refund', (float) $deposit->amount, $deposit->method, $request->user(),
+                        'deposit_refund', (float) $deposit->amount, 'cash', $request->user(),
                         ['order_id' => $reservedOrder->id],
                         ['source_method' => $deposit->method]
                     );
