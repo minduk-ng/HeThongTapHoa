@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Manager;
 use App\Http\Controllers\Controller;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Support\SpreadsheetCellSanitizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -187,7 +188,7 @@ class ProductController extends Controller
             fputcsv($file, ['ID / Mã SP', 'Tên sản phẩm', 'Danh mục', 'Giá bán (VNĐ)', 'Thuế VAT (%)', 'Trạng thái', 'Ghi chú']);
 
             foreach ($items as $item) {
-                fputcsv($file, [
+                fputcsv($file, SpreadsheetCellSanitizer::sanitizeRow([
                     $item->id,
                     $item->name,
                     $item->category ? $item->category->name : '',
@@ -195,7 +196,7 @@ class ProductController extends Controller
                     $item->vat_rate,
                     $item->is_available ? 'Đang hoạt động' : 'Ngừng hoạt động',
                     $item->description,
-                ]);
+                ]));
             }
 
             fclose($file);
