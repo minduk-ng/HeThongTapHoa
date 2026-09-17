@@ -206,6 +206,14 @@ Tests payload:
 - Không copy credentials vào README/spec/test fixtures.
 - Operational runbook: rotate password, revoke sessions, inspect login history.
 
+## J. Doi email yeu cau recent re-auth
+
+- `updateEmail` yêu cầu mật khẩu hiện tại hoặc recent password confirmation trong session (TTL 15 phút).
+- Tài khoản chỉ có Google OAuth phải re-auth qua Google hoặc thiết lập mật khẩu trước khi đổi email.
+- OTP vẫn gửi tới email mới để chứng minh quyền sở hữu, nhưng email cũ nhận thông báo bảo mật.
+- Sau đổi email thành công: ghi security audit, rotate remember token và revoke session khác theo helper dùng chung ở Plan 2.
+- Không trả về thông tin cho phép phân biệt email cũ có tồn tại hay không.
+
 ## Testing
 
 - Non-root self-assign admin → 403.
@@ -219,6 +227,7 @@ Tests payload:
 - Partial supplier allocations đúng outstanding; amount=0.01 không thể clear voucher lớn.
 - Redis checkout lock owner/conflict/release/TTL.
 - CSV formula sanitizer.
+- Session bị đánh cắp không đổi được email nếu thiếu recent re-auth.
 
 ## Deployment
 
