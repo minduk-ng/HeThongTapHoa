@@ -41,4 +41,29 @@ class StockVoucher extends Model
     {
         return $this->belongsTo(Supplier::class);
     }
+
+    /** @return HasMany<SupplierPaymentAllocation, $this> */
+    public function paymentAllocations(): HasMany
+    {
+        return $this->hasMany(SupplierPaymentAllocation::class, 'voucher_id');
+    }
+
+    public function totalAmount(): float
+    {
+        $items = $this->relationLoaded('items') ? $this->items : $this->items()->get();
+
+        return (float) $items->sum(fn ($i) => (float) $i->quantity * (float) $i->unit_price);
+    }
+
+    public function allocatedAmount(): float
+    {
+        $allocs = $this->relationLoaded('paymentAllocations') ? $this->paymentAllocations : $this->paymentAllocations()->get();
+
+        return (float) $allocs->sum(fn ($a) => (float) $a->amount);
+    }
+
+    public function outstandingAmount(): float
+    {
+        return round($this->totalAmount() - $this->allocatedAmount(), 2);
+    }
 }

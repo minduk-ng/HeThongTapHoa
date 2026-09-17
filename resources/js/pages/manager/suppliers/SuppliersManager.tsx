@@ -28,6 +28,7 @@ export interface SupplierData {
         id: number;
         voucher_code: string;
         total: number;
+        outstanding: number;
         transacted_at: string;
     }[];
 }
@@ -64,7 +65,10 @@ export default function SuppliersManager({
     const [isDeleting, setIsDeleting] = useState(false);
 
     const safeSuppliers = useMemo(
-        () => (Array.isArray(suppliers) ? suppliers : Object.values(suppliers || {})) as SupplierData[],
+        () =>
+            (Array.isArray(suppliers)
+                ? suppliers
+                : Object.values(suppliers || {})) as SupplierData[],
         [suppliers],
     );
 

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SupplierPayment extends Model
 {
@@ -15,5 +16,11 @@ class SupplierPayment extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    /** @return HasMany<SupplierPaymentAllocation, $this> */
+    public function allocations(): HasMany
+    {
+        return $this->hasMany(SupplierPaymentAllocation::class, 'payment_id');
     }
 }
