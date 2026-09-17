@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -42,6 +43,16 @@ class OtpCode extends Model
         });
     }
 
+    /**
+     * Force hashing at write time — no plaintext code ever hits the DB.
+     *
+     * @return Attribute<string, string>
+     */
+    protected function code(): Attribute
+    {
+        return Attribute::set(fn ($value) => Hash::isHashed($value) ? $value : Hash::make($value));
+    }
+
     public function isExpired(): bool
     {
         return $this->expires_at->isPast();
@@ -52,14 +63,9 @@ class OtpCode extends Model
         return $this->locked_at !== null;
     }
 
-    /** Legacy plaintext rows verify too, so pre-hash DB rows keep working. */
+    /** All stored codes are hashed at write time; verify with Hash::check. */
     public function matchesCode(string $plain): bool
     {
-        // ponytail: Hash::check() throws on non-hashes, so detect first.
-        if (! Hash::isHashed($this->code)) {
-            return hash_equals($this->code, $plain);
-        }
-
         return Hash::check($plain, $this->code);
     }
 

@@ -62,14 +62,14 @@ Route::middleware('guest')->group(function () {
     Route::post('/login/check-attempts', [AuthController::class, 'checkAttempts']);
 
     Route::get('/signup', [SignupController::class, 'show'])->name('signup');
-    Route::post('/signup', [SignupController::class, 'store'])->middleware(['throttle:5,1']);
+    Route::post('/signup', [SignupController::class, 'store'])->middleware(['throttle:5,1', 'throttle:otp-principal']);
 
     Route::get('/verify-otp', [OtpController::class, 'show'])->name('verify-otp');
     Route::post('/verify-otp', [OtpController::class, 'verify'])->middleware(['throttle:10,1', 'throttle:otp-principal']);
-    Route::post('/resend-otp', [OtpController::class, 'resend'])->middleware(['throttle:2,1'])->name('resend-otp');
+    Route::post('/resend-otp', [OtpController::class, 'resend'])->middleware(['throttle:2,1', 'throttle:otp-principal'])->name('resend-otp');
 
     Route::get('/forgot-password', [ForgotPasswordController::class, 'show'])->name('forgot-password');
-    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendOtp'])->middleware(['throttle:5,1']);
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendOtp'])->middleware(['throttle:5,1', 'throttle:otp-principal']);
 
     Route::get('/reset-password', [ForgotPasswordController::class, 'showReset'])->name('reset-password');
     Route::post('/reset-password', [ForgotPasswordController::class, 'reset'])->middleware(['throttle:5,1']);

@@ -131,11 +131,14 @@ test('new otp codes are stored hashed and still verify', function () {
     $this->post('/verify-otp', ['code' => $code])->assertRedirect('/reset-password');
 });
 
-test('legacy plaintext otp rows still verify', function () {
-    $user = otpHardeningUser('otp_legacy_'.uniqid().'@example.com');
-    OtpCode::create([
+test('directly created codes are hashed at write time and verify', function () {
+    $user = otpHardeningUser('otp_mutator_'.uniqid().'@example.com');
+    $otp = OtpCode::create([
         'email' => $user->email, 'code' => '123456', 'type' => 'reset_password', 'expires_at' => now()->addMinutes(10),
     ]);
+
+    expect($otp->code)->not->toBe('123456')
+        ->and(Hash::check('123456', $otp->code))->toBeTrue();
 
     session(['otp_email' => $user->email, 'otp_type' => 'reset_password']);
     $this->post('/verify-otp', ['code' => '123456'])->assertRedirect('/reset-password');
@@ -146,7 +149,7 @@ test('resend rotates otp code and replaces locked code', function () {
     $user = otpHardeningUser('otp_resend_'.uniqid().'@example.com');
     OtpCode::create([
         'email' => $user->email,
-        'code' => Hash::make('123456'),
+        'code' => '123456',
         'type' => 'reset_password',
         'expires_at' => now()->addMinutes(10),
         'attempts' => 5,
