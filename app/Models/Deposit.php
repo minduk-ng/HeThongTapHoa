@@ -16,6 +16,8 @@ class Deposit extends Model
         'order_id',
         'amount',
         'method',
+        'reference',
+        'bank_verified',
         'status',
         'received_by_user_id',
         'resolved_by_user_id',
@@ -24,9 +26,14 @@ class Deposit extends Model
         'note',
     ];
 
+    // verified_by_user_id / verified_at / shift_id are server-derived only —
+    // never mass-assignable (same guard pattern as User::is_root_admin).
+
     protected $casts = [
         'amount' => 'float',
+        'bank_verified' => 'boolean',
         'resolved_at' => 'datetime',
+        'verified_at' => 'datetime',
     ];
 
     /** @return BelongsTo<Order, $this> */
@@ -51,5 +58,17 @@ class Deposit extends Model
     public function resolvedBy()
     {
         return $this->belongsTo(User::class, 'resolved_by_user_id');
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function verifiedBy()
+    {
+        return $this->belongsTo(User::class, 'verified_by_user_id');
+    }
+
+    /** @return BelongsTo<Shift, $this> */
+    public function shift()
+    {
+        return $this->belongsTo(Shift::class);
     }
 }

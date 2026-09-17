@@ -182,6 +182,8 @@ it('records a deposit for an active order', function () {
         'order_id' => $order->id,
         'amount' => 300000,
         'method' => 'bank_transfer',
+        'reference' => 'CK-TEST-001',
+        'bank_verified' => true,
     ])->assertOk();
 
     expect($order->deposits()->where('status', 'held')->sum('amount'))->toEqual(300000);

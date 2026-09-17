@@ -10,7 +10,9 @@ use App\Models\Employee;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Shift;
 use App\Models\Table;
+use App\Models\User;
 use App\Services\Checkout\OrderTotals;
 use App\Services\IdempotencyGuard;
 use App\Services\MoneyLedgerService;
@@ -24,6 +26,27 @@ use Illuminate\Support\Facades\Log;
 class ReservationController extends Controller
 {
     use GeneratesOrderCode;
+
+    /**
+     * Server-derived bank verification — verifier/time/shift come from the
+     * session, never from client input (prevents fake bank deposits).
+     *
+     * @return array<string, mixed>
+     */
+    private function verifiedDepositAttributes(string $method, ?string $reference, ?User $verifier): array
+    {
+        if ($method !== 'bank_transfer') {
+            return ['reference' => null, 'bank_verified' => false];
+        }
+
+        return [
+            'reference' => $reference,
+            'bank_verified' => true,
+            'verified_by_user_id' => $verifier?->id,
+            'verified_at' => now(),
+            'shift_id' => Shift::open()->latest('id')->value('id'),
+        ];
+    }
 
     public function cancelReservation(Request $request): JsonResponse
     {
@@ -204,6 +227,8 @@ class ReservationController extends Controller
             'deposit' => 'nullable|array',
             'deposit.amount' => 'required_with:deposit|numeric|min:1',
             'deposit.method' => 'required_with:deposit|in:cash,bank_transfer',
+            'deposit.reference' => 'nullable|string|max:255|required_if:deposit.method,bank_transfer',
+            'deposit.bank_verified' => 'exclude_unless:deposit.method,bank_transfer|required|accepted',
             'idempotency_key' => 'nullable|string',
         ]);
 
@@ -280,13 +305,18 @@ class ReservationController extends Controller
 
                 $depositTotal = 0;
                 if (! empty($validated['deposit'])) {
-                    Deposit::create([
+                    $deposit = new Deposit([
                         'order_id' => $order->id,
                         'amount' => $validated['deposit']['amount'],
                         'method' => $validated['deposit']['method'],
                         'status' => 'held',
                         'received_by_user_id' => $request->user()?->id,
                     ]);
+                    $deposit->forceFill($this->verifiedDepositAttributes(
+                        $validated['deposit']['method'],
+                        $validated['deposit']['reference'] ?? null,
+                        $request->user()
+                    ))->save();
                     app(MoneyLedgerService::class)->recordIn(
                         'deposit', (float) $validated['deposit']['amount'], $validated['deposit']['method'],
                         $request->user(), ['order_id' => $order->id]
@@ -344,6 +374,8 @@ class ReservationController extends Controller
             'order_id' => 'required|exists:orders,id',
             'amount' => 'required|numeric|min:1',
             'method' => 'required|in:cash,bank_transfer',
+            'reference' => 'nullable|string|max:255|required_if:method,bank_transfer',
+            'bank_verified' => 'exclude_unless:method,bank_transfer|required|accepted',
             'idempotency_key' => 'nullable|string',
         ]);
 
@@ -363,12 +395,18 @@ class ReservationController extends Controller
                     throw new \Exception('Không thể đặt cọc cho đơn đã thanh toán hoặc đã hủy', 422);
                 }
 
-                $order->deposits()->create([
+                $deposit = new Deposit([
+                    'order_id' => $order->id,
                     'amount' => $validated['amount'],
                     'method' => $validated['method'],
                     'status' => 'held',
                     'received_by_user_id' => $request->user()?->id,
                 ]);
+                $deposit->forceFill($this->verifiedDepositAttributes(
+                    $validated['method'],
+                    $validated['reference'] ?? null,
+                    $request->user()
+                ))->save();
 
                 app(MoneyLedgerService::class)->recordIn(
                     'deposit', (float) $validated['amount'], $validated['method'],

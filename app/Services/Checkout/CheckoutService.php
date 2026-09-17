@@ -266,10 +266,14 @@ class CheckoutService
             }
             if ($depositTotal > $total) {
                 $depositMethods = collect($heldDeposits)->map(fn ($d) => $d->method)->unique()->values();
+                $meta = ['source_method' => $depositMethods->count() === 1 ? $depositMethods->first() : 'mixed'];
+                if ($depositMethods->count() === 1 && ($heldDeposits[0]->reference ?? null)) {
+                    $meta['reference'] = $heldDeposits[0]->reference;
+                }
                 $ledger->recordOut(
                     'deposit_refund', round($depositTotal - $total, 2), 'cash', $actor,
                     ['invoice_id' => $invoice->id],
-                    ['source_method' => $depositMethods->count() === 1 ? $depositMethods->first() : 'mixed']
+                    $meta
                 );
             }
             if ((float) $invoice->change_amount > 0) {

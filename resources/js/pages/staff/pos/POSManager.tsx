@@ -497,13 +497,13 @@ return '';
                         }
                     }
                 }}
-                onConfirmDeposit={(amount, method) => {
+                onConfirmDeposit={(amount, method, reference, bankVerified) => {
                     if (activeOrderForDrawer?.id) {
                         return submitDeposit(activeOrderForDrawer.id, amount, method, () => {
                             setIsPaymentDrawerOpen(false);
                             setDrawerMode('payment');
                             router.reload({ only: ['tables'] });
-                        });
+                        }, reference, bankVerified);
                     }
                 }}
                 onConfirmReservation={(deposit) => {
@@ -520,6 +520,8 @@ return '';
                             reservation_note: currentReservationDraft.note,
                             deposit_amount: deposit?.amount || 0,
                             payment_method: deposit?.method || 'cash',
+                            deposit_reference: deposit?.reference,
+                            deposit_bank_verified: deposit?.bankVerified,
                             items: newItems
                         }, () => {
                             clearDraft(selectedTable.id, activeInvoiceIdForTable);
