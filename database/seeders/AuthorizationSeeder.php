@@ -325,6 +325,14 @@ class AuthorizationSeeder extends Seeder
             'role_id' => $adminRoleId,
         ]);
 
+        // Root admin invariant: exactly one ADMIN_EMAIL user holds the flag; abort when ambiguous.
+        $rootMatches = DB::table('users')->where('email', $adminEmail)->count();
+        if ($rootMatches !== 1) {
+            throw new \RuntimeException("Seed root admin ambiguous: expected exactly 1 user with ADMIN_EMAIL ({$adminEmail}), found {$rootMatches}.");
+        }
+        DB::table('users')->where('email', '!=', $adminEmail)->update(['is_root_admin' => false]);
+        DB::table('users')->where('email', $adminEmail)->update(['is_root_admin' => true]);
+
         // Assign guest role to all other users
         $guestRoleId = DB::table('roles')->where('name', 'guest')->value('id');
         $otherUsers = DB::table('users')->where('email', '!=', $adminEmail)->pluck('id');

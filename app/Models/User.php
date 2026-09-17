@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Cache;
  * @property Carbon|null $email_verified_at
  * @property string|null $password
  * @property string|null $remember_token
+ * @property bool $is_root_admin
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -41,6 +42,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_root_admin' => 'boolean',
         ];
     }
 
