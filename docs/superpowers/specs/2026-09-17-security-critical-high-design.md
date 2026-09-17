@@ -1,6 +1,6 @@
 # Design: Security Critical + High Fixes
 
-Ngay: 2026-09-04
+Ngay: 2026-09-17
 Trang thai: Approved
 
 ## Muc tieu

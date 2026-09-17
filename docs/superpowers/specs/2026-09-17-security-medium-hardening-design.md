@@ -1,6 +1,6 @@
 # Design: Security Medium + Low Hardening
 
-Ngay: 2026-09-04
+Ngay: 2026-09-17
 Trang thai: Approved
 
 ## Muc tieu
