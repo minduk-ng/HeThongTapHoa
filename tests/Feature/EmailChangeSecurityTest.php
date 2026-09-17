@@ -5,6 +5,7 @@ use App\Mail\OtpMail;
 use App\Models\OtpCode;
 use App\Models\SecurityAuditLog;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
 function emailChangeUser(array $attrs = []): User
@@ -111,4 +112,29 @@ test('google_only_account_must_setup_password_before_email_change', function () 
     $this->postJson('/profile/update-email', ['email' => 'new_'.uniqid().'@example.com'])
         ->assertOk()
         ->assertJson(['requires_otp' => true]);
+});
+
+test('verify_email_otp_rolls_back_all_db_writes_when_user_save_fails', function () {
+    Mail::fake();
+    $user = emailChangeUser();
+    $oldEmail = $user->email;
+    $newEmail = 'new_'.uniqid().'@example.com';
+    $this->actingAs($user);
+
+    $this->postJson('/profile/confirm-password', ['password' => 'password123'])->assertOk();
+    $this->postJson('/profile/update-email', ['email' => $newEmail])->assertOk();
+
+    $otp = OtpCode::where('email', $newEmail)->where('type', 'change_email')->first();
+    expect($otp)->not->toBeNull();
+
+    // Simulate a mid-commit DB failure: without a transaction the OTP row would be gone.
+    User::saving(function () {
+        DB::statement('select * from table_that_does_not_exist_xyz');
+    });
+
+    $this->postJson('/profile/verify-email-otp', ['code' => $otp->code])->assertStatus(500);
+
+    expect($user->fresh()->email)->toBe($oldEmail)
+        ->and(OtpCode::where('email', $newEmail)->where('type', 'change_email')->exists())->toBeTrue()
+        ->and(SecurityAuditLog::where('action', 'user.email.updated')->count())->toBe(0);
 });

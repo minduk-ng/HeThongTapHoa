@@ -10,6 +10,7 @@ use App\Models\SecurityAuditLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -140,15 +141,19 @@ class ProfileController extends Controller
             return response()->json(['errors' => ['code' => 'Mã xác thực không đúng hoặc đã hết hạn.']], 422);
         }
 
-        $otp->delete();
-
         $user = Auth::user();
         $oldEmail = $user->email;
-        // ponytail: rotate remember token inline; Plan 2 SessionRevoker replaces this while preserving behavior.
-        $user->forceFill(['email' => $newEmail, 'remember_token' => Str::random(60)])->save();
 
-        Mail::to($oldEmail)->send(new EmailChangeAlert($oldEmail, $newEmail));
-        SecurityAuditLog::record($user, 'user.email.updated', $user, ['email' => $oldEmail], ['email' => $newEmail], $request->ip(), $request->userAgent());
+        DB::transaction(function () use ($otp, $user, $oldEmail, $newEmail, $request): void {
+            $otp->delete();
+            // ponytail: rotate remember token inline; Plan 2 SessionRevoker replaces this while preserving behavior.
+            $user->forceFill(['email' => $newEmail, 'remember_token' => Str::random(60)])->save();
+            SecurityAuditLog::record($user, 'user.email.updated', $user, ['email' => $oldEmail], ['email' => $newEmail], $request->ip(), $request->userAgent());
+        });
+
+        // Queued after commit: EmailChangeAlert is ShouldQueue, so an SMTP failure
+        // retries via the queue instead of leaving a half-applied state.
+        Mail::to($oldEmail)->queue(new EmailChangeAlert($oldEmail, $newEmail));
 
         $request->session()->forget(['pending_new_email', 'otp_email', 'otp_type', 'recent_auth_at']);
 
