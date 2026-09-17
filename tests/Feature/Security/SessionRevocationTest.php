@@ -9,15 +9,17 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
-function sessionTestUser(array $attrs = []): User
-{
-    return User::create(array_merge([
-        'name' => 'Session Test User',
-        'email' => 'session_'.uniqid().'@example.com',
-        'password' => Hash::make('password123'),
-        'email_verified_at' => now(),
-        'remember_token' => Str::random(60),
-    ], $attrs));
+if (! function_exists('sessionTestUser')) {
+    function sessionTestUser(array $attrs = []): User
+    {
+        return User::create(array_merge([
+            'name' => 'Session Test User',
+            'email' => 'session_'.uniqid().'@example.com',
+            'password' => Hash::make('password123'),
+            'email_verified_at' => now(),
+            'remember_token' => Str::random(60),
+        ], $attrs));
+    }
 }
 
 test('revoke_others deletes other sessions keeps current session and rotates remember token', function () {

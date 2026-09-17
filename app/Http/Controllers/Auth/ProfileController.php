@@ -145,7 +145,7 @@ class ProfileController extends Controller
         // retries via the queue instead of leaving a half-applied state.
         Mail::to($oldEmail)->queue(new EmailChangeAlert($oldEmail, $newEmail));
 
-        $request->session()->regenerate();
+        $request->session()->regenerate(true);
         $request->session()->forget(['pending_new_email', 'otp_email', 'otp_type', 'recent_auth_at']);
 
         return response()->json([
@@ -178,7 +178,7 @@ class ProfileController extends Controller
             SessionRevoker::revokeOthers($user, $request->session()->getId());
         });
 
-        $request->session()->regenerate();
+        $request->session()->regenerate(true);
         $request->session()->put('recent_auth_at', time());
 
         return response()->json([
@@ -263,7 +263,7 @@ class ProfileController extends Controller
             SessionRevoker::revokeOthers($user, $request->session()->getId());
         });
 
-        $request->session()->regenerate();
+        $request->session()->regenerate(true);
         $request->session()->forget(['pending_new_password', 'otp_email', 'otp_type']);
 
         return response()->json([

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Security\SessionRevoker;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -64,8 +65,10 @@ class ForgotPasswordController extends Controller
         $user = User::where('email', $email)->first();
 
         if ($user) {
-            $user->update(['password' => $request->password]);
-            SessionRevoker::revokeOthers($user, null);
+            DB::transaction(function () use ($user, $request): void {
+                $user->update(['password' => $request->password]);
+                SessionRevoker::revokeOthers($user, null);
+            });
         }
 
         // Clear session
