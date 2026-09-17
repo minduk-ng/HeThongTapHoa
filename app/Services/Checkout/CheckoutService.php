@@ -16,7 +16,9 @@ use App\Models\ProductRecipe;
 use App\Models\Promotion;
 use App\Models\StockVoucher;
 use App\Models\Table;
+use App\Models\User;
 use App\Services\Inventory\LotService;
+use App\Services\MoneyLedgerService;
 use App\Services\OrderActivityLogger;
 use App\Services\Promotions\PromotionEngine;
 use Illuminate\Support\Collection;
@@ -247,6 +249,22 @@ class CheckoutService
                     'note' => 'Hoàn tiền cọc thừa',
                     'received_by' => $userId,
                 ]);
+            }
+
+            // Hậu kiểm dòng tiền: 1 ledger row cho mỗi sự kiện tiền mặt thực tế.
+            // Cọc applied bỏ qua (đã ghi 'deposit' lúc nhận cọc) để không trùng lặp.
+            $ledger = app(MoneyLedgerService::class);
+            $actor = $userId ? User::find($userId) : null;
+            foreach ($paymentRows as $row) {
+                if ((float) $row['amount'] > 0) {
+                    $ledger->recordIn('sale', (float) $row['amount'], $row['method'], $actor, ['invoice_id' => $invoice->id]);
+                }
+            }
+            if ($depositTotal > $total) {
+                $ledger->recordOut('deposit_refund', round($depositTotal - $total, 2), 'cash', $actor, ['invoice_id' => $invoice->id]);
+            }
+            if ((float) $invoice->change_amount > 0) {
+                $ledger->recordOut('cash_change', (float) $invoice->change_amount, 'cash', $actor, ['invoice_id' => $invoice->id]);
             }
 
             // 6. Ghi invoice_lines

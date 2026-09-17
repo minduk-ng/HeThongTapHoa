@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\StockVoucher;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
+use App\Services\MoneyLedgerService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -113,6 +114,11 @@ class SupplierController extends Controller
             StockVoucher::whereIn('id', $validated['voucher_ids'])
                 ->where('supplier_id', $supplier->id)
                 ->update(['is_paid' => true]);
+
+            app(MoneyLedgerService::class)->recordOut(
+                'supplier_payment', (float) $validated['amount'], 'cash', $request->user(),
+                ['supplier_id' => $supplier->id]
+            );
         });
 
         return back()->with('success', 'Đã ghi nhận thanh toán công nợ!');

@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Models\ProductRecipe;
 use App\Models\StockVoucher;
 use App\Services\Inventory\LotService;
+use App\Services\MoneyLedgerService;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -72,6 +73,12 @@ class RefundController extends Controller
                     'note' => 'Hoàn trả hoá đơn '.$invoice->invoice_code.' ('.($validated['reason'] ?? '').')',
                     'received_by' => $request->user()?->id,
                 ]);
+
+                app(MoneyLedgerService::class)->recordOut(
+                    'order_refund', $refundTotal, 'cash', $request->user(),
+                    ['invoice_id' => $invoice->id],
+                    ['source_method' => $invoice->payment_method, 'reason' => $validated['reason'] ?? null]
+                );
 
                 // Trả kho
                 $voucher = null;

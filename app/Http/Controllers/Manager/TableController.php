@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Staff\Concerns\GeneratesOrderCode;
 use App\Models\Order;
 use App\Models\Table;
+use App\Services\MoneyLedgerService;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -180,6 +181,11 @@ class TableController extends Controller
                         'resolved_at' => now(),
                         'resolved_by_user_id' => $request->user()?->id,
                     ]);
+                    app(MoneyLedgerService::class)->recordOut(
+                        'deposit_refund', (float) $deposit->amount, $deposit->method, $request->user(),
+                        ['order_id' => $reservedOrder->id],
+                        ['source_method' => $deposit->method]
+                    );
                     OrderActivityLogger::log($reservedOrder, 'deposit_refunded', $request->user()?->id, [
                         'deposit_id' => $deposit->id,
                         'amount' => (float) $deposit->amount,

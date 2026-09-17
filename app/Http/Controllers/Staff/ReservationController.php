@@ -13,6 +13,7 @@ use App\Models\OrderItem;
 use App\Models\Table;
 use App\Services\Checkout\OrderTotals;
 use App\Services\IdempotencyGuard;
+use App\Services\MoneyLedgerService;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -69,6 +70,13 @@ class ReservationController extends Controller
                             'resolved_at' => now(),
                             'note' => $validated['note'] ?? null,
                         ]);
+                        if (($validated['deposit_resolution'] ?? null) === 'refund') {
+                            app(MoneyLedgerService::class)->recordOut(
+                                'deposit_refund', (float) $deposit->amount, $deposit->method, $request->user(),
+                                ['order_id' => $order->id],
+                                ['source_method' => $deposit->method]
+                            );
+                        }
                     }
                 }
 
@@ -276,6 +284,10 @@ class ReservationController extends Controller
                         'status' => 'held',
                         'received_by_user_id' => $request->user()?->id,
                     ]);
+                    app(MoneyLedgerService::class)->recordIn(
+                        'deposit', (float) $validated['deposit']['amount'], $validated['deposit']['method'],
+                        $request->user(), ['order_id' => $order->id]
+                    );
                     $depositTotal = $validated['deposit']['amount'];
 
                     OrderActivityLogger::log($order, 'deposit_received', $request->user()?->id, [
@@ -354,6 +366,11 @@ class ReservationController extends Controller
                     'status' => 'held',
                     'received_by_user_id' => $request->user()?->id,
                 ]);
+
+                app(MoneyLedgerService::class)->recordIn(
+                    'deposit', (float) $validated['amount'], $validated['method'],
+                    $request->user(), ['order_id' => $order->id]
+                );
 
                 OrderActivityLogger::log($order, 'deposit_received', $request->user()?->id, [
                     'amount' => $validated['amount'],

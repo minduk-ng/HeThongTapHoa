@@ -111,6 +111,12 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 28,
             ],
             [
+                'name' => 'Dòng tiền',
+                'route_path' => '/manager/cash-flow',
+                'group_name' => 'Quản lý',
+                'sort_order' => 29,
+            ],
+            [
                 'name' => 'Báo cáo hoá đơn bán hàng',
                 'route_path' => '/reports/sales-invoices',
                 'group_name' => 'Báo cáo',
@@ -391,7 +397,7 @@ class AuthorizationSeeder extends Seeder
             ]);
         }
 
-        foreach (['/', '/staff/pos', '/staff/shifts', '/manager/suppliers'] as $routePath) {
+        foreach (['/', '/staff/pos', '/staff/shifts', '/manager/suppliers', '/manager/cash-flow'] as $routePath) {
             $pageId = DB::table('pages')->where('route_path', $routePath)->value('id');
             if ($pageId) {
                 DB::table('role_pages')->updateOrInsert([

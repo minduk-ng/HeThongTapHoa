@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\SignupController;
+use App\Http\Controllers\Manager\CashFlowController;
 use App\Http\Controllers\Manager\CategoryController;
 use App\Http\Controllers\Manager\CustomerController;
 use App\Http\Controllers\Manager\DashboardController;
@@ -182,6 +183,9 @@ Route::middleware('auth')->group(function () {
         // Order List
         Route::get('/orders', [OrderListController::class, 'index'])->middleware('permission:orders.view');
         Route::get('/orders/{order}', [OrderListController::class, 'show'])->middleware('permission:orders.view');
+
+        // Dòng tiền hậu kiểm (read-only: không có route tạo/sửa/xóa)
+        Route::get('/cash-flow', [CashFlowController::class, 'index'])->middleware('permission:cash-flow.view');
     });
 
     // Reports Management

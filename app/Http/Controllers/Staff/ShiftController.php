@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CashMovement;
 use App\Models\Shift;
 use App\Services\Manager\ShiftService;
+use App\Services\MoneyLedgerService;
 use Carbon\CarbonInterface;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -90,7 +91,7 @@ class ShiftController extends Controller
                 return null;
             }
 
-            return CashMovement::create([
+            $movement = CashMovement::create([
                 'shift_id' => $shift->id,
                 'type' => $validated['type'],
                 'category' => $validated['category'],
@@ -98,6 +99,16 @@ class ShiftController extends Controller
                 'note' => $validated['note'] ?? null,
                 'created_by' => $request->user()?->id,
             ]);
+
+            $ledger = app(MoneyLedgerService::class);
+            $links = ['shift_id' => $shift->id];
+            if ($validated['type'] === 'income') {
+                $ledger->recordIn('shift_income', (float) $validated['amount'], 'cash', $request->user(), $links);
+            } else {
+                $ledger->recordOut('shift_expense', (float) $validated['amount'], 'cash', $request->user(), $links);
+            }
+
+            return $movement;
         });
 
         if (! $movement) {
