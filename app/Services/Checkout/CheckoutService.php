@@ -220,10 +220,23 @@ class CheckoutService
                 throw new \Exception('Số tiền khách đưa không đủ.', 422);
             }
 
-            // ponytail: cap cash at remaining payable; reject non-cash overpayment
+            // ponytail: allocate non-cash before cash; reject non-cash overpayment
             $remainingPayable = $payable;
-            $normalizedPayments = [];
+            $sortedRows = [];
+            $cashRows = [];
             foreach ($paymentRows as $row) {
+                if ($row['method'] === 'cash') {
+                    $cashRows[] = $row;
+                } else {
+                    $sortedRows[] = $row;
+                }
+            }
+            foreach ($cashRows as $row) {
+                $sortedRows[] = $row;
+            }
+
+            $normalizedPayments = [];
+            foreach ($sortedRows as $row) {
                 $rowAmount = (float) $row['amount'];
                 $method = (string) $row['method'];
 
@@ -256,14 +269,16 @@ class CheckoutService
 
             // 5. Ghi payments: ưu tiên paymentRows; cọc applied thành payment row
             foreach ($normalizedPayments as $row) {
-                Payment::create([
-                    'invoice_id' => $invoice->id,
-                    'method' => $row['method'],
-                    'amount' => (float) $row['net_amount'],
-                    'reference' => $row['reference'] ?? null,
-                    'note' => $row['note'] ?? null,
-                    'received_by' => $userId,
-                ]);
+                if ((float) $row['net_amount'] > 0) {
+                    Payment::create([
+                        'invoice_id' => $invoice->id,
+                        'method' => $row['method'],
+                        'amount' => (float) $row['net_amount'],
+                        'reference' => $row['reference'] ?? null,
+                        'note' => $row['note'] ?? null,
+                        'received_by' => $userId,
+                    ]);
+                }
             }
             foreach ($heldDeposits as $d) {
                 $depositPayment = Payment::create([

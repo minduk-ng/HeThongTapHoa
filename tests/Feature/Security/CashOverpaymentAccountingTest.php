@@ -101,3 +101,54 @@ test('mixed payment: 30k bank + 50k cash for 50k payable -> 30k bank payment, 20
     expect($cashLedger)->not->toBeNull()
         ->and((float) $cashLedger->amount)->toBe(20000.0);
 });
+
+test('mixed payment order independence: cash before bank allocates non-cash first', function () {
+    $staff = posStaff(['pos.view', 'pos.create'], ['/staff/pos']);
+    $item = posMenuItem(['price' => 50000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 50000, 'status' => 'completed']], ['status' => 'pending']);
+
+    // [cash 50k, bank 30k] for 50k payable
+    $invoice = CheckoutService::run(
+        $order,
+        [
+            ['method' => 'cash', 'amount' => 50000],
+            ['method' => 'bank_transfer', 'amount' => 30000],
+        ],
+        [],
+        $staff->id
+    );
+
+    expect((float) $invoice->total_amount)->toBe(50000.0)
+        ->and((float) $invoice->amount_received)->toBe(80000.0)
+        ->and((float) $invoice->change_amount)->toBe(30000.0);
+
+    $bankPayment = Payment::where('invoice_id', $invoice->id)->where('method', 'bank_transfer')->first();
+    expect($bankPayment)->not->toBeNull()
+        ->and((float) $bankPayment->amount)->toBe(30000.0);
+
+    $cashPayment = Payment::where('invoice_id', $invoice->id)->where('method', 'cash')->first();
+    expect($cashPayment)->not->toBeNull()
+        ->and((float) $cashPayment->amount)->toBe(20000.0);
+});
+
+test('payment row with zero net amount does not create zero-amount payment record', function () {
+    $staff = posStaff(['pos.view', 'pos.create'], ['/staff/pos']);
+    $item = posMenuItem(['price' => 50000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 50000, 'status' => 'completed']], ['status' => 'pending']);
+
+    // Bank covers full 50k payable, extra 20k cash is pure change (net cash = 0)
+    $invoice = CheckoutService::run(
+        $order,
+        [
+            ['method' => 'bank_transfer', 'amount' => 50000],
+            ['method' => 'cash', 'amount' => 20000],
+        ],
+        [],
+        $staff->id
+    );
+
+    expect(Payment::where('invoice_id', $invoice->id)->where('amount', '<=', 0)->count())->toBe(0)
+        ->and(Payment::where('invoice_id', $invoice->id)->count())->toBe(1);
+});
