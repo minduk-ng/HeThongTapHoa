@@ -28,17 +28,8 @@ class ForgotPasswordController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if ($user) {
-            // Delete existing OTPs
-            OtpCode::where('email', $request->email)->delete();
-
-            // Generate OTP
-            $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            OtpCode::create([
-                'email' => $request->email,
-                'code' => $code,
-                'type' => 'reset_password',
-                'expires_at' => now()->addMinutes(10),
-            ]);
+            // ponytail: scoped to reset_password so change-email/change-password OTPs survive.
+            $code = OtpCode::issue($request->email, 'reset_password');
 
             Mail::to($request->email)->queue(new OtpMail($code, 'reset_password'));
         }

@@ -65,7 +65,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/signup', [SignupController::class, 'store'])->middleware(['throttle:5,1']);
 
     Route::get('/verify-otp', [OtpController::class, 'show'])->name('verify-otp');
-    Route::post('/verify-otp', [OtpController::class, 'verify'])->middleware(['throttle:10,1']);
+    Route::post('/verify-otp', [OtpController::class, 'verify'])->middleware(['throttle:10,1', 'throttle:otp-principal']);
     Route::post('/resend-otp', [OtpController::class, 'resend'])->middleware(['throttle:2,1'])->name('resend-otp');
 
     Route::get('/forgot-password', [ForgotPasswordController::class, 'show'])->name('forgot-password');
@@ -87,11 +87,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings', [ProfileController::class, 'show'])->name('settings');
     Route::post('/profile/update-name', [ProfileController::class, 'updateName']);
     Route::post('/profile/update-email', [ProfileController::class, 'updateEmail']);
-    Route::post('/profile/verify-email-otp', [ProfileController::class, 'verifyEmailOtp'])->middleware(['throttle:10,1']);
+    Route::post('/profile/verify-email-otp', [ProfileController::class, 'verifyEmailOtp'])->middleware(['throttle:10,1', 'throttle:otp-principal']);
     Route::post('/profile/setup-password', [ProfileController::class, 'setupPassword']);
     Route::post('/profile/confirm-password', [ProfileController::class, 'confirmPassword'])->middleware(['throttle:10,1']);
     Route::post('/profile/change-password', [ProfileController::class, 'changePassword']);
-    Route::post('/profile/verify-password-otp', [ProfileController::class, 'verifyPasswordOtp'])->middleware(['throttle:10,1']);
+    Route::post('/profile/verify-password-otp', [ProfileController::class, 'verifyPasswordOtp'])->middleware(['throttle:10,1', 'throttle:otp-principal']);
 
     Route::prefix('admin')->middleware(CheckPageAccess::class)->group(function () {
         // Page Manager

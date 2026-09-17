@@ -49,11 +49,7 @@ class OtpController extends Controller
             return redirect('/login');
         }
 
-        $otp = OtpCode::where('email', $email)
-            ->where('type', $type)
-            ->where('code', $request->code)
-            ->where('expires_at', '>', now())
-            ->first();
+        $otp = OtpCode::attemptVerify($email, $type, $request->code);
 
         if (! $otp) {
             if ($request->wantsJson()) {
@@ -104,24 +100,9 @@ class OtpController extends Controller
             return redirect('/login');
         }
 
-        // Check for existing valid unexpired OTP code
-        $existingOtp = OtpCode::where('email', $email)
-            ->where('type', $type)
-            ->where('expires_at', '>', now())
-            ->first();
-
-        if ($existingOtp) {
-            $code = $existingOtp->code;
-        } else {
-            OtpCode::where('email', $email)->delete();
-            $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            OtpCode::create([
-                'email' => $email,
-                'code' => $code,
-                'type' => $type,
-                'expires_at' => now()->addMinutes(10),
-            ]);
-        }
+        // ponytail: hashing is one-way, so resend always rotates to a fresh code
+        // (replacing a locked one too) instead of re-mailing the stored value.
+        $code = OtpCode::issue($email, $type);
 
         Mail::to($email)->queue(new OtpMail($code, $type));
 

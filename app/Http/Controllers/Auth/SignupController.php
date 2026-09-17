@@ -39,17 +39,8 @@ class SignupController extends Controller
             $user->roles()->attach($guestRole->id);
         }
 
-        // Delete any existing OTP for this email
-        OtpCode::where('email', $validated['email'])->delete();
-
-        // Generate and save OTP
-        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        OtpCode::create([
-            'email' => $validated['email'],
-            'code' => $code,
-            'type' => 'signup',
-            'expires_at' => now()->addMinutes(10),
-        ]);
+        // ponytail: issue() replaces the same-purpose OTP only, keeping other purposes intact.
+        $code = OtpCode::issue($validated['email'], 'signup');
 
         // Send OTP email
         Mail::to($validated['email'])->queue(new OtpMail($code, 'signup'));

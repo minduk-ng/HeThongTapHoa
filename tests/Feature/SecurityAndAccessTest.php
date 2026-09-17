@@ -1,10 +1,12 @@
 <?php
 
+use App\Mail\OtpMail;
 use App\Models\OtpCode;
 use App\Models\Page;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 
 uses(RefreshDatabase::class);
 
@@ -83,6 +85,7 @@ test('unauthorized users cannot access admin routes', function () {
 });
 
 test('reset password works correctly', function () {
+    Mail::fake();
     $user = User::create([
         'name' => 'Regular User',
         'email' => 'user@example.com',
@@ -101,9 +104,17 @@ test('reset password works correctly', function () {
     $otp = OtpCode::where('email', 'user@example.com')->first();
     $this->assertNotNull($otp);
 
+    // Codes are stored hashed; verify with the mailed plaintext.
+    $code = null;
+    Mail::assertQueued(OtpMail::class, function ($mail) use (&$code) {
+        $code = $mail->otpCode;
+
+        return true;
+    });
+
     // Verify OTP
     session(['otp_email' => 'user@example.com', 'otp_type' => 'reset_password']);
-    $response = $this->post('/verify-otp', ['code' => $otp->code]);
+    $response = $this->post('/verify-otp', ['code' => $code]);
     $response->assertRedirect('/reset-password');
     $this->assertTrue(session('reset_verified'));
 

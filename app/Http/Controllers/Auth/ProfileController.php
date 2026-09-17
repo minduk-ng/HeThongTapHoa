@@ -87,9 +87,10 @@ class ProfileController extends Controller
 
         $email = $validated['email'];
 
-        // Prevent resending OTP if an unexpired OTP code already exists
+        // Prevent resending OTP if a usable OTP code already exists (locked codes get rotated below)
         $existingOtp = OtpCode::where('email', $email)
             ->where('type', 'change_email')
+            ->whereNull('locked_at')
             ->where('expires_at', '>', now())
             ->first();
 
@@ -102,14 +103,7 @@ class ProfileController extends Controller
         }
 
         // Generate OTP
-        OtpCode::where('email', $email)->where('type', 'change_email')->delete();
-        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        OtpCode::create([
-            'email' => $email,
-            'code' => $code,
-            'type' => 'change_email',
-            'expires_at' => now()->addMinutes(10),
-        ]);
+        $code = OtpCode::issue($email, 'change_email');
 
         Mail::to($email)->send(new OtpMail($code, 'signup'));
 
@@ -131,11 +125,7 @@ class ProfileController extends Controller
             return response()->json(['errors' => ['code' => 'Yêu cầu đổi email không hợp lệ.']], 422);
         }
 
-        $otp = OtpCode::where('email', $newEmail)
-            ->where('type', 'change_email')
-            ->where('code', $request->code)
-            ->where('expires_at', '>', now())
-            ->first();
+        $otp = OtpCode::attemptVerify($newEmail, 'change_email', $request->code);
 
         if (! $otp) {
             return response()->json(['errors' => ['code' => 'Mã xác thực không đúng hoặc đã hết hạn.']], 422);
@@ -216,9 +206,10 @@ class ProfileController extends Controller
 
         $email = $user->email;
 
-        // Prevent resending OTP if an unexpired OTP code already exists
+        // Prevent resending OTP if a usable OTP code already exists (locked codes get rotated below)
         $existingOtp = OtpCode::where('email', $email)
             ->where('type', 'change_password')
+            ->whereNull('locked_at')
             ->where('expires_at', '>', now())
             ->first();
 
@@ -231,14 +222,7 @@ class ProfileController extends Controller
         }
 
         // Generate OTP to current email
-        OtpCode::where('email', $email)->where('type', 'change_password')->delete();
-        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        OtpCode::create([
-            'email' => $email,
-            'code' => $code,
-            'type' => 'change_password',
-            'expires_at' => now()->addMinutes(10),
-        ]);
+        $code = OtpCode::issue($email, 'change_password');
 
         Mail::to($email)->send(new OtpMail($code, 'reset'));
 
@@ -262,11 +246,7 @@ class ProfileController extends Controller
             return response()->json(['errors' => ['code' => 'Yêu cầu đổi mật khẩu không hợp lệ.']], 422);
         }
 
-        $otp = OtpCode::where('email', $user->email)
-            ->where('type', 'change_password')
-            ->where('code', $request->code)
-            ->where('expires_at', '>', now())
-            ->first();
+        $otp = OtpCode::attemptVerify($user->email, 'change_password', $request->code);
 
         if (! $otp) {
             return response()->json(['errors' => ['code' => 'Mã xác thực không đúng hoặc đã hết hạn.']], 422);
