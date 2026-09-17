@@ -36,6 +36,7 @@ test('sendToKitchen reduction bo qua don da paid', function () {
 
     $response = $this->post('/staff/pos/send-to-kitchen', [
         'table_id' => $table->id,
+        'order_id' => $order->id,
         'reduced_items' => [[
             'order_item_id' => $orderItem->id,
             'reduce_quantity' => 1,

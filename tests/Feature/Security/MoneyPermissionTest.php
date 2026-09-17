@@ -113,6 +113,7 @@ test('cashier with granular permissions can deposit, reduce items and cancel', f
     $order2 = posOrder($table, [['item' => $item, 'qty' => 2, 'price' => 30000, 'status' => 'pending']], ['status' => 'pending']);
     $this->actingAs($staff)->postJson('/staff/pos/send-to-kitchen', [
         'table_id' => $table->id,
+        'order_id' => $order2->id,
         'reduced_items' => [['order_item_id' => $order2->items->first()->id, 'reduce_quantity' => 1, 'cancellation_reason' => 'Khách đổi ý']],
     ])->assertStatus(302);
     expect($order2->items->first()->fresh()->quantity)->toBe(1);

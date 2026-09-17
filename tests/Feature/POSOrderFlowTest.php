@@ -153,6 +153,7 @@ test('giảm một phần số lượng món đã gửi bếp giữ snapshot ord
 
     $response = $this->post('/staff/pos/send-to-kitchen', [
         'table_id' => $table->id,
+        'order_id' => $order->id,
         'reduced_items' => [
             [
                 'order_item_id' => $orderItem->id,
@@ -192,6 +193,7 @@ test('giảm hết số lượng món cuối cùng sẽ hủy món và hủy lu�
 
     $response = $this->post('/staff/pos/send-to-kitchen', [
         'table_id' => $table->id,
+        'order_id' => $order->id,
         'reduced_items' => [
             [
                 'order_item_id' => $orderItem->id,
@@ -226,6 +228,7 @@ test('không thể giảm món của đơn đã hoàn tất thanh toán', functi
 
     $this->post('/staff/pos/send-to-kitchen', [
         'table_id' => $table->id,
+        'order_id' => $order->id,
         'reduced_items' => [
             [
                 'order_item_id' => $orderItem->id,

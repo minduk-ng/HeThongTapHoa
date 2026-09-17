@@ -15,13 +15,13 @@ use App\Models\Promotion;
 use App\Models\Table;
 use App\Services\IdempotencyGuard;
 use App\Services\OrderActivityLogger;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -185,7 +185,7 @@ class POSController extends Controller
         }
     }
 
-    public function sendToKitchen(Request $request): RedirectResponse|JsonResponse
+    public function sendToKitchen(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'table_id' => 'nullable|exists:tables,id',
@@ -204,6 +204,10 @@ class POSController extends Controller
 
         if (! empty($validated['reduced_items']) && ! $request->user()?->hasPermission('orders.cancel')) {
             abort(403);
+        }
+
+        if (! empty($validated['reduced_items']) && empty($validated['order_id'])) {
+            throw ValidationException::withMessages(['error' => 'Thiếu đơn hàng khi giảm món.']);
         }
 
         if (IdempotencyGuard::isDuplicate($request, 'send_to_kitchen', [
@@ -227,33 +231,30 @@ class POSController extends Controller
 
                 // 1. Handle staged reductions
                 if (! empty($validated['reduced_items'])) {
-                    $requestedOrder = ! empty($validated['order_id'])
-                        ? Order::query()->lockForUpdate()->where('id', $validated['order_id'])->firstOrFail()
-                        : null;
+                    $requestedOrder = Order::query()->lockForUpdate()->where('id', $validated['order_id'])->firstOrFail();
 
                     foreach ($validated['reduced_items'] as $red) {
-                        $itemQuery = OrderItem::query()->lockForUpdate()->where('id', $red['order_item_id']);
-                        if ($requestedOrder) {
-                            $itemQuery->where('order_id', $requestedOrder->id);
-                        }
-                        $orderItem = $itemQuery->first();
+                        $orderItem = OrderItem::query()->lockForUpdate()
+                            ->where('id', $red['order_item_id'])
+                            ->where('order_id', $requestedOrder->id)
+                            ->first();
                         if (! $orderItem) {
-                            throw new \Exception('Dòng món không thuộc đơn hàng.', 422);
+                            throw ValidationException::withMessages(['error' => 'Dòng món không thuộc đơn hàng.']);
                         }
 
-                        $parentOrder = ($requestedOrder && (int) $requestedOrder->id === (int) $orderItem->order_id)
+                        $parentOrder = (int) $requestedOrder->id === (int) $orderItem->order_id
                             ? $requestedOrder
                             : Order::query()->lockForUpdate()->where('id', $orderItem->order_id)->first();
-                        if (! $parentOrder || in_array($parentOrder->status, ['paid', 'cancelled', 'completed'], true)) {
-                            throw new \Exception('Đơn đã thanh toán hoặc đã hủy, không thể giảm món.', 422);
+                        if (! $parentOrder || in_array($parentOrder->status, ['paid', 'cancelled'], true)) {
+                            throw ValidationException::withMessages(['error' => 'Đơn đã thanh toán hoặc đã hủy, không thể giảm món.']);
                         }
                         if (in_array($orderItem->status, ['cancelled', 'completed'], true)) {
-                            throw new \Exception('Món đã hoàn tất hoặc đã hủy, không thể giảm.', 422);
+                            throw ValidationException::withMessages(['error' => 'Món đã hoàn tất hoặc đã hủy, không thể giảm.']);
                         }
 
                         $reduceQty = (int) $red['reduce_quantity'];
                         if ($reduceQty > $orderItem->quantity) {
-                            throw new \Exception("Số lượng giảm vượt quá số hiện có ({$orderItem->quantity}).", 422);
+                            throw ValidationException::withMessages(['error' => "Số lượng giảm vượt quá số hiện có ({$orderItem->quantity})."]);
                         }
                         $newQty = $orderItem->quantity - $reduceQty;
                         $reasonStr = $red['cancellation_reason'].(! empty($red['note']) ? ': '.$red['note'] : '');
@@ -299,7 +300,7 @@ class POSController extends Controller
                     if (! empty($validated['order_id'])) {
                         $createdOrder = Order::query()->lockForUpdate()->where('id', $validated['order_id'])->firstOrFail();
                         if (in_array($createdOrder->status, ['paid', 'cancelled'], true)) {
-                            throw new \Exception('Đơn đã thanh toán hoặc đã hủy, không thể gửi bếp.', 422);
+                            throw ValidationException::withMessages(['error' => 'Đơn đã thanh toán hoặc đã hủy, không thể gửi bếp.']);
                         }
                         $wasDraft = $createdOrder->status === 'draft';
 
@@ -391,12 +392,10 @@ class POSController extends Controller
             rescue(fn () => OrderSentToKitchen::dispatch($primaryOrder));
 
             return back()->with('success', 'Đã cập nhật đơn order và gửi xuống bếp chế biến thành công!');
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('POS sendToKitchen DB error: '.$e->getMessage());
-
-            if ((int) $e->getCode() === 422 && $request->wantsJson()) {
-                return response()->json(['message' => $e->getMessage(), 'error' => $e->getMessage()], 422);
-            }
 
             return back()->withErrors(['error' => 'Gửi đơn thất bại: Không thể kết nối hoặc lưu cơ sở dữ liệu. Vui lòng thử lại.']);
         }

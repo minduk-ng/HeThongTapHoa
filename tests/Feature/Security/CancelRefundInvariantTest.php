@@ -97,10 +97,53 @@ test('reduce mon da completed bi tu choi 422', function () {
 
     $this->actingAs($staff)->postJson('/staff/pos/send-to-kitchen', [
         'table_id' => $table->id,
+        'order_id' => $order->id,
         'reduced_items' => [['order_item_id' => $order->items->first()->id, 'reduce_quantity' => 1, 'cancellation_reason' => 'Khách đổi ý']],
     ])->assertStatus(422);
 
     expect($order->items->first()->fresh()->quantity)->toBe(2);
+});
+
+test('reduce don completed (van active) van giam binh thuong', function () {
+    $staff = posStaff(['pos.view', 'pos.create', 'orders.cancel'], ['/staff/pos']);
+    $table = posTable(['status' => 'occupied']);
+    $order = posOrder($table, [['item' => posMenuItem(), 'qty' => 3, 'price' => 20000, 'status' => 'pending']], ['status' => 'completed']);
+
+    $this->actingAs($staff)->postJson('/staff/pos/send-to-kitchen', [
+        'table_id' => $table->id,
+        'order_id' => $order->id,
+        'reduced_items' => [['order_item_id' => $order->items->first()->id, 'reduce_quantity' => 1, 'cancellation_reason' => 'Khách đổi ý']],
+    ])->assertStatus(302);
+
+    expect($order->items->first()->fresh()->quantity)->toBe(2);
+});
+
+test('reduce thieu order_id bi tu choi 422', function () {
+    $staff = posStaff(['pos.view', 'pos.create', 'orders.cancel'], ['/staff/pos']);
+    $table = posTable(['status' => 'occupied']);
+    $order = posOrder($table, [['item' => posMenuItem(), 'qty' => 2, 'price' => 20000, 'status' => 'pending']], ['status' => 'pending']);
+
+    $this->actingAs($staff)->postJson('/staff/pos/send-to-kitchen', [
+        'table_id' => $table->id,
+        'reduced_items' => [['order_item_id' => $order->items->first()->id, 'reduce_quantity' => 1, 'cancellation_reason' => 'Khách đổi ý']],
+    ])->assertStatus(422);
+
+    expect($order->items->first()->fresh()->quantity)->toBe(2);
+});
+
+test('web hien ly do cu the khi reduce vi pham guard', function () {
+    $staff = posStaff(['pos.view', 'pos.create', 'orders.cancel'], ['/staff/pos']);
+    $table = posTable(['status' => 'occupied']);
+    $orderA = posOrder($table, [['item' => posMenuItem(), 'qty' => 2, 'price' => 20000]], ['status' => 'pending']);
+    $orderB = posOrder($table, [['item' => posMenuItem(), 'qty' => 2, 'price' => 20000]], ['status' => 'pending']);
+
+    $this->actingAs($staff)->post('/staff/pos/send-to-kitchen', [
+        'table_id' => $table->id,
+        'order_id' => $orderA->id,
+        'reduced_items' => [['order_item_id' => $orderB->items->first()->id, 'reduce_quantity' => 1, 'cancellation_reason' => 'Khách đổi ý']],
+    ])->assertSessionHasErrors(['error']);
+
+    expect($orderB->items->first()->fresh()->quantity)->toBe(2);
 });
 
 test('reduce dung order_id van giam binh thuong', function () {
