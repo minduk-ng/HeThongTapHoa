@@ -138,7 +138,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/suppliers', [SupplierController::class, 'store'])->middleware('permission:suppliers.create');
         Route::post('/suppliers/{supplier}', [SupplierController::class, 'update'])->middleware('permission:suppliers.edit');
         Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->middleware('permission:suppliers.delete');
-        Route::post('/suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->middleware('permission:suppliers.edit');
+        Route::post('/suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->middleware('permission:suppliers.pay');
 
         // Promotions Management
         Route::get('/promotions', [PromotionController::class, 'index'])->middleware('permission:promotions.view');
@@ -206,25 +206,25 @@ Route::middleware('auth')->group(function () {
         Route::get('/pos', [POSController::class, 'index'])->middleware('permission:pos.view');
         Route::post('/pos/reserve', [ReservationController::class, 'reserve'])->middleware('permission:pos.create');
         Route::post('/pos/reservation/check-in', [ReservationController::class, 'checkInReservation'])->middleware('permission:pos.create');
-        Route::post('/pos/reservation/cancel', [ReservationController::class, 'cancelReservation'])->middleware('permission:pos.create');
-        Route::post('/pos/deposit', [ReservationController::class, 'deposit'])->middleware('permission:pos.create');
+        Route::post('/pos/reservation/cancel', [ReservationController::class, 'cancelReservation'])->middleware('permission:orders.cancel');
+        Route::post('/pos/deposit', [ReservationController::class, 'deposit'])->middleware('permission:deposits.create');
         Route::post('/pos/send-to-kitchen', [POSController::class, 'sendToKitchen'])->middleware('permission:pos.create');
         Route::post('/pos/validate-promotion', [PaymentController::class, 'validatePromotion'])->middleware('permission:pos.create');
         Route::post('/pos/available-promotions', [PaymentController::class, 'availablePromotions'])->middleware('permission:pos.create');
         Route::post('/pos/checkout', [PaymentController::class, 'checkout'])->middleware('permission:pos.create');
-        Route::post('/pos/refund', [RefundController::class, 'store'])->middleware('permission:pos.create');
+        Route::post('/pos/refund', [RefundController::class, 'store'])->middleware('permission:payments.refund');
         Route::post('/pos/bulk-checkout', [PaymentController::class, 'bulkCheckout'])->middleware('permission:pos.create');
         Route::post('/pos/customers/search', [StaffCustomerController::class, 'search'])->middleware('permission:pos.create');
         Route::post('/pos/customers', [StaffCustomerController::class, 'store'])->middleware('permission:pos.create');
         Route::post('/pos/transfer-table', [TableOperationController::class, 'transferTable'])->middleware('permission:pos.create');
         Route::post('/pos/merge-tables', [TableOperationController::class, 'mergeTables'])->middleware('permission:pos.create');
         Route::post('/pos/unmerge-table', [TableOperationController::class, 'unmergeTable'])->middleware('permission:pos.create');
-        Route::post('/pos/cancel-order', [POSController::class, 'cancelOrder'])->middleware('permission:pos.cancel_item|kitchen.cancel_item');
+        Route::post('/pos/cancel-order', [POSController::class, 'cancelOrder'])->middleware('permission:orders.cancel');
 
         Route::get('/shifts', [ShiftController::class, 'index'])->middleware('permission:shifts.view');
         Route::post('/shifts/open', [ShiftController::class, 'open'])->middleware('permission:shifts.open');
         Route::get('/shifts/current', [ShiftController::class, 'current'])->middleware('permission:shifts.view');
-        Route::post('/shifts/movements', [ShiftController::class, 'storeMovement'])->middleware('permission:shifts.view');
+        Route::post('/shifts/movements', [ShiftController::class, 'storeMovement'])->middleware('permission:shifts.movement');
         Route::post('/shifts/close', [ShiftController::class, 'close'])->middleware('permission:shifts.close');
 
         Route::get('/kitchen', [KitchenController::class, 'index'])->middleware('permission:kitchen.view');

@@ -12,7 +12,7 @@ test('nguoi khong co quyen pos.create bi chan validate-promotion 403', function 
         ->assertStatus(403);
 });
 
-test('nguoi khong quyen pos.cancel_item|kitchen.cancel_item bi chan cancel-order 403', function () {
+test('nguoi khong quyen orders.cancel bi chan cancel-order 403', function () {
     actingAs(posStaff([], []))
         ->post('/staff/pos/cancel-order', ['table_id' => 1, 'cancellation_reason' => 'x'])
         ->assertStatus(403);
@@ -30,8 +30,8 @@ test('nguoi khong quyen promotions.view bi chan danh sach khuyen mai 403', funct
         ->assertStatus(403);
 });
 
-test('nhan vien co pos.cancel_item (khong co kitchen.cancel_item) duoc cancel-item', function () {
-    $staff = posStaff(['pos.view', 'pos.create', 'pos.cancel_item'], ['/staff/pos']);
+test('nhan vien co orders.cancel duoc cancel-order', function () {
+    $staff = posStaff(['pos.view', 'pos.create', 'orders.cancel'], ['/staff/pos']);
     $item = posMenuItem();
     $table = posTable(['status' => 'occupied']);
     $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 30000, 'status' => 'pending']], ['status' => 'pending']);

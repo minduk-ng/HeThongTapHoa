@@ -201,6 +201,10 @@ class POSController extends Controller
             'idempotency_key' => 'nullable|string|max:100',
         ]);
 
+        if (! empty($validated['reduced_items']) && ! $request->user()?->hasPermission('orders.cancel')) {
+            abort(403);
+        }
+
         if (IdempotencyGuard::isDuplicate($request, 'send_to_kitchen', [
             'order_id' => $validated['order_id'] ?? null,
             'table_id' => $validated['table_id'] ?? null,

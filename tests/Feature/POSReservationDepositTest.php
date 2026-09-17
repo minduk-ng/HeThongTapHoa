@@ -125,7 +125,7 @@ it('rejects check-in for non-reserved order', function () {
 });
 
 it('cancels reservation with deposit refund and releases table', function () {
-    $staff = posStaff();
+    $staff = posStaff(['pos.view', 'pos.create', 'orders.cancel', 'deposits.refund']);
     $table = posTable(['status' => 'reserved', 'reservation_name' => 'Anh Đức']);
     $order = posOrder($table, [], ['status' => 'reserved']);
     $deposit = Deposit::create([
@@ -148,7 +148,7 @@ it('cancels reservation with deposit refund and releases table', function () {
 });
 
 it('cancels reservation forfeiting deposit on occupied table without touching table', function () {
-    $staff = posStaff();
+    $staff = posStaff(['pos.view', 'pos.create', 'orders.cancel']);
     $table = posTable(['status' => 'occupied']);
     posOrder($table); // khách hiện tại
     $reserved = posOrder($table, [], ['status' => 'reserved']);
@@ -165,7 +165,7 @@ it('cancels reservation forfeiting deposit on occupied table without touching ta
 });
 
 it('requires deposit_resolution when held deposit exists', function () {
-    $staff = posStaff();
+    $staff = posStaff(['pos.view', 'pos.create', 'orders.cancel']);
     $order = posOrder(posTable(['status' => 'reserved']), [], ['status' => 'reserved']);
     Deposit::create(['order_id' => $order->id, 'amount' => 50000, 'method' => 'cash', 'status' => 'held']);
 
@@ -175,7 +175,7 @@ it('requires deposit_resolution when held deposit exists', function () {
 });
 
 it('records a deposit for an active order', function () {
-    $staff = posStaff();
+    $staff = posStaff(['pos.view', 'pos.create', 'deposits.create']);
     $order = posOrder(posTable(['status' => 'occupied']), [], ['status' => 'pending']);
 
     $this->actingAs($staff)->postJson('/staff/pos/deposit', [
@@ -188,7 +188,7 @@ it('records a deposit for an active order', function () {
 });
 
 it('allows multiple deposits summed on the same order', function () {
-    $staff = posStaff();
+    $staff = posStaff(['pos.view', 'pos.create', 'deposits.create']);
     $order = posOrder(posTable(['status' => 'occupied']), [], ['status' => 'pending']);
     Deposit::create(['order_id' => $order->id, 'amount' => 100000, 'method' => 'cash', 'status' => 'held']);
 
@@ -200,7 +200,7 @@ it('allows multiple deposits summed on the same order', function () {
 });
 
 it('rejects deposit for paid or cancelled orders', function () {
-    $staff = posStaff();
+    $staff = posStaff(['pos.view', 'pos.create', 'deposits.create']);
     $order = posOrder(posTable(), [], ['status' => 'paid']);
 
     $this->actingAs($staff)->postJson('/staff/pos/deposit', [

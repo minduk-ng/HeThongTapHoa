@@ -3,7 +3,7 @@
 use App\Services\Checkout\OrderTotals;
 
 test('reduce-items khong con ghi total vao orders, preview dung', function () {
-    $this->actingAs(posStaff());
+    $this->actingAs(posStaff(['pos.view', 'pos.create', 'orders.cancel']));
     $itemA = posMenuItem(['price' => 30000, 'vat_rate' => 0]);
     $table = posTable(['status' => 'occupied']);
     $order = posOrder($table, [

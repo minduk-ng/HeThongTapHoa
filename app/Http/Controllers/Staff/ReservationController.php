@@ -33,6 +33,10 @@ class ReservationController extends Controller
             'idempotency_key' => 'nullable|string',
         ]);
 
+        if (($validated['deposit_resolution'] ?? null) === 'refund' && ! $request->user()?->hasPermission('deposits.refund')) {
+            abort(403);
+        }
+
         if (IdempotencyGuard::isDuplicate($request, 'cancel_reservation', [
             'order_id' => $validated['order_id'],
             'deposit_resolution' => $validated['deposit_resolution'] ?? null,

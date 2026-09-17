@@ -275,6 +275,8 @@ class AuthorizationSeeder extends Seeder
             'orders.view',
             'dashboard.view',
             'reports.view',
+            'payments.refund', 'deposits.create', 'deposits.refund',
+            'suppliers.pay', 'orders.cancel', 'shifts.movement', 'cash-flow.view',
         ];
 
         foreach ($permissions as $permission) {
@@ -362,6 +364,41 @@ class AuthorizationSeeder extends Seeder
                 'role_id' => $guestRoleId,
                 'page_id' => $homepageId,
             ]);
+        }
+
+        // 7. Cashier role: operational money/cancel permissions.
+        // Guest/kitchen/inventory roles are intentionally excluded.
+        DB::table('roles')->updateOrInsert(
+            ['name' => 'cashier'],
+            ['description' => 'Thu ngân (nghiệp vụ tiền/hủy)', 'is_system' => false, 'created_at' => $now, 'updated_at' => $now]
+        );
+        $cashierRoleId = DB::table('roles')->where('name', 'cashier')->value('id');
+
+        $cashierPermissions = [
+            'dashboard.view',
+            'pos.view', 'pos.create',
+            'orders.view',
+            'shifts.view', 'shifts.open', 'shifts.close',
+            'suppliers.view',
+            'payments.refund', 'deposits.create', 'deposits.refund',
+            'suppliers.pay', 'orders.cancel', 'shifts.movement', 'cash-flow.view',
+        ];
+        $cashierPermissionIds = DB::table('permissions')->whereIn('name', $cashierPermissions)->pluck('id');
+        foreach ($cashierPermissionIds as $permissionId) {
+            DB::table('role_permissions')->updateOrInsert([
+                'role_id' => $cashierRoleId,
+                'permission_id' => $permissionId,
+            ]);
+        }
+
+        foreach (['/', '/staff/pos', '/staff/shifts', '/manager/suppliers'] as $routePath) {
+            $pageId = DB::table('pages')->where('route_path', $routePath)->value('id');
+            if ($pageId) {
+                DB::table('role_pages')->updateOrInsert([
+                    'role_id' => $cashierRoleId,
+                    'page_id' => $pageId,
+                ]);
+            }
         }
     }
 }
