@@ -109,7 +109,7 @@ export default function Settings() {
                     verifyUrl: '/profile/verify-email-otp'
                 });
             } else {
-                setEmailError(result.errors?.email || 'Email không hợp lệ hoặc đã được sử dụng.');
+                setEmailError(result.errors?.email || result.errors?.password || 'Email không hợp lệ hoặc đã được sử dụng.');
             }
         } catch {
             setEmailError('Đã có lỗi xảy ra.');

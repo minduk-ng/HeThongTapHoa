@@ -89,6 +89,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/update-email', [ProfileController::class, 'updateEmail']);
     Route::post('/profile/verify-email-otp', [ProfileController::class, 'verifyEmailOtp'])->middleware(['throttle:10,1']);
     Route::post('/profile/setup-password', [ProfileController::class, 'setupPassword']);
+    Route::post('/profile/confirm-password', [ProfileController::class, 'confirmPassword'])->middleware(['throttle:10,1']);
     Route::post('/profile/change-password', [ProfileController::class, 'changePassword']);
     Route::post('/profile/verify-password-otp', [ProfileController::class, 'verifyPasswordOtp'])->middleware(['throttle:10,1']);
 

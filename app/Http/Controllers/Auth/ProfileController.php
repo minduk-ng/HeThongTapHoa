@@ -3,18 +3,23 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Mail\EmailChangeAlert;
 use App\Mail\OtpMail;
 use App\Models\OtpCode;
+use App\Models\SecurityAuditLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ProfileController extends Controller
 {
+    private const RECENT_AUTH_TTL = 900; // 15 minutes
+
     public function show(Request $request): Response
     {
         return Inertia::render('profile/Settings');
@@ -41,8 +46,40 @@ class ProfileController extends Controller
         ]);
     }
 
+    public function confirmPassword(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if ($user->password === null) {
+            return response()->json(['errors' => ['password' => 'Tài khoản Google chưa thiết lập mật khẩu. Vui lòng thiết lập mật khẩu trước.']], 422);
+        }
+
+        $validated = $request->validate([
+            'password' => ['required', 'string'],
+        ]);
+
+        if (! Hash::check($validated['password'], $user->password)) {
+            return response()->json(['errors' => ['password' => 'Mật khẩu không chính xác.']], 422);
+        }
+
+        $request->session()->put('recent_auth_at', time());
+
+        return response()->json(['success' => true]);
+    }
+
+    private function hasRecentAuth(Request $request): bool
+    {
+        $at = $request->session()->get('recent_auth_at');
+        $now = time();
+
+        return is_int($at) && $at <= $now && ($now - $at) <= self::RECENT_AUTH_TTL;
+    }
+
     public function updateEmail(Request $request): JsonResponse
     {
+        if (! $this->hasRecentAuth($request)) {
+            return response()->json(['errors' => ['password' => 'Vui lòng xác nhận mật khẩu trước khi đổi email.']], 403);
+        }
+
         $validated = $request->validate([
             'email' => ['required', 'email', 'unique:users,email,'.Auth::id()],
         ]);
@@ -106,8 +143,14 @@ class ProfileController extends Controller
         $otp->delete();
 
         $user = Auth::user();
-        $user->update(['email' => $newEmail]);
-        $request->session()->forget(['pending_new_email', 'otp_email', 'otp_type']);
+        $oldEmail = $user->email;
+        // ponytail: rotate remember token inline; Plan 2 SessionRevoker replaces this while preserving behavior.
+        $user->forceFill(['email' => $newEmail, 'remember_token' => Str::random(60)])->save();
+
+        Mail::to($oldEmail)->send(new EmailChangeAlert($oldEmail, $newEmail));
+        SecurityAuditLog::record($user, 'user.email.updated', $user, ['email' => $oldEmail], ['email' => $newEmail], $request->ip(), $request->userAgent());
+
+        $request->session()->forget(['pending_new_email', 'otp_email', 'otp_type', 'recent_auth_at']);
 
         return response()->json([
             'success' => true,
@@ -135,6 +178,8 @@ class ProfileController extends Controller
         $user->update([
             'password' => Hash::make($validated['password']),
         ]);
+
+        $request->session()->put('recent_auth_at', time());
 
         return response()->json([
             'success' => true,
