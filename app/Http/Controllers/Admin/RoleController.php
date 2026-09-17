@@ -197,7 +197,7 @@ class RoleController extends Controller
             Cache::forget("user_permissions:{$id}");
         }
 
-        SecurityAuditLog::record($actor, 'role.deleted', null, $before, null, $request->ip(), $request->userAgent());
+        SecurityAuditLog::record($actor, 'role.deleted', $role, $before, null, $request->ip(), $request->userAgent());
 
         return redirect()->back()->with('success', 'Xóa nhóm quyền thành công.');
     }

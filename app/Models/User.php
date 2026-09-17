@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Cache;
  * @property Carbon|null $updated_at
  */
 #[Fillable(['name', 'email', 'password', 'google_id', 'avatar'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'is_root_admin'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
