@@ -36,6 +36,7 @@ use App\Http\Controllers\Reports\ReservationsReportController;
 use App\Http\Controllers\Reports\SalesInvoiceReportController;
 use App\Http\Controllers\Reports\ShiftReportController;
 use App\Http\Controllers\Reports\StockMovementReportController;
+use App\Http\Controllers\Staff\CheckoutLockController;
 use App\Http\Controllers\Staff\CustomerController as StaffCustomerController;
 use App\Http\Controllers\Staff\KitchenController;
 use App\Http\Controllers\Staff\PaymentController;
@@ -216,6 +217,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/pos/validate-promotion', [PaymentController::class, 'validatePromotion'])->middleware('permission:pos.create');
         Route::post('/pos/available-promotions', [PaymentController::class, 'availablePromotions'])->middleware('permission:pos.create');
         Route::post('/pos/checkout', [PaymentController::class, 'checkout'])->middleware('permission:pos.create');
+        Route::post('/pos/checkout-lock/acquire', [CheckoutLockController::class, 'acquire'])->middleware('permission:pos.create');
+        Route::post('/pos/checkout-lock/release', [CheckoutLockController::class, 'release'])->middleware('permission:pos.create');
+        Route::post('/pos/checkout-lock/renew', [CheckoutLockController::class, 'renew'])->middleware('permission:pos.create');
+        Route::get('/pos/checkout-lock/status', [CheckoutLockController::class, 'status'])->middleware('permission:pos.create');
         Route::post('/pos/refund', [RefundController::class, 'store'])->middleware('permission:payments.refund');
         Route::post('/pos/bulk-checkout', [PaymentController::class, 'bulkCheckout'])->middleware('permission:pos.create');
         Route::post('/pos/customers/search', [StaffCustomerController::class, 'search'])->middleware('permission:pos.create');
