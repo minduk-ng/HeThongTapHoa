@@ -240,7 +240,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/kitchen', [KitchenController::class, 'index'])->middleware('permission:kitchen.view');
         Route::post('/kitchen/complete-items', [KitchenController::class, 'completeItems'])->middleware('permission:kitchen.update');
         Route::post('/kitchen/complete/{order}', [KitchenController::class, 'completeOrder'])->middleware('permission:kitchen.update');
-        Route::post('/kitchen/cancel-item', [KitchenController::class, 'cancelItem'])->middleware('permission:kitchen.cancel_item|pos.cancel_item');
+        Route::post('/kitchen/cancel-item', [KitchenController::class, 'cancelItem'])->middleware('permission:orders.cancel');
 
         // Serving Display
         Route::get('/serving', [ServingController::class, 'index'])->middleware('permission:serving.view');

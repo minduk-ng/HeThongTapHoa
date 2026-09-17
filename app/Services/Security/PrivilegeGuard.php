@@ -21,6 +21,12 @@ final class PrivilegeGuard
             abort_if($target->id !== $actor->id && in_array('admin', $roles, true), 403);
         }
         abort_if($actor->id === $target->id && ! $actor->is_root_admin, 403);
+        if ($roles !== []) {
+            $grantRoles = Role::whereIn('name', $roles)->with(['permissions', 'pages'])->get();
+            $permissionNames = $grantRoles->flatMap(fn (Role $r) => $r->permissions->pluck('name'))->map(fn ($n): string => (string) $n)->unique()->values()->all();
+            $pageIds = $grantRoles->flatMap(fn (Role $r) => $r->pages->pluck('id'))->map(fn ($id): int => (int) $id)->unique()->values()->all();
+            self::assertCanGrant($actor, $permissionNames, $pageIds);
+        }
     }
 
     public static function assertCanModifyUser(User $actor, User $target): void

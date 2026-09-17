@@ -175,7 +175,11 @@ class TableController extends Controller
                 $validated['reservation_note'] = null;
             } elseif ($validated['status'] === 'available' && $reservedOrder) {
                 // Cố ý hủy đặt bàn: hoàn cọc + audit
-                foreach ($reservedOrder->deposits()->where('status', 'held')->get() as $deposit) {
+                $heldDeposits = $reservedOrder->deposits()->where('status', 'held')->get();
+                if ($heldDeposits->isNotEmpty()) {
+                    abort_unless($request->user()?->hasPermission('deposits.refund'), 403);
+                }
+                foreach ($heldDeposits as $deposit) {
                     $deposit->update([
                         'status' => 'refunded',
                         'resolved_at' => now(),

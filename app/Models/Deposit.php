@@ -17,7 +17,6 @@ class Deposit extends Model
         'amount',
         'method',
         'reference',
-        'bank_verified',
         'status',
         'received_by_user_id',
         'resolved_by_user_id',
@@ -26,7 +25,7 @@ class Deposit extends Model
         'note',
     ];
 
-    // verified_by_user_id / verified_at / shift_id are server-derived only —
+    // verified_by_user_id / verified_at / shift_id / bank_verified are server-derived only —
     // never mass-assignable (same guard pattern as User::is_root_admin).
 
     protected $casts = [

@@ -13,9 +13,11 @@ export interface CashFlowEntry {
     type: string;
     amount: number;
     method: string;
+    actor_id: number | null;
     actor_name: string | null;
     shift_id: number | null;
     invoice_id: number | null;
+    invoice_code: string | null;
     order_id: number | null;
     supplier_id: number | null;
     warning_flags: string[];
@@ -37,6 +39,8 @@ interface CashFlowManagerProps {
         type: string;
         method: string;
         only_warnings: boolean;
+        shift: string;
+        employee: string;
     };
     types: string[];
 }
@@ -79,6 +83,8 @@ export default function CashFlowManager({
     const [type, setType] = useState(filters.type);
     const [method, setMethod] = useState(filters.method);
     const [onlyWarnings, setOnlyWarnings] = useState(filters.only_warnings);
+    const [shift, setShift] = useState(filters.shift);
+    const [employee, setEmployee] = useState(filters.employee);
 
     const applyFilters = (
         overrides: Record<string, string | boolean | undefined> = {},
@@ -92,6 +98,8 @@ export default function CashFlowManager({
                 type: type === 'all' ? undefined : type,
                 method: method === 'all' ? undefined : method,
                 only_warnings: onlyWarnings || undefined,
+                shift: shift === 'all' ? undefined : shift,
+                employee: employee === 'all' ? undefined : employee,
                 ...overrides,
             },
             { preserveState: true, replace: true },
@@ -103,6 +111,8 @@ export default function CashFlowManager({
         setType('all');
         setMethod('all');
         setOnlyWarnings(false);
+        setShift('all');
+        setEmployee('all');
         router.get(
             '/manager/cash-flow',
             { start_date: startDate, end_date: endDate },
@@ -114,9 +124,29 @@ export default function CashFlowManager({
         direction !== 'all' ||
         type !== 'all' ||
         method !== 'all' ||
-        onlyWarnings;
+        onlyWarnings ||
+        shift !== 'all' ||
+        employee !== 'all';
 
     const safeEntries = Array.isArray(entries) ? entries : [];
+
+    const shiftOptions = React.useMemo(() => {
+        const ids = new Map<number, true>();
+        for (const e of safeEntries) {
+            if (e.shift_id != null) ids.set(e.shift_id, true);
+        }
+        return [...ids.keys()].sort((a, b) => b - a);
+    }, [safeEntries]);
+
+    const employeeOptions = React.useMemo(() => {
+        const map = new Map<number, string>();
+        for (const e of safeEntries) {
+            if (e.actor_id != null && !map.has(e.actor_id)) {
+                map.set(e.actor_id, e.actor_name ?? `#${e.actor_id}`);
+            }
+        }
+        return [...map.entries()];
+    }, [safeEntries]);
 
     const columns: DataTableColumn<CashFlowEntry>[] = [
         {
@@ -191,6 +221,60 @@ export default function CashFlowManager({
                         ))}
                     </span>
                 ),
+        },
+        {
+            key: 'links',
+            header: 'Liên kết',
+            render: (row) => {
+                const day = new Date(row.created_at).toISOString().slice(0, 10);
+                const linkClass =
+                    'text-xs font-medium text-sky-600 hover:underline dark:text-sky-400';
+                return (
+                    <span className="flex flex-wrap gap-2">
+                        {row.order_id != null ? (
+                            <button
+                                type="button"
+                                className={linkClass}
+                                onClick={() =>
+                                    router.get(`/manager/orders/${row.order_id}`)
+                                }
+                            >
+                                Đơn #{row.order_id}
+                            </button>
+                        ) : null}
+                        {row.invoice_id != null ? (
+                            <button
+                                type="button"
+                                className={linkClass}
+                                onClick={() =>
+                                    router.get('/reports/sales-invoices', {
+                                        start_date: day,
+                                        end_date: day,
+                                    })
+                                }
+                            >
+                                HĐ {row.invoice_code ?? `#${row.invoice_id}`}
+                            </button>
+                        ) : null}
+                        {row.supplier_id != null ? (
+                            <button
+                                type="button"
+                                className={linkClass}
+                                onClick={() =>
+                                    router.get('/manager/suppliers')
+                                }
+                            >
+                                NCC #{row.supplier_id}
+                            </button>
+                        ) : null}
+                        {row.order_id == null &&
+                        row.invoice_id == null &&
+                        row.supplier_id == null ? (
+                            <span className="text-zinc-400">—</span>
+                        ) : null}
+                    </span>
+                );
+            },
         },
     ];
 
@@ -302,6 +386,48 @@ export default function CashFlowManager({
                             />
                             Chỉ dòng cảnh báo
                         </label>
+                        <select
+                            aria-label="Ca làm việc"
+                            className={selectClass}
+                            value={shift}
+                            onChange={(e) => {
+                                setShift(e.target.value);
+                                applyFilters({
+                                    shift:
+                                        e.target.value === 'all'
+                                            ? undefined
+                                            : e.target.value,
+                                });
+                            }}
+                        >
+                            <option value="all">Mọi ca</option>
+                            {shiftOptions.map((id) => (
+                                <option key={id} value={String(id)}>
+                                    Ca #{id}
+                                </option>
+                            ))}
+                        </select>
+                        <select
+                            aria-label="Nhân viên"
+                            className={selectClass}
+                            value={employee}
+                            onChange={(e) => {
+                                setEmployee(e.target.value);
+                                applyFilters({
+                                    employee:
+                                        e.target.value === 'all'
+                                            ? undefined
+                                            : e.target.value,
+                                });
+                            }}
+                        >
+                            <option value="all">Mọi nhân viên</option>
+                            {employeeOptions.map(([id, name]) => (
+                                <option key={id} value={String(id)}>
+                                    {name}
+                                </option>
+                            ))}
+                        </select>
                         <button
                             type="button"
                             onClick={resetFilters}

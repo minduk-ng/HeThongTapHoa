@@ -11,6 +11,7 @@ use App\Models\Promotion;
 use App\Models\Table;
 use App\Services\Checkout\CheckoutService;
 use App\Services\IdempotencyGuard;
+use App\Services\POS\CheckoutLockService;
 use App\Services\Promotions\PromotionEngine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -167,12 +168,28 @@ class PaymentController extends Controller
             return back()->with('success', 'Thanh toán đã được ghi nhận thành công!');
         }
 
+        $preTableId = Order::where('id', $validated['order_id'])->value('table_id');
+        if ($conflict = $this->checkoutLockConflict($request, [$preTableId])) {
+            IdempotencyGuard::release($request, 'checkout', [
+                'order_id' => $validated['order_id'],
+                'amount_received' => $validated['amount_received'],
+            ]);
+            $message = 'Bàn đang được thanh toán bởi '.($conflict['user_name'] ?? 'nhân viên khác').'.';
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $message, 'lock' => $conflict], 409);
+            }
+            abort(409, $message);
+        }
+
         try {
             $order = null;
             $totalAmount = 0;
             $result = DB::transaction(function () use ($validated, $request, &$order, &$totalAmount) {
                 $order = Order::with(['items.menuItem'])->lockForUpdate()->where('id', $validated['order_id'])->firstOrFail();
 
+                if ($conflict = $this->checkoutLockConflict($request, [$order->table_id])) {
+                    throw new \Exception('Bàn đang được thanh toán bởi '.($conflict['user_name'] ?? 'nhân viên khác').'.', 409);
+                }
                 if (in_array($order->status, ['paid', 'cancelled'])) {
                     throw new \Exception('Đơn hàng này đã được thanh toán hoặc đã hủy.');
                 }
@@ -290,10 +307,16 @@ class PaymentController extends Controller
             ]);
             Log::error('POS checkout DB error: '.$e->getMessage());
 
+            $status = (int) ($e->getCode() === 409 ? 409 : 422);
+
             if ($request->wantsJson()) {
                 return response()->json([
                     'error' => 'Thanh toán thất bại: '.$e->getMessage(),
-                ], 422);
+                ], $status);
+            }
+
+            if ($status === 409) {
+                abort(409, $e->getMessage());
             }
 
             return back()->withErrors(['error' => 'Thanh toán thất bại: '.$e->getMessage()]);
@@ -326,6 +349,22 @@ class PaymentController extends Controller
                 : back()->with('success', 'Thanh toán đã được ghi nhận!');
         }
 
+        $preTableIds = Order::whereIn('id', $validated['order_ids'])->pluck('table_id')->all();
+        if (! empty($validated['table_id'])) {
+            $preTableIds[] = $validated['table_id'];
+        }
+        if ($conflict = $this->checkoutLockConflict($request, $preTableIds)) {
+            IdempotencyGuard::release($request, 'bulk_checkout', [
+                'order_ids' => collect(array_values($validated['order_ids']))->sort()->values()->all(),
+                'amount_received' => $validated['amount_received'],
+            ]);
+            $message = 'Bàn đang được thanh toán bởi '.($conflict['user_name'] ?? 'nhân viên khác').'.';
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $message, 'lock' => $conflict], 409);
+            }
+            abort(409, $message);
+        }
+
         try {
             $invoice = null;
             $totalAmount = 0;
@@ -346,6 +385,14 @@ class PaymentController extends Controller
                 $reservedOrder = $orders->first(fn ($o) => $o->status === 'reserved');
                 if ($reservedOrder) {
                     throw new \Exception("Đơn {$reservedOrder->order_code} là đơn đặt bàn chưa check-in, không thể thanh toán", 422);
+                }
+
+                $lockTableIds = $orders->pluck('table_id')->all();
+                if (! empty($validated['table_id'])) {
+                    $lockTableIds[] = $validated['table_id'];
+                }
+                if ($conflict = $this->checkoutLockConflict($request, $lockTableIds)) {
+                    throw new \Exception('Bàn đang được thanh toán bởi '.($conflict['user_name'] ?? 'nhân viên khác').'.', 409);
                 }
 
                 // Các đơn trong bulk phải cùng một bàn (hoặc cùng nhóm gộp)
@@ -466,12 +513,53 @@ class PaymentController extends Controller
             ]);
             Log::error('POS bulk checkout error: '.$e->getMessage());
 
+            $status = (int) ($e->getCode() === 409 ? 409 : 422);
+
             if ($request->wantsJson()) {
-                return response()->json(['error' => 'Thanh toán thất bại: '.$e->getMessage()], 422);
+                return response()->json(['error' => 'Thanh toán thất bại: '.$e->getMessage()], $status);
+            }
+
+            if ($status === 409) {
+                abort(409, $e->getMessage());
             }
 
             return back()->withErrors(['error' => 'Thanh toán thất bại: '.$e->getMessage()]);
         }
+    }
+
+    /**
+     * LIVE checkout lock owned by another user blocks checkout (409 + owner info).
+     * No lock → allowed (backward compat for callers that never acquire).
+     * Root admin / admin bypass like the release path.
+     *
+     * @param  array<int, mixed>  $tableIds
+     * @return array<string, mixed>|null
+     */
+    private function checkoutLockConflict(Request $request, array $tableIds): ?array
+    {
+        $user = $request->user();
+        if (! $user) {
+            return null;
+        }
+        if ((bool) ($user->is_root_admin ?? false) || $user->isAdmin()) {
+            return null;
+        }
+        $tableIds = array_values(array_unique(array_filter(
+            array_map('intval', $tableIds),
+            fn (int $id): bool => $id > 0
+        )));
+        if ($tableIds === []) {
+            return null;
+        }
+        $locks = app(CheckoutLockService::class);
+        foreach ($tableIds as $tableId) {
+            $lock = $locks->status($tableId);
+            if ($lock !== null && (int) ($lock['user_id'] ?? 0) !== (int) $user->id) {
+                return $lock;
+            }
+        }
+
+        return null;
     }
 
     /**

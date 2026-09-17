@@ -333,13 +333,23 @@ class AuthorizationSeeder extends Seeder
             'role_id' => $adminRoleId,
         ]);
 
-        // Root admin invariant: exactly one ADMIN_EMAIL user holds the flag; abort when ambiguous.
-        $rootMatches = DB::table('users')->where('email', $adminEmail)->count();
-        if ($rootMatches !== 1) {
-            throw new \RuntimeException("Seed root admin ambiguous: expected exactly 1 user with ADMIN_EMAIL ({$adminEmail}), found {$rootMatches}.");
+        // Root admin invariant: giữ nguyên root hiện tại khi đã có đúng một;
+        // chỉ bootstrap từ ADMIN_EMAIL khi chưa có root; abort khi bootstrap mơ hồ.
+        $existingRootEmail = DB::table('users')->where('is_root_admin', true)->value('email');
+        if ($existingRootEmail !== null && DB::table('users')->where('is_root_admin', true)->count() === 1) {
+            $this->command->warn("Seed: giữ nguyên root admin hiện tại ({$existingRootEmail}), bỏ qua ADMIN_EMAIL bootstrap.");
+        } else {
+            $rootMatches = DB::table('users')->where('email', $adminEmail)->count();
+            if ($rootMatches > 1) {
+                throw new \RuntimeException("Seed root admin ambiguous: expected at most 1 user with ADMIN_EMAIL ({$adminEmail}), found {$rootMatches}.");
+            }
+            if ($rootMatches === 0) {
+                $this->command->warn("Seed: không tìm thấy user với ADMIN_EMAIL ({$adminEmail}), bỏ qua gán root admin.");
+            } else {
+                DB::table('users')->where('email', '!=', $adminEmail)->update(['is_root_admin' => false]);
+                DB::table('users')->where('email', $adminEmail)->update(['is_root_admin' => true]);
+            }
         }
-        DB::table('users')->where('email', '!=', $adminEmail)->update(['is_root_admin' => false]);
-        DB::table('users')->where('email', $adminEmail)->update(['is_root_admin' => true]);
 
         // Assign guest role to all other users
         $guestRoleId = DB::table('roles')->where('name', 'guest')->value('id');

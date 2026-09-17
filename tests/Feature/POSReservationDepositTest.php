@@ -24,7 +24,7 @@ it('reserves an available table with customer info only', function () {
 });
 
 it('reserves with pre-selected items and deposit', function () {
-    $staff = posStaff();
+    $staff = posStaff(['pos.view', 'pos.create', 'deposits.create']);
     $table = posTable();
     $item = posMenuItem(['price' => 50000]);
 
@@ -45,6 +45,22 @@ it('reserves with pre-selected items and deposit', function () {
     expect($deposit->status)->toBe('held')
         ->and((float) $deposit->amount)->toBe(100000.0)
         ->and($deposit->received_by_user_id)->toBe($staff->id);
+});
+
+it('rejects nested deposit on reserve without deposits.create', function () {
+    $staff = posStaff();
+    $table = posTable();
+
+    $this->actingAs($staff)->postJson('/staff/pos/reserve', [
+        'table_id' => $table->id,
+        'reservation_name' => 'Chị Hoa',
+        'reservation_phone' => '0912345678',
+        'reservation_time' => now()->addHours(1)->toDateTimeString(),
+        'deposit' => ['amount' => 100000, 'method' => 'cash'],
+    ])->assertForbidden();
+
+    expect(Order::where('table_id', $table->id)->count())->toBe(0)
+        ->and(Deposit::count())->toBe(0);
 });
 
 it('keeps occupied table status when reserving for later', function () {

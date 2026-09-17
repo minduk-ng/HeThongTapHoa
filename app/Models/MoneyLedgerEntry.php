@@ -38,4 +38,10 @@ class MoneyLedgerEntry extends Model
     {
         return $this->belongsTo(Shift::class);
     }
+
+    /** @return BelongsTo<Invoice, $this> */
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class, 'invoice_id');
+    }
 }

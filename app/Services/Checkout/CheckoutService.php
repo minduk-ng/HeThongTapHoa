@@ -258,7 +258,7 @@ class CheckoutService
             foreach ($paymentRows as $row) {
                 if ((float) $row['amount'] > 0) {
                     $ledger->recordIn(
-                        'sale', (float) $row['amount'], $row['method'] ?? 'cash', $actor,
+                        'sale', (float) $row['amount'], $row['method'], $actor,
                         ['invoice_id' => $invoice->id],
                         array_filter(['note' => $row['note'] ?? null])
                     );
@@ -266,7 +266,12 @@ class CheckoutService
             }
             if ($depositTotal > $total) {
                 $depositMethods = collect($heldDeposits)->map(fn ($d) => $d->method)->unique()->values();
+                $references = collect($heldDeposits)->map(fn ($d) => $d->reference)
+                    ->filter(fn ($r) => $r !== null && $r !== '')->unique()->values()->all();
                 $meta = ['source_method' => $depositMethods->count() === 1 ? $depositMethods->first() : 'mixed'];
+                if ($references !== []) {
+                    $meta['references'] = $references;
+                }
                 if ($depositMethods->count() === 1 && ($heldDeposits[0]->reference ?? null)) {
                     $meta['reference'] = $heldDeposits[0]->reference;
                 }

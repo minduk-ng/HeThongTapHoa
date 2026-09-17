@@ -175,7 +175,7 @@ class SupplierController extends Controller
                 $outstanding = round($v->totalAmount() - (float) ($allocatedSoFar->get($vid) ?? collect())->sum(fn ($a) => (float) $a->amount), 2);
                 if ($amount > $outstanding) {
                     throw ValidationException::withMessages([
-                        'allocations' => "Phân bổ vượt quá dư nợ còn lại của phiếu {$v->voucher_code} (còn ".number_format($outstanding, 0, ',', '.')." ₫).",
+                        'allocations' => "Phân bổ vượt quá dư nợ còn lại của phiếu {$v->voucher_code} (còn ".number_format($outstanding, 0, ',', '.').' ₫).',
                     ]);
                 }
 

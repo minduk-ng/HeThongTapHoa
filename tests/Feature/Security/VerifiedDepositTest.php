@@ -97,7 +97,7 @@ test('checkout refunds excess bank deposit in cash with audited source', functio
     $table = posTable(['status' => 'occupied']);
     $item = posMenuItem(['price' => 20000]);
     $order = posOrder($table, [['item' => $item, 'qty' => 1, 'status' => 'served']], ['status' => 'completed']);
-    Deposit::create([
+    Deposit::forceCreate([
         'order_id' => $order->id, 'amount' => 100000, 'method' => 'bank_transfer',
         'status' => 'held', 'reference' => 'CK-999', 'bank_verified' => true,
     ]);
@@ -114,9 +114,11 @@ test('checkout refunds excess bank deposit in cash with audited source', functio
         ->where('amount', '<', 0)->firstOrFail();
     expect($refundPayment->method)->toBe('cash');
 
+    $invoiceId = $order->fresh()->invoice->id;
     $entry = MoneyLedgerEntry::where('type', 'deposit_refund')
-        ->where('order_id', $order->id)
-        ->orWhere('invoice_id', $order->fresh()->invoice->id)
+        ->where(function ($q) use ($order, $invoiceId) {
+            $q->where('order_id', $order->id)->orWhere('invoice_id', $invoiceId);
+        })
         ->firstOrFail();
     expect($entry->method)->toBe('cash')
         ->and($entry->meta['source_method'] ?? null)->toBe('bank_transfer')

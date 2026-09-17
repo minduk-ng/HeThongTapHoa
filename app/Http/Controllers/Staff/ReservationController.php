@@ -232,6 +232,10 @@ class ReservationController extends Controller
             'idempotency_key' => 'nullable|string',
         ]);
 
+        if (! empty($validated['deposit']) && ! $request->user()?->hasPermission('deposits.create')) {
+            abort(403);
+        }
+
         if (IdempotencyGuard::isDuplicate($request, 'reserve', [
             'table_id' => $validated['table_id'],
             'reservation_name' => $validated['reservation_name'],

@@ -9,6 +9,11 @@ class CheckoutLockService
 {
     public const TTL_SECONDS = 90;
 
+    private static function ttl(): int
+    {
+        return (int) config('pos.checkout_lock_ttl', self::TTL_SECONDS);
+    }
+
     public static function key(int $tableId): string
     {
         return "pos:checkout-lock:{$tableId}";
@@ -27,7 +32,7 @@ class CheckoutLockService
         ];
 
         // Cache::add is atomic (SET NX on Redis): only the first writer wins.
-        if (Cache::add(self::key($tableId), $payload, self::TTL_SECONDS)) {
+        if (Cache::add(self::key($tableId), $payload, self::ttl())) {
             CheckoutLockUpdated::dispatch($tableId, 'acquired', $payload);
 
             return ['acquired' => true, 'lock' => $payload];
@@ -37,7 +42,7 @@ class CheckoutLockService
 
         // Owner re-acquire is idempotent and refreshes the TTL.
         if ($existing !== null && (int) ($existing['user_id'] ?? 0) === $userId) {
-            Cache::put(self::key($tableId), $payload, self::TTL_SECONDS);
+            Cache::put(self::key($tableId), $payload, self::ttl());
             CheckoutLockUpdated::dispatch($tableId, 'acquired', $payload);
 
             return ['acquired' => true, 'lock' => $payload];
@@ -82,7 +87,8 @@ class CheckoutLockService
             return ['renewed' => false, 'lock' => $existing];
         }
 
-        Cache::put(self::key($tableId), $existing, self::TTL_SECONDS);
+        $existing['acquired_at'] = now()->toIso8601String();
+        Cache::put(self::key($tableId), $existing, self::ttl());
 
         return ['renewed' => true, 'lock' => $existing];
     }

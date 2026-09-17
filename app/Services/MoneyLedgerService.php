@@ -16,17 +16,29 @@ class MoneyLedgerService
 
     public const LARGE_CASH_OUT_THRESHOLD = 1_000_000;
 
+    /**
+     * @param  array<string, mixed>  $links
+     * @param  array<string, mixed>  $meta
+     */
     public function recordIn(string $type, float $amount, string $method, ?User $actor, array $links = [], array $meta = []): MoneyLedgerEntry
     {
         return $this->record('in', $type, $amount, $method, $actor, $links, $meta);
     }
 
+    /**
+     * @param  array<string, mixed>  $links
+     * @param  array<string, mixed>  $meta
+     */
     public function recordOut(string $type, float $amount, string $method, ?User $actor, array $links = [], array $meta = []): MoneyLedgerEntry
     {
         return $this->record('out', $type, $amount, $method, $actor, $links, $meta);
     }
 
     // Ghi trực tiếp trong transaction của caller — không tự mở transaction để tránh lồng nhau.
+    /**
+     * @param  array<string, mixed>  $links
+     * @param  array<string, mixed>  $meta
+     */
     protected function record(string $direction, string $type, float $amount, string $method, ?User $actor, array $links, array $meta): MoneyLedgerEntry
     {
         if (! in_array($type, self::TYPES, true)) {
@@ -37,7 +49,8 @@ class MoneyLedgerService
         }
 
         $flags = [];
-        if ($direction === 'out' && $method === 'cash' && $amount >= self::LARGE_CASH_OUT_THRESHOLD) {
+        $threshold = (float) config('money.large_cash_out_threshold', self::LARGE_CASH_OUT_THRESHOLD);
+        if ($direction === 'out' && $method === 'cash' && $amount >= $threshold) {
             $flags[] = 'large_cash_out';
         }
         if (in_array($type, ['order_refund', 'deposit_refund'], true)

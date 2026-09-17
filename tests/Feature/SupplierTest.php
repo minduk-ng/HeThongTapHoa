@@ -4,6 +4,7 @@ use App\Models\Ingredient;
 use App\Models\StockVoucher;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
+use App\Models\SupplierPaymentAllocation;
 
 test('tao supplier va tinh cong no tu phieu nhap', function () {
     $admin = posAdmin();
@@ -204,12 +205,12 @@ test('historically paid voucher without allocations stays debt-free and backfill
     $migration = require database_path('migrations/2026_09_17_000006_backfill_supplier_payment_allocations.php');
     $migration->up();
 
-    expect((float) \App\Models\SupplierPaymentAllocation::where('voucher_id', $v->id)->sum('amount'))->toBe(100000.0);
+    expect((float) SupplierPaymentAllocation::where('voucher_id', $v->id)->sum('amount'))->toBe(100000.0);
     expect($supplier->debt())->toBe(0.0);
 
     // Idempotent: chay lai khong tao them.
     $migration->up();
 
-    expect(\App\Models\SupplierPaymentAllocation::where('voucher_id', $v->id)->count())->toBe(1);
+    expect(SupplierPaymentAllocation::where('voucher_id', $v->id)->count())->toBe(1);
     expect($supplier->debt())->toBe(0.0);
 });

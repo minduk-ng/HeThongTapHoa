@@ -1,11 +1,12 @@
 <?php
 
 use App\Events\CheckoutLockUpdated;
+use App\Models\User;
 use Illuminate\Support\Facades\Event;
 
 use function Pest\Laravel\actingAs;
 
-function lockStaff(string $name, array $permissions = ['pos.view', 'pos.create']): \App\Models\User
+function lockStaff(string $name, array $permissions = ['pos.view', 'pos.create']): User
 {
     $user = posStaff($permissions, ['/staff/pos']);
     $user->update(['name' => $name]);
@@ -161,4 +162,30 @@ test('acquire broadcast su kien lock', function () {
     actingAs($staff)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])->assertOk();
 
     Event::assertDispatched(CheckoutLockUpdated::class, fn ($event) => $event->tableId === $table->id && $event->action === 'acquired');
+});
+
+test('checkout bi 409 khi ban dang lock boi nguoi khac, owner van checkout duoc', function () {
+    $owner = lockStaff('NhanVien A');
+    $other = lockStaff('NhanVien B');
+    $table = posTable(['status' => 'occupied']);
+    $order = posOrder($table, [['item' => posMenuItem(['price' => 20000]), 'qty' => 1, 'price' => 20000, 'status' => 'completed']], ['status' => 'completed']);
+
+    actingAs($owner)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])->assertOk();
+
+    actingAs($other)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 20000,
+    ])->assertStatus(409)
+        ->assertJsonPath('lock.user_id', $owner->id);
+
+    expect($order->fresh()->status)->not->toBe('paid');
+
+    actingAs($owner)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 20000,
+    ])->assertOk();
+
+    expect($order->fresh()->status)->toBe('paid');
 });

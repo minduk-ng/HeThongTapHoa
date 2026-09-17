@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('supplier_payment_allocations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('payment_id')->constrained('supplier_payments')->cascadeOnDelete();
-            $table->foreignId('voucher_id')->constrained('stock_vouchers')->cascadeOnDelete();
+            $table->foreignId('voucher_id')->constrained('stock_vouchers')->restrictOnDelete();
             $table->decimal('amount', 15, 2);
             $table->timestamps();
 
