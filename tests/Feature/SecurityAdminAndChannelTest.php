@@ -27,3 +27,56 @@ test('broadcasting/auth cho phep user da dang nhap', function () {
         'channel_name' => 'private-pos-channel',
     ])->assertOk();
 });
+
+test('private pos channel requires pos permission', function () {
+    $guest = posStaff([], []);
+    $this->actingAs($guest)->postJson('/broadcasting/auth', [
+        'socket_id' => '1.1', 'channel_name' => 'private-pos-channel',
+    ])->assertForbidden();
+
+    $allowed = posStaff(['pos.view'], []);
+    $this->actingAs($allowed)->postJson('/broadcasting/auth', [
+        'socket_id' => '1.1', 'channel_name' => 'private-pos-channel',
+    ])->assertOk();
+});
+
+test('private kitchen channel requires kitchen permission', function () {
+    $denied = posStaff([], []);
+    $this->actingAs($denied)->postJson('/broadcasting/auth', [
+        'socket_id' => '1.1', 'channel_name' => 'private-kitchen-channel',
+    ])->assertForbidden();
+
+    $allowed = posStaff(['kitchen.view'], []);
+    $this->actingAs($allowed)->postJson('/broadcasting/auth', [
+        'socket_id' => '1.1', 'channel_name' => 'private-kitchen-channel',
+    ])->assertOk();
+});
+
+test('private inventory channel requires ingredients or history permission', function () {
+    $denied = posStaff([], []);
+    $this->actingAs($denied)->postJson('/broadcasting/auth', [
+        'socket_id' => '1.1', 'channel_name' => 'private-inventory-channel',
+    ])->assertForbidden();
+
+    $allowed = posStaff(['ingredients.view'], []);
+    $this->actingAs($allowed)->postJson('/broadcasting/auth', [
+        'socket_id' => '1.1', 'channel_name' => 'private-inventory-channel',
+    ])->assertOk();
+
+    $allowedHistory = posStaff(['inventory.history.view'], []);
+    $this->actingAs($allowedHistory)->postJson('/broadcasting/auth', [
+        'socket_id' => '1.1', 'channel_name' => 'private-inventory-channel',
+    ])->assertOk();
+});
+
+test('presence pos-room requires pos view or create permission', function () {
+    $denied = posStaff([], []);
+    $this->actingAs($denied)->postJson('/broadcasting/auth', [
+        'socket_id' => '1.1', 'channel_name' => 'presence-pos-room',
+    ])->assertForbidden();
+
+    $allowed = posStaff(['pos.create'], []);
+    $this->actingAs($allowed)->postJson('/broadcasting/auth', [
+        'socket_id' => '1.1', 'channel_name' => 'presence-pos-room',
+    ])->assertOk();
+});
