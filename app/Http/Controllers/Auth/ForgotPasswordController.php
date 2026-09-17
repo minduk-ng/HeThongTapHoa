@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\OtpMail;
 use App\Models\OtpCode;
 use App\Models\User;
+use App\Services\Security\SessionRevoker;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -64,6 +65,7 @@ class ForgotPasswordController extends Controller
 
         if ($user) {
             $user->update(['password' => $request->password]);
+            SessionRevoker::revokeOthers($user, null);
         }
 
         // Clear session

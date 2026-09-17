@@ -7,13 +7,13 @@ use App\Mail\EmailChangeAlert;
 use App\Mail\OtpMail;
 use App\Models\OtpCode;
 use App\Models\SecurityAuditLog;
+use App\Services\Security\SessionRevoker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -136,8 +136,8 @@ class ProfileController extends Controller
 
         DB::transaction(function () use ($otp, $user, $oldEmail, $newEmail, $request): void {
             $otp->delete();
-            // ponytail: rotate remember token inline; Plan 2 SessionRevoker replaces this while preserving behavior.
-            $user->forceFill(['email' => $newEmail, 'remember_token' => Str::random(60)])->save();
+            $user->forceFill(['email' => $newEmail])->save();
+            SessionRevoker::revokeOthers($user, $request->session()->getId());
             SecurityAuditLog::record($user, 'user.email.updated', $user, ['email' => $oldEmail], ['email' => $newEmail], $request->ip(), $request->userAgent());
         });
 
@@ -145,6 +145,7 @@ class ProfileController extends Controller
         // retries via the queue instead of leaving a half-applied state.
         Mail::to($oldEmail)->queue(new EmailChangeAlert($oldEmail, $newEmail));
 
+        $request->session()->regenerate();
         $request->session()->forget(['pending_new_email', 'otp_email', 'otp_type', 'recent_auth_at']);
 
         return response()->json([
@@ -170,10 +171,14 @@ class ProfileController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $user->update([
-            'password' => Hash::make($validated['password']),
-        ]);
+        DB::transaction(function () use ($user, $validated, $request): void {
+            $user->update([
+                'password' => Hash::make($validated['password']),
+            ]);
+            SessionRevoker::revokeOthers($user, $request->session()->getId());
+        });
 
+        $request->session()->regenerate();
         $request->session()->put('recent_auth_at', time());
 
         return response()->json([
@@ -252,9 +257,13 @@ class ProfileController extends Controller
             return response()->json(['errors' => ['code' => 'Mã xác thực không đúng hoặc đã hết hạn.']], 422);
         }
 
-        $otp->delete();
+        DB::transaction(function () use ($otp, $user, $newPasswordHash, $request): void {
+            $otp->delete();
+            $user->update(['password' => $newPasswordHash]);
+            SessionRevoker::revokeOthers($user, $request->session()->getId());
+        });
 
-        $user->update(['password' => $newPasswordHash]);
+        $request->session()->regenerate();
         $request->session()->forget(['pending_new_password', 'otp_email', 'otp_type']);
 
         return response()->json([
