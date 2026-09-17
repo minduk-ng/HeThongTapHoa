@@ -75,3 +75,33 @@ test('checkout: cart with qty 5 gift item discounts only 1 unit and keeps invoic
     expect((float) $order->total)->toBe(130000.0);
     expect((float) $order->total)->toBe(round((float) $order->subtotal - (float) $order->discount_amount, 2));
 });
+
+test('checkout: multiple free_product actions clamp to line remaining subtotal', function () {
+    $admin = posAdmin();
+    $giftItem = posMenuItem(['price' => 20000, 'vat_rate' => 0]);
+
+    // Promotion tự động có 2 action free_product cùng tặng giftItem, nhưng giỏ hàng chỉ có qty=1 (subtotal 20k)
+    $p = promoV2(['type' => 'promotion']);
+    addAction($p, 'free_product', (float) $giftItem->id);
+    addAction($p, 'free_product', (float) $giftItem->id);
+
+    $table = posTable();
+    $order = posOrder($table, [
+        ['item' => $giftItem, 'qty' => 1, 'price' => 20000, 'status' => 'completed'],
+    ], ['status' => 'pending']);
+
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 0,
+    ])->assertOk();
+
+    $order->refresh();
+    $giftLine = InvoiceLine::where('invoice_id', $order->invoice_id)->where('menu_item_id', $giftItem->id)->first();
+    expect($giftLine)->not->toBeNull();
+    // discount_amount không thể vượt quá subtotal (20,000)
+    expect((float) $giftLine->discount_amount)->toBe(20000.0);
+    expect((float) $giftLine->subtotal)->toBe(20000.0);
+    expect((float) $order->discount_amount)->toBe(20000.0);
+    expect((float) $order->total)->toBe(0.0);
+});

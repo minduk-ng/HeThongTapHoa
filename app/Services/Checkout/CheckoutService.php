@@ -140,7 +140,7 @@ class CheckoutService
                         foreach ($lineInputs as $idx => $li) {
                             if ((int) $li['menu_item_id'] === $freeMenuId) {
                                 $rem = (float) $li['subtotal'] - (float) $li['discount_amount'];
-                                if ($rem >= (float) $li['unit_price'] - 0.001) {
+                                if (round($rem, 2) >= round((float) $li['unit_price'], 2)) {
                                     $targetIdx = $idx;
                                     break;
                                 }
@@ -156,7 +156,8 @@ class CheckoutService
                         }
 
                         if ($targetIdx !== null) {
-                            $unitPrice = (float) $lineInputs[$targetIdx]['unit_price'];
+                            $rem = max(0.0, (float) $lineInputs[$targetIdx]['subtotal'] - (float) $lineInputs[$targetIdx]['discount_amount']);
+                            $unitPrice = min((float) $lineInputs[$targetIdx]['unit_price'], $rem);
                             $freeGiftTotals[] = $unitPrice;
                             $lineInputs[$targetIdx]['discount_amount'] = round((float) $lineInputs[$targetIdx]['discount_amount'] + $unitPrice, 2);
                             $netLineTotal = max(0.0, (float) $lineInputs[$targetIdx]['subtotal'] - (float) $lineInputs[$targetIdx]['discount_amount']);
