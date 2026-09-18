@@ -1,7 +1,16 @@
 import { pad2 } from '../../utils/date';
 
+export function escapeCsvCell(v: string | number): string | number {
+    // ponytail: OWASP CSV injection — ' prefix forces text; numbers untouched.
+    if (typeof v === 'string' && /^[=+\-@\t\r\n]/.test(v)) {
+        return `'${v}`;
+    }
+
+    return v;
+}
+
 function escapeCell(v: string | number): string {
-    return `"${String(v).replace(/"/g, '""')}"`;
+    return `"${String(escapeCsvCell(v)).replace(/"/g, '""')}"`;
 }
 
 export function buildCSV(
@@ -53,6 +62,12 @@ const YELLOW_BG = 'FFD966';
 const LIGHT_YELLOW_BG = 'FFF2CC';
 const BLUE_BG = '4472C4';
 const BORDER_COLOR = 'D4D4D8';
+
+export function toXlsxCell(v: string | number): string | number {
+    // ponytail: explicit string cells — exceljs emits <f> only for { formula }
+    // objects, so primitive strings can never execute; coerce defensively.
+    return typeof v === 'number' ? v : `${v}`;
+}
 
 function autoColWidth(
     headers: string[],
@@ -135,9 +150,9 @@ export async function exportXLSX(
         };
     }
 
-    // Data rows
+    // Data rows (explicit string cells — never formulas)
     for (const row of rows) {
-        const excelRow = ws.addRow(row);
+        const excelRow = ws.addRow(row.map(toXlsxCell));
 
         for (let c = 1; c <= nCols; c++) {
             const cell = excelRow.getCell(c);

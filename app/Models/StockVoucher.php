@@ -41,4 +41,37 @@ class StockVoucher extends Model
     {
         return $this->belongsTo(Supplier::class);
     }
+
+    /** @return HasMany<SupplierPaymentAllocation, $this> */
+    public function paymentAllocations(): HasMany
+    {
+        return $this->hasMany(SupplierPaymentAllocation::class, 'voucher_id');
+    }
+
+    public function totalAmount(): float
+    {
+        $items = $this->relationLoaded('items') ? $this->items : $this->items()->get();
+
+        return (float) $items->sum(fn ($i) => (float) $i->quantity * (float) $i->unit_price);
+    }
+
+    public function allocatedAmount(): float
+    {
+        $allocs = $this->relationLoaded('paymentAllocations') ? $this->paymentAllocations : $this->paymentAllocations()->get();
+
+        return (float) $allocs->sum(fn ($a) => (float) $a->amount);
+    }
+
+    public function outstandingAmount(): float
+    {
+        $allocated = $this->allocatedAmount();
+
+        // Guard chuyển tiếp: phiếu is_paid=true từ code cũ chưa có allocation nào
+        // (được backfill ở migration 000006) — coi như hết nợ để không "sống lại".
+        if ($this->is_paid && round($allocated, 2) == 0.0) {
+            return 0.0;
+        }
+
+        return round($this->totalAmount() - $allocated, 2);
+    }
 }

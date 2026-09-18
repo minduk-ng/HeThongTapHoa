@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Mail\EmailChangeAlert;
 use App\Mail\OtpMail;
 use App\Models\OtpCode;
+use App\Models\SecurityAuditLog;
+use App\Services\Security\SessionRevoker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
@@ -15,6 +19,8 @@ use Inertia\Response;
 
 class ProfileController extends Controller
 {
+    private const RECENT_AUTH_TTL = 900; // 15 minutes
+
     public function show(Request $request): Response
     {
         return Inertia::render('profile/Settings');
@@ -41,17 +47,50 @@ class ProfileController extends Controller
         ]);
     }
 
+    public function confirmPassword(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if ($user->password === null) {
+            return response()->json(['errors' => ['password' => 'Tài khoản Google chưa thiết lập mật khẩu. Vui lòng thiết lập mật khẩu trước.']], 422);
+        }
+
+        $validated = $request->validate([
+            'password' => ['required', 'string'],
+        ]);
+
+        if (! Hash::check($validated['password'], $user->password)) {
+            return response()->json(['errors' => ['password' => 'Mật khẩu không chính xác.']], 422);
+        }
+
+        $request->session()->put('recent_auth_at', time());
+
+        return response()->json(['success' => true]);
+    }
+
+    private function hasRecentAuth(Request $request): bool
+    {
+        $at = $request->session()->get('recent_auth_at');
+        $now = time();
+
+        return is_int($at) && $at <= $now && ($now - $at) <= self::RECENT_AUTH_TTL;
+    }
+
     public function updateEmail(Request $request): JsonResponse
     {
+        if (! $this->hasRecentAuth($request)) {
+            return response()->json(['errors' => ['password' => 'Vui lòng xác nhận mật khẩu trước khi đổi email.']], 403);
+        }
+
         $validated = $request->validate([
             'email' => ['required', 'email', 'unique:users,email,'.Auth::id()],
         ]);
 
         $email = $validated['email'];
 
-        // Prevent resending OTP if an unexpired OTP code already exists
+        // Prevent resending OTP if a usable OTP code already exists (locked codes get rotated below)
         $existingOtp = OtpCode::where('email', $email)
             ->where('type', 'change_email')
+            ->whereNull('locked_at')
             ->where('expires_at', '>', now())
             ->first();
 
@@ -64,14 +103,7 @@ class ProfileController extends Controller
         }
 
         // Generate OTP
-        OtpCode::where('email', $email)->where('type', 'change_email')->delete();
-        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        OtpCode::create([
-            'email' => $email,
-            'code' => $code,
-            'type' => 'change_email',
-            'expires_at' => now()->addMinutes(10),
-        ]);
+        $code = OtpCode::issue($email, 'change_email');
 
         Mail::to($email)->send(new OtpMail($code, 'signup'));
 
@@ -93,21 +125,24 @@ class ProfileController extends Controller
             return response()->json(['errors' => ['code' => 'Yêu cầu đổi email không hợp lệ.']], 422);
         }
 
-        $otp = OtpCode::where('email', $newEmail)
-            ->where('type', 'change_email')
-            ->where('code', $request->code)
-            ->where('expires_at', '>', now())
-            ->first();
+        $user = Auth::user();
+        $oldEmail = $user->email;
+        $otp = OtpCode::consume($newEmail, 'change_email', $request->code, function () use ($user, $oldEmail, $newEmail, $request): void {
+            $user->forceFill(['email' => $newEmail])->save();
+            SessionRevoker::revokeOthers($user, $request->session()->getId());
+            SecurityAuditLog::record($user, 'user.email.updated', $user, ['email' => $oldEmail], ['email' => $newEmail], $request->ip(), $request->userAgent());
+        });
 
         if (! $otp) {
             return response()->json(['errors' => ['code' => 'Mã xác thực không đúng hoặc đã hết hạn.']], 422);
         }
 
-        $otp->delete();
+        // Queued after commit: EmailChangeAlert is ShouldQueue, so an SMTP failure
+        // retries via the queue instead of leaving a half-applied state.
+        Mail::to($oldEmail)->queue(new EmailChangeAlert($oldEmail, $newEmail));
 
-        $user = Auth::user();
-        $user->update(['email' => $newEmail]);
-        $request->session()->forget(['pending_new_email', 'otp_email', 'otp_type']);
+        $request->session()->regenerate(true);
+        $request->session()->forget(['pending_new_email', 'otp_email', 'otp_type', 'recent_auth_at']);
 
         return response()->json([
             'success' => true,
@@ -132,9 +167,15 @@ class ProfileController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $user->update([
-            'password' => Hash::make($validated['password']),
-        ]);
+        DB::transaction(function () use ($user, $validated, $request): void {
+            $user->update([
+                'password' => Hash::make($validated['password']),
+            ]);
+            SessionRevoker::revokeOthers($user, $request->session()->getId());
+        });
+
+        $request->session()->regenerate(true);
+        $request->session()->put('recent_auth_at', time());
 
         return response()->json([
             'success' => true,
@@ -166,9 +207,10 @@ class ProfileController extends Controller
 
         $email = $user->email;
 
-        // Prevent resending OTP if an unexpired OTP code already exists
+        // Prevent resending OTP if a usable OTP code already exists (locked codes get rotated below)
         $existingOtp = OtpCode::where('email', $email)
             ->where('type', 'change_password')
+            ->whereNull('locked_at')
             ->where('expires_at', '>', now())
             ->first();
 
@@ -181,14 +223,7 @@ class ProfileController extends Controller
         }
 
         // Generate OTP to current email
-        OtpCode::where('email', $email)->where('type', 'change_password')->delete();
-        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        OtpCode::create([
-            'email' => $email,
-            'code' => $code,
-            'type' => 'change_password',
-            'expires_at' => now()->addMinutes(10),
-        ]);
+        $code = OtpCode::issue($email, 'change_password');
 
         Mail::to($email)->send(new OtpMail($code, 'reset'));
 
@@ -212,19 +247,16 @@ class ProfileController extends Controller
             return response()->json(['errors' => ['code' => 'Yêu cầu đổi mật khẩu không hợp lệ.']], 422);
         }
 
-        $otp = OtpCode::where('email', $user->email)
-            ->where('type', 'change_password')
-            ->where('code', $request->code)
-            ->where('expires_at', '>', now())
-            ->first();
+        $otp = OtpCode::consume($user->email, 'change_password', $request->code, function () use ($user, $newPasswordHash, $request): void {
+            $user->update(['password' => $newPasswordHash]);
+            SessionRevoker::revokeOthers($user, $request->session()->getId());
+        });
 
         if (! $otp) {
             return response()->json(['errors' => ['code' => 'Mã xác thực không đúng hoặc đã hết hạn.']], 422);
         }
 
-        $otp->delete();
-
-        $user->update(['password' => $newPasswordHash]);
+        $request->session()->regenerate(true);
         $request->session()->forget(['pending_new_password', 'otp_email', 'otp_type']);
 
         return response()->json([

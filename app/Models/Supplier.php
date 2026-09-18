@@ -20,20 +20,25 @@ class Supplier extends Model
     /** @return HasMany<SupplierPayment, $this> */
     public function payments(): HasMany
     {
-        return $this->hasMany(SupplierPayment::class);
+        return $this->hasMany(SupplierPayment::class)->where('is_migration_backfill', false);
     }
 
     public function debt(): float
     {
-        // tổng các phiếu nhập chưa trả — mỗi phiếu = SUM(quantity × unit_price) các dòng
+        // tổng dư nợ = SUM(dư còn lại từng phiếu nhập) — phiếu trả một phần vẫn còn nợ phần dư
         $vouchers = $this->relationLoaded('vouchers') ? $this->vouchers : $this->vouchers()->get();
 
         return (float) $vouchers
-            ->where('type', 'import')->where('is_paid', false)
+            ->where('type', 'import')
             ->sum(function ($v) {
-                $items = $v->relationLoaded('items') ? $v->items : $v->items()->get();
+                if (! $v->relationLoaded('items')) {
+                    $v->load('items');
+                }
+                if (! $v->relationLoaded('paymentAllocations')) {
+                    $v->load('paymentAllocations');
+                }
 
-                return (float) $items->sum(fn ($i) => (float) $i->quantity * (float) $i->unit_price);
+                return max(0.0, $v->outstandingAmount());
             });
     }
 }

@@ -5,12 +5,16 @@ namespace App\Http\Controllers\Manager;
 use App\Http\Controllers\Controller;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Support\SpreadsheetCellSanitizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -85,8 +89,11 @@ class ProductController extends Controller
         if ($request->hasFile('image')) {
             $disk = config('filesystems.disks.sirv.enabled') ? 'sirv' : 'public';
             $file = $request->file('image');
-            $filename = Str::slug($validated['name']).'_'.date('Ymd_His').'.'.$file->getClientOriginalExtension();
-            $file->storeAs('products', $filename, $disk);
+            $filename = Str::slug($validated['name']).'_'.(string) Str::ulid().'.'.$file->getClientOriginalExtension();
+            $path = $file->storeAs('products', $filename, $disk);
+            if ($path === false) {
+                throw new \RuntimeException('Không thể tải lên ảnh sản phẩm.');
+            }
             $validated['image'] = Storage::disk($disk)->url('products/'.$filename);
         }
 
@@ -110,15 +117,18 @@ class ProductController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
+        $oldImage = $product->image;
+        $newImage = null;
         if ($request->hasFile('image')) {
             $disk = config('filesystems.disks.sirv.enabled') ? 'sirv' : 'public';
-            // Delete old image file if exists
-            $this->deleteProductImage($product->image);
-
             $file = $request->file('image');
-            $filename = Str::slug($validated['name']).'_'.date('Ymd_His').'.'.$file->getClientOriginalExtension();
-            $file->storeAs('products', $filename, $disk);
+            $filename = Str::slug($validated['name']).'_'.(string) Str::ulid().'.'.$file->getClientOriginalExtension();
+            $path = $file->storeAs('products', $filename, $disk);
+            if ($path === false) {
+                throw new \RuntimeException('Không thể tải lên ảnh sản phẩm.');
+            }
             $validated['image'] = Storage::disk($disk)->url('products/'.$filename);
+            $newImage = $validated['image'];
         } else {
             unset($validated['image']);
         }
@@ -126,7 +136,15 @@ class ProductController extends Controller
         $validated['vat_rate'] = $validated['vat_rate'] ?? 0;
         $validated['is_available'] = $request->boolean('is_available', true);
 
-        $product->update($validated);
+        try {
+            $product->update($validated);
+        } catch (\Throwable $e) {
+            $this->deleteProductImage($newImage);
+            throw $e;
+        }
+        if ($newImage !== null) {
+            $this->deleteProductImage($oldImage);
+        }
 
         return back()->with('success', 'Cập nhật sản phẩm thành công!');
     }
@@ -187,7 +205,7 @@ class ProductController extends Controller
             fputcsv($file, ['ID / Mã SP', 'Tên sản phẩm', 'Danh mục', 'Giá bán (VNĐ)', 'Thuế VAT (%)', 'Trạng thái', 'Ghi chú']);
 
             foreach ($items as $item) {
-                fputcsv($file, [
+                fputcsv($file, SpreadsheetCellSanitizer::sanitizeRow([
                     $item->id,
                     $item->name,
                     $item->category ? $item->category->name : '',
@@ -195,7 +213,7 @@ class ProductController extends Controller
                     $item->vat_rate,
                     $item->is_available ? 'Đang hoạt động' : 'Ngừng hoạt động',
                     $item->description,
-                ]);
+                ]));
             }
 
             fclose($file);
@@ -247,69 +265,78 @@ class ProductController extends Controller
     {
         try {
             $request->validate([
-                'file' => 'required|file|mimes:csv,txt,xlsx|max:10240',
+                'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
             ]);
 
             $file = $request->file('file');
             $path = $file->getRealPath();
 
-            $content = file_get_contents($path);
-            if ($content === false) {
+            $handle = fopen($path, 'r');
+            if ($handle === false) {
                 return response()->json(['message' => 'Không thể đọc nội dung file.'], 422);
             }
 
-            // Remove UTF-8 BOM if present
-            if (str_starts_with($content, "\xEF\xBB\xBF")) {
-                $content = substr($content, 3);
-            }
-
-            // Auto-detect delimiter (, or ; or \t)
-            $firstLine = strtok($content, "\r\n");
-            if ($firstLine === false) {
-                $firstLine = '';
-            }
-            $delimiter = ',';
-            if (substr_count($firstLine, ';') > substr_count($firstLine, ',')) {
-                $delimiter = ';';
-            } elseif (substr_count($firstLine, "\t") > substr_count($firstLine, ',')) {
-                $delimiter = "\t";
-            }
-
-            $lines = explode("\n", str_replace(["\r\n", "\r"], "\n", $content));
-            $rows = [];
-            $isHeader = true;
-
-            foreach ($lines as $line) {
-                $line = trim($line);
-                if (empty($line)) {
-                    continue;
+            try {
+                $firstLine = fgets($handle);
+                if ($firstLine === false) {
+                    $firstLine = '';
                 }
 
-                $data = str_getcsv($line, $delimiter);
-                if ($isHeader) {
-                    $isHeader = false;
-
-                    continue;
+                if (str_starts_with($firstLine, "\xEF\xBB\xBF")) {
+                    $firstLine = substr($firstLine, 3);
                 }
 
-                if (isset($data[0]) || isset($data[1])) {
-                    $rawId = trim($data[0] ?? '');
-                    $cleanId = preg_replace('/[^0-9]/', '', $rawId);
+                while (trim($firstLine) === '' && ! feof($handle)) {
+                    $nextLine = fgets($handle);
+                    if ($nextLine === false) {
+                        break;
+                    }
+                    $firstLine = $nextLine;
+                }
 
-                    $rows[] = [
-                        'id' => $cleanId !== '' ? (int) $cleanId : null,
-                        'raw_id' => $rawId,
-                        'name' => trim($data[1] ?? ''),
-                        'category' => trim($data[2] ?? ''),
-                        'price' => (float) preg_replace('/[^0-9.]/', '', $data[3] ?? '0'),
-                        'vat_rate' => (float) preg_replace('/[^0-9.]/', '', $data[4] ?? '0'),
-                        'description' => trim($data[6] ?? ''),
-                    ];
+                $delimiter = ',';
+                if (substr_count($firstLine, ';') > substr_count($firstLine, ',')) {
+                    $delimiter = ';';
+                } elseif (substr_count($firstLine, "\t") > substr_count($firstLine, ',')) {
+                    $delimiter = "\t";
+                }
+
+                $rows = [];
+                $rowCount = 0;
+
+                while (($data = fgetcsv($handle, 0, $delimiter)) !== false) {
+                    if ($data === [null] || empty(array_filter($data, fn ($val) => $val !== null && trim((string) $val) !== ''))) {
+                        continue;
+                    }
+
+                    $rowCount++;
+                    if ($rowCount > 5000) {
+                        return response()->json(['message' => 'Số lượng dòng trong file vượt quá giới hạn 5.000 dòng.'], 422);
+                    }
+
+                    if (isset($data[0]) || isset($data[1])) {
+                        $rawId = trim((string) ($data[0] ?? ''));
+                        $cleanId = preg_replace('/[^0-9]/', '', $rawId);
+
+                        $rows[] = [
+                            'id' => $cleanId !== '' ? (int) $cleanId : null,
+                            'raw_id' => $rawId,
+                            'name' => trim((string) ($data[1] ?? '')),
+                            'category' => trim((string) ($data[2] ?? '')),
+                            'price' => (float) preg_replace('/[^0-9.]/', '', (string) ($data[3] ?? '0')),
+                            'vat_rate' => (float) preg_replace('/[^0-9.]/', '', (string) ($data[4] ?? '0')),
+                            'description' => trim((string) ($data[6] ?? '')),
+                        ];
+                    }
+                }
+            } finally {
+                if (is_resource($handle)) {
+                    fclose($handle);
                 }
             }
 
             $existingIds = MenuItem::pluck('id')->toArray();
-            $existingNames = MenuItem::pluck('name')->map(fn ($n) => mb_strtolower($n))->toArray();
+            $existingNames = MenuItem::pluck('name')->map(fn ($n) => mb_strtolower((string) $n))->toArray();
 
             $duplicates = [];
             $newItems = [];
@@ -318,7 +345,7 @@ class ProductController extends Controller
                 $isDuplicate = false;
                 if (! empty($row['id']) && in_array((int) $row['id'], $existingIds)) {
                     $isDuplicate = true;
-                } elseif (! empty($row['name']) && in_array(mb_strtolower($row['name']), $existingNames)) {
+                } elseif (! empty($row['name']) && in_array(mb_strtolower((string) $row['name']), $existingNames)) {
                     $isDuplicate = true;
                 }
 
@@ -330,8 +357,14 @@ class ProductController extends Controller
             }
 
             // Cache temp import data
-            $tempId = 'import_'.Str::random(10);
-            session([$tempId => ['rows' => $rows, 'duplicates' => $duplicates, 'new_items' => $newItems]]);
+            $tempId = 'product-import:'.$request->user()->id.':'.Str::random(32);
+            $tempPayload = [
+                'actor_id' => $request->user()->id,
+                'rows' => $rows,
+                'duplicates' => $duplicates,
+                'new_items' => $newItems,
+            ];
+            Cache::put($tempId, $tempPayload, now()->addMinutes(30));
 
             return response()->json([
                 'temp_id' => $tempId,
@@ -340,8 +373,20 @@ class ProductController extends Controller
                 'new_count' => count($newItems),
                 'duplicates' => $duplicates,
             ]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Lỗi đọc file: '.$e->getMessage()], 422);
+            $correlationId = (string) Str::uuid();
+
+            Log::error('Lỗi import sản phẩm: '.$e->getMessage(), [
+                'correlation_id' => $correlationId,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'message' => 'Có lỗi xảy ra khi xử lý file import. Vui lòng kiểm tra định dạng file.',
+                'error_id' => $correlationId,
+            ], 422);
         }
     }
 
@@ -352,7 +397,15 @@ class ProductController extends Controller
             'action' => 'required|in:replace_all,add_only_new',
         ]);
 
-        $tempData = session($request->temp_id);
+        $previewKey = (string) $request->temp_id;
+        $tempData = Cache::get($previewKey);
+        if (! $tempData) {
+            return response()->json(['message' => 'Dữ liệu tạm không tồn tại hoặc đã hết hạn.'], 400);
+        }
+        if ((int) ($tempData['actor_id'] ?? 0) !== (int) $request->user()->id) {
+            abort(403);
+        }
+        $tempData = Cache::lock($previewKey.':consume', 10)->block(3, fn () => Cache::pull($previewKey));
         if (! $tempData) {
             return response()->json(['message' => 'Dữ liệu tạm không tồn tại hoặc đã hết hạn.'], 400);
         }
@@ -418,7 +471,7 @@ class ProductController extends Controller
             }
         }
 
-        session()->forget($request->temp_id);
+        Cache::forget($request->temp_id);
 
         return back()->with('success', 'Nhập dữ liệu Excel thành công!');
     }

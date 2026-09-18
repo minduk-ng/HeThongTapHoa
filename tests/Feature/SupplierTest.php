@@ -4,6 +4,7 @@ use App\Models\Ingredient;
 use App\Models\StockVoucher;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
+use App\Models\SupplierPaymentAllocation;
 
 test('tao supplier va tinh cong no tu phieu nhap', function () {
     $admin = posAdmin();
@@ -53,5 +54,169 @@ test('thanh toan cong no mark paid', function () {
     expect(SupplierPayment::count())->toBe(1);
 
     expect((bool) $v->fresh()->is_paid)->toBeTrue();
+    expect($supplier->debt())->toBe(0.0);
+});
+
+test('partial supplier payments cannot exceed outstanding', function () {
+    $admin = posAdmin();
+    $supplier = Supplier::create(['name' => 'NCC partial']);
+    $ingredient = Ingredient::create(['name' => 'NL partial '.uniqid(), 'unit' => 'g', 'stock_quantity' => 0]);
+    $v = StockVoucher::create([
+        'voucher_code' => 'PN-SUP-PART', 'type' => 'import',
+        'supplier_id' => $supplier->id, 'is_paid' => false, 'transacted_at' => now(),
+    ]);
+    $v->items()->create(['ingredient_id' => $ingredient->id, 'quantity' => 10, 'unit_price' => 10000]);
+
+    $this->actingAs($admin)->postJson("/manager/suppliers/{$supplier->id}/payments", [
+        'amount' => 40000,
+        'allocations' => [['voucher_id' => $v->id, 'amount' => 40000]],
+    ])->assertStatus(302);
+
+    expect((bool) $v->fresh()->is_paid)->toBeFalse();
+    expect($v->fresh()->outstandingAmount())->toBe(60000.0);
+    expect($supplier->debt())->toBe(60000.0);
+
+    // vuot qua du no con lai => 422
+    $this->actingAs($admin)->postJson("/manager/suppliers/{$supplier->id}/payments", [
+        'amount' => 70000,
+        'allocations' => [['voucher_id' => $v->id, 'amount' => 70000]],
+    ])->assertStatus(422);
+
+    expect($v->fresh()->outstandingAmount())->toBe(60000.0);
+    expect(SupplierPayment::count())->toBe(1);
+});
+
+test('multi-payment closes voucher when fully allocated', function () {
+    $admin = posAdmin();
+    $supplier = Supplier::create(['name' => 'NCC multi']);
+    $ingredient = Ingredient::create(['name' => 'NL multi '.uniqid(), 'unit' => 'g', 'stock_quantity' => 0]);
+    $v = StockVoucher::create([
+        'voucher_code' => 'PN-SUP-MULTI', 'type' => 'import',
+        'supplier_id' => $supplier->id, 'is_paid' => false, 'transacted_at' => now(),
+    ]);
+    $v->items()->create(['ingredient_id' => $ingredient->id, 'quantity' => 10, 'unit_price' => 10000]);
+
+    $pay = fn (float $amount) => $this->actingAs($admin)->postJson("/manager/suppliers/{$supplier->id}/payments", [
+        'amount' => $amount,
+        'allocations' => [['voucher_id' => $v->id, 'amount' => $amount]],
+    ])->assertStatus(302);
+
+    $pay(40000);
+    $pay(60000);
+
+    expect((bool) $v->fresh()->is_paid)->toBeTrue();
+    expect($v->fresh()->outstandingAmount())->toBe(0.0);
+    expect($supplier->debt())->toBe(0.0);
+    expect(SupplierPayment::count())->toBe(2);
+});
+
+test('supplier payment amount must equal allocation sum', function () {
+    $admin = posAdmin();
+    $supplier = Supplier::create(['name' => 'NCC mismatch']);
+    $ingredient = Ingredient::create(['name' => 'NL mismatch '.uniqid(), 'unit' => 'g', 'stock_quantity' => 0]);
+    $v = StockVoucher::create([
+        'voucher_code' => 'PN-SUP-MISMATCH', 'type' => 'import',
+        'supplier_id' => $supplier->id, 'is_paid' => false, 'transacted_at' => now(),
+    ]);
+    $v->items()->create(['ingredient_id' => $ingredient->id, 'quantity' => 10, 'unit_price' => 10000]);
+
+    $this->actingAs($admin)->postJson("/manager/suppliers/{$supplier->id}/payments", [
+        'amount' => 50000,
+        'allocations' => [['voucher_id' => $v->id, 'amount' => 40000]],
+    ])->assertStatus(422);
+
+    expect(SupplierPayment::count())->toBe(0);
+});
+
+test('foreign-supplier voucher rejected', function () {
+    $admin = posAdmin();
+    $supplier = Supplier::create(['name' => 'NCC A']);
+    $other = Supplier::create(['name' => 'NCC B']);
+    $ingredient = Ingredient::create(['name' => 'NL foreign '.uniqid(), 'unit' => 'g', 'stock_quantity' => 0]);
+    $v = StockVoucher::create([
+        'voucher_code' => 'PN-SUP-FOREIGN', 'type' => 'import',
+        'supplier_id' => $other->id, 'is_paid' => false, 'transacted_at' => now(),
+    ]);
+    $v->items()->create(['ingredient_id' => $ingredient->id, 'quantity' => 10, 'unit_price' => 10000]);
+
+    $this->actingAs($admin)->postJson("/manager/suppliers/{$supplier->id}/payments", [
+        'amount' => 40000,
+        'allocations' => [['voucher_id' => $v->id, 'amount' => 40000]],
+    ])->assertStatus(422);
+
+    expect(SupplierPayment::count())->toBe(0);
+    expect((bool) $v->fresh()->is_paid)->toBeFalse();
+});
+
+test('legacy voucher_ids path with amount mismatch is rejected', function () {
+    $admin = posAdmin();
+    $supplier = Supplier::create(['name' => 'NCC legacy mismatch']);
+    $ingredient = Ingredient::create(['name' => 'NL legacy '.uniqid(), 'unit' => 'g', 'stock_quantity' => 0]);
+    $v = StockVoucher::create([
+        'voucher_code' => 'PN-SUP-LEGACY', 'type' => 'import',
+        'supplier_id' => $supplier->id, 'is_paid' => false, 'transacted_at' => now(),
+    ]);
+    $v->items()->create(['ingredient_id' => $ingredient->id, 'quantity' => 10, 'unit_price' => 10000]);
+
+    // tong du no 100000 nhung chi gui amount 60000 => 422, khong flip is_paid
+    $this->actingAs($admin)->postJson("/manager/suppliers/{$supplier->id}/payments", [
+        'amount' => 60000,
+        'voucher_ids' => [$v->id],
+    ])->assertStatus(422);
+
+    expect(SupplierPayment::count())->toBe(0);
+    expect((bool) $v->fresh()->is_paid)->toBeFalse();
+    expect($supplier->debt())->toBe(100000.0);
+});
+
+test('voucher_ids and allocations together are rejected', function () {
+    $admin = posAdmin();
+    $supplier = Supplier::create(['name' => 'NCC both']);
+    $ingredient = Ingredient::create(['name' => 'NL both '.uniqid(), 'unit' => 'g', 'stock_quantity' => 0]);
+    $v = StockVoucher::create([
+        'voucher_code' => 'PN-SUP-BOTH', 'type' => 'import',
+        'supplier_id' => $supplier->id, 'is_paid' => false, 'transacted_at' => now(),
+    ]);
+    $v->items()->create(['ingredient_id' => $ingredient->id, 'quantity' => 10, 'unit_price' => 10000]);
+
+    $this->actingAs($admin)->postJson("/manager/suppliers/{$supplier->id}/payments", [
+        'amount' => 100000,
+        'voucher_ids' => [$v->id],
+        'allocations' => [['voucher_id' => $v->id, 'amount' => 100000]],
+    ])->assertStatus(422);
+
+    expect(SupplierPayment::count())->toBe(0);
+    expect((bool) $v->fresh()->is_paid)->toBeFalse();
+});
+
+test('historically paid voucher without allocations stays debt-free and backfills', function () {
+    $supplier = Supplier::create(['name' => 'NCC legacy paid']);
+    $ingredient = Ingredient::create(['name' => 'NL legacypaid '.uniqid(), 'unit' => 'g', 'stock_quantity' => 0]);
+    $v = StockVoucher::create([
+        'voucher_code' => 'PN-SUP-LEGACYPAID', 'type' => 'import',
+        'supplier_id' => $supplier->id, 'is_paid' => true, 'transacted_at' => now(),
+    ]);
+    $v->items()->create(['ingredient_id' => $ingredient->id, 'quantity' => 10, 'unit_price' => 10000]);
+
+    // Guard: chua backfill van khong song lai thanh no.
+    expect($v->fresh()->outstandingAmount())->toBe(0.0);
+    expect($supplier->debt())->toBe(0.0);
+
+    SupplierPayment::create([
+        'supplier_id' => $supplier->id, 'amount' => 25000, 'paid_at' => now(), 'note' => 'real payment',
+    ]);
+    $realTotalBefore = SupplierPayment::where('is_migration_backfill', false)->sum('amount');
+    $migration = require database_path('migrations/2026_09_17_000006_backfill_supplier_payment_allocations.php');
+    $migration->up();
+
+    expect((float) SupplierPaymentAllocation::where('voucher_id', $v->id)->sum('amount'))->toBe(100000.0);
+    expect($supplier->debt())->toBe(0.0)
+        ->and((float) SupplierPayment::where('is_migration_backfill', false)->sum('amount'))->toBe((float) $realTotalBefore)
+        ->and(SupplierPayment::where('is_migration_backfill', true)->count())->toBe(1);
+
+    // Idempotent: chay lai khong tao them.
+    $migration->up();
+
+    expect(SupplierPaymentAllocation::where('voucher_id', $v->id)->count())->toBe(1);
     expect($supplier->debt())->toBe(0.0);
 });

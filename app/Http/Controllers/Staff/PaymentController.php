@@ -11,6 +11,7 @@ use App\Models\Promotion;
 use App\Models\Table;
 use App\Services\Checkout\CheckoutService;
 use App\Services\IdempotencyGuard;
+use App\Services\POS\CheckoutLockService;
 use App\Services\Promotions\PromotionEngine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -151,20 +152,29 @@ class PaymentController extends Controller
             'amount_received' => 'required|numeric|min:0',
             'change_amount' => 'nullable|numeric|min:0',
             'promotion_code' => 'nullable|string|max:50',
-            'idempotency_key' => 'nullable|string|max:100',
+            'idempotency_key' => 'required|string|max:100',
             'customer_id' => 'nullable|exists:customers,id',
             'selected_promotion_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
                 $this->validateSelectedPromotion((int) $value, $fail);
             }],
         ]);
 
-        if (IdempotencyGuard::isDuplicate($request, 'checkout', [
-            'order_id' => $validated['order_id'],
-            'amount_received' => $validated['amount_received'],
-        ])) {
-            Log::info("Duplicate checkout request suppressed: {$request->input('idempotency_key')}");
+        $fingerprint = array_diff_key($validated, ['idempotency_key' => true]);
+        if ($response = IdempotencyGuard::check($request, 'checkout', $fingerprint)) {
+            return $response;
+        }
 
-            return back()->with('success', 'Thanh toán đã được ghi nhận thành công!');
+        $preTableId = Order::where('id', $validated['order_id'])->value('table_id');
+        if ($conflict = $this->checkoutLockConflict($request, [$preTableId])) {
+            IdempotencyGuard::release($request, 'checkout', [
+                'order_id' => $validated['order_id'],
+                ...$fingerprint,
+            ]);
+            $message = 'Bàn đang được thanh toán bởi '.($conflict['user_name'] ?? 'nhân viên khác').'.';
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $message, 'lock' => $conflict], 409);
+            }
+            abort(409, $message);
         }
 
         try {
@@ -173,8 +183,11 @@ class PaymentController extends Controller
             $result = DB::transaction(function () use ($validated, $request, &$order, &$totalAmount) {
                 $order = Order::with(['items.menuItem'])->lockForUpdate()->where('id', $validated['order_id'])->firstOrFail();
 
+                if ($conflict = $this->checkoutLockConflict($request, [$order->table_id])) {
+                    throw new \Exception('Bàn đang được thanh toán bởi '.($conflict['user_name'] ?? 'nhân viên khác').'.', 409);
+                }
                 if (in_array($order->status, ['paid', 'cancelled'])) {
-                    throw new \Exception('Đơn hàng này đã được thanh toán hoặc đã hủy.');
+                    throw new \Exception('Đơn hàng này đã được thanh toán hoặc đã hủy.', 422);
                 }
 
                 if ($order->status === 'reserved') {
@@ -254,6 +267,9 @@ class PaymentController extends Controller
                     }
                 }
 
+                $body = ['success' => true, 'message' => 'Thanh toán hoàn tất thành công!', 'deposit_total' => $depositTotal, 'deposit_refund' => $depositRefund];
+                IdempotencyGuard::recordSuccessInTransaction($request, 'checkout', $invoice, $request->wantsJson() ? $body : ['success' => $body['message']], 200, $request->wantsJson() ? null : url()->previous());
+
                 return ['table' => $targetTable, 'deposit_total' => $depositTotal, 'deposit_refund' => $depositRefund, 'all_group_tables' => $allGroupTables->values()->all()];
             });
 
@@ -273,30 +289,45 @@ class PaymentController extends Controller
             });
             rescue(fn () => IngredientStockUpdated::dispatch(['source' => 'checkout']));
 
-            if ($request->wantsJson()) {
-                return response()->json([
+            $response = $request->wantsJson()
+                ? response()->json([
                     'success' => true,
                     'message' => 'Thanh toán hoàn tất thành công!',
                     'deposit_total' => $depositTotal,
                     'deposit_refund' => $depositRefund,
-                ]);
-            }
+                ])
+                : back()->with('success', 'Thanh toán hoàn tất thành công!');
 
-            return back()->with('success', 'Thanh toán hoàn tất thành công!');
+            return $response;
         } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'checkout', [
-                'order_id' => $validated['order_id'],
-                'amount_received' => $validated['amount_received'],
+                ...$fingerprint,
             ]);
             Log::error('POS checkout DB error: '.$e->getMessage());
 
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'error' => 'Thanh toán thất bại: '.$e->getMessage(),
-                ], 422);
+            if ($e->getCode() === 409) {
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'error' => 'Thanh toán thất bại: '.$e->getMessage(),
+                    ], 409);
+                }
+
+                abort(409, $e->getMessage());
             }
 
-            return back()->withErrors(['error' => 'Thanh toán thất bại: '.$e->getMessage()]);
+            $is422 = $e->getCode() === 422;
+            $status = $is422 ? 422 : 500;
+            $msg = $is422
+                ? 'Thanh toán thất bại: '.$e->getMessage()
+                : 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.';
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'error' => $msg,
+                ], $status);
+            }
+
+            return back()->withErrors(['error' => $msg]);
         }
     }
 
@@ -310,20 +341,31 @@ class PaymentController extends Controller
             'amount_received' => 'required|numeric|min:0',
             'change_amount' => 'nullable|numeric|min:0',
             'promotion_code' => 'nullable|string|max:50',
-            'idempotency_key' => 'nullable|string|max:100',
+            'idempotency_key' => 'required|string|max:100',
             'customer_id' => 'nullable|exists:customers,id',
             'selected_promotion_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
                 $this->validateSelectedPromotion((int) $value, $fail);
             }],
         ]);
 
-        if (IdempotencyGuard::isDuplicate($request, 'bulk_checkout', [
-            'order_ids' => collect(array_values($validated['order_ids']))->sort()->values()->all(),
-            'amount_received' => $validated['amount_received'],
-        ])) {
-            return $request->wantsJson()
-                ? response()->json(['success' => true, 'message' => 'Thanh toán đã được ghi nhận!'])
-                : back()->with('success', 'Thanh toán đã được ghi nhận!');
+        $fingerprint = array_diff_key($validated, ['idempotency_key' => true]);
+        if ($response = IdempotencyGuard::check($request, 'bulk_checkout', $fingerprint)) {
+            return $response;
+        }
+
+        $preTableIds = Order::whereIn('id', $validated['order_ids'])->pluck('table_id')->all();
+        if (! empty($validated['table_id'])) {
+            $preTableIds[] = $validated['table_id'];
+        }
+        if ($conflict = $this->checkoutLockConflict($request, $preTableIds)) {
+            IdempotencyGuard::release($request, 'bulk_checkout', [
+                ...$fingerprint,
+            ]);
+            $message = 'Bàn đang được thanh toán bởi '.($conflict['user_name'] ?? 'nhân viên khác').'.';
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $message, 'lock' => $conflict], 409);
+            }
+            abort(409, $message);
         }
 
         try {
@@ -335,17 +377,25 @@ class PaymentController extends Controller
                 $orders = Order::with(['items.menuItem'])->whereIn('id', $validated['order_ids'])->lockForUpdate()->get();
 
                 if ($orders->count() !== count($validated['order_ids'])) {
-                    throw new \Exception('Một số đơn hàng không tồn tại.');
+                    throw new \Exception('Một số đơn hàng không tồn tại.', 422);
                 }
 
                 $invalidOrder = $orders->first(fn ($o) => in_array($o->status, ['paid', 'cancelled']));
                 if ($invalidOrder) {
-                    throw new \Exception("Đơn {$invalidOrder->order_code} đã được thanh toán hoặc đã hủy.");
+                    throw new \Exception("Đơn {$invalidOrder->order_code} đã được thanh toán hoặc đã hủy.", 422);
                 }
 
                 $reservedOrder = $orders->first(fn ($o) => $o->status === 'reserved');
                 if ($reservedOrder) {
                     throw new \Exception("Đơn {$reservedOrder->order_code} là đơn đặt bàn chưa check-in, không thể thanh toán", 422);
+                }
+
+                $lockTableIds = $orders->pluck('table_id')->all();
+                if (! empty($validated['table_id'])) {
+                    $lockTableIds[] = $validated['table_id'];
+                }
+                if ($conflict = $this->checkoutLockConflict($request, $lockTableIds)) {
+                    throw new \Exception('Bàn đang được thanh toán bởi '.($conflict['user_name'] ?? 'nhân viên khác').'.', 409);
                 }
 
                 // Các đơn trong bulk phải cùng một bàn (hoặc cùng nhóm gộp)
@@ -430,6 +480,9 @@ class PaymentController extends Controller
                     }
                 }
 
+                $body = ['success' => true, 'message' => 'Thanh toán gộp thành công!', 'deposit_total' => $depositTotal, 'deposit_refund' => $depositRefund];
+                IdempotencyGuard::recordSuccessInTransaction($request, 'bulk_checkout', $invoice, $request->wantsJson() ? $body : ['success' => $body['message']], 200, $request->wantsJson() ? null : url()->previous());
+
                 return ['table' => $targetTable, 'deposit_total' => $depositTotal, 'deposit_refund' => $depositRefund];
             });
 
@@ -449,29 +502,77 @@ class PaymentController extends Controller
             });
             rescue(fn () => IngredientStockUpdated::dispatch(['source' => 'bulk_checkout']));
 
-            if ($request->wantsJson()) {
-                return response()->json([
+            $response = $request->wantsJson()
+                ? response()->json([
                     'success' => true,
                     'message' => 'Thanh toán gộp thành công!',
                     'deposit_total' => $depositTotal,
                     'deposit_refund' => $depositRefund,
-                ]);
-            }
+                ])
+                : back()->with('success', 'Thanh toán gộp thành công!');
 
-            return back()->with('success', 'Thanh toán gộp thành công!');
+            return $response;
         } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'bulk_checkout', [
-                'order_ids' => collect(array_values($validated['order_ids']))->sort()->values()->all(),
-                'amount_received' => $validated['amount_received'],
+                ...$fingerprint,
             ]);
             Log::error('POS bulk checkout error: '.$e->getMessage());
 
-            if ($request->wantsJson()) {
-                return response()->json(['error' => 'Thanh toán thất bại: '.$e->getMessage()], 422);
+            if ($e->getCode() === 409) {
+                if ($request->wantsJson()) {
+                    return response()->json(['error' => 'Thanh toán thất bại: '.$e->getMessage()], 409);
+                }
+
+                abort(409, $e->getMessage());
             }
 
-            return back()->withErrors(['error' => 'Thanh toán thất bại: '.$e->getMessage()]);
+            $is422 = $e->getCode() === 422;
+            $status = $is422 ? 422 : 500;
+            $msg = $is422
+                ? 'Thanh toán thất bại: '.$e->getMessage()
+                : 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.';
+
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $msg], $status);
+            }
+
+            return back()->withErrors(['error' => $msg]);
         }
+    }
+
+    /**
+     * LIVE checkout lock owned by another user blocks checkout (409 + owner info).
+     * No lock → allowed (backward compat for callers that never acquire).
+     * Root admin / admin bypass like the release path.
+     *
+     * @param  array<int, mixed>  $tableIds
+     * @return array<string, mixed>|null
+     */
+    private function checkoutLockConflict(Request $request, array $tableIds): ?array
+    {
+        $user = $request->user();
+        if (! $user) {
+            return null;
+        }
+        if ((bool) ($user->is_root_admin ?? false) || $user->isAdmin()) {
+            return null;
+        }
+        $tableIds = array_values(array_unique(array_filter(
+            array_map('intval', $tableIds),
+            fn (int $id): bool => $id > 0
+        )));
+        if ($tableIds === []) {
+            return null;
+        }
+        $locks = app(CheckoutLockService::class);
+        foreach ($tableIds as $tableId) {
+            $lock = $locks->status($tableId);
+            if ($lock !== null && (int) ($lock['user_id'] ?? 0) !== (int) $user->id) {
+                return $lock;
+            }
+        }
+
+        return null;
     }
 
     /**

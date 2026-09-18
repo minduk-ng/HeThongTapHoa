@@ -7,6 +7,7 @@ use App\Models\OrderActivity;
 use App\Models\OrderPromotion;
 use App\Models\PromotionCode;
 use App\Models\StockVoucher;
+use App\Services\MoneyLedgerService;
 use App\Services\Promotions\PromotionCodeService;
 
 /*
@@ -409,7 +410,7 @@ test('validate-promotion ma con da dung tra loi ro rang', function () {
         ->assertJson(['error' => 'Mã khuyến mãi đã được sử dụng.']);
 });
 
-test('free product: mon tang trong order bi set 0 va kho van tru', function () {
+test('free product: mon tang trong order co discount_amount = don gia va kho van tru', function () {
     $free = posMenuItem(['price' => 20000, 'vat_rate' => 0]);
     $ingredient = Ingredient::create(['name' => 'Ngl free '.uniqid(), 'stock_quantity' => 100, 'unit' => 'g']);
     $vIng = StockVoucher::create(['voucher_code' => 'PN-FREE-'.uniqid(), 'type' => 'import', 'transacted_at' => now()]);
@@ -435,9 +436,10 @@ test('free product: mon tang trong order bi set 0 va kho van tru', function () {
     ])->assertOk();
 
     $invoice = $order->fresh()->invoice;
-    // Món tặng subtotal = 0 trong invoice line
+    // Món tặng giữ nguyên subtotal trong invoice line, discount_amount = giá trị món tặng
     $freeLine = $invoice->lines()->where('menu_item_id', $free->id)->first();
-    expect((float) $freeLine->subtotal)->toBe(0.0);
+    expect((float) $freeLine->subtotal)->toBe(20000.0);
+    expect((float) $freeLine->unit_price)->toBe(20000.0);
     // Line món tặng mang giá trị món tặng làm discount_amount
     expect((float) $freeLine->discount_amount)->toBe(20000.0);
     // Tổng discount các line = discount_amount của invoice (không double-count)
@@ -487,4 +489,26 @@ test('bếp vẫn hoàn thành món sau khi đơn đã thanh toán', function ()
     ])->assertOk();
 
     expect($orderItem->fresh()->status)->toBe('completed');
+});
+
+test('checkout tra ve generic message khi gap loi 500 he thong', function () {
+    $admin = posAdmin();
+    $item = posMenuItem(['price' => 10000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 10000, 'status' => 'completed']], ['status' => 'pending']);
+
+    $mock = Mockery::mock(MoneyLedgerService::class);
+    $mock->shouldReceive('recordIn')->andThrow(new RuntimeException('Secret DB deadlock'));
+    app()->instance(MoneyLedgerService::class, $mock);
+
+    $res = $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 10000,
+    ]);
+
+    $res->assertStatus(500)
+        ->assertJson([
+            'error' => 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.',
+        ]);
 });

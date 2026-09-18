@@ -3,27 +3,32 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Reports\DateRangeReportRequest;
 use App\Models\MenuCategory;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ProductDetailsReportController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(DateRangeReportRequest $request): Response
     {
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
 
-        $rows = DB::table('invoice_lines')
+        $query = DB::table('invoice_lines')
             ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
             ->whereBetween('invoices.issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
             ->join('menu_items', 'menu_items.id', '=', 'invoice_lines.menu_item_id')
             ->leftJoin('menu_categories', 'menu_categories.id', '=', 'menu_items.category_id')
             ->groupBy('invoice_lines.menu_item_id', 'invoice_lines.name_snapshot', 'menu_categories.name')
-            ->selectRaw('invoice_lines.menu_item_id, invoice_lines.name_snapshot as item_name, menu_categories.name as category_name, SUM(invoice_lines.quantity) as quantity, SUM(invoice_lines.subtotal - invoice_lines.discount_amount) as revenue, SUM(invoice_lines.discount_amount) as discount_amount')
-            ->orderByDesc('revenue')
+            ->selectRaw('invoice_lines.menu_item_id, invoice_lines.name_snapshot as item_name, menu_categories.name as category_name, SUM(invoice_lines.quantity) as quantity, SUM(invoice_lines.subtotal - invoice_lines.discount_amount) as revenue, SUM(invoice_lines.discount_amount) as discount_amount');
+        // Summary trên toàn dải (SQL qua subquery), không theo 500 dòng hiển thị.
+        $summaryQuery = DB::query()->fromSub(clone $query, 'product_rows');
+        $totalCount = (clone $summaryQuery)->count();
+        $revenueTotal = (float) (clone $summaryQuery)->sum('revenue');
+        $quantityTotal = (int) (clone $summaryQuery)->sum('quantity');
+        $rows = $query->orderByDesc('revenue')->limit(500)
             ->get()
             ->values()
             ->map(fn (\stdClass $r) => [
@@ -38,14 +43,15 @@ class ProductDetailsReportController extends Controller
         return Inertia::render('reports/ProductDetailsReport', [
             'rows' => $rows,
             'metrics' => [
-                'revenue' => (float) $rows->sum('revenue'),
-                'quantity_total' => (int) $rows->sum('quantity'),
-                'item_count' => $rows->count(),
+                'revenue' => $revenueTotal,
+                'quantity_total' => $quantityTotal,
+                'item_count' => $totalCount,
                 'top_item' => $rows->first()['item_name'] ?? null,
             ],
             'categories' => MenuCategory::orderBy('sort_order')->get(['id', 'name'])->values(),
             'startDate' => $startDate,
             'endDate' => $endDate,
+            'pagination' => ['total_count' => $totalCount, 'truncated' => $totalCount > 500],
         ]);
     }
 }

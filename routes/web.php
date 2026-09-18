@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\SignupController;
+use App\Http\Controllers\Manager\CashFlowController;
 use App\Http\Controllers\Manager\CategoryController;
 use App\Http\Controllers\Manager\CustomerController;
 use App\Http\Controllers\Manager\DashboardController;
@@ -35,6 +36,7 @@ use App\Http\Controllers\Reports\ReservationsReportController;
 use App\Http\Controllers\Reports\SalesInvoiceReportController;
 use App\Http\Controllers\Reports\ShiftReportController;
 use App\Http\Controllers\Reports\StockMovementReportController;
+use App\Http\Controllers\Staff\CheckoutLockController;
 use App\Http\Controllers\Staff\CustomerController as StaffCustomerController;
 use App\Http\Controllers\Staff\KitchenController;
 use App\Http\Controllers\Staff\PaymentController;
@@ -60,14 +62,14 @@ Route::middleware('guest')->group(function () {
     Route::post('/login/check-attempts', [AuthController::class, 'checkAttempts']);
 
     Route::get('/signup', [SignupController::class, 'show'])->name('signup');
-    Route::post('/signup', [SignupController::class, 'store'])->middleware(['throttle:5,1']);
+    Route::post('/signup', [SignupController::class, 'store'])->middleware(['throttle:5,1', 'throttle:otp-principal']);
 
     Route::get('/verify-otp', [OtpController::class, 'show'])->name('verify-otp');
-    Route::post('/verify-otp', [OtpController::class, 'verify'])->middleware(['throttle:10,1']);
-    Route::post('/resend-otp', [OtpController::class, 'resend'])->middleware(['throttle:2,1'])->name('resend-otp');
+    Route::post('/verify-otp', [OtpController::class, 'verify'])->middleware(['throttle:10,1', 'throttle:otp-principal']);
+    Route::post('/resend-otp', [OtpController::class, 'resend'])->middleware(['throttle:2,1', 'throttle:otp-principal'])->name('resend-otp');
 
     Route::get('/forgot-password', [ForgotPasswordController::class, 'show'])->name('forgot-password');
-    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendOtp'])->middleware(['throttle:5,1']);
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendOtp'])->middleware(['throttle:5,1', 'throttle:otp-principal']);
 
     Route::get('/reset-password', [ForgotPasswordController::class, 'showReset'])->name('reset-password');
     Route::post('/reset-password', [ForgotPasswordController::class, 'reset'])->middleware(['throttle:5,1']);
@@ -85,10 +87,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings', [ProfileController::class, 'show'])->name('settings');
     Route::post('/profile/update-name', [ProfileController::class, 'updateName']);
     Route::post('/profile/update-email', [ProfileController::class, 'updateEmail']);
-    Route::post('/profile/verify-email-otp', [ProfileController::class, 'verifyEmailOtp'])->middleware(['throttle:10,1']);
+    Route::post('/profile/verify-email-otp', [ProfileController::class, 'verifyEmailOtp'])->middleware(['throttle:10,1', 'throttle:otp-principal']);
     Route::post('/profile/setup-password', [ProfileController::class, 'setupPassword']);
+    Route::post('/profile/confirm-password', [ProfileController::class, 'confirmPassword'])->middleware(['throttle:10,1']);
     Route::post('/profile/change-password', [ProfileController::class, 'changePassword']);
-    Route::post('/profile/verify-password-otp', [ProfileController::class, 'verifyPasswordOtp'])->middleware(['throttle:10,1']);
+    Route::post('/profile/verify-password-otp', [ProfileController::class, 'verifyPasswordOtp'])->middleware(['throttle:10,1', 'throttle:otp-principal']);
 
     Route::prefix('admin')->middleware(CheckPageAccess::class)->group(function () {
         // Page Manager
@@ -138,7 +141,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/suppliers', [SupplierController::class, 'store'])->middleware('permission:suppliers.create');
         Route::post('/suppliers/{supplier}', [SupplierController::class, 'update'])->middleware('permission:suppliers.edit');
         Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->middleware('permission:suppliers.delete');
-        Route::post('/suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->middleware('permission:suppliers.edit');
+        Route::post('/suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->middleware('permission:suppliers.pay');
 
         // Promotions Management
         Route::get('/promotions', [PromotionController::class, 'index'])->middleware('permission:promotions.view');
@@ -182,6 +185,9 @@ Route::middleware('auth')->group(function () {
         // Order List
         Route::get('/orders', [OrderListController::class, 'index'])->middleware('permission:orders.view');
         Route::get('/orders/{order}', [OrderListController::class, 'show'])->middleware('permission:orders.view');
+
+        // Dòng tiền hậu kiểm (read-only: không có route tạo/sửa/xóa)
+        Route::get('/cash-flow', [CashFlowController::class, 'index'])->middleware('permission:cash-flow.view');
     });
 
     // Reports Management
@@ -206,31 +212,35 @@ Route::middleware('auth')->group(function () {
         Route::get('/pos', [POSController::class, 'index'])->middleware('permission:pos.view');
         Route::post('/pos/reserve', [ReservationController::class, 'reserve'])->middleware('permission:pos.create');
         Route::post('/pos/reservation/check-in', [ReservationController::class, 'checkInReservation'])->middleware('permission:pos.create');
-        Route::post('/pos/reservation/cancel', [ReservationController::class, 'cancelReservation'])->middleware('permission:pos.create');
-        Route::post('/pos/deposit', [ReservationController::class, 'deposit'])->middleware('permission:pos.create');
+        Route::post('/pos/reservation/cancel', [ReservationController::class, 'cancelReservation'])->middleware('permission:orders.cancel');
+        Route::post('/pos/deposit', [ReservationController::class, 'deposit'])->middleware('permission:deposits.create');
         Route::post('/pos/send-to-kitchen', [POSController::class, 'sendToKitchen'])->middleware('permission:pos.create');
         Route::post('/pos/validate-promotion', [PaymentController::class, 'validatePromotion'])->middleware('permission:pos.create');
         Route::post('/pos/available-promotions', [PaymentController::class, 'availablePromotions'])->middleware('permission:pos.create');
         Route::post('/pos/checkout', [PaymentController::class, 'checkout'])->middleware('permission:pos.create');
-        Route::post('/pos/refund', [RefundController::class, 'store'])->middleware('permission:pos.create');
+        Route::post('/pos/checkout-lock/acquire', [CheckoutLockController::class, 'acquire'])->middleware('permission:pos.create');
+        Route::post('/pos/checkout-lock/release', [CheckoutLockController::class, 'release'])->middleware('permission:pos.create');
+        Route::post('/pos/checkout-lock/renew', [CheckoutLockController::class, 'renew'])->middleware('permission:pos.create');
+        Route::get('/pos/checkout-lock/status', [CheckoutLockController::class, 'status'])->middleware('permission:pos.create');
+        Route::post('/pos/refund', [RefundController::class, 'store'])->middleware('permission:payments.refund');
         Route::post('/pos/bulk-checkout', [PaymentController::class, 'bulkCheckout'])->middleware('permission:pos.create');
         Route::post('/pos/customers/search', [StaffCustomerController::class, 'search'])->middleware('permission:pos.create');
         Route::post('/pos/customers', [StaffCustomerController::class, 'store'])->middleware('permission:pos.create');
         Route::post('/pos/transfer-table', [TableOperationController::class, 'transferTable'])->middleware('permission:pos.create');
         Route::post('/pos/merge-tables', [TableOperationController::class, 'mergeTables'])->middleware('permission:pos.create');
         Route::post('/pos/unmerge-table', [TableOperationController::class, 'unmergeTable'])->middleware('permission:pos.create');
-        Route::post('/pos/cancel-order', [POSController::class, 'cancelOrder'])->middleware('permission:pos.cancel_item|kitchen.cancel_item');
+        Route::post('/pos/cancel-order', [POSController::class, 'cancelOrder'])->middleware('permission:orders.cancel');
 
         Route::get('/shifts', [ShiftController::class, 'index'])->middleware('permission:shifts.view');
         Route::post('/shifts/open', [ShiftController::class, 'open'])->middleware('permission:shifts.open');
         Route::get('/shifts/current', [ShiftController::class, 'current'])->middleware('permission:shifts.view');
-        Route::post('/shifts/movements', [ShiftController::class, 'storeMovement'])->middleware('permission:shifts.view');
+        Route::post('/shifts/movements', [ShiftController::class, 'storeMovement'])->middleware('permission:shifts.movement');
         Route::post('/shifts/close', [ShiftController::class, 'close'])->middleware('permission:shifts.close');
 
         Route::get('/kitchen', [KitchenController::class, 'index'])->middleware('permission:kitchen.view');
         Route::post('/kitchen/complete-items', [KitchenController::class, 'completeItems'])->middleware('permission:kitchen.update');
         Route::post('/kitchen/complete/{order}', [KitchenController::class, 'completeOrder'])->middleware('permission:kitchen.update');
-        Route::post('/kitchen/cancel-item', [KitchenController::class, 'cancelItem'])->middleware('permission:kitchen.cancel_item|pos.cancel_item');
+        Route::post('/kitchen/cancel-item', [KitchenController::class, 'cancelItem'])->middleware('permission:orders.cancel');
 
         // Serving Display
         Route::get('/serving', [ServingController::class, 'index'])->middleware('permission:serving.view');

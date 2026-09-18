@@ -109,6 +109,8 @@ onSuccess(result.table);
             reservation_note?: string;
             deposit_amount: number;
             payment_method: string;
+            deposit_reference?: string;
+            deposit_bank_verified?: boolean;
             items: Array<{ menu_item_id: number; quantity: number }>;
         },
         onSuccess?: (table: POSTableData) => void
@@ -117,7 +119,7 @@ onSuccess(result.table);
 
         try {
             // Backend expects nested deposit: {amount, method} (nullable)
-            const { deposit_amount, payment_method, ...rest } = data;
+            const { deposit_amount, payment_method, deposit_reference, deposit_bank_verified, ...rest } = data;
             const response = await fetch(`/staff/pos/reserve`, {
                 method: 'POST',
                 headers: {
@@ -128,7 +130,12 @@ onSuccess(result.table);
                 body: JSON.stringify({
                     ...rest,
                     deposit: deposit_amount > 0
-                        ? { amount: deposit_amount, method: payment_method }
+                        ? {
+                            amount: deposit_amount,
+                            method: payment_method,
+                            reference: deposit_reference,
+                            bank_verified: deposit_bank_verified,
+                        }
                         : undefined,
                     idempotency_key: `pos_reserve_${data.table_id}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
                 })
@@ -251,7 +258,9 @@ onSuccess(result.table);
         orderId: number,
         amount: number,
         paymentMethod: string,
-        onSuccess?: (table: POSTableData) => void
+        onSuccess?: (table: POSTableData) => void,
+        reference?: string,
+        bankVerified?: boolean
     ) => {
         setIsLoading(true);
 
@@ -267,6 +276,8 @@ onSuccess(result.table);
                     order_id: orderId,
                     amount,
                     method: paymentMethod,
+                    reference,
+                    bank_verified: bankVerified,
                     idempotency_key: `pos_deposit_${orderId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
                 })
             });

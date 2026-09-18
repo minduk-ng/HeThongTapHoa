@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Role;
+use App\Models\SecurityAuditLog;
 use App\Models\User;
+use App\Services\Security\PrivilegeGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -47,21 +49,28 @@ class UserPermissionController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
-        if ($user->isAdmin()) {
-            return redirect()->back()->with('error', 'Không thể thay đổi quyền của Admin gốc.');
-        }
+        $actor = $request->user();
+        abort_unless($actor instanceof User, 403);
 
         $validated = $request->validate([
             'roles' => ['array'],
             'roles.*' => ['exists:roles,name'],
         ]);
+        $roleNames = array_values($validated['roles'] ?? []);
 
-        if (isset($validated['roles'])) {
-            $roleIds = Role::whereIn('name', $validated['roles'])->pluck('id');
+        PrivilegeGuard::assertCanAssignRoles($actor, $user, $roleNames);
+
+        $before = ['roles' => $user->roles()->pluck('roles.name')->all()];
+
+        if ($roleNames !== []) {
+            $roleIds = Role::whereIn('name', $roleNames)->pluck('id');
             $user->roles()->sync($roleIds);
         } else {
             $user->roles()->detach();
         }
+
+        $after = ['roles' => $user->roles()->pluck('roles.name')->all()];
+        SecurityAuditLog::record($actor, 'user_roles.updated', $user, $before, $after, $request->ip(), $request->userAgent());
 
         try {
             Cache::tags(["user_{$user->id}"])->flush();
@@ -74,6 +83,9 @@ class UserPermissionController extends Controller
 
     public function bulkAction(Request $request): RedirectResponse
     {
+        $actor = $request->user();
+        abort_unless($actor instanceof User, 403);
+
         $validated = $request->validate([
             'user_ids' => ['required', 'array'],
             'user_ids.*' => ['exists:users,id'],
@@ -82,12 +94,18 @@ class UserPermissionController extends Controller
             'role_names.*' => ['exists:roles,name'],
         ]);
 
-        // Tránh tác động đến tài khoản super admin
-        $userIds = array_filter((array) $validated['user_ids'], function ($id) {
-            $user = User::find($id);
+        $targets = User::whereIn('id', $validated['user_ids'])->get();
+        $roleNames = array_values($validated['role_names'] ?? []);
 
-            return $user instanceof User && ! $user->isAdmin();
-        });
+        foreach ($targets as $target) {
+            if ($validated['action'] === 'delete_users') {
+                PrivilegeGuard::assertCanModifyUser($actor, $target);
+            } else {
+                PrivilegeGuard::assertCanAssignRoles($actor, $target, $validated['action'] === 'assign_role' ? $roleNames : []);
+            }
+        }
+
+        $userIds = $targets->pluck('id')->all();
 
         if (empty($userIds)) {
             return redirect()->back()->with('error', 'Không có người dùng hợp lệ để thực hiện thao tác.');
@@ -104,22 +122,23 @@ class UserPermissionController extends Controller
                 ]);
             }
 
+            foreach ($targets as $target) {
+                SecurityAuditLog::record($actor, 'user.deleted', $target, ['roles' => $target->roles()->pluck('roles.name')->all()], null, $request->ip(), $request->userAgent());
+            }
             User::whereIn('id', $userIds)->delete();
         } elseif ($validated['action'] === 'assign_role') {
             $roleIds = Role::whereIn('name', $validated['role_names'] ?? [])->pluck('id')->toArray();
-            foreach ($userIds as $id) {
-                $user = User::find($id);
-                if ($user instanceof User) {
-                    $user->roles()->syncWithoutDetaching($roleIds);
-                }
+            foreach ($targets as $user) {
+                $before = ['roles' => $user->roles()->pluck('roles.name')->all()];
+                $user->roles()->syncWithoutDetaching($roleIds);
+                SecurityAuditLog::record($actor, 'user_roles.updated', $user, $before, ['roles' => $user->roles()->pluck('roles.name')->all()], $request->ip(), $request->userAgent());
             }
         } elseif ($validated['action'] === 'clear_roles') {
             $guestRoleId = Role::where('name', 'guest')->value('id');
-            foreach ($userIds as $id) {
-                $user = User::find($id);
-                if ($user instanceof User) {
-                    $user->roles()->sync([$guestRoleId]);
-                }
+            foreach ($targets as $user) {
+                $before = ['roles' => $user->roles()->pluck('roles.name')->all()];
+                $user->roles()->sync([$guestRoleId]);
+                SecurityAuditLog::record($actor, 'user_roles.updated', $user, $before, ['roles' => $user->roles()->pluck('roles.name')->all()], $request->ip(), $request->userAgent());
             }
         }
 

@@ -49,11 +49,14 @@ class OtpController extends Controller
             return redirect('/login');
         }
 
-        $otp = OtpCode::where('email', $email)
-            ->where('type', $type)
-            ->where('code', $request->code)
-            ->where('expires_at', '>', now())
-            ->first();
+        $otp = OtpCode::consume($email, $type, $request->code, function () use ($email, $type, $request): void {
+            if ($type === 'signup' && ($user = User::where('email', $email)->first())) {
+                $user->update(['email_verified_at' => now()]);
+                Auth::login($user);
+                $request->session()->regenerate();
+                $request->session()->put('session_version', (int) $user->session_version);
+            }
+        });
 
         if (! $otp) {
             if ($request->wantsJson()) {
@@ -65,17 +68,7 @@ class OtpController extends Controller
             ]);
         }
 
-        // Delete used OTP
-        $otp->delete();
-
         if ($type === 'signup') {
-            $user = User::where('email', $email)->first();
-            if ($user) {
-                $user->update(['email_verified_at' => now()]);
-                Auth::login($user);
-                $request->session()->regenerate();
-            }
-
             $request->session()->forget(['otp_email', 'otp_type']);
 
             if ($request->wantsJson()) {
@@ -104,24 +97,9 @@ class OtpController extends Controller
             return redirect('/login');
         }
 
-        // Check for existing valid unexpired OTP code
-        $existingOtp = OtpCode::where('email', $email)
-            ->where('type', $type)
-            ->where('expires_at', '>', now())
-            ->first();
-
-        if ($existingOtp) {
-            $code = $existingOtp->code;
-        } else {
-            OtpCode::where('email', $email)->delete();
-            $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            OtpCode::create([
-                'email' => $email,
-                'code' => $code,
-                'type' => $type,
-                'expires_at' => now()->addMinutes(10),
-            ]);
-        }
+        // ponytail: hashing is one-way, so resend always rotates to a fresh code
+        // (replacing a locked one too) instead of re-mailing the stored value.
+        $code = OtpCode::issue($email, $type);
 
         Mail::to($email)->queue(new OtpMail($code, $type));
 

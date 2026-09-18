@@ -132,6 +132,51 @@ class InvoiceItemsReportTest extends TestCase
             );
     }
 
+    public function test_summary_metrics_cover_all_rows_beyond_500_cap()
+    {
+        $invoice = Invoice::create([
+            'invoice_code' => 'HD-'.strtoupper(uniqid()),
+            'table_name' => 'B01',
+            'payment_method' => 'cash',
+            'amount_received' => 0,
+            'change_amount' => 0,
+            'total_amount' => 0,
+            'deposit_amount' => 0,
+        ]);
+        $invoice->forceFill(['issued_at' => '2026-07-15 12:00:00'])->save();
+
+        $now = now();
+        $lines = [];
+        for ($i = 0; $i < 502; $i++) {
+            $lines[] = [
+                'invoice_id' => $invoice->id,
+                'name_snapshot' => 'Món '.$i,
+                'quantity' => 1,
+                'unit_price' => 100,
+                'subtotal' => 100,
+                'vat_rate' => 0,
+                'vat_amount' => 0,
+                'discount_amount' => 0,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+        InvoiceLine::insert($lines);
+
+        $this->actingAs($this->adminUser())
+            ->get('/reports/invoice-items?start_date=2026-07-01&end_date=2026-07-31')
+            ->assertInertia(fn ($page) => $page
+                ->has('rows', 500)
+                ->where('metrics.total_amount', 50200)
+                ->where('metrics.total_discount', 0)
+                ->where('metrics.line_count', 502)
+                ->where('metrics.quantity_total', 502)
+                ->where('metrics.invoice_count', 1)
+                ->where('pagination.total_count', 502)
+                ->where('pagination.truncated', true)
+            );
+    }
+
     public function test_metrics_total_amount_la_doanh_thu_net_khi_co_discount()
     {
         [$invoice] = $this->makeInvoiceWithItems('2026-07-15 12:00:00');

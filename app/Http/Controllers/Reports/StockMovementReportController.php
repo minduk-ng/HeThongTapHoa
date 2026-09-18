@@ -3,20 +3,24 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Reports\DateRangeReportRequest;
 use App\Models\StockVoucherItem;
-use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class StockMovementReportController extends Controller
 {
-    public function index(): Response
+    public function index(DateRangeReportRequest $request): Response
     {
-        $from = request('start_date') ? Carbon::parse(request('start_date'))->startOfDay() : now()->startOfMonth();
-        $to = request('end_date') ? Carbon::parse(request('end_date'))->endOfDay() : now();
+        $defaultStart = now()->startOfMonth()->toDateString();
+        $defaultEnd = now()->toDateString();
+
+        $startDate = $request->startDate($defaultStart);
+        $endDate = $request->endDate($defaultEnd);
+        $range = $request->dateRange($defaultStart, $defaultEnd);
 
         $items = StockVoucherItem::with(['voucher', 'ingredient'])
-            ->whereHas('voucher', fn ($q) => $q->whereBetween('transacted_at', [$from, $to]))
+            ->whereHas('voucher', fn ($q) => $q->whereBetween('transacted_at', $range))
             ->get()
             ->groupBy('ingredient_id');
 
@@ -42,8 +46,8 @@ class StockMovementReportController extends Controller
 
         return Inertia::render('reports/StockMovementReport', [
             'rows' => $rows,
-            'startDate' => request('start_date') ? Carbon::parse(request('start_date'))->toDateString() : now()->startOfMonth()->toDateString(),
-            'endDate' => request('end_date') ? Carbon::parse(request('end_date'))->toDateString() : now()->toDateString(),
+            'startDate' => $startDate,
+            'endDate' => $endDate,
         ]);
     }
 }

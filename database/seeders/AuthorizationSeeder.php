@@ -111,6 +111,12 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 28,
             ],
             [
+                'name' => 'Dòng tiền',
+                'route_path' => '/manager/cash-flow',
+                'group_name' => 'Quản lý',
+                'sort_order' => 29,
+            ],
+            [
                 'name' => 'Báo cáo hoá đơn bán hàng',
                 'route_path' => '/reports/sales-invoices',
                 'group_name' => 'Báo cáo',
@@ -275,6 +281,8 @@ class AuthorizationSeeder extends Seeder
             'orders.view',
             'dashboard.view',
             'reports.view',
+            'payments.refund', 'deposits.create', 'deposits.refund',
+            'suppliers.pay', 'orders.cancel', 'shifts.movement', 'cash-flow.view',
         ];
 
         foreach ($permissions as $permission) {
@@ -298,28 +306,39 @@ class AuthorizationSeeder extends Seeder
         DB::table('role_permissions')->where('role_id', $adminRoleId)->delete();
         DB::table('role_permissions')->insert($rolePermissions);
 
-        // 5. Create or find admin user — bắt buộc env, không có default
+        // 5. Resolve the immutable root before assigning privileged roles.
         $adminEmail = (string) config('services.admin.email');
         $adminPassword = (string) config('services.admin.default_password');
         if ($adminEmail === '' || $adminPassword === '') {
             throw new \RuntimeException('Thiếu ADMIN_EMAIL / ADMIN_DEFAULT_PASSWORD trong .env — không thể seed admin.');
         }
-        $adminUser = DB::table('users')->where('email', $adminEmail)->first();
-
-        if (! $adminUser) {
-            $adminUserId = DB::table('users')->insertGetId([
-                'name' => 'Admin',
-                'email' => $adminEmail,
-                'password' => bcrypt($adminPassword), // Configured password in .env
-                'email_verified_at' => $now,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
+        $rootUsers = DB::table('users')->where('is_root_admin', true)->get();
+        if ($rootUsers->count() > 1) {
+            throw new \RuntimeException("Seed root admin invalid: expected exactly one root, found {$rootUsers->count()}.");
+        }
+        if ($rootUsers->count() === 1) {
+            $adminUserId = $rootUsers->first()->id;
         } else {
-            $adminUserId = $adminUser->id;
+            $matches = DB::table('users')->where('email', $adminEmail)->get();
+            if ($matches->count() > 1) {
+                throw new \RuntimeException("Seed root admin ambiguous: expected exactly 1 user with ADMIN_EMAIL ({$adminEmail}), found {$matches->count()}.");
+            }
+            if ($matches->isEmpty()) {
+                $adminUserId = DB::table('users')->insertGetId([
+                    'name' => 'Admin',
+                    'email' => $adminEmail,
+                    'password' => bcrypt($adminPassword), // Configured password in .env
+                    'email_verified_at' => $now,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            } else {
+                $adminUserId = $matches->first()->id;
+            }
+            DB::table('users')->where('id', $adminUserId)->update(['is_root_admin' => true]);
         }
 
-        // Assign admin role to admin user
+        DB::table('user_roles')->where('role_id', $adminRoleId)->where('user_id', '!=', $adminUserId)->delete();
         DB::table('user_roles')->updateOrInsert([
             'user_id' => $adminUserId,
             'role_id' => $adminRoleId,
@@ -327,7 +346,7 @@ class AuthorizationSeeder extends Seeder
 
         // Assign guest role to all other users
         $guestRoleId = DB::table('roles')->where('name', 'guest')->value('id');
-        $otherUsers = DB::table('users')->where('email', '!=', $adminEmail)->pluck('id');
+        $otherUsers = DB::table('users')->where('id', '!=', $adminUserId)->pluck('id');
 
         foreach ($otherUsers as $userId) {
             DB::table('user_roles')->updateOrInsert([
@@ -354,6 +373,43 @@ class AuthorizationSeeder extends Seeder
                 'role_id' => $guestRoleId,
                 'page_id' => $homepageId,
             ]);
+        }
+
+        // 7. Cashier role: operational money/cancel permissions.
+        // Guest/kitchen/inventory roles are intentionally excluded.
+        DB::table('roles')->updateOrInsert(
+            ['name' => 'cashier'],
+            ['description' => 'Thu ngân (nghiệp vụ tiền/hủy)', 'is_system' => false, 'created_at' => $now, 'updated_at' => $now]
+        );
+        $cashierRoleId = DB::table('roles')->where('name', 'cashier')->value('id');
+
+        $cashierPermissions = [
+            'dashboard.view',
+            'pos.view', 'pos.create',
+            'orders.view',
+            'shifts.view', 'shifts.open', 'shifts.close',
+            'suppliers.view',
+            'payments.refund', 'deposits.create', 'deposits.refund',
+            'suppliers.pay', 'orders.cancel', 'shifts.movement', 'cash-flow.view',
+        ];
+        $cashierPermissionIds = DB::table('permissions')->whereIn('name', $cashierPermissions)->pluck('id');
+        DB::table('role_permissions')->where('role_id', $cashierRoleId)->delete();
+        foreach ($cashierPermissionIds as $permissionId) {
+            DB::table('role_permissions')->updateOrInsert([
+                'role_id' => $cashierRoleId,
+                'permission_id' => $permissionId,
+            ]);
+        }
+
+        DB::table('role_pages')->where('role_id', $cashierRoleId)->delete();
+        foreach (['/', '/staff/pos', '/staff/shifts', '/manager/suppliers', '/manager/cash-flow'] as $routePath) {
+            $pageId = DB::table('pages')->where('route_path', $routePath)->value('id');
+            if ($pageId) {
+                DB::table('role_pages')->updateOrInsert([
+                    'role_id' => $cashierRoleId,
+                    'page_id' => $pageId,
+                ]);
+            }
         }
     }
 }

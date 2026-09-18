@@ -16,7 +16,9 @@ use App\Models\ProductRecipe;
 use App\Models\Promotion;
 use App\Models\StockVoucher;
 use App\Models\Table;
+use App\Models\User;
 use App\Services\Inventory\LotService;
+use App\Services\MoneyLedgerService;
 use App\Services\OrderActivityLogger;
 use App\Services\Promotions\PromotionEngine;
 use Illuminate\Support\Collection;
@@ -90,7 +92,7 @@ class CheckoutService
 
             $promotionRows = [];
             $totalDiscount = 0.0;
-            $freeItemIds = [];
+            $freeItems = [];
             $freeGiftTotals = [];   // list subtotal gốc các món tặng (để trừ khỏi allocableDiscount)
             $appliedPromotions = [];
 
@@ -107,7 +109,7 @@ class CheckoutService
                     throw new \Exception($reasonMsg, 422);
                 }
                 $totalDiscount = $resolved['total_discount'];
-                $freeItemIds = $resolved['free_item_ids'] ?? [];
+                $freeItems = $resolved['free_items'] ?? [];
                 $appliedPromotions = $resolved['promotions'] ?? [];
 
                 foreach ($appliedPromotions as $pr) {
@@ -124,47 +126,71 @@ class CheckoutService
                 }
             }
 
-            // 2b. Phân bổ discount xuống từng line (cho báo cáo line-level) theo tỷ trọng subtotal;
-            //     món tặng (free_item_ids) set giá = 0, discount_amount = subtotal gốc (giá trị món tặng);
-            //     chỉ phân bổ phần allocable (totalDiscount - giá trị món tặng) lên các line trả tiền
-            $freeHandledIds = [];
+            // 2b. Phân bổ discount xuống từng line (cho báo cáo line-level);
+            //     món tặng (free_items): mỗi món tặng giảm đúng 1 đơn giá (1 unit_price);
+            //     unit_price và subtotal của line được giữ nguyên;
+            //     chỉ phân bổ phần allocable (totalDiscount - giá trị món tặng) lên các line trả tiền còn lại.
             if ($totalDiscount > 0 && $subtotal > 0) {
-                // Pass 1: xử lý các line tặng (giá = 0, discount = giá trị món tặng)
-                foreach ($lineInputs as $idx => $li) {
-                    $isFree = in_array((int) $li['menu_item_id'], $freeItemIds, true)
-                        && ! in_array($li['order_item_id'], $freeHandledIds, true);
-                    if ($isFree) {
-                        $giftSubtotal = (float) $li['subtotal'];
-                        $freeGiftTotals[] = $giftSubtotal;
-                        $freeHandledIds[] = $li['order_item_id'];
-                        $lineInputs[$idx]['unit_price'] = 0.0;
-                        $lineInputs[$idx]['subtotal'] = 0.0;
-                        $lineInputs[$idx]['vat_amount'] = 0.0;
-                        $lineInputs[$idx]['discount_amount'] = round($giftSubtotal, 2);
+                // Pass 1: xử lý các món tặng (mỗi unit được tặng giảm đúng unit_price)
+                foreach ($freeItems as $fi) {
+                    $freeMenuId = (int) ($fi['menu_item_id'] ?? 0);
+                    $freeQty = (int) ($fi['quantity'] ?? 1);
+                    for ($q = 0; $q < $freeQty; $q++) {
+                        $targetIdx = null;
+                        foreach ($lineInputs as $idx => $li) {
+                            if ((int) $li['menu_item_id'] === $freeMenuId) {
+                                $rem = (float) $li['subtotal'] - (float) $li['discount_amount'];
+                                if (round($rem, 2) >= round((float) $li['unit_price'], 2)) {
+                                    $targetIdx = $idx;
+                                    break;
+                                }
+                            }
+                        }
+                        if ($targetIdx === null) {
+                            foreach ($lineInputs as $idx => $li) {
+                                if ((int) $li['menu_item_id'] === $freeMenuId) {
+                                    $targetIdx = $idx;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if ($targetIdx !== null) {
+                            $rem = max(0.0, (float) $lineInputs[$targetIdx]['subtotal'] - (float) $lineInputs[$targetIdx]['discount_amount']);
+                            $unitPrice = min((float) $lineInputs[$targetIdx]['unit_price'], $rem);
+                            $freeGiftTotals[] = $unitPrice;
+                            $lineInputs[$targetIdx]['discount_amount'] = round((float) $lineInputs[$targetIdx]['discount_amount'] + $unitPrice, 2);
+                            $netLineTotal = max(0.0, (float) $lineInputs[$targetIdx]['subtotal'] - (float) $lineInputs[$targetIdx]['discount_amount']);
+                            $lineInputs[$targetIdx]['vat_amount'] = OrderTotals::vatInPrice($netLineTotal, (float) $lineInputs[$targetIdx]['vat_rate']);
+                        }
                     }
                 }
-                // Pass 2: phân bổ phần allocable lên các line trả tiền
+
+                // Pass 2: phân bổ phần allocable lên các line còn tiền
                 $freeGiftTotal = (float) array_sum($freeGiftTotals);
                 $allocableDiscount = max(0.0, $totalDiscount - $freeGiftTotal);
-                $paidSubtotal = max(0.0, $subtotal - $freeGiftTotal);
+                $remainingSubtotals = [];
                 $paidIndexes = [];
                 foreach ($lineInputs as $idx => $li) {
-                    if (! in_array($li['order_item_id'], $freeHandledIds, true)) {
+                    $rem = max(0.0, (float) $li['subtotal'] - (float) $li['discount_amount']);
+                    if ($rem > 0.0) {
                         $paidIndexes[] = $idx;
+                        $remainingSubtotals[$idx] = $rem;
                     }
                 }
+                $paidSubtotal = (float) array_sum($remainingSubtotals);
                 if ($allocableDiscount > 0 && $paidSubtotal > 0 && $paidIndexes !== []) {
                     $assigned = 0.0;
                     $lastPaid = count($paidIndexes) - 1;
                     foreach ($paidIndexes as $n => $idx) {
-                        $li = $lineInputs[$idx];
+                        $lineRem = $remainingSubtotals[$idx];
                         $lineDiscount = ($n === $lastPaid)
                             ? round($allocableDiscount - $assigned, 2)
-                            : floor($allocableDiscount * (float) $li['subtotal'] / $paidSubtotal);
+                            : floor($allocableDiscount * $lineRem / $paidSubtotal);
                         $assigned += $lineDiscount;
-                        $lineInputs[$idx]['discount_amount'] = round(max(0, min($lineDiscount, (float) $li['subtotal'])), 2);
-                        $netLineTotal = max(0.0, (float) $li['subtotal'] - (float) $lineInputs[$idx]['discount_amount']);
-                        $lineInputs[$idx]['vat_amount'] = OrderTotals::vatInPrice($netLineTotal, (float) $li['vat_rate']);
+                        $lineInputs[$idx]['discount_amount'] = round((float) $lineInputs[$idx]['discount_amount'] + max(0.0, min($lineDiscount, $lineRem)), 2);
+                        $netLineTotal = max(0.0, (float) $lineInputs[$idx]['subtotal'] - (float) $lineInputs[$idx]['discount_amount']);
+                        $lineInputs[$idx]['vat_amount'] = OrderTotals::vatInPrice($netLineTotal, (float) $lineInputs[$idx]['vat_rate']);
                     }
                 }
             }
@@ -194,6 +220,36 @@ class CheckoutService
                 throw new \Exception('Số tiền khách đưa không đủ.', 422);
             }
 
+            // ponytail: allocate non-cash before cash; reject non-cash overpayment
+            $remainingPayable = $payable;
+            $sortedRows = [];
+            $cashRows = [];
+            foreach ($paymentRows as $row) {
+                if ($row['method'] === 'cash') {
+                    $cashRows[] = $row;
+                } else {
+                    $sortedRows[] = $row;
+                }
+            }
+            foreach ($cashRows as $row) {
+                $sortedRows[] = $row;
+            }
+
+            $normalizedPayments = [];
+            foreach ($sortedRows as $row) {
+                $rowAmount = (float) $row['amount'];
+                $method = (string) $row['method'];
+
+                if ($method !== 'cash' && $rowAmount > $remainingPayable) {
+                    throw new \Exception('Số tiền thanh toán không dùng tiền mặt không được vượt quá số tiền cần thanh toán.', 422);
+                }
+
+                $netAmount = round(min($rowAmount, $remainingPayable), 2);
+                $remainingPayable = round(max(0.0, $remainingPayable - $netAmount), 2);
+
+                $normalizedPayments[] = array_merge($row, ['net_amount' => $netAmount]);
+            }
+
             // 4. Tạo invoice
             $invoiceCode = 'INV-'.date('Ymd').strtoupper(Str::random(4));
             $invoice = Invoice::create([
@@ -212,15 +268,17 @@ class CheckoutService
             ]);
 
             // 5. Ghi payments: ưu tiên paymentRows; cọc applied thành payment row
-            foreach ($paymentRows as $row) {
-                Payment::create([
-                    'invoice_id' => $invoice->id,
-                    'method' => $row['method'],
-                    'amount' => (float) $row['amount'],
-                    'reference' => $row['reference'] ?? null,
-                    'note' => $row['note'] ?? null,
-                    'received_by' => $userId,
-                ]);
+            foreach ($normalizedPayments as $row) {
+                if ((float) $row['net_amount'] > 0) {
+                    Payment::create([
+                        'invoice_id' => $invoice->id,
+                        'method' => $row['method'],
+                        'amount' => (float) $row['net_amount'],
+                        'reference' => $row['reference'] ?? null,
+                        'note' => $row['note'] ?? null,
+                        'received_by' => $userId,
+                    ]);
+                }
             }
             foreach ($heldDeposits as $d) {
                 $depositPayment = Payment::create([
@@ -247,6 +305,37 @@ class CheckoutService
                     'note' => 'Hoàn tiền cọc thừa',
                     'received_by' => $userId,
                 ]);
+            }
+
+            // Hậu kiểm dòng tiền: 1 ledger row cho mỗi sự kiện tiền mặt thực tế.
+            // Cọc applied bỏ qua (đã ghi 'deposit' lúc nhận cọc) để không trùng lặp.
+            $ledger = app(MoneyLedgerService::class);
+            $actor = $userId ? User::find($userId) : null;
+            foreach ($normalizedPayments as $row) {
+                if ((float) $row['net_amount'] > 0) {
+                    $ledger->recordIn(
+                        'sale', (float) $row['net_amount'], $row['method'], $actor,
+                        ['invoice_id' => $invoice->id],
+                        array_filter(['note' => $row['note'] ?? null])
+                    );
+                }
+            }
+            if ($depositTotal > $total) {
+                $depositMethods = collect($heldDeposits)->map(fn ($d) => $d->method)->unique()->values();
+                $references = collect($heldDeposits)->map(fn ($d) => $d->reference)
+                    ->filter(fn ($r) => $r !== null && $r !== '')->unique()->values()->all();
+                $meta = ['source_method' => $depositMethods->count() === 1 ? $depositMethods->first() : 'mixed'];
+                if ($references !== []) {
+                    $meta['references'] = $references;
+                }
+                if ($depositMethods->count() === 1 && ($heldDeposits[0]->reference ?? null)) {
+                    $meta['reference'] = $heldDeposits[0]->reference;
+                }
+                $ledger->recordOut(
+                    'deposit_refund', round($depositTotal - $total, 2), 'cash', $actor,
+                    ['invoice_id' => $invoice->id],
+                    $meta
+                );
             }
 
             // 6. Ghi invoice_lines

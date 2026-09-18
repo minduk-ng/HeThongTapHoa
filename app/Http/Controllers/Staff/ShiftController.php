@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Staff;
 use App\Http\Controllers\Controller;
 use App\Models\CashMovement;
 use App\Models\Shift;
+use App\Services\IdempotencyGuard;
 use App\Services\Manager\ShiftService;
+use App\Services\MoneyLedgerService;
 use Carbon\CarbonInterface;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -82,29 +84,62 @@ class ShiftController extends Controller
             'category' => 'required|string|max:30',
             'amount' => 'required|numeric|gt:0',
             'note' => 'nullable|string|max:255',
+            'idempotency_key' => 'required|string|max:100',
         ]);
 
-        $movement = DB::transaction(function () use ($validated, $request) {
-            $shift = Shift::open()->latest('id')->lockForUpdate()->first();
-            if (! $shift) {
-                return null;
-            }
+        $fp = array_diff_key($validated, ['idempotency_key' => true]);
 
-            return CashMovement::create([
-                'shift_id' => $shift->id,
-                'type' => $validated['type'],
-                'category' => $validated['category'],
-                'amount' => $validated['amount'],
-                'note' => $validated['note'] ?? null,
-                'created_by' => $request->user()?->id,
-            ]);
-        });
-
-        if (! $movement) {
-            return response()->json(['error' => 'Không có ca nào đang mở.'], 422);
+        if ($response = IdempotencyGuard::checkJson($request, 'cash_movement', $fp)) {
+            return $response;
         }
 
-        return response()->json(['success' => true, 'movement' => $movement]);
+        try {
+            $movement = DB::transaction(function () use ($validated, $request) {
+                $shift = Shift::open()->latest('id')->lockForUpdate()->first();
+                if (! $shift) {
+                    return null;
+                }
+
+                $movement = CashMovement::create([
+                    'shift_id' => $shift->id,
+                    'type' => $validated['type'],
+                    'category' => $validated['category'],
+                    'amount' => $validated['amount'],
+                    'note' => $validated['note'] ?? null,
+                    'created_by' => $request->user()?->id,
+                ]);
+
+                $ledger = app(MoneyLedgerService::class);
+                $links = ['shift_id' => $shift->id];
+                $meta = array_filter([
+                    'category' => $validated['category'] ?? null,
+                    'note' => $validated['note'] ?? null,
+                ]);
+                if ($validated['type'] === 'income') {
+                    $ledger->recordIn('shift_income', (float) $validated['amount'], 'cash', $request->user(), $links, $meta);
+                } else {
+                    $ledger->recordOut('shift_expense', (float) $validated['amount'], 'cash', $request->user(), $links, $meta);
+                }
+                IdempotencyGuard::recordSuccessInTransaction($request, 'cash_movement', $movement, [
+                    'success' => true, 'movement' => $movement->toArray(),
+                ]);
+
+                return $movement;
+            });
+
+            if (! $movement) {
+                IdempotencyGuard::release($request, 'cash_movement', $fp);
+
+                return response()->json(['error' => 'Không có ca nào đang mở.'], 422);
+            }
+
+            $response = response()->json(['success' => true, 'movement' => $movement]);
+
+            return $response;
+        } catch (\Throwable $e) {
+            IdempotencyGuard::release($request, 'cash_movement', $fp);
+            throw $e;
+        }
     }
 
     public function close(Request $request): JsonResponse

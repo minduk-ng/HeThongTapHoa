@@ -3,21 +3,27 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Reports\DateRangeReportRequest;
 use App\Models\Invoice;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class SalesInvoiceReportController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(DateRangeReportRequest $request): Response
     {
-        $startDate = $request->input('start_date', today()->toDateString());
-        $endDate = $request->input('end_date', today()->toDateString());
+        $startDate = $request->startDate();
+        $endDate = $request->endDate();
+        $range = $request->dateRange();
 
-        $invoices = Invoice::withCount('orders')->with('customer')
-            ->whereBetween('issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
+        $baseQuery = Invoice::whereBetween('issued_at', $range);
+        $count = (clone $baseQuery)->count();
+        $revenue = (float) (clone $baseQuery)->sum('total_amount');
+        $bankTransferCount = (clone $baseQuery)->where('payment_method', 'bank_transfer')->count();
+
+        $invoices = (clone $baseQuery)->withCount('orders')->with('customer')
             ->orderByDesc('issued_at')
+            ->limit(500)
             ->get()
             ->values()
             ->map(fn (Invoice $invoice) => [
@@ -35,19 +41,17 @@ class SalesInvoiceReportController extends Controller
                 'issued_at' => $invoice->issued_at->toIso8601String(),
             ]);
 
-        $count = $invoices->count();
-        $revenue = (float) $invoices->sum('total_amount');
-
         return Inertia::render('reports/SalesInvoiceReport', [
             'invoices' => $invoices,
             'metrics' => [
                 'revenue' => $revenue,
                 'invoice_count' => $count,
                 'avg_invoice' => $count > 0 ? (int) round($revenue / $count) : 0,
-                'bank_transfer_count' => $invoices->where('payment_method', 'bank_transfer')->count(),
+                'bank_transfer_count' => $bankTransferCount,
             ],
             'startDate' => $startDate,
             'endDate' => $endDate,
+            'pagination' => ['total_count' => $count, 'truncated' => $count > 500],
         ]);
     }
 }

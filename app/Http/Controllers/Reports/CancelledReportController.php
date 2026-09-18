@@ -3,25 +3,35 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Reports\DateRangeReportRequest;
 use App\Models\Order;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CancelledReportController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(DateRangeReportRequest $request): Response
     {
-        $startDate = $request->input('start_date', today()->toDateString());
-        $endDate = $request->input('end_date', today()->toDateString());
-        $range = ["{$startDate} 00:00:00", "{$endDate} 23:59:59"];
+        $startDate = $request->startDate();
+        $endDate = $request->endDate();
+        $range = $request->dateRange();
+
+        // Direct SQL aggregates for summary metrics
+        $ordersQuery = Order::where('status', 'cancelled')->whereBetween('updated_at', $range);
+        $cancelledOrdersCount = (clone $ordersQuery)->count();
+        $cancelledOrdersValue = (float) (clone $ordersQuery)->sum('total');
+
+        $itemsQuery = DB::table('order_items')
+            ->where('status', 'cancelled')
+            ->whereBetween('cancelled_at', $range);
+        $cancelledItemsCount = (clone $itemsQuery)->count();
+        $cancelledItemsValue = (float) (clone $itemsQuery)->sum('subtotal');
 
         // Đơn huỷ nguyên: mốc huỷ ~ updated_at (Order chưa có cột cancelled_at riêng).
-        $cancelledOrders = Order::with(['table', 'items'])
-            ->where('status', 'cancelled')
-            ->whereBetween('updated_at', $range)
+        $cancelledOrders = (clone $ordersQuery)->with(['table', 'items'])
             ->orderByDesc('updated_at')
+            ->limit(500)
             ->get()
             ->values()
             ->map(fn (Order $o) => [
@@ -51,6 +61,7 @@ class CancelledReportController extends Controller
                 'users.name as cancelled_by_name',
                 'order_items.cancelled_at',
             ])
+            ->limit(500)
             ->get()
             ->values()
             ->map(fn (\stdClass $r) => [
@@ -68,13 +79,18 @@ class CancelledReportController extends Controller
             'cancelledOrders' => $cancelledOrders,
             'cancelledItems' => $cancelledItems,
             'metrics' => [
-                'cancelled_orders_count' => $cancelledOrders->count(),
-                'cancelled_orders_value' => (float) $cancelledOrders->sum('total'),
-                'cancelled_items_count' => $cancelledItems->count(),
-                'cancelled_items_value' => (float) $cancelledItems->sum('subtotal'),
+                'cancelled_orders_count' => $cancelledOrdersCount,
+                'cancelled_orders_value' => $cancelledOrdersValue,
+                'cancelled_items_count' => $cancelledItemsCount,
+                'cancelled_items_value' => $cancelledItemsValue,
             ],
             'startDate' => $startDate,
             'endDate' => $endDate,
+            'pagination' => [
+                'orders_total_count' => $cancelledOrdersCount,
+                'items_total_count' => $cancelledItemsCount,
+                'truncated' => $cancelledOrdersCount > 500 || $cancelledItemsCount > 500,
+            ],
         ]);
     }
 }

@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import PaymentDrawer from './components/PaymentDrawer';
@@ -28,6 +28,8 @@ export default function POSManager({ tables, categories, products, promotions }:
     const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([]);
     const [unreadErrorCount, setUnreadErrorCount] = useState<number>(0);
     const [searchQuery, setSearchQuery] = useState('');
+    const { auth } = usePage<any>().props;
+    const myUserId = (auth as any)?.user?.id;
     const [autoSwitchToMenu, setAutoSwitchToMenu] = useState<boolean>(() => {
         if (typeof window !== 'undefined') {
             return localStorage.getItem('pos_auto_switch_to_menu') === 'true';
@@ -100,6 +102,9 @@ export default function POSManager({ tables, categories, products, promotions }:
     } = usePOSCart(selectedTable, safeTables, safeProducts);
 
     const lastEventRef = useRef<{ key: string; time: number }>({ key: '', time: 0 });
+    // Indirection so the pos-channel effect above always calls the latest lock handler
+    // without re-subscribing when the callback identity changes.
+    const handleLockBroadcastRef = useRef<(data: any) => void>(() => {});
 
     const isDuplicateEvent = useCallback((eventKey: string) => {
         const now = Date.now();
@@ -191,7 +196,8 @@ return;
                 .listen('.OrderCompleted', (data: any) => handleTableReload('OrderCompleted', data))
                 .listen('.TableStatusUpdated', (data: any) => handleTableReload('TableStatusUpdated', data))
                 .listen('.TableTransferred', (data: any) => handleTableReload('TableTransferred', data))
-                .listen('.ItemsServed', handleItemsServed);
+                .listen('.ItemsServed', handleItemsServed)
+                .listen('.CheckoutLockUpdated', (data: any) => handleLockBroadcastRef.current(data));
 
             return () => {
                 window.Echo.leave('pos-channel');
@@ -206,6 +212,7 @@ return;
         applyPromotion,
         clearPromotion,
         lockedCheckoutTables,
+        handleLockBroadcast,
         receiptModal,
         setReceiptModal,
         handleSendToKitchen,
@@ -222,6 +229,10 @@ return;
         searchCustomers,
         createCustomer,
     } = usePOSCheckout(selectedTable, safeTables, safePromotions);
+
+    useEffect(() => {
+        handleLockBroadcastRef.current = handleLockBroadcast;
+    }, [handleLockBroadcast]);
 
     const {
         getDraft,
@@ -299,31 +310,40 @@ return [];
 
     const isCurrentTableCheckoutLocked = useMemo(() => {
         if (!selectedTable) {
-return false;
-}
+            return false;
+        }
 
         const groupId = selectedTable.merged_into_table_id || selectedTable.id;
         const groupTableIds = safeTables
             .filter((t) => t.id === groupId || t.merged_into_table_id === groupId)
             .map((t) => t.id);
 
-        return groupTableIds.some((id) => !!lockedCheckoutTables[id]);
-    }, [selectedTable, safeTables, lockedCheckoutTables]);
+        // Own server lock never blocks self — only foreign locks do.
+        return groupTableIds.some((id) => {
+            const lock = lockedCheckoutTables[id];
+
+            return !!lock && lock.userId !== myUserId;
+        });
+    }, [selectedTable, safeTables, lockedCheckoutTables, myUserId]);
 
     const currentTableLockedBy = useMemo(() => {
         if (!selectedTable) {
-return '';
-}
+            return '';
+        }
 
         const groupId = selectedTable.merged_into_table_id || selectedTable.id;
         const groupTableIds = safeTables
             .filter((t) => t.id === groupId || t.merged_into_table_id === groupId)
             .map((t) => t.id);
 
-        const lockedId = groupTableIds.find((id) => !!lockedCheckoutTables[id]);
+        const lockedId = groupTableIds.find((id) => {
+            const lock = lockedCheckoutTables[id];
+
+            return !!lock && lock.userId !== myUserId;
+        });
 
         return lockedId ? lockedCheckoutTables[lockedId].employeeName : '';
-    }, [selectedTable, safeTables, lockedCheckoutTables]);
+    }, [selectedTable, safeTables, lockedCheckoutTables, myUserId]);
 
 
     return (
@@ -497,13 +517,13 @@ return '';
                         }
                     }
                 }}
-                onConfirmDeposit={(amount, method) => {
+                onConfirmDeposit={(amount, method, reference, bankVerified) => {
                     if (activeOrderForDrawer?.id) {
                         return submitDeposit(activeOrderForDrawer.id, amount, method, () => {
                             setIsPaymentDrawerOpen(false);
                             setDrawerMode('payment');
                             router.reload({ only: ['tables'] });
-                        });
+                        }, reference, bankVerified);
                     }
                 }}
                 onConfirmReservation={(deposit) => {
@@ -520,6 +540,8 @@ return '';
                             reservation_note: currentReservationDraft.note,
                             deposit_amount: deposit?.amount || 0,
                             payment_method: deposit?.method || 'cash',
+                            deposit_reference: deposit?.reference,
+                            deposit_bank_verified: deposit?.bankVerified,
                             items: newItems
                         }, () => {
                             clearDraft(selectedTable.id, activeInvoiceIdForTable);

@@ -32,8 +32,8 @@ interface PaymentDrawerProps {
     onSearchCustomers?: (q: string) => Promise<PosCustomer[]>;
     onCreateCustomer?: (fullName: string, phone: string) => Promise<{ ok: boolean; customer?: PosCustomer; error?: string }>;
     onConfirmPayment: (paymentMethod: 'cash' | 'bank_transfer', amountReceived: number, changeAmount: number, shouldPrint: boolean) => void;
-    onConfirmDeposit?: (amount: number, method: 'cash' | 'bank_transfer') => Promise<void> | void;
-    onConfirmReservation?: (deposit: { amount: number; method: 'cash' | 'bank_transfer' } | null) => Promise<void> | void;
+    onConfirmDeposit?: (amount: number, method: 'cash' | 'bank_transfer', reference?: string, bankVerified?: boolean) => Promise<void> | void;
+    onConfirmReservation?: (deposit: { amount: number; method: 'cash' | 'bank_transfer'; reference?: string; bankVerified?: boolean } | null) => Promise<void> | void;
     submitting: boolean;
 }
 
@@ -64,6 +64,8 @@ export default function PaymentDrawer({
 }: PaymentDrawerProps) {
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer'>('cash');
     const [amountReceived, setAmountReceived] = useState<number>(0);
+    const [depositReference, setDepositReference] = useState('');
+    const [bankVerified, setBankVerified] = useState(false);
     const [promotionInput, setPromotionInput] = useState('');
     const [promotionError, setPromotionError] = useState<string | null>(null);
     const [promotionLoading, setPromotionLoading] = useState(false);
@@ -103,6 +105,8 @@ export default function PaymentDrawer({
         queueMicrotask(() => {
             if (isOpen) {
                 setPaymentMethod('cash');
+                setDepositReference('');
+                setBankVerified(false);
                 setPromotionInput('');
                 setPromotionError(null);
                 setShowCouponInput(false);
@@ -165,6 +169,11 @@ presets.push(bigRound3);
     const cashPresets = mode === 'payment' ? calculatePresets(payable) : [100000, 200000, 500000, totalAmount];
     const changeAmount = mode === 'payment' ? Math.max(0, amountReceived - payable) + depositRefund : 0;
     const promotionApplied = appliedPromotions.some((ap) => ap.code !== null);
+    const bankDepositInvalid =
+        paymentMethod === 'bank_transfer' &&
+        (mode === 'deposit' || mode === 'reservation') &&
+        amountReceived > 0 &&
+        (depositReference.trim() === '' || !bankVerified);
 
     const handlePromotion = async () => {
         const code = promotionInput.trim();
@@ -232,12 +241,22 @@ return;
         } else if (mode === 'deposit') {
             if (onConfirmDeposit) {
                 await guard(async () => {
-                    await onConfirmDeposit(amountReceived, paymentMethod);
+                    await onConfirmDeposit(
+                        amountReceived,
+                        paymentMethod,
+                        paymentMethod === 'bank_transfer' ? depositReference.trim() : undefined,
+                        paymentMethod === 'bank_transfer' ? bankVerified : undefined,
+                    );
                 });
             }
         } else if (mode === 'reservation') {
             if (onConfirmReservation) {
-                const depositData = amountReceived > 0 ? { amount: amountReceived, method: paymentMethod } : null;
+                const depositData = amountReceived > 0 ? {
+                    amount: amountReceived,
+                    method: paymentMethod,
+                    reference: paymentMethod === 'bank_transfer' ? depositReference.trim() : undefined,
+                    bankVerified: paymentMethod === 'bank_transfer' ? bankVerified : undefined,
+                } : null;
                 await guard(async () => {
                     await onConfirmReservation(depositData);
                 });
@@ -813,6 +832,30 @@ return null;
                                                 </div>
                                             );
                                         })()}
+                                        {(mode === 'deposit' || mode === 'reservation') && paymentMethod === 'bank_transfer' && (
+                                            <div className="space-y-2.5 text-left rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30 p-3.5">
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 block">
+                                                        Mã tham chiếu chuyển khoản: <span className="text-rose-500">*</span>
+                                                    </label>
+                                                    <input
+                                                        value={depositReference}
+                                                        onChange={(e) => setDepositReference(e.target.value)}
+                                                        placeholder="Nhập mã giao dịch ngân hàng..."
+                                                        className="w-full px-3 py-2 text-sm border rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:border-sky-500 outline-none"
+                                                    />
+                                                </div>
+                                                <label className="flex items-start gap-2 cursor-pointer text-xs text-zinc-700 dark:text-zinc-300">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={bankVerified}
+                                                        onChange={(e) => setBankVerified(e.target.checked)}
+                                                        className="mt-0.5 h-4 w-4 rounded accent-sky-600"
+                                                    />
+                                                    <span>Tôi đã kiểm tra và xác nhận tiền đã vào tài khoản. <span className="text-rose-500 font-semibold">(bắt buộc)</span></span>
+                                                </label>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -848,7 +891,7 @@ return null;
                     {mode === 'deposit' && (
                         <button
                             type="button"
-                            disabled={submitting || isSubmitting || amountReceived <= 0}
+                            disabled={submitting || isSubmitting || amountReceived <= 0 || bankDepositInvalid}
                             onClick={() => handleConfirm(false)}
                             className="w-full py-3 px-4 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-xs disabled:opacity-40 transition-colors flex items-center justify-center space-x-1.5"
                         >
@@ -860,7 +903,7 @@ return null;
                     {mode === 'reservation' && (
                         <button
                             type="button"
-                            disabled={submitting || isSubmitting}
+                            disabled={submitting || isSubmitting || bankDepositInvalid}
                             onClick={() => handleConfirm(false)}
                             className="w-full py-3 px-4 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-xs disabled:opacity-40 transition-colors flex items-center justify-center space-x-1.5"
                         >

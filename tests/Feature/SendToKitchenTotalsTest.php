@@ -3,7 +3,7 @@
 use App\Services\Checkout\OrderTotals;
 
 test('reduce-items khong con ghi total vao orders, preview dung', function () {
-    $this->actingAs(posStaff());
+    $this->actingAs(posStaff(['pos.view', 'pos.create', 'orders.cancel']));
     $itemA = posMenuItem(['price' => 30000, 'vat_rate' => 0]);
     $table = posTable(['status' => 'occupied']);
     $order = posOrder($table, [
@@ -14,6 +14,7 @@ test('reduce-items khong con ghi total vao orders, preview dung', function () {
 
     $this->postJson('/staff/pos/send-to-kitchen', [
         'table_id' => $table->id,
+        'order_id' => $order->id,
         'reduced_items' => [[
             'order_item_id' => $orderItem->id,
             'reduce_quantity' => 1,

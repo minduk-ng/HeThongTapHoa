@@ -12,10 +12,13 @@ use App\Models\Role;
 use App\Models\Table;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -35,7 +38,23 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureOtpLimiters();
         $this->registerCacheInvalidators();
+    }
+
+    protected function configureOtpLimiters(): void
+    {
+        // ponytail: per-principal OTP guard on top of the IP throttles on the routes.
+        // Per-code 5-attempt lockout is the brute-force bound; this caps distributed
+        // guessing at one account/purpose/session. 30/min never binds legit users.
+        RateLimiter::for('otp-principal', function (Request $request) {
+            $email = strtolower(trim((string) $request->session()->get('otp_email', $request->input('email', ''))));
+            $purpose = (string) $request->session()->get('otp_type', $request->input('otp_type', 'unknown'));
+            $principal = (string) ($request->user()?->getAuthIdentifier() ?? ($email !== '' ? $email : $request->ip()));
+            $key = implode('|', ['otp-principal', $principal, $purpose, $request->session()->getId()]);
+
+            return Limit::perMinute(30)->by($key);
+        });
     }
 
     protected function registerCacheInvalidators(): void

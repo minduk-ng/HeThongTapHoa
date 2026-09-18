@@ -47,7 +47,7 @@ class SirvClientService
             return $response->json('token');
         }
 
-        Log::error('Sirv authentication failed', ['response' => $response->body()]);
+        Log::error('Sirv authentication failed', ['status' => $response->status()]);
 
         return null;
     }
@@ -79,7 +79,7 @@ class SirvClientService
             return true;
         }
 
-        Log::error('Sirv file upload failed', ['path' => $remotePath, 'error' => $response->body()]);
+        Log::error('Sirv file upload failed', ['path' => $remotePath, 'status' => $response->status()]);
 
         return false;
     }

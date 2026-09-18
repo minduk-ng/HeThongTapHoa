@@ -10,7 +10,9 @@ use App\Models\InvoiceLine;
 use App\Models\Payment;
 use App\Models\ProductRecipe;
 use App\Models\StockVoucher;
+use App\Services\IdempotencyGuard;
 use App\Services\Inventory\LotService;
+use App\Services\MoneyLedgerService;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,7 +32,13 @@ class RefundController extends Controller
             'items.*.qty' => 'required|integer|min:1',
             'reason' => 'required|string|max:50',
             'note' => 'nullable|string|max:255',
+            'idempotency_key' => 'required|string|max:100',
         ]);
+
+        $fingerprint = array_diff_key($validated, ['idempotency_key' => true]);
+        if ($response = IdempotencyGuard::checkJson($request, 'refund', $fingerprint)) {
+            return $response;
+        }
 
         try {
             DB::transaction(function () use ($validated, $request) {
@@ -65,13 +73,19 @@ class RefundController extends Controller
                 }
 
                 // Payment âm
-                Payment::create([
+                $refundPayment = Payment::create([
                     'invoice_id' => $invoice->id,
                     'method' => 'cash',
                     'amount' => -$refundTotal,
                     'note' => 'Hoàn trả hoá đơn '.$invoice->invoice_code.' ('.($validated['reason'] ?? '').')',
                     'received_by' => $request->user()?->id,
                 ]);
+
+                app(MoneyLedgerService::class)->recordOut(
+                    'order_refund', $refundTotal, 'cash', $request->user(),
+                    ['invoice_id' => $invoice->id],
+                    ['source_method' => $invoice->payment_method, 'reason' => $validated['reason'] ?? null]
+                );
 
                 // Trả kho
                 $voucher = null;
@@ -125,19 +139,28 @@ class RefundController extends Controller
                         ], $linesMap),
                     ]);
                 }
+                IdempotencyGuard::recordSuccessInTransaction($request, 'refund', $refundPayment, ['success' => true, 'message' => 'Hoàn trả thành công!']);
             });
 
             Cache::tags(['dashboard'])->flush();
             IngredientStockUpdated::dispatch(['source' => 'refund']);
 
-            return response()->json(['success' => true, 'message' => 'Hoàn trả thành công!']);
+            $response = response()->json(['success' => true, 'message' => 'Hoàn trả thành công!']);
+
+            return $response;
         } catch (\Throwable $e) {
+            IdempotencyGuard::release($request, 'refund', [
+                ...$fingerprint,
+            ]);
             Log::error('Refund error: '.$e->getMessage());
 
+            $is422 = $e->getCode() === 422;
+            $message = $is422 ? $e->getMessage() : 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.';
+
             return response()->json([
-                'error' => $e->getMessage(),
-                'message' => $e->getMessage(),
-            ], $e->getCode() === 422 ? 422 : 500);
+                'error' => $message,
+                'message' => $message,
+            ], $is422 ? 422 : 500);
         }
     }
 }

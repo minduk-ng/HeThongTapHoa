@@ -52,7 +52,7 @@ export function usePOSCheckout(
               return orders.some((o) => !!processingOrders[o.id]);
           })()
         : false);
-    const { lockedCheckoutTables, lockTableCheckout, unlockTableCheckout } = usePOSCheckoutLock();
+    const { lockedCheckoutTables, lockTableCheckout, unlockTableCheckout, fetchStatus, handleLockBroadcast } = usePOSCheckoutLock();
     const [receiptModal, setReceiptModal] = useState<ReceiptModalState>({
         isOpen: false,
         paymentMethod: 'cash',
@@ -101,10 +101,9 @@ export function usePOSCheckout(
                 .map((t) => t.id);
 
             if (open) {
-                const employeeName = auth?.user?.name || 'Nhân viên';
-                lockTableCheckout(selectedTable.id, employeeName, linkedTableIds);
+                void lockTableCheckout(selectedTable.id, linkedTableIds);
             } else {
-                unlockTableCheckout(selectedTable.id, linkedTableIds);
+                void unlockTableCheckout(selectedTable.id, linkedTableIds);
             }
         }
     };
@@ -116,6 +115,30 @@ export function usePOSCheckout(
             }
         };
     }, []);
+
+    // Sync server lock state for the selected merged group (locks live server-side;
+    // broadcasts cover acquire/release, the poll below catches TTL expiry).
+    const selectedTableId = selectedTable?.id;
+    const selectedGroupId = selectedTable?.merged_into_table_id || selectedTable?.id;
+
+    useEffect(() => {
+        if (selectedTableId === undefined || selectedTableId === null) {
+            return;
+        }
+
+        const ids = tables
+            .filter((t) => t.id === selectedGroupId || t.merged_into_table_id === selectedGroupId)
+            .map((t) => t.id);
+
+        void fetchStatus(ids.length > 0 ? ids : [selectedTableId]);
+
+        const timer = setInterval(() => {
+            void fetchStatus(ids.length > 0 ? ids : [selectedTableId]);
+        }, 30000);
+
+        return () => clearInterval(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedTableId, selectedGroupId]);
 
     useEffect(() => {
         queueMicrotask(() => {
@@ -440,7 +463,10 @@ return;
 return;
 }
 
-        if (lockedCheckoutTables[selectedTable.id]) {
+        // Server-authoritative lock: only a FOREIGN lock blocks payment. Own lock carries our user id.
+        const checkoutLock = lockedCheckoutTables[selectedTable.id];
+
+        if (checkoutLock && checkoutLock.userId !== auth?.user?.id) {
             return;
         }
 
@@ -649,6 +675,7 @@ return;
         applyPromotion,
         clearPromotion,
         lockedCheckoutTables,
+        handleLockBroadcast,
         receiptModal,
         setReceiptModal,
         handleSendToKitchen,

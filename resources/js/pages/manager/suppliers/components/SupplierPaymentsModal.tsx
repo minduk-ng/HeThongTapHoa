@@ -16,6 +16,7 @@ export default function SupplierPaymentsModal({
     onClose,
 }: SupplierPaymentsModalProps) {
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [amounts, setAmounts] = useState<Record<number, string>>({});
     const [amount, setAmount] = useState('');
     const [note, setNote] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -23,7 +24,14 @@ export default function SupplierPaymentsModal({
 
     React.useEffect(() => {
         queueMicrotask(() => {
+            const defaults: Record<number, string> = {};
+
+            for (const v of supplier?.unpaid_vouchers ?? []) {
+                defaults[v.id] = String(v.outstanding);
+            }
+
             setSelectedIds(supplier?.unpaid_vouchers.map((v) => v.id) ?? []);
+            setAmounts(defaults);
             setAmount(supplier ? String(supplier.debt) : '');
             setNote('');
             setErrors({});
@@ -34,22 +42,49 @@ export default function SupplierPaymentsModal({
         return null;
     }
 
+    const outstandingOf = (id: number) =>
+        supplier.unpaid_vouchers.find((v) => v.id === id)?.outstanding ?? 0;
+
     const toggleVoucher = (id: number) => {
-        setSelectedIds((prev) =>
-            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-        );
+        setSelectedIds((prev) => {
+            if (prev.includes(id)) {
+                setAmounts((cur) => {
+                    const next = { ...cur };
+                    delete next[id];
+
+                    return next;
+                });
+
+                return prev.filter((x) => x !== id);
+            }
+
+            setAmounts((cur) => ({ ...cur, [id]: String(outstandingOf(id)) }));
+
+            return [...prev, id];
+        });
     };
 
-    const selectedTotal = supplier.unpaid_vouchers
-        .filter((v) => selectedIds.includes(v.id))
-        .reduce((sum, v) => sum + v.total, 0);
+    const setVoucherAmount = (id: number, value: string) => {
+        const cap = outstandingOf(id);
+        const num = Number(value);
+        setAmounts((cur) => ({
+            ...cur,
+            [id]: value === '' ? '' : String(Math.min(Math.max(num, 0), cap)),
+        }));
+    };
+
+    const allocTotal = selectedIds.reduce(
+        (sum, id) => sum + (Number(amounts[id]) || 0),
+        0,
+    );
+    const allocMismatch = allocTotal !== Number(amount);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
         if (submitting) {
-return;
-}
+            return;
+        }
 
         setSubmitting(true);
 
@@ -62,7 +97,10 @@ return;
             {
                 amount,
                 note: note.trim() || null,
-                voucher_ids: selectedIds,
+                allocations: selectedIds.map((id) => ({
+                    voucher_id: id,
+                    amount: amounts[id],
+                })),
             },
             {
                 onSuccess: () => {
@@ -95,7 +133,8 @@ return;
                         type="button"
                         onClick={onClose}
                         className="rounded-xl p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                     aria-label="Đóng">
+                        aria-label="Đóng"
+                    >
                         <X className="h-5 w-5 stroke-[1.5]" />
                     </button>
                 </div>
@@ -123,11 +162,11 @@ return;
                             </label>
                             <div className="max-h-52 space-y-1.5 overflow-y-auto rounded-xl border border-zinc-200 p-2 dark:border-zinc-700">
                                 {supplier.unpaid_vouchers.map((v) => (
-                                    <label
+                                    <div
                                         key={v.id}
-                                        className="flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+                                        className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
                                     >
-                                        <span className="flex items-center gap-2">
+                                        <label className="flex cursor-pointer items-center gap-2">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedIds.includes(
@@ -144,13 +183,36 @@ return;
                                             <span className="text-zinc-400">
                                                 {v.transacted_at}
                                             </span>
-                                        </span>
-                                        <span className="tabular-nums">
-                                            {formatMoney(v.total)}
-                                        </span>
-                                    </label>
+                                        </label>
+                                        {selectedIds.includes(v.id) ? (
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max={v.outstanding}
+                                                step="1000"
+                                                value={amounts[v.id] ?? ''}
+                                                onChange={(e) =>
+                                                    setVoucherAmount(
+                                                        v.id,
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                aria-label={`Số tiền trả ${v.voucher_code} (tối đa ${v.outstanding})`}
+                                                className="w-28 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-right text-xs font-semibold tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800"
+                                            />
+                                        ) : (
+                                            <span className="tabular-nums">
+                                                {formatMoney(v.outstanding)}
+                                            </span>
+                                        )}
+                                    </div>
                                 ))}
                             </div>
+                            {errors.allocations && (
+                                <p className="mt-1 text-xs text-rose-500">
+                                    {errors.allocations}
+                                </p>
+                            )}
                         </div>
                     )}
 
@@ -170,8 +232,13 @@ return;
                             required
                         />
                         <p className="mt-1 text-[11px] text-zinc-400">
-                            Tổng phiếu được chọn: {formatMoney(selectedTotal)}
+                            Tổng phân bổ theo phiếu: {formatMoney(allocTotal)}
                         </p>
+                        {allocMismatch && (
+                            <p className="mt-1 text-xs text-rose-500">
+                                Tổng phân bổ phải bằng số tiền thanh toán.
+                            </p>
+                        )}
                         {errors.amount && (
                             <p className="mt-1 text-xs text-rose-500">
                                 {errors.amount}
@@ -213,7 +280,8 @@ return;
                             submitting ||
                             selectedIds.length === 0 ||
                             !amount ||
-                            Number(amount) <= 0
+                            Number(amount) <= 0 ||
+                            allocMismatch
                         }
                         className="rounded-xl bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50"
                     >

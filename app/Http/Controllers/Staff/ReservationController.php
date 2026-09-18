@@ -10,9 +10,12 @@ use App\Models\Employee;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Shift;
 use App\Models\Table;
+use App\Models\User;
 use App\Services\Checkout\OrderTotals;
 use App\Services\IdempotencyGuard;
+use App\Services\MoneyLedgerService;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,25 +27,50 @@ class ReservationController extends Controller
 {
     use GeneratesOrderCode;
 
+    /**
+     * Server-derived bank verification — verifier/time/shift come from the
+     * session, never from client input (prevents fake bank deposits).
+     *
+     * @return array<string, mixed>
+     */
+    private function verifiedDepositAttributes(string $method, ?string $reference, ?User $verifier): array
+    {
+        if ($method !== 'bank_transfer') {
+            return ['reference' => null, 'bank_verified' => false];
+        }
+
+        return [
+            'reference' => $reference,
+            'bank_verified' => true,
+            'verified_by_user_id' => $verifier?->id,
+            'verified_at' => now(),
+            'shift_id' => Shift::open()->latest('id')->value('id'),
+        ];
+    }
+
     public function cancelReservation(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'order_id' => 'required|exists:orders,id',
             'deposit_resolution' => 'nullable|in:refund,forfeit',
             'note' => 'nullable|string',
-            'idempotency_key' => 'nullable|string',
+            'idempotency_key' => 'nullable|string|max:100',
         ]);
 
-        if (IdempotencyGuard::isDuplicate($request, 'cancel_reservation', [
+        if (($validated['deposit_resolution'] ?? null) === 'refund' && ! $request->user()?->hasPermission('deposits.refund')) {
+            abort(403);
+        }
+
+        if ($response = IdempotencyGuard::checkJson($request, 'cancel_reservation', [
             'order_id' => $validated['order_id'],
             'deposit_resolution' => $validated['deposit_resolution'] ?? null,
         ])) {
-            return response()->json(['success' => true]);
+            return $response;
         }
 
         try {
             $result = DB::transaction(function () use ($validated, $request) {
-                $order = Order::with(['table', 'deposits' => fn ($q) => $q->where('status', 'held')])->where('id', $validated['order_id'])->firstOrFail();
+                $order = Order::with(['table', 'deposits' => fn ($q) => $q->where('status', 'held')->lockForUpdate()])->lockForUpdate()->where('id', $validated['order_id'])->firstOrFail();
 
                 if ($order->status !== 'reserved') {
                     throw new \Exception('Chỉ có thể hủy đơn đặt bàn', 422);
@@ -65,10 +93,20 @@ class ReservationController extends Controller
                             'resolved_at' => now(),
                             'note' => $validated['note'] ?? null,
                         ]);
+                        if (($validated['deposit_resolution'] ?? null) === 'refund') {
+                            app(MoneyLedgerService::class)->recordOut(
+                                'deposit_refund', (float) $deposit->amount, 'cash', $request->user(),
+                                ['order_id' => $order->id],
+                                array_filter([
+                                    'source_method' => $deposit->method,
+                                    'note' => $validated['note'] ?? null,
+                                ])
+                            );
+                        }
                     }
                 }
 
-                $table = $order->table;
+                $table = $order->table_id ? Table::query()->lockForUpdate()->where('id', $order->table_id)->first() : null;
                 if ($table && $table->status === 'reserved') {
                     $hasOtherActiveOrders = $table->orders()
                         ->where('id', '!=', $order->id)
@@ -100,9 +138,11 @@ class ReservationController extends Controller
                 rescue(fn () => TableStatusUpdated::dispatch($result));
             }
 
-            return response()->json(['success' => true]);
+            $response = response()->json(['success' => true]);
 
-        } catch (\Exception $e) {
+            return IdempotencyGuard::recordSuccess($request, 'cancel_reservation', $response);
+
+        } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'cancel_reservation', [
                 'order_id' => $validated['order_id'],
                 'deposit_resolution' => $validated['deposit_resolution'] ?? null,
@@ -110,7 +150,10 @@ class ReservationController extends Controller
             Log::error('POS cancelReservation error: '.$e->getMessage());
             $status = $e->getCode() === 422 ? 422 : 500;
 
-            return response()->json(['message' => $e->getMessage()], $status);
+            return response()->json([
+                'message' => $e->getMessage(),
+                'error' => $e->getMessage(),
+            ], $status);
         }
     }
 
@@ -118,18 +161,19 @@ class ReservationController extends Controller
     {
         $validated = $request->validate([
             'order_id' => 'required|exists:orders,id',
-            'idempotency_key' => 'nullable|string',
+            'idempotency_key' => 'nullable|string|max:100',
         ]);
 
-        if (IdempotencyGuard::isDuplicate($request, 'check_in_reservation', [
+        if ($response = IdempotencyGuard::checkJson($request, 'check_in_reservation', [
             'order_id' => $validated['order_id'],
         ])) {
-            return response()->json(['success' => true]);
+            return $response;
         }
 
         try {
             $result = DB::transaction(function () use ($validated, $request) {
-                $order = Order::with('table')->where('id', $validated['order_id'])->firstOrFail();
+                $order = Order::with('table')->lockForUpdate()->where('id', $validated['order_id'])->firstOrFail();
+                $table = $order->table_id ? Table::query()->lockForUpdate()->where('id', $order->table_id)->first() : null;
 
                 if ($order->status !== 'reserved') {
                     throw new \Exception('Đơn này không phải đơn đặt bàn chờ check-in', 422);
@@ -137,7 +181,6 @@ class ReservationController extends Controller
 
                 $order->update(['status' => 'draft']);
 
-                $table = $order->table;
                 if ($table) {
                     $table->update([
                         'status' => 'occupied',
@@ -159,18 +202,22 @@ class ReservationController extends Controller
                 rescue(fn () => TableStatusUpdated::dispatch($result));
             }
 
-            return response()->json(['success' => true]);
+            $response = response()->json(['success' => true]);
 
-        } catch (\Exception $e) {
+            return IdempotencyGuard::recordSuccess($request, 'check_in_reservation', $response);
+
+        } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'check_in_reservation', [
                 'order_id' => $validated['order_id'],
             ]);
-            if ($e->getCode() === 422) {
-                return response()->json(['error' => $e->getMessage()], 422);
-            }
+            $status = $e->getCode() === 422 ? 422 : 500;
+            $message = $e->getCode() === 422 ? $e->getMessage() : 'Check-in thất bại: '.$e->getMessage();
             Log::error('POS checkInReservation error: '.$e->getMessage());
 
-            return response()->json(['error' => 'Check-in thất bại: '.$e->getMessage()], 500);
+            return response()->json([
+                'message' => $message,
+                'error' => $message,
+            ], $status);
         }
     }
 
@@ -189,20 +236,30 @@ class ReservationController extends Controller
             'deposit' => 'nullable|array',
             'deposit.amount' => 'required_with:deposit|numeric|min:1',
             'deposit.method' => 'required_with:deposit|in:cash,bank_transfer',
+            'deposit.reference' => 'nullable|string|max:255|required_if:deposit.method,bank_transfer',
+            'deposit.bank_verified' => 'exclude_unless:deposit.method,bank_transfer|required|accepted',
             'idempotency_key' => 'nullable|string',
         ]);
 
-        if (IdempotencyGuard::isDuplicate($request, 'reserve', [
+        if (! empty($validated['deposit']) && ! $request->user()?->hasPermission('deposits.create')) {
+            abort(403);
+        }
+
+        if ($response = IdempotencyGuard::checkJson($request, 'reserve', [
             'table_id' => $validated['table_id'],
             'reservation_name' => $validated['reservation_name'],
             'reservation_time' => $validated['reservation_time'],
         ])) {
-            return response()->json(['success' => true]);
+            return $response;
         }
 
         try {
             $result = DB::transaction(function () use ($validated, $request) {
-                $table = Table::query()->where('id', $validated['table_id'])->firstOrFail();
+                $table = Table::query()->lockForUpdate()->where('id', $validated['table_id'])->firstOrFail();
+
+                if (Order::where('table_id', $table->id)->where('status', 'reserved')->exists()) {
+                    throw new \Exception('Bàn này đã có đơn đặt trước chưa hoàn tất.', 422);
+                }
 
                 $subtotal = 0;
                 $vatAmount = 0;
@@ -265,13 +322,22 @@ class ReservationController extends Controller
 
                 $depositTotal = 0;
                 if (! empty($validated['deposit'])) {
-                    Deposit::create([
+                    $deposit = new Deposit([
                         'order_id' => $order->id,
                         'amount' => $validated['deposit']['amount'],
                         'method' => $validated['deposit']['method'],
                         'status' => 'held',
                         'received_by_user_id' => $request->user()?->id,
                     ]);
+                    $deposit->forceFill($this->verifiedDepositAttributes(
+                        $validated['deposit']['method'],
+                        $validated['deposit']['reference'] ?? null,
+                        $request->user()
+                    ))->save();
+                    app(MoneyLedgerService::class)->recordIn(
+                        'deposit', (float) $validated['deposit']['amount'], $validated['deposit']['method'],
+                        $request->user(), ['order_id' => $order->id]
+                    );
                     $depositTotal = $validated['deposit']['amount'];
 
                     OrderActivityLogger::log($order, 'deposit_received', $request->user()?->id, [
@@ -302,10 +368,12 @@ class ReservationController extends Controller
 
             rescue(fn () => TableStatusUpdated::dispatch($result['table']));
 
-            return response()->json([
+            $response = response()->json([
                 'success' => true,
                 'order' => array_merge($result['order']->toArray(), ['deposit_total' => $result['deposit_total']]),
             ]);
+
+            return IdempotencyGuard::recordSuccess($request, 'reserve', $response);
 
         } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'reserve', [
@@ -315,7 +383,13 @@ class ReservationController extends Controller
             ]);
             Log::error('POS reserve error: '.$e->getMessage());
 
-            return response()->json(['error' => 'Đặt bàn thất bại: '.$e->getMessage()], 500);
+            $status = $e->getCode() === 422 ? 422 : 500;
+            $message = $e->getCode() === 422 ? $e->getMessage() : 'Đặt bàn thất bại: '.$e->getMessage();
+
+            return response()->json([
+                'message' => $message,
+                'error' => $message,
+            ], $status);
         }
     }
 
@@ -325,15 +399,14 @@ class ReservationController extends Controller
             'order_id' => 'required|exists:orders,id',
             'amount' => 'required|numeric|min:1',
             'method' => 'required|in:cash,bank_transfer',
-            'idempotency_key' => 'nullable|string',
+            'reference' => 'nullable|string|max:255|required_if:method,bank_transfer',
+            'bank_verified' => 'exclude_unless:method,bank_transfer|required|accepted',
+            'idempotency_key' => 'required|string|max:100',
         ]);
 
-        if (IdempotencyGuard::isDuplicate($request, 'deposit', [
-            'order_id' => $validated['order_id'],
-            'amount' => $validated['amount'],
-            'method' => $validated['method'],
-        ])) {
-            return response()->json(['success' => true]);
+        $fingerprint = array_diff_key($validated, ['idempotency_key' => true]);
+        if ($response = IdempotencyGuard::checkJson($request, 'deposit', $fingerprint)) {
+            return $response;
         }
 
         try {
@@ -344,17 +417,29 @@ class ReservationController extends Controller
                     throw new \Exception('Không thể đặt cọc cho đơn đã thanh toán hoặc đã hủy', 422);
                 }
 
-                $order->deposits()->create([
+                $deposit = new Deposit([
+                    'order_id' => $order->id,
                     'amount' => $validated['amount'],
                     'method' => $validated['method'],
                     'status' => 'held',
                     'received_by_user_id' => $request->user()?->id,
                 ]);
+                $deposit->forceFill($this->verifiedDepositAttributes(
+                    $validated['method'],
+                    $validated['reference'] ?? null,
+                    $request->user()
+                ))->save();
+
+                app(MoneyLedgerService::class)->recordIn(
+                    'deposit', (float) $validated['amount'], $validated['method'],
+                    $request->user(), ['order_id' => $order->id]
+                );
 
                 OrderActivityLogger::log($order, 'deposit_received', $request->user()?->id, [
                     'amount' => $validated['amount'],
                     'method' => $validated['method'],
                 ]);
+                IdempotencyGuard::recordSuccessInTransaction($request, 'deposit', $deposit, ['success' => true]);
 
                 return $order->table;
             });
@@ -365,13 +450,13 @@ class ReservationController extends Controller
                 rescue(fn () => TableStatusUpdated::dispatch($result));
             }
 
-            return response()->json(['success' => true]);
+            $response = response()->json(['success' => true]);
 
-        } catch (\Exception $e) {
+            return $response;
+
+        } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'deposit', [
-                'order_id' => $validated['order_id'],
-                'amount' => $validated['amount'],
-                'method' => $validated['method'],
+                ...$fingerprint,
             ]);
             Log::error('POS deposit error: '.$e->getMessage());
             $status = $e->getCode() === 422 ? 422 : 500;

@@ -15,15 +15,15 @@ test('deposit double-submit cung order/amount/method chi tao 1 coc', function ()
     $this->actingAs(posAdmin());
     $order = idemDepositOrder();
 
-    // Request 1 (không idempotency_key — giả lập client cũ double-click)
+    $key = 'deposit-double-'.uniqid();
     $r1 = $this->postJson('/staff/pos/deposit', [
-        'order_id' => $order->id, 'amount' => 100000, 'method' => 'cash',
+        'order_id' => $order->id, 'amount' => 100000, 'method' => 'cash', 'idempotency_key' => $key,
     ]);
     $r1->assertOk();
 
     // Request 2 cùng fingerprint trong 5s — phải bị chặn (success ngầm, không tạo cọc mới)
     $r2 = $this->postJson('/staff/pos/deposit', [
-        'order_id' => $order->id, 'amount' => 100000, 'method' => 'cash',
+        'order_id' => $order->id, 'amount' => 100000, 'method' => 'cash', 'idempotency_key' => $key,
     ]);
     $r2->assertOk();
 
@@ -40,7 +40,24 @@ test('deposit khac amount tao duoc 2 coc (khong bi chan)', function () {
     expect(Deposit::where('order_id', $order->id)->count())->toBe(2);
 });
 
-test('deposit 2 request cung fingerprint nhung khac idempotency_key chi tao 1 coc', function () {
+test('deposit 2 request cung fingerprint cung idempotency_key chi tao 1 coc (replay)', function () {
+    $this->actingAs(posAdmin());
+    $order = idemDepositOrder();
+    $key = 'client_'.uniqid();
+
+    $this->postJson('/staff/pos/deposit', [
+        'order_id' => $order->id, 'amount' => 100000, 'method' => 'cash',
+        'idempotency_key' => $key,
+    ])->assertOk();
+    $this->postJson('/staff/pos/deposit', [
+        'order_id' => $order->id, 'amount' => 100000, 'method' => 'cash',
+        'idempotency_key' => $key,
+    ])->assertOk();
+
+    expect(Deposit::where('order_id', $order->id)->count())->toBe(1);
+});
+
+test('deposit 2 request cung fingerprint nhung khac idempotency_key tao 2 coc (khong bi drop som)', function () {
     $this->actingAs(posAdmin());
     $order = idemDepositOrder();
 
@@ -53,5 +70,5 @@ test('deposit 2 request cung fingerprint nhung khac idempotency_key chi tao 1 co
         'idempotency_key' => 'client_b_'.uniqid(),
     ])->assertOk();
 
-    expect(Deposit::where('order_id', $order->id)->count())->toBe(1);
+    expect(Deposit::where('order_id', $order->id)->count())->toBe(2);
 });

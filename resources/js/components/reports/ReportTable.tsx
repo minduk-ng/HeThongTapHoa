@@ -1,4 +1,5 @@
-import { ChevronDown, ChevronUp, Rows3 } from 'lucide-react';
+import { usePage } from '@inertiajs/react';
+import { AlertTriangle, ChevronDown, ChevronUp, Rows3 } from 'lucide-react';
 import { createContext, useContext, useMemo, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 
@@ -47,6 +48,9 @@ export default function ReportTable<T>({
     emptyTitle = 'Không có dữ liệu',
     emptyHint = 'Thử đổi khoảng ngày hoặc bộ lọc',
 }: ReportTableProps<T>) {
+    const paginationMeta = usePage().props.pagination as
+        | { truncated?: boolean; total_count?: number }
+        | undefined;
     const ctx = useContext(ReportColumnsContext);
     const hidden = new Set(ctx?.hiddenKeys ?? []);
     // Ẩn khi key nằm trong hiddenKeys (seed ban đầu từ visible === false).
@@ -219,6 +223,13 @@ return 'text-center';
 
     return (
         <div className="flex min-h-0 flex-1 flex-col">
+            {paginationMeta?.truncated && (
+                <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs font-medium text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                    <AlertTriangle className="h-4 w-4" />
+                    Chỉ hiển thị 500 dòng đầu trong tổng số{' '}
+                    {paginationMeta.total_count ?? 'nhiều hơn 500'} dòng.
+                </div>
+            )}
             <div className="min-h-0 flex-1 overflow-auto">
                 <table className="w-full text-left">
                     <colgroup>

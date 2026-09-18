@@ -3,27 +3,36 @@
 namespace App\Models;
 
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * @property int $id
  * @property string $email
  * @property string $code
  * @property string $type
+ * @property int $attempts
  * @property CarbonInterface $expires_at
+ * @property CarbonInterface|null $locked_at
  * @property CarbonInterface|null $created_at
  */
 class OtpCode extends Model
 {
+    public const MAX_ATTEMPTS = 5;
+
     public $timestamps = false;
 
-    protected $fillable = ['email', 'code', 'type', 'expires_at'];
+    protected $fillable = ['email', 'code', 'type', 'expires_at', 'attempts', 'locked_at'];
 
     protected function casts(): array
     {
         return [
             'expires_at' => 'datetime',
+            'locked_at' => 'datetime',
             'created_at' => 'datetime',
+            'attempts' => 'integer',
         ];
     }
 
@@ -34,8 +43,99 @@ class OtpCode extends Model
         });
     }
 
+    /**
+     * Force hashing at write time — no plaintext code ever hits the DB.
+     *
+     * @return Attribute<string, string>
+     */
+    protected function code(): Attribute
+    {
+        return Attribute::set(fn ($value) => Hash::isHashed($value) ? $value : Hash::make($value));
+    }
+
     public function isExpired(): bool
     {
         return $this->expires_at->isPast();
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->locked_at !== null;
+    }
+
+    /** All stored codes are hashed at write time; verify with Hash::check. */
+    public function matchesCode(string $plain): bool
+    {
+        return Hash::check($plain, $this->code);
+    }
+
+    /** Issue a fresh hashed code, replacing only the same-purpose OTP. Returns plaintext for mailing. */
+    public static function issue(string $email, string $type, int $ttlMinutes = 10): string
+    {
+        static::where('email', $email)->where('type', $type)->delete();
+
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        static::create([
+            'email' => $email,
+            'code' => Hash::make($code),
+            'type' => $type,
+            'expires_at' => now()->addMinutes($ttlMinutes),
+            'attempts' => 0,
+        ]);
+
+        return $code;
+    }
+
+    /**
+     * Check a code under a row lock; wrong attempts 1-4 keep it usable, 5th locks it.
+     * Locked/expired/wrong all return null so callers emit one generic response.
+     * Success does not delete; the caller deletes (inside its own transaction when needed).
+     */
+    public static function attemptVerify(string $email, string $type, string $plain): ?self
+    {
+        return DB::transaction(function () use ($email, $type, $plain): ?self {
+            $otp = static::where('email', $email)->where('type', $type)
+                ->orderByDesc('id')->lockForUpdate()->first();
+
+            if (! $otp || $otp->isLocked() || $otp->isExpired()) {
+                return null;
+            }
+
+            if (! $otp->matchesCode($plain)) {
+                $attempts = $otp->attempts + 1;
+                $otp->update([
+                    'attempts' => $attempts,
+                    'locked_at' => $attempts >= self::MAX_ATTEMPTS ? now() : $otp->locked_at,
+                ]);
+
+                return null;
+            }
+
+            return $otp;
+        });
+    }
+
+    public static function consume(string $email, string $type, string $plain, ?callable $callback = null): ?self
+    {
+        return DB::transaction(function () use ($email, $type, $plain, $callback): ?self {
+            $otp = static::where('email', $email)->where('type', $type)
+                ->orderByDesc('id')->lockForUpdate()->first();
+            if (! $otp || $otp->isLocked() || $otp->isExpired()) {
+                return null;
+            }
+            if (! $otp->matchesCode($plain)) {
+                $attempts = $otp->attempts + 1;
+                $otp->update(['attempts' => $attempts, 'locked_at' => $attempts >= self::MAX_ATTEMPTS ? now() : null]);
+
+                return null;
+            }
+
+            if ($callback !== null) {
+                $callback($otp);
+            }
+            $otp->delete();
+
+            return $otp;
+        });
     }
 }

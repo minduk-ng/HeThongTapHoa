@@ -24,7 +24,7 @@ it('reserves an available table with customer info only', function () {
 });
 
 it('reserves with pre-selected items and deposit', function () {
-    $staff = posStaff();
+    $staff = posStaff(['pos.view', 'pos.create', 'deposits.create']);
     $table = posTable();
     $item = posMenuItem(['price' => 50000]);
 
@@ -45,6 +45,22 @@ it('reserves with pre-selected items and deposit', function () {
     expect($deposit->status)->toBe('held')
         ->and((float) $deposit->amount)->toBe(100000.0)
         ->and($deposit->received_by_user_id)->toBe($staff->id);
+});
+
+it('rejects nested deposit on reserve without deposits.create', function () {
+    $staff = posStaff();
+    $table = posTable();
+
+    $this->actingAs($staff)->postJson('/staff/pos/reserve', [
+        'table_id' => $table->id,
+        'reservation_name' => 'Chị Hoa',
+        'reservation_phone' => '0912345678',
+        'reservation_time' => now()->addHours(1)->toDateTimeString(),
+        'deposit' => ['amount' => 100000, 'method' => 'cash'],
+    ])->assertForbidden();
+
+    expect(Order::where('table_id', $table->id)->count())->toBe(0)
+        ->and(Deposit::count())->toBe(0);
 });
 
 it('keeps occupied table status when reserving for later', function () {
@@ -125,7 +141,7 @@ it('rejects check-in for non-reserved order', function () {
 });
 
 it('cancels reservation with deposit refund and releases table', function () {
-    $staff = posStaff();
+    $staff = posStaff(['pos.view', 'pos.create', 'orders.cancel', 'deposits.refund']);
     $table = posTable(['status' => 'reserved', 'reservation_name' => 'Anh Đức']);
     $order = posOrder($table, [], ['status' => 'reserved']);
     $deposit = Deposit::create([
@@ -148,7 +164,7 @@ it('cancels reservation with deposit refund and releases table', function () {
 });
 
 it('cancels reservation forfeiting deposit on occupied table without touching table', function () {
-    $staff = posStaff();
+    $staff = posStaff(['pos.view', 'pos.create', 'orders.cancel']);
     $table = posTable(['status' => 'occupied']);
     posOrder($table); // khách hiện tại
     $reserved = posOrder($table, [], ['status' => 'reserved']);
@@ -165,7 +181,7 @@ it('cancels reservation forfeiting deposit on occupied table without touching ta
 });
 
 it('requires deposit_resolution when held deposit exists', function () {
-    $staff = posStaff();
+    $staff = posStaff(['pos.view', 'pos.create', 'orders.cancel']);
     $order = posOrder(posTable(['status' => 'reserved']), [], ['status' => 'reserved']);
     Deposit::create(['order_id' => $order->id, 'amount' => 50000, 'method' => 'cash', 'status' => 'held']);
 
@@ -175,20 +191,22 @@ it('requires deposit_resolution when held deposit exists', function () {
 });
 
 it('records a deposit for an active order', function () {
-    $staff = posStaff();
+    $staff = posStaff(['pos.view', 'pos.create', 'deposits.create']);
     $order = posOrder(posTable(['status' => 'occupied']), [], ['status' => 'pending']);
 
     $this->actingAs($staff)->postJson('/staff/pos/deposit', [
         'order_id' => $order->id,
         'amount' => 300000,
         'method' => 'bank_transfer',
+        'reference' => 'CK-TEST-001',
+        'bank_verified' => true,
     ])->assertOk();
 
     expect($order->deposits()->where('status', 'held')->sum('amount'))->toEqual(300000);
 });
 
 it('allows multiple deposits summed on the same order', function () {
-    $staff = posStaff();
+    $staff = posStaff(['pos.view', 'pos.create', 'deposits.create']);
     $order = posOrder(posTable(['status' => 'occupied']), [], ['status' => 'pending']);
     Deposit::create(['order_id' => $order->id, 'amount' => 100000, 'method' => 'cash', 'status' => 'held']);
 
@@ -200,7 +218,7 @@ it('allows multiple deposits summed on the same order', function () {
 });
 
 it('rejects deposit for paid or cancelled orders', function () {
-    $staff = posStaff();
+    $staff = posStaff(['pos.view', 'pos.create', 'deposits.create']);
     $order = posOrder(posTable(), [], ['status' => 'paid']);
 
     $this->actingAs($staff)->postJson('/staff/pos/deposit', [
