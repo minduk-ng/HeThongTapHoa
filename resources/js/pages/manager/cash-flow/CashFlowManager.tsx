@@ -128,23 +128,29 @@ export default function CashFlowManager({
         shift !== 'all' ||
         employee !== 'all';
 
-    const safeEntries = Array.isArray(entries) ? entries : [];
+    const safeEntries = React.useMemo(() => (Array.isArray(entries) ? entries : []), [entries]);
 
     const shiftOptions = React.useMemo(() => {
         const ids = new Map<number, true>();
+
         for (const e of safeEntries) {
-            if (e.shift_id != null) ids.set(e.shift_id, true);
+            if (e.shift_id != null) {
+                ids.set(e.shift_id, true);
+            }
         }
+
         return [...ids.keys()].sort((a, b) => b - a);
     }, [safeEntries]);
 
     const employeeOptions = React.useMemo(() => {
         const map = new Map<number, string>();
+
         for (const e of safeEntries) {
             if (e.actor_id != null && !map.has(e.actor_id)) {
                 map.set(e.actor_id, e.actor_name ?? `#${e.actor_id}`);
             }
         }
+
         return [...map.entries()];
     }, [safeEntries]);
 
@@ -229,6 +235,7 @@ export default function CashFlowManager({
                 const day = new Date(row.created_at).toISOString().slice(0, 10);
                 const linkClass =
                     'text-xs font-medium text-sky-600 hover:underline dark:text-sky-400';
+
                 return (
                     <span className="flex flex-wrap gap-2">
                         {row.order_id != null ? (
