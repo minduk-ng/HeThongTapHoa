@@ -10,6 +10,7 @@ use App\Models\InvoiceLine;
 use App\Models\Payment;
 use App\Models\ProductRecipe;
 use App\Models\StockVoucher;
+use App\Services\IdempotencyGuard;
 use App\Services\Inventory\LotService;
 use App\Services\MoneyLedgerService;
 use App\Services\OrderActivityLogger;
@@ -31,7 +32,15 @@ class RefundController extends Controller
             'items.*.qty' => 'required|integer|min:1',
             'reason' => 'required|string|max:50',
             'note' => 'nullable|string|max:255',
+            'idempotency_key' => 'nullable|string|max:100',
         ]);
+
+        if ($response = IdempotencyGuard::checkJson($request, 'refund', [
+            'invoice_id' => $validated['invoice_id'],
+            'items' => $validated['items'],
+        ])) {
+            return $response;
+        }
 
         try {
             DB::transaction(function () use ($validated, $request) {
@@ -137,8 +146,14 @@ class RefundController extends Controller
             Cache::tags(['dashboard'])->flush();
             IngredientStockUpdated::dispatch(['source' => 'refund']);
 
-            return response()->json(['success' => true, 'message' => 'Hoàn trả thành công!']);
+            $response = response()->json(['success' => true, 'message' => 'Hoàn trả thành công!']);
+
+            return IdempotencyGuard::recordSuccess($request, 'refund', $response);
         } catch (\Throwable $e) {
+            IdempotencyGuard::release($request, 'refund', [
+                'invoice_id' => $validated['invoice_id'],
+                'items' => $validated['items'],
+            ]);
             Log::error('Refund error: '.$e->getMessage());
 
             return response()->json([

@@ -61,11 +61,11 @@ class ReservationController extends Controller
             abort(403);
         }
 
-        if (IdempotencyGuard::isDuplicate($request, 'cancel_reservation', [
+        if ($response = IdempotencyGuard::checkJson($request, 'cancel_reservation', [
             'order_id' => $validated['order_id'],
             'deposit_resolution' => $validated['deposit_resolution'] ?? null,
         ])) {
-            return response()->json(['success' => true]);
+            return $response;
         }
 
         try {
@@ -138,7 +138,9 @@ class ReservationController extends Controller
                 rescue(fn () => TableStatusUpdated::dispatch($result));
             }
 
-            return response()->json(['success' => true]);
+            $response = response()->json(['success' => true]);
+
+            return IdempotencyGuard::recordSuccess($request, 'cancel_reservation', $response);
 
         } catch (\Exception $e) {
             IdempotencyGuard::release($request, 'cancel_reservation', [
@@ -236,12 +238,12 @@ class ReservationController extends Controller
             abort(403);
         }
 
-        if (IdempotencyGuard::isDuplicate($request, 'reserve', [
+        if ($response = IdempotencyGuard::checkJson($request, 'reserve', [
             'table_id' => $validated['table_id'],
             'reservation_name' => $validated['reservation_name'],
             'reservation_time' => $validated['reservation_time'],
         ])) {
-            return response()->json(['success' => true]);
+            return $response;
         }
 
         try {
@@ -355,10 +357,12 @@ class ReservationController extends Controller
 
             rescue(fn () => TableStatusUpdated::dispatch($result['table']));
 
-            return response()->json([
+            $response = response()->json([
                 'success' => true,
                 'order' => array_merge($result['order']->toArray(), ['deposit_total' => $result['deposit_total']]),
             ]);
+
+            return IdempotencyGuard::recordSuccess($request, 'reserve', $response);
 
         } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'reserve', [
@@ -383,12 +387,12 @@ class ReservationController extends Controller
             'idempotency_key' => 'nullable|string',
         ]);
 
-        if (IdempotencyGuard::isDuplicate($request, 'deposit', [
+        if ($response = IdempotencyGuard::checkJson($request, 'deposit', [
             'order_id' => $validated['order_id'],
             'amount' => $validated['amount'],
             'method' => $validated['method'],
         ])) {
-            return response()->json(['success' => true]);
+            return $response;
         }
 
         try {
@@ -431,7 +435,9 @@ class ReservationController extends Controller
                 rescue(fn () => TableStatusUpdated::dispatch($result));
             }
 
-            return response()->json(['success' => true]);
+            $response = response()->json(['success' => true]);
+
+            return IdempotencyGuard::recordSuccess($request, 'deposit', $response);
 
         } catch (\Exception $e) {
             IdempotencyGuard::release($request, 'deposit', [

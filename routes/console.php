@@ -8,4 +8,5 @@ Schedule::call(function () {
 })->everyMinute()->name('cleanup-expired-otps');
 
 Schedule::command('cache:prune-expired')->daily();
+Schedule::command('idempotency:prune')->daily();
 Schedule::command('promotions:aggregate-daily')->dailyAt('03:00');

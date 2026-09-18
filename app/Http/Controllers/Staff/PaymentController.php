@@ -159,13 +159,11 @@ class PaymentController extends Controller
             }],
         ]);
 
-        if (IdempotencyGuard::isDuplicate($request, 'checkout', [
+        if ($response = IdempotencyGuard::check($request, 'checkout', [
             'order_id' => $validated['order_id'],
             'amount_received' => $validated['amount_received'],
         ])) {
-            Log::info("Duplicate checkout request suppressed: {$request->input('idempotency_key')}");
-
-            return back()->with('success', 'Thanh toán đã được ghi nhận thành công!');
+            return $response;
         }
 
         $preTableId = Order::where('id', $validated['order_id'])->value('table_id');
@@ -290,16 +288,16 @@ class PaymentController extends Controller
             });
             rescue(fn () => IngredientStockUpdated::dispatch(['source' => 'checkout']));
 
-            if ($request->wantsJson()) {
-                return response()->json([
+            $response = $request->wantsJson()
+                ? response()->json([
                     'success' => true,
                     'message' => 'Thanh toán hoàn tất thành công!',
                     'deposit_total' => $depositTotal,
                     'deposit_refund' => $depositRefund,
-                ]);
-            }
+                ])
+                : back()->with('success', 'Thanh toán hoàn tất thành công!');
 
-            return back()->with('success', 'Thanh toán hoàn tất thành công!');
+            return IdempotencyGuard::recordSuccess($request, 'checkout', $response);
         } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'checkout', [
                 'order_id' => $validated['order_id'],
@@ -340,13 +338,11 @@ class PaymentController extends Controller
             }],
         ]);
 
-        if (IdempotencyGuard::isDuplicate($request, 'bulk_checkout', [
+        if ($response = IdempotencyGuard::check($request, 'bulk_checkout', [
             'order_ids' => collect(array_values($validated['order_ids']))->sort()->values()->all(),
             'amount_received' => $validated['amount_received'],
         ])) {
-            return $request->wantsJson()
-                ? response()->json(['success' => true, 'message' => 'Thanh toán đã được ghi nhận!'])
-                : back()->with('success', 'Thanh toán đã được ghi nhận!');
+            return $response;
         }
 
         $preTableIds = Order::whereIn('id', $validated['order_ids'])->pluck('table_id')->all();
@@ -496,16 +492,16 @@ class PaymentController extends Controller
             });
             rescue(fn () => IngredientStockUpdated::dispatch(['source' => 'bulk_checkout']));
 
-            if ($request->wantsJson()) {
-                return response()->json([
+            $response = $request->wantsJson()
+                ? response()->json([
                     'success' => true,
                     'message' => 'Thanh toán gộp thành công!',
                     'deposit_total' => $depositTotal,
                     'deposit_refund' => $depositRefund,
-                ]);
-            }
+                ])
+                : back()->with('success', 'Thanh toán gộp thành công!');
 
-            return back()->with('success', 'Thanh toán gộp thành công!');
+            return IdempotencyGuard::recordSuccess($request, 'bulk_checkout', $response);
         } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'bulk_checkout', [
                 'order_ids' => collect(array_values($validated['order_ids']))->sort()->values()->all(),
