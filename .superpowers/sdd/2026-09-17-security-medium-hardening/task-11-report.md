@@ -88,3 +88,8 @@
 - `npx eslint .`: PASS.
 - `npx tsc --noEmit`: PASS.
 - `npm run build`: PASS. Existing chunk-size advisory only.
+
+### NB2 follow-up: Payments
+
+- `PaymentsReportController`: `cash_total`/`bank_total` now aggregated via SQL over the full filtered range (join payments->invoices on `issued_at`), not the 500-row-capped `\` collection.
+- Test: 501 invoices (300 cash x 1000, 201 bank x 2000) assert full-range totals (300000/402000) with rows capped at 500 and `truncated` true. Gates: 621 tests PASS, phpstan PASS, pint PASS.

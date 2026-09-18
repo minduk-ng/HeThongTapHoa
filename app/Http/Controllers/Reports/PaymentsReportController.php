@@ -7,6 +7,7 @@ use App\Http\Requests\Reports\DateRangeReportRequest;
 use App\Models\Deposit;
 use App\Models\Invoice;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -45,8 +46,15 @@ class PaymentsReportController extends Controller
                 'payments' => $i->payments->groupBy('method')->map(fn ($p) => (float) $p->sum('amount'))->toArray(),
             ]);
 
-        $cashTotal = (float) $rows->sum(fn ($r) => (float) ($r['payments']['cash'] ?? 0));
-        $bankTotal = (float) $rows->sum(fn ($r) => (float) ($r['payments']['bank_transfer'] ?? 0));
+        // Tổng cash/bank trên TOÀN BỘ kỳ (không bị cap 500 như $rows)
+        $methodTotals = DB::table('payments')
+            ->join('invoices', 'invoices.id', '=', 'payments.invoice_id')
+            ->whereBetween('invoices.issued_at', $range)
+            ->groupBy('payments.method')
+            ->selectRaw('payments.method, SUM(payments.amount) as total')
+            ->pluck('total', 'payments.method');
+        $cashTotal = (float) ($methodTotals['cash'] ?? 0);
+        $bankTotal = (float) ($methodTotals['bank_transfer'] ?? 0);
 
         // Cọc đang giữ tạo trong kỳ (chưa có invoice — tiền thật đã thu)
         $heldQuery = Deposit::query()

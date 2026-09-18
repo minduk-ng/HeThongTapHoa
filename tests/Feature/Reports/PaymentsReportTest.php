@@ -76,6 +76,43 @@ class PaymentsReportTest extends TestCase
             );
     }
 
+    public function test_cash_bank_totals_use_full_range_when_rows_capped()
+    {
+        $now = now()->format('Y-m-d H:i:s');
+        $invoices = [];
+        for ($i = 0; $i < 501; $i++) {
+            $method = $i < 300 ? 'cash' : 'bank_transfer';
+            $amount = $i < 300 ? 1000 : 2000;
+            $invoices[] = [
+                'invoice_code' => 'CAP-'.$i, 'table_name' => 'B01', 'payment_method' => $method,
+                'amount_received' => $amount, 'change_amount' => 0, 'total_amount' => $amount,
+                'subtotal_amount' => $amount, 'discount_amount' => 0, 'deposit_amount' => 0,
+                'issued_at' => $now, 'created_at' => $now, 'updated_at' => $now,
+            ];
+        }
+        Invoice::insert($invoices);
+
+        $payments = [];
+        foreach (Invoice::orderBy('id')->pluck('id') as $idx => $id) {
+            $payments[] = [
+                'invoice_id' => $id,
+                'method' => $idx < 300 ? 'cash' : 'bank_transfer',
+                'amount' => $idx < 300 ? 1000 : 2000,
+                'created_at' => $now, 'updated_at' => $now,
+            ];
+        }
+        Payment::insert($payments);
+
+        $this->actingAs($this->adminUser())
+            ->get('/reports/payments?start_date='.today()->toDateString().'&end_date='.today()->toDateString())
+            ->assertInertia(fn ($page) => $page
+                ->has('rows', 500)
+                ->where('metrics.cash_total', 300000)
+                ->where('metrics.bank_total', 402000)
+                ->where('pagination.total_count', 501)
+                ->where('pagination.truncated', true));
+    }
+
     public function test_unauthorized_user_cannot_access()
     {
         $this->actingAs(User::factory()->create())
