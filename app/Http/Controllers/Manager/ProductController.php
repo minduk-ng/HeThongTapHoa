@@ -9,9 +9,12 @@ use App\Support\SpreadsheetCellSanitizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -248,69 +251,78 @@ class ProductController extends Controller
     {
         try {
             $request->validate([
-                'file' => 'required|file|mimes:csv,txt,xlsx|max:10240',
+                'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
             ]);
 
             $file = $request->file('file');
             $path = $file->getRealPath();
 
-            $content = file_get_contents($path);
-            if ($content === false) {
+            $handle = fopen($path, 'r');
+            if ($handle === false) {
                 return response()->json(['message' => 'Không thể đọc nội dung file.'], 422);
             }
 
-            // Remove UTF-8 BOM if present
-            if (str_starts_with($content, "\xEF\xBB\xBF")) {
-                $content = substr($content, 3);
-            }
-
-            // Auto-detect delimiter (, or ; or \t)
-            $firstLine = strtok($content, "\r\n");
-            if ($firstLine === false) {
-                $firstLine = '';
-            }
-            $delimiter = ',';
-            if (substr_count($firstLine, ';') > substr_count($firstLine, ',')) {
-                $delimiter = ';';
-            } elseif (substr_count($firstLine, "\t") > substr_count($firstLine, ',')) {
-                $delimiter = "\t";
-            }
-
-            $lines = explode("\n", str_replace(["\r\n", "\r"], "\n", $content));
-            $rows = [];
-            $isHeader = true;
-
-            foreach ($lines as $line) {
-                $line = trim($line);
-                if (empty($line)) {
-                    continue;
+            try {
+                $firstLine = fgets($handle);
+                if ($firstLine === false) {
+                    $firstLine = '';
                 }
 
-                $data = str_getcsv($line, $delimiter);
-                if ($isHeader) {
-                    $isHeader = false;
-
-                    continue;
+                if (str_starts_with($firstLine, "\xEF\xBB\xBF")) {
+                    $firstLine = substr($firstLine, 3);
                 }
 
-                if (isset($data[0]) || isset($data[1])) {
-                    $rawId = trim($data[0] ?? '');
-                    $cleanId = preg_replace('/[^0-9]/', '', $rawId);
+                while (trim($firstLine) === '' && ! feof($handle)) {
+                    $nextLine = fgets($handle);
+                    if ($nextLine === false) {
+                        break;
+                    }
+                    $firstLine = $nextLine;
+                }
 
-                    $rows[] = [
-                        'id' => $cleanId !== '' ? (int) $cleanId : null,
-                        'raw_id' => $rawId,
-                        'name' => trim($data[1] ?? ''),
-                        'category' => trim($data[2] ?? ''),
-                        'price' => (float) preg_replace('/[^0-9.]/', '', $data[3] ?? '0'),
-                        'vat_rate' => (float) preg_replace('/[^0-9.]/', '', $data[4] ?? '0'),
-                        'description' => trim($data[6] ?? ''),
-                    ];
+                $delimiter = ',';
+                if (substr_count($firstLine, ';') > substr_count($firstLine, ',')) {
+                    $delimiter = ';';
+                } elseif (substr_count($firstLine, "\t") > substr_count($firstLine, ',')) {
+                    $delimiter = "\t";
+                }
+
+                $rows = [];
+                $rowCount = 0;
+
+                while (($data = fgetcsv($handle, 0, $delimiter)) !== false) {
+                    if ($data === [null] || empty(array_filter($data, fn ($val) => $val !== null && trim((string) $val) !== ''))) {
+                        continue;
+                    }
+
+                    $rowCount++;
+                    if ($rowCount > 5000) {
+                        return response()->json(['message' => 'Số lượng dòng trong file vượt quá giới hạn 5.000 dòng.'], 422);
+                    }
+
+                    if (isset($data[0]) || isset($data[1])) {
+                        $rawId = trim((string) ($data[0] ?? ''));
+                        $cleanId = preg_replace('/[^0-9]/', '', $rawId);
+
+                        $rows[] = [
+                            'id' => $cleanId !== '' ? (int) $cleanId : null,
+                            'raw_id' => $rawId,
+                            'name' => trim((string) ($data[1] ?? '')),
+                            'category' => trim((string) ($data[2] ?? '')),
+                            'price' => (float) preg_replace('/[^0-9.]/', '', (string) ($data[3] ?? '0')),
+                            'vat_rate' => (float) preg_replace('/[^0-9.]/', '', (string) ($data[4] ?? '0')),
+                            'description' => trim((string) ($data[6] ?? '')),
+                        ];
+                    }
+                }
+            } finally {
+                if (is_resource($handle)) {
+                    fclose($handle);
                 }
             }
 
             $existingIds = MenuItem::pluck('id')->toArray();
-            $existingNames = MenuItem::pluck('name')->map(fn ($n) => mb_strtolower($n))->toArray();
+            $existingNames = MenuItem::pluck('name')->map(fn ($n) => mb_strtolower((string) $n))->toArray();
 
             $duplicates = [];
             $newItems = [];
@@ -319,7 +331,7 @@ class ProductController extends Controller
                 $isDuplicate = false;
                 if (! empty($row['id']) && in_array((int) $row['id'], $existingIds)) {
                     $isDuplicate = true;
-                } elseif (! empty($row['name']) && in_array(mb_strtolower($row['name']), $existingNames)) {
+                } elseif (! empty($row['name']) && in_array(mb_strtolower((string) $row['name']), $existingNames)) {
                     $isDuplicate = true;
                 }
 
@@ -332,7 +344,13 @@ class ProductController extends Controller
 
             // Cache temp import data
             $tempId = 'import_'.Str::random(10);
-            session([$tempId => ['rows' => $rows, 'duplicates' => $duplicates, 'new_items' => $newItems]]);
+            $tempPayload = [
+                'rows' => $rows,
+                'duplicates' => $duplicates,
+                'new_items' => $newItems,
+            ];
+            Cache::put($tempId, $tempPayload, now()->addMinutes(30));
+            session([$tempId => $tempPayload]);
 
             return response()->json([
                 'temp_id' => $tempId,
@@ -341,8 +359,12 @@ class ProductController extends Controller
                 'new_count' => count($newItems),
                 'duplicates' => $duplicates,
             ]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Lỗi đọc file: '.$e->getMessage()], 422);
+            Log::error('Lỗi import sản phẩm: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
+            return response()->json(['message' => 'Có lỗi xảy ra khi xử lý file import. Vui lòng kiểm tra định dạng file.'], 422);
         }
     }
 
@@ -353,7 +375,7 @@ class ProductController extends Controller
             'action' => 'required|in:replace_all,add_only_new',
         ]);
 
-        $tempData = session($request->temp_id);
+        $tempData = Cache::get($request->temp_id) ?? session($request->temp_id);
         if (! $tempData) {
             return response()->json(['message' => 'Dữ liệu tạm không tồn tại hoặc đã hết hạn.'], 400);
         }
@@ -419,6 +441,7 @@ class ProductController extends Controller
             }
         }
 
+        Cache::forget($request->temp_id);
         session()->forget($request->temp_id);
 
         return back()->with('success', 'Nhập dữ liệu Excel thành công!');
