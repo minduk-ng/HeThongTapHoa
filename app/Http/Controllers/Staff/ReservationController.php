@@ -70,7 +70,7 @@ class ReservationController extends Controller
 
         try {
             $result = DB::transaction(function () use ($validated, $request) {
-                $order = Order::with(['table', 'deposits' => fn ($q) => $q->where('status', 'held')])->where('id', $validated['order_id'])->firstOrFail();
+                $order = Order::with(['table', 'deposits' => fn ($q) => $q->where('status', 'held')->lockForUpdate()])->lockForUpdate()->where('id', $validated['order_id'])->firstOrFail();
 
                 if ($order->status !== 'reserved') {
                     throw new \Exception('Chỉ có thể hủy đơn đặt bàn', 422);
@@ -106,7 +106,7 @@ class ReservationController extends Controller
                     }
                 }
 
-                $table = $order->table;
+                $table = $order->table_id ? Table::query()->lockForUpdate()->where('id', $order->table_id)->first() : null;
                 if ($table && $table->status === 'reserved') {
                     $hasOtherActiveOrders = $table->orders()
                         ->where('id', '!=', $order->id)
@@ -150,7 +150,10 @@ class ReservationController extends Controller
             Log::error('POS cancelReservation error: '.$e->getMessage());
             $status = $e->getCode() === 422 ? 422 : 500;
 
-            return response()->json(['message' => $e->getMessage()], $status);
+            return response()->json([
+                'message' => $e->getMessage(),
+                'error' => $e->getMessage(),
+            ], $status);
         }
     }
 
@@ -161,15 +164,16 @@ class ReservationController extends Controller
             'idempotency_key' => 'nullable|string',
         ]);
 
-        if (IdempotencyGuard::isDuplicate($request, 'check_in_reservation', [
+        if ($response = IdempotencyGuard::checkJson($request, 'check_in_reservation', [
             'order_id' => $validated['order_id'],
         ])) {
-            return response()->json(['success' => true]);
+            return $response;
         }
 
         try {
             $result = DB::transaction(function () use ($validated, $request) {
-                $order = Order::with('table')->where('id', $validated['order_id'])->firstOrFail();
+                $order = Order::with('table')->lockForUpdate()->where('id', $validated['order_id'])->firstOrFail();
+                $table = $order->table_id ? Table::query()->lockForUpdate()->where('id', $order->table_id)->first() : null;
 
                 if ($order->status !== 'reserved') {
                     throw new \Exception('Đơn này không phải đơn đặt bàn chờ check-in', 422);
@@ -177,7 +181,6 @@ class ReservationController extends Controller
 
                 $order->update(['status' => 'draft']);
 
-                $table = $order->table;
                 if ($table) {
                     $table->update([
                         'status' => 'occupied',
@@ -199,18 +202,22 @@ class ReservationController extends Controller
                 rescue(fn () => TableStatusUpdated::dispatch($result));
             }
 
-            return response()->json(['success' => true]);
+            $response = response()->json(['success' => true]);
 
-        } catch (\Exception $e) {
+            return IdempotencyGuard::recordSuccess($request, 'check_in_reservation', $response);
+
+        } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'check_in_reservation', [
                 'order_id' => $validated['order_id'],
             ]);
-            if ($e->getCode() === 422) {
-                return response()->json(['error' => $e->getMessage()], 422);
-            }
+            $status = $e->getCode() === 422 ? 422 : 500;
+            $message = $e->getCode() === 422 ? $e->getMessage() : 'Check-in thất bại: '.$e->getMessage();
             Log::error('POS checkInReservation error: '.$e->getMessage());
 
-            return response()->json(['error' => 'Check-in thất bại: '.$e->getMessage()], 500);
+            return response()->json([
+                'message' => $message,
+                'error' => $message,
+            ], $status);
         }
     }
 
@@ -248,7 +255,11 @@ class ReservationController extends Controller
 
         try {
             $result = DB::transaction(function () use ($validated, $request) {
-                $table = Table::query()->where('id', $validated['table_id'])->firstOrFail();
+                $table = Table::query()->lockForUpdate()->where('id', $validated['table_id'])->firstOrFail();
+
+                if (Order::where('table_id', $table->id)->where('status', 'reserved')->exists()) {
+                    throw new \Exception('Bàn này đã có đơn đặt trước chưa hoàn tất.', 422);
+                }
 
                 $subtotal = 0;
                 $vatAmount = 0;
@@ -372,7 +383,13 @@ class ReservationController extends Controller
             ]);
             Log::error('POS reserve error: '.$e->getMessage());
 
-            return response()->json(['error' => 'Đặt bàn thất bại: '.$e->getMessage()], 500);
+            $status = $e->getCode() === 422 ? 422 : 500;
+            $message = $e->getCode() === 422 ? $e->getMessage() : 'Đặt bàn thất bại: '.$e->getMessage();
+
+            return response()->json([
+                'message' => $message,
+                'error' => $message,
+            ], $status);
         }
     }
 
