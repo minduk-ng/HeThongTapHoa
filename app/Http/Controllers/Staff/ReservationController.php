@@ -142,7 +142,7 @@ class ReservationController extends Controller
 
             return IdempotencyGuard::recordSuccess($request, 'cancel_reservation', $response);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'cancel_reservation', [
                 'order_id' => $validated['order_id'],
                 'deposit_resolution' => $validated['deposit_resolution'] ?? null,
@@ -439,7 +439,7 @@ class ReservationController extends Controller
 
             return IdempotencyGuard::recordSuccess($request, 'deposit', $response);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'deposit', [
                 'order_id' => $validated['order_id'],
                 'amount' => $validated['amount'],

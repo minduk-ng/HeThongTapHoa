@@ -295,6 +295,73 @@ test('supplier payment mutation is durable and idempotent', function () {
     $res2->assertStatus(302);
     $res2->assertSessionHasNoErrors();
     $res2->assertSessionHas('success');
+    $res2->assertHeader('X-Idempotent-Replay', 'true');
 
     expect(SupplierPayment::count())->toBe(1);
+});
+
+test('cross-user scope: idempotency key from user A cannot be accessed or replayed by user B', function () {
+    $userA = posAdmin();
+    $userB = posAdmin();
+
+    $orderA = posOrder(posTable(), [
+        ['item' => posMenuItem(['price' => 50000]), 'qty' => 1, 'price' => 50000, 'status' => 'completed'],
+    ]);
+    $orderB = posOrder(posTable(), [
+        ['item' => posMenuItem(['price' => 50000]), 'qty' => 1, 'price' => 50000, 'status' => 'completed'],
+    ]);
+
+    $key = 'shared_key_'.uniqid();
+
+    // User A executes checkout with key
+    $resA = $this->actingAs($userA)->postJson('/staff/pos/checkout', [
+        'order_id' => $orderA->id,
+        'payment_method' => 'cash',
+        'amount_received' => 50000,
+        'idempotency_key' => $key,
+    ]);
+    $resA->assertOk();
+
+    // User B attempts to use the same idempotency key
+    $resB = $this->actingAs($userB)->postJson('/staff/pos/checkout', [
+        'order_id' => $orderB->id,
+        'payment_method' => 'cash',
+        'amount_received' => 50000,
+        'idempotency_key' => $key,
+    ]);
+
+    $resB->assertStatus(403)
+        ->assertJsonFragment(['error' => 'Idempotency key belongs to another user.']);
+});
+
+test('reuse same idempotency key with different payload returns 422 error', function () {
+    $admin = posAdmin();
+    $order1 = posOrder(posTable(), [
+        ['item' => posMenuItem(['price' => 50000]), 'qty' => 1, 'price' => 50000, 'status' => 'completed'],
+    ]);
+    $order2 = posOrder(posTable(), [
+        ['item' => posMenuItem(['price' => 100000]), 'qty' => 1, 'price' => 100000, 'status' => 'completed'],
+    ]);
+
+    $key = 'reused_key_diff_payload_'.uniqid();
+
+    // First request
+    $res1 = $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order1->id,
+        'payment_method' => 'cash',
+        'amount_received' => 50000,
+        'idempotency_key' => $key,
+    ]);
+    $res1->assertOk();
+
+    // Second request with same key but DIFFERENT payload (order2, 100000)
+    $res2 = $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order2->id,
+        'payment_method' => 'cash',
+        'amount_received' => 100000,
+        'idempotency_key' => $key,
+    ]);
+
+    $res2->assertStatus(422)
+        ->assertJsonFragment(['error' => 'Khóa trùng lặp đã được sử dụng cho một yêu cầu khác.']);
 });

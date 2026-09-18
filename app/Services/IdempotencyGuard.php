@@ -15,9 +15,11 @@ class IdempotencyGuard
     /**
      * Kiểm tra idempotency cho request:
      * - Nếu có idempotency_key: kiểm tra DB `idempotency_records`.
+     *   + Cross-user: từ chối 403 nếu key thuộc user khác.
+     *   + Mismatched payload: từ chối 422 nếu key dùng lại với payload khác.
      *   + Succeeded: replay response đã lưu.
      *   + Processing: trả 409 Conflict.
-     *   + Failed: cho phép retry (chuyển về processing).
+     *   + Failed: cho phép retry bằng atomic update về processing.
      *   + Mới: tạo record status 'processing'.
      * - Nếu không có key: dùng cache fingerprint (TTL 5s) chống double-click.
      *
@@ -26,8 +28,8 @@ class IdempotencyGuard
     public static function check(Request $request, string $action, array $fingerprint = []): JsonResponse|RedirectResponse|null
     {
         $clientKey = $request->input('idempotency_key');
-        $fpHash = md5(json_encode($fingerprint) ?: '');
-        $fpKey = "idempotency:{$action}:{$fpHash}";
+        $fpHash = $fingerprint !== [] ? md5(json_encode($fingerprint) ?: '') : null;
+        $fpKey = 'idempotency:'.$action.':'.($fpHash ?? 'default');
 
         if ($clientKey) {
             $record = IdempotencyRecord::where('action', $action)
@@ -35,6 +37,14 @@ class IdempotencyGuard
                 ->first();
 
             if ($record) {
+                if ($record->user_id !== null && (int) $record->user_id !== (int) $request->user()?->id) {
+                    return self::forbiddenResponse($request);
+                }
+
+                if ($record->resource_fingerprint !== null && $fpHash !== null && $record->resource_fingerprint !== $fpHash) {
+                    return self::mismatchResponse($request);
+                }
+
                 if ($record->status === 'succeeded') {
                     return self::replayResponse($record, $request);
                 }
@@ -44,23 +54,22 @@ class IdempotencyGuard
                 }
 
                 if ($record->status === 'failed') {
-                    $record->update([
-                        'status' => 'processing',
-                        'response_code' => null,
-                        'response_body' => null,
-                        'user_id' => $request->user()?->id,
-                        'resource_fingerprint' => $fpHash,
-                    ]);
+                    $affected = IdempotencyRecord::where('id', $record->id)
+                        ->where('status', 'failed')
+                        ->update([
+                            'status' => 'processing',
+                            'response_code' => null,
+                            'response_body' => null,
+                            'user_id' => $request->user()?->id,
+                            'resource_fingerprint' => $fpHash,
+                        ]);
 
-                    Cache::put($fpKey, true, 5);
+                    if ($affected === 0) {
+                        return self::conflictResponse($request);
+                    }
 
                     return null;
                 }
-            }
-
-            // Chống double-click bằng fingerprint cache trước khi tạo record mới
-            if (! Cache::add($fpKey, true, 5)) {
-                return self::duplicateResponse($request);
             }
 
             try {
@@ -78,6 +87,14 @@ class IdempotencyGuard
                     ->first();
 
                 if ($record) {
+                    if ($record->user_id !== null && (int) $record->user_id !== (int) $request->user()?->id) {
+                        return self::forbiddenResponse($request);
+                    }
+
+                    if ($record->resource_fingerprint !== null && $fpHash !== null && $record->resource_fingerprint !== $fpHash) {
+                        return self::mismatchResponse($request);
+                    }
+
                     if ($record->status === 'succeeded') {
                         return self::replayResponse($record, $request);
                     }
@@ -87,13 +104,19 @@ class IdempotencyGuard
                     }
 
                     if ($record->status === 'failed') {
-                        $record->update([
-                            'status' => 'processing',
-                            'response_code' => null,
-                            'response_body' => null,
-                            'user_id' => $request->user()?->id,
-                            'resource_fingerprint' => $fpHash,
-                        ]);
+                        $affected = IdempotencyRecord::where('id', $record->id)
+                            ->where('status', 'failed')
+                            ->update([
+                                'status' => 'processing',
+                                'response_code' => null,
+                                'response_body' => null,
+                                'user_id' => $request->user()?->id,
+                                'resource_fingerprint' => $fpHash,
+                            ]);
+
+                        if ($affected === 0) {
+                            return self::conflictResponse($request);
+                        }
 
                         return null;
                     }
@@ -231,6 +254,8 @@ class IdempotencyGuard
                     $redirect->with($data['flash']);
                 }
 
+                $redirect->headers->set('X-Idempotent-Replay', 'true');
+
                 return $redirect;
             }
 
@@ -256,6 +281,32 @@ class IdempotencyGuard
             'message' => $message,
             'error' => $message,
         ], 409);
+    }
+
+    protected static function forbiddenResponse(Request $request): JsonResponse|RedirectResponse
+    {
+        $message = 'Idempotency key belongs to another user.';
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'message' => $message,
+                'error' => $message,
+            ], 403);
+        }
+
+        abort(403, $message);
+    }
+
+    protected static function mismatchResponse(Request $request): JsonResponse|RedirectResponse
+    {
+        $message = 'Khóa trùng lặp đã được sử dụng cho một yêu cầu khác.';
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'message' => $message,
+                'error' => $message,
+            ], 422);
+        }
+
+        abort(422, $message);
     }
 
     protected static function duplicateResponse(Request $request): JsonResponse|RedirectResponse
