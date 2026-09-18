@@ -89,8 +89,11 @@ class ProductController extends Controller
         if ($request->hasFile('image')) {
             $disk = config('filesystems.disks.sirv.enabled') ? 'sirv' : 'public';
             $file = $request->file('image');
-            $filename = Str::slug($validated['name']).'_'.date('Ymd_His').'.'.$file->getClientOriginalExtension();
-            $file->storeAs('products', $filename, $disk);
+            $filename = Str::slug($validated['name']).'_'.(string) Str::ulid().'.'.$file->getClientOriginalExtension();
+            $path = $file->storeAs('products', $filename, $disk);
+            if ($path === false) {
+                throw new \RuntimeException('Không thể tải lên ảnh sản phẩm.');
+            }
             $validated['image'] = Storage::disk($disk)->url('products/'.$filename);
         }
 
@@ -116,13 +119,14 @@ class ProductController extends Controller
 
         if ($request->hasFile('image')) {
             $disk = config('filesystems.disks.sirv.enabled') ? 'sirv' : 'public';
-            // Delete old image file if exists
-            $this->deleteProductImage($product->image);
-
             $file = $request->file('image');
-            $filename = Str::slug($validated['name']).'_'.date('Ymd_His').'.'.$file->getClientOriginalExtension();
-            $file->storeAs('products', $filename, $disk);
+            $filename = Str::slug($validated['name']).'_'.(string) Str::ulid().'.'.$file->getClientOriginalExtension();
+            $path = $file->storeAs('products', $filename, $disk);
+            if ($path === false) {
+                throw new \RuntimeException('Không thể tải lên ảnh sản phẩm.');
+            }
             $validated['image'] = Storage::disk($disk)->url('products/'.$filename);
+            $this->deleteProductImage($product->image);
         } else {
             unset($validated['image']);
         }

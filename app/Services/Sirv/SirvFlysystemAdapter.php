@@ -5,6 +5,7 @@ namespace App\Services\Sirv;
 use League\Flysystem\Config;
 use League\Flysystem\FileAttributes;
 use League\Flysystem\FilesystemAdapter;
+use League\Flysystem\UnableToWriteFile;
 
 class SirvFlysystemAdapter implements FilesystemAdapter
 {
@@ -22,12 +23,16 @@ class SirvFlysystemAdapter implements FilesystemAdapter
 
     public function write(string $path, string $contents, Config $config): void
     {
-        $this->client->uploadFile($path, $contents);
+        if (! $this->client->uploadFile($path, $contents)) {
+            throw UnableToWriteFile::atLocation($path, 'Sirv upload failed');
+        }
     }
 
     public function writeStream(string $path, $contents, Config $config): void
     {
-        $this->client->uploadFile($path, $contents);
+        if (! $this->client->uploadFile($path, $contents)) {
+            throw UnableToWriteFile::atLocation($path, 'Sirv upload failed');
+        }
     }
 
     public function read(string $path): string
