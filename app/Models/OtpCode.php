@@ -114,4 +114,28 @@ class OtpCode extends Model
             return $otp;
         });
     }
+
+    public static function consume(string $email, string $type, string $plain, ?callable $callback = null): ?self
+    {
+        return DB::transaction(function () use ($email, $type, $plain, $callback): ?self {
+            $otp = static::where('email', $email)->where('type', $type)
+                ->orderByDesc('id')->lockForUpdate()->first();
+            if (! $otp || $otp->isLocked() || $otp->isExpired()) {
+                return null;
+            }
+            if (! $otp->matchesCode($plain)) {
+                $attempts = $otp->attempts + 1;
+                $otp->update(['attempts' => $attempts, 'locked_at' => $attempts >= self::MAX_ATTEMPTS ? now() : null]);
+
+                return null;
+            }
+
+            if ($callback !== null) {
+                $callback($otp);
+            }
+            $otp->delete();
+
+            return $otp;
+        });
+    }
 }

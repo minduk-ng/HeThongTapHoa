@@ -3,32 +3,30 @@
 namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Reports\DateRangeReportRequest;
 use App\Models\MoneyLedgerEntry;
 use App\Services\MoneyLedgerService;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CashFlowController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(DateRangeReportRequest $request): Response
     {
-        $validated = $request->validate([
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date',
+        $validated = $request->validate(array_merge($request->rules(), [
             'direction' => 'nullable|in:in,out',
             'type' => 'nullable|in:'.implode(',', MoneyLedgerService::TYPES),
             'method' => 'nullable|string|max:30',
             'only_warnings' => 'nullable|boolean',
             'shift' => 'nullable|integer|exists:shifts,id',
             'employee' => 'nullable|integer|exists:users,id',
-        ]);
+        ]));
 
         $startDate = $validated['start_date'] ?? today()->toDateString();
         $endDate = $validated['end_date'] ?? today()->toDateString();
 
         $query = MoneyLedgerEntry::query()->with(['actor:id,name', 'invoice:id,invoice_code'])
-            ->whereBetween('created_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"]);
+            ->whereBetween('occurred_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"]);
 
         if (! empty($validated['direction'])) {
             $query->where('direction', $validated['direction']);
@@ -63,7 +61,7 @@ class CashFlowController extends Controller
             'order_id' => $e->order_id,
             'supplier_id' => $e->supplier_id,
             'warning_flags' => $e->warning_flags ?? [],
-            'created_at' => $e->created_at?->toIso8601String(),
+            'created_at' => $e->occurred_at?->toIso8601String(),
         ]);
 
         $totalIn = (float) (clone $query)->where('direction', 'in')->sum('amount');

@@ -3,6 +3,7 @@
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Shift;
+use App\Services\MoneyLedgerService;
 
 test('expectedCash tinh ca hoa don o cac thoi diem can cua ca', function () {
     $this->actingAs(posAdmin());
@@ -14,9 +15,11 @@ test('expectedCash tinh ca hoa don o cac thoi diem can cua ca', function () {
     // Hóa đơn xuất khi mở (issued_at bằng opened_at)
     $invEdge1 = Invoice::create(['invoice_code' => 'INV-EDGE1', 'table_name' => 'B1', 'total_amount' => 40000, 'payment_method' => 'cash', 'amount_received' => 40000, 'change_amount' => 0, 'issued_at' => $openedAt]);
     Payment::create(['invoice_id' => $invEdge1->id, 'method' => 'cash', 'amount' => 40000]);
+    app(MoneyLedgerService::class)->recordIn('sale', 40000, 'cash', auth()->user(), ['shift_id' => $shift->id], ['occurred_at' => $openedAt]);
     // Hóa đơn ngay trước khi đóng
     $invEdge2 = Invoice::create(['invoice_code' => 'INV-EDGE2', 'table_name' => 'B2', 'total_amount' => 60000, 'payment_method' => 'cash', 'amount_received' => 60000, 'change_amount' => 0, 'issued_at' => $closedAt->format('Y-m-d H:i:s').'']);
     Payment::create(['invoice_id' => $invEdge2->id, 'method' => 'cash', 'amount' => 60000]);
+    app(MoneyLedgerService::class)->recordIn('sale', 60000, 'cash', auth()->user(), ['shift_id' => $shift->id], ['occurred_at' => $closedAt]);
 
     $response = $this->postJson('/staff/shifts/close', ['actual_cash' => 100000])->assertOk();
     expect((float) $response->json('expected_cash'))->toBe(100000.0);

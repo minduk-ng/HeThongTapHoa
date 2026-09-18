@@ -23,6 +23,7 @@ class SalesInvoiceReportController extends Controller
 
         $invoices = (clone $baseQuery)->withCount('orders')->with('customer')
             ->orderByDesc('issued_at')
+            ->limit(500)
             ->get()
             ->values()
             ->map(fn (Invoice $invoice) => [
@@ -50,6 +51,7 @@ class SalesInvoiceReportController extends Controller
             ],
             'startDate' => $startDate,
             'endDate' => $endDate,
+            'pagination' => ['total_count' => $count, 'truncated' => $count > 500],
         ]);
     }
 }

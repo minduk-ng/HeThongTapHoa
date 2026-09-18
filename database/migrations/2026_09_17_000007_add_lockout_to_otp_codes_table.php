@@ -22,6 +22,8 @@ return new class extends Migration
         } elseif (DB::getDriverName() === 'pgsql') {
             DB::statement('ALTER TABLE "otp_codes" ALTER COLUMN "code" TYPE VARCHAR(255)');
         }
+
+        DB::table('otp_codes')->delete();
     }
 
     public function down(): void

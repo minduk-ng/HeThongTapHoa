@@ -58,6 +58,7 @@ class GoogleAuthController extends Controller
 
         Auth::login($user, true);
         $request->session()->regenerate();
+        $request->session()->put('session_version', (int) $user->session_version);
         $request->session()->put('recent_auth_at', time());
 
         return redirect('/');

@@ -2,7 +2,7 @@ import { pad2 } from '../../utils/date';
 
 export function escapeCsvCell(v: string | number): string | number {
     // ponytail: OWASP CSV injection — ' prefix forces text; numbers untouched.
-    if (typeof v === 'string' && /^[=+\-@\t\r]/.test(v)) {
+    if (typeof v === 'string' && /^[=+\-@\t\r\n]/.test(v)) {
         return `'${v}`;
     }
 

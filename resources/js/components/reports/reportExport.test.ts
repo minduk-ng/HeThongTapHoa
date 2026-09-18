@@ -22,6 +22,7 @@ describe('escapeCsvCell', () => {
             '@cmd',
             '\tformula',
             '\rformula',
+            '\nformula',
         ]) {
             ok(String(escapeCsvCell(payload)).startsWith("'"), payload);
         }

@@ -29,6 +29,7 @@ class ReservationsReportController extends Controller
                 'amount',
             )
             ->orderBy('reservation_time')
+            ->limit(500)
             ->get()
             ->values()
             ->map(fn ($o) => [
@@ -56,6 +57,7 @@ class ReservationsReportController extends Controller
             ],
             'startDate' => $startDate,
             'endDate' => $endDate,
+            'pagination' => ['total_count' => $total, 'truncated' => $total > 500],
         ]);
     }
 }

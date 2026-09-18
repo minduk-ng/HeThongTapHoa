@@ -28,6 +28,7 @@ class PaymentsReportController extends Controller
         $rows = (clone $invoiceQuery)
             ->with(['payments' => fn ($q) => $q->select('invoice_id', 'method', 'amount')])
             ->orderByDesc('issued_at')
+            ->limit(500)
             ->get()
             ->values()
             ->map(fn (Invoice $i) => [
@@ -106,6 +107,7 @@ class PaymentsReportController extends Controller
             ],
             'startDate' => $startDate,
             'endDate' => $endDate,
+            'pagination' => ['total_count' => $invoiceCount, 'truncated' => $invoiceCount > 500],
         ]);
     }
 }

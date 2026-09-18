@@ -12,6 +12,8 @@ class IdempotencyRecord extends Model
         'idempotency_key',
         'user_id',
         'resource_fingerprint',
+        'resource_type',
+        'resource_id',
         'status',
         'response_code',
         'response_body',
@@ -19,6 +21,7 @@ class IdempotencyRecord extends Model
 
     protected $casts = [
         'response_code' => 'integer',
+        'resource_id' => 'integer',
     ];
 
     /** @return BelongsTo<User, $this> */

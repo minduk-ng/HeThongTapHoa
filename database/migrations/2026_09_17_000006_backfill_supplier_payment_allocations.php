@@ -40,6 +40,7 @@ return new class extends Migration
                 'paid_at' => $paidAt,
                 'note' => self::NOTE,
                 'created_by' => null,
+                'is_migration_backfill' => true,
                 'created_at' => $paidAt,
                 'updated_at' => $paidAt,
             ]);
@@ -57,6 +58,6 @@ return new class extends Migration
     public function down(): void
     {
         // Chỉ xoá đúng các header backfill (allocations cascade theo payment).
-        DB::table('supplier_payments')->where('note', self::NOTE)->delete();
+        DB::table('supplier_payments')->where('is_migration_backfill', true)->where('note', self::NOTE)->delete();
     }
 };

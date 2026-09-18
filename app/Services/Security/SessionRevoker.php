@@ -12,12 +12,16 @@ final class SessionRevoker
 {
     public static function revokeOthers(User $user, ?string $currentSessionId = null): void
     {
-        $query = DB::table('sessions')->where('user_id', $user->id);
+        $user->increment('session_version');
+        $user->refresh();
+        if (app()->bound('request') && request()->hasSession()) {
+            request()->session()->put('session_version', (int) $user->session_version);
+        }
 
+        $query = DB::table('sessions')->where('user_id', $user->id);
         if ($currentSessionId !== null && $currentSessionId !== '') {
             $query->where('id', '!=', $currentSessionId);
         }
-
         $deletedCount = $query->delete();
 
         $user->forceFill(['remember_token' => Str::random(60)])->save();

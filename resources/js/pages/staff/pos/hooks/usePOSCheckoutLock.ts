@@ -11,6 +11,7 @@ interface ServerLock {
     user_id: number;
     user_name: string;
     acquired_at: string;
+    owner_token: string;
 }
 
 function getCsrfTokenFromCookie(): string {
@@ -48,6 +49,7 @@ async function postLock(
     path: 'acquire' | 'release' | 'renew',
     tableId: number,
     keepalive = false,
+    ownerToken?: string,
 ): Promise<{ ok: boolean; status: number; lock?: ServerLock }> {
     try {
         const response = await fetch(`/staff/pos/checkout-lock/${path}`, {
@@ -59,7 +61,7 @@ async function postLock(
                 'X-XSRF-TOKEN': getCsrfTokenFromCookie(),
                 'X-Requested-With': 'XMLHttpRequest',
             },
-            body: JSON.stringify({ table_id: tableId }),
+            body: JSON.stringify({ table_id: tableId, owner_token: ownerToken }),
         });
         const data = await response.json().catch(() => ({}));
 
@@ -75,7 +77,7 @@ const HEARTBEAT_MS = 30000;
 
 export function usePOSCheckoutLock() {
     const [lockedCheckoutTables, setLockedCheckoutTables] = useState<Record<number, CheckoutLockInfo>>({});
-    const ownLocksRef = useRef<Set<number>>(new Set());
+    const ownLocksRef = useRef<Map<number, string>>(new Map());
 
     const applyServerLock = useCallback((tableId: number, lock: ServerLock | null) => {
         setLockedCheckoutTables((prev) => {
@@ -156,7 +158,7 @@ export function usePOSCheckoutLock() {
                     const res = await postLock('acquire', id);
 
                     if (res.ok && res.lock) {
-                        ownLocksRef.current.add(id);
+                        ownLocksRef.current.set(id, res.lock.owner_token);
                         applyServerLock(id, res.lock);
                     } else if (res.status === 409 && res.lock) {
                         // Foreign lock — surface the owner so UI blocks with their name.
@@ -174,12 +176,14 @@ export function usePOSCheckoutLock() {
         await Promise.all(
             ids.map(async (id) => {
                 // Only ever release locks held by this client — never others'.
-                if (!ownLocksRef.current.has(id)) {
+                const token = ownLocksRef.current.get(id);
+
+                if (!token) {
                     return;
                 }
 
                 ownLocksRef.current.delete(id);
-                await postLock('release', id, keepalive);
+                await postLock('release', id, keepalive, token);
                 applyServerLock(id, null);
             }),
         );
@@ -188,8 +192,8 @@ export function usePOSCheckoutLock() {
     // Heartbeat: renew own locks so they survive past the server TTL while the drawer stays open.
     useEffect(() => {
         const timer = setInterval(() => {
-            ownLocksRef.current.forEach(async (id) => {
-                const res = await postLock('renew', id);
+            ownLocksRef.current.forEach(async (token, id) => {
+                const res = await postLock('renew', id, false, token);
 
                 if (!res.ok) {
                     ownLocksRef.current.delete(id);
@@ -204,8 +208,8 @@ export function usePOSCheckoutLock() {
     // React remounts (StrictMode) must not drop a live server lock.
     useEffect(() => {
         const handleBeforeUnload = () => {
-            ownLocksRef.current.forEach((id) => {
-                void postLock('release', id, true);
+            ownLocksRef.current.forEach((token, id) => {
+                void postLock('release', id, true, token);
             });
             ownLocksRef.current.clear();
         };

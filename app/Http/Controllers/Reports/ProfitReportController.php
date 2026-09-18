@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Reports\DateRangeReportRequest;
 use App\Models\ProductRecipe;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -13,7 +13,7 @@ use Inertia\Response;
 
 class ProfitReportController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(DateRangeReportRequest $request): Response
     {
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
@@ -37,6 +37,7 @@ class ProfitReportController extends Controller
 
         $soldIds = $items->pluck('menu_item_id')->unique();
         $missingRecipeCount = $soldIds->diff($recipeCost->keys())->count();
+        $totalCount = $soldIds->count();
 
         // Gom theo món.
         $rows = $items
@@ -60,6 +61,7 @@ class ProfitReportController extends Controller
                 ];
             })
             ->sortByDesc('profit')
+            ->take(500)
             ->values();
 
         // Daily series theo ngày.
@@ -101,6 +103,7 @@ class ProfitReportController extends Controller
             'missing_recipe_count' => $missingRecipeCount,
             'startDate' => $startDate,
             'endDate' => $endDate,
+            'pagination' => ['total_count' => $totalCount, 'truncated' => $totalCount > 500],
         ]);
     }
 }

@@ -151,6 +151,7 @@ test('confirmImport processes cached data and clears cache', function () {
     ];
 
     Cache::put($tempId, [
+        'actor_id' => $admin->id,
         'rows' => $rows,
         'duplicates' => [],
         'new_items' => $rows,
@@ -194,6 +195,7 @@ test('confirmImport with replace_all updates existing items and clears cache', f
     ];
 
     Cache::put($tempId, [
+        'actor_id' => $admin->id,
         'rows' => $rows,
         'duplicates' => $rows,
         'new_items' => [],
@@ -214,6 +216,19 @@ test('confirmImport with replace_all updates existing items and clears cache', f
     ]);
 
     expect(Cache::has($tempId))->toBeFalse();
+});
+
+test('import preview belongs to creator and can only be consumed once', function () {
+    $owner = productImportAdmin();
+    $other = productImportAdmin();
+    $file = UploadedFile::fake()->createWithContent('owned.csv', "ID,Tên sản phẩm,Danh mục,Giá bán,Thuế VAT,Trạng thái,Ghi chú\n,Mon doc quyen,Khac,10000,0,,\n");
+    $tempId = $this->actingAs($owner)->postJson('/manager/products/check-import', ['file' => $file])
+        ->assertOk()->json('temp_id');
+
+    $this->actingAs($other)->postJson('/manager/products/confirm-import', ['temp_id' => $tempId, 'action' => 'add_only_new'])->assertForbidden();
+    $this->actingAs($owner)->post('/manager/products/confirm-import', ['temp_id' => $tempId, 'action' => 'add_only_new'])->assertRedirect();
+    $this->actingAs($owner)->postJson('/manager/products/confirm-import', ['temp_id' => $tempId, 'action' => 'add_only_new'])->assertStatus(400);
+    expect(MenuItem::where('name', 'Mon doc quyen')->count())->toBe(1);
 });
 
 test('internal or unhandled parser errors do not leak internal exception messages and return error_id', function () {

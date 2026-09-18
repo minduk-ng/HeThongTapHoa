@@ -84,14 +84,10 @@ class ShiftController extends Controller
             'category' => 'required|string|max:30',
             'amount' => 'required|numeric|gt:0',
             'note' => 'nullable|string|max:255',
-            'idempotency_key' => 'nullable|string|max:100',
+            'idempotency_key' => 'required|string|max:100',
         ]);
 
-        $fp = [
-            'type' => $validated['type'],
-            'category' => $validated['category'],
-            'amount' => $validated['amount'],
-        ];
+        $fp = array_diff_key($validated, ['idempotency_key' => true]);
 
         if ($response = IdempotencyGuard::checkJson($request, 'cash_movement', $fp)) {
             return $response;
@@ -124,6 +120,9 @@ class ShiftController extends Controller
                 } else {
                     $ledger->recordOut('shift_expense', (float) $validated['amount'], 'cash', $request->user(), $links, $meta);
                 }
+                IdempotencyGuard::recordSuccessInTransaction($request, 'cash_movement', $movement, [
+                    'success' => true, 'movement' => $movement->toArray(),
+                ]);
 
                 return $movement;
             });
@@ -136,7 +135,7 @@ class ShiftController extends Controller
 
             $response = response()->json(['success' => true, 'movement' => $movement]);
 
-            return IdempotencyGuard::recordSuccess($request, 'cash_movement', $response);
+            return $response;
         } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'cash_movement', $fp);
             throw $e;

@@ -54,7 +54,7 @@ class ReservationController extends Controller
             'order_id' => 'required|exists:orders,id',
             'deposit_resolution' => 'nullable|in:refund,forfeit',
             'note' => 'nullable|string',
-            'idempotency_key' => 'nullable|string',
+            'idempotency_key' => 'nullable|string|max:100',
         ]);
 
         if (($validated['deposit_resolution'] ?? null) === 'refund' && ! $request->user()?->hasPermission('deposits.refund')) {
@@ -161,7 +161,7 @@ class ReservationController extends Controller
     {
         $validated = $request->validate([
             'order_id' => 'required|exists:orders,id',
-            'idempotency_key' => 'nullable|string',
+            'idempotency_key' => 'nullable|string|max:100',
         ]);
 
         if ($response = IdempotencyGuard::checkJson($request, 'check_in_reservation', [
@@ -401,14 +401,11 @@ class ReservationController extends Controller
             'method' => 'required|in:cash,bank_transfer',
             'reference' => 'nullable|string|max:255|required_if:method,bank_transfer',
             'bank_verified' => 'exclude_unless:method,bank_transfer|required|accepted',
-            'idempotency_key' => 'nullable|string',
+            'idempotency_key' => 'required|string|max:100',
         ]);
 
-        if ($response = IdempotencyGuard::checkJson($request, 'deposit', [
-            'order_id' => $validated['order_id'],
-            'amount' => $validated['amount'],
-            'method' => $validated['method'],
-        ])) {
+        $fingerprint = array_diff_key($validated, ['idempotency_key' => true]);
+        if ($response = IdempotencyGuard::checkJson($request, 'deposit', $fingerprint)) {
             return $response;
         }
 
@@ -442,6 +439,7 @@ class ReservationController extends Controller
                     'amount' => $validated['amount'],
                     'method' => $validated['method'],
                 ]);
+                IdempotencyGuard::recordSuccessInTransaction($request, 'deposit', $deposit, ['success' => true]);
 
                 return $order->table;
             });
@@ -454,13 +452,11 @@ class ReservationController extends Controller
 
             $response = response()->json(['success' => true]);
 
-            return IdempotencyGuard::recordSuccess($request, 'deposit', $response);
+            return $response;
 
         } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'deposit', [
-                'order_id' => $validated['order_id'],
-                'amount' => $validated['amount'],
-                'method' => $validated['method'],
+                ...$fingerprint,
             ]);
             Log::error('POS deposit error: '.$e->getMessage());
             $status = $e->getCode() === 422 ? 422 : 500;

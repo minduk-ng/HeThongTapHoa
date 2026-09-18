@@ -20,7 +20,7 @@ class Supplier extends Model
     /** @return HasMany<SupplierPayment, $this> */
     public function payments(): HasMany
     {
-        return $this->hasMany(SupplierPayment::class);
+        return $this->hasMany(SupplierPayment::class)->where('is_migration_backfill', false);
     }
 
     public function debt(): float

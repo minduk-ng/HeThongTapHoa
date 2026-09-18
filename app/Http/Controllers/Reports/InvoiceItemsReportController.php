@@ -16,9 +16,11 @@ class InvoiceItemsReportController extends Controller
         $endDate = $request->endDate();
         $range = $request->dateRange();
 
-        $rows = DB::table('invoice_lines')
+        $query = DB::table('invoice_lines')
             ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
-            ->whereBetween('invoices.issued_at', $range)
+            ->whereBetween('invoices.issued_at', $range);
+        $totalCount = (clone $query)->count();
+        $rows = $query
             ->orderByDesc('invoices.issued_at')
             ->orderBy('invoice_lines.id')
             ->select([
@@ -27,6 +29,7 @@ class InvoiceItemsReportController extends Controller
                 'invoice_lines.name_snapshot as item_name', 'invoice_lines.quantity',
                 'invoice_lines.unit_price', 'invoice_lines.subtotal', 'invoice_lines.discount_amount',
             ])
+            ->limit(500)
             ->get()
             ->values()
             ->map(fn (\stdClass $r) => [
@@ -58,6 +61,7 @@ class InvoiceItemsReportController extends Controller
             ],
             'startDate' => $startDate,
             'endDate' => $endDate,
+            'pagination' => ['total_count' => $totalCount, 'truncated' => $totalCount > 500],
         ]);
     }
 }

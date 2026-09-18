@@ -40,14 +40,30 @@ test('nguoi thu hai acquire cung ban bi 409 kem owner hien tai', function () {
         ->assertJsonPath('lock.user_name', 'NhanVien A');
 });
 
-test('owner acquire lai van 200 (idempotent)', function () {
+test('owner acquire lai without token cannot replace live lock', function () {
     $staff = lockStaff('NhanVien A');
     $table = posTable(['status' => 'occupied']);
 
     actingAs($staff)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])->assertOk();
     actingAs($staff)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])
-        ->assertOk()
+        ->assertStatus(409)
         ->assertJsonPath('lock.user_id', $staff->id);
+});
+
+test('stale owner token cannot release or renew a reacquired lock', function () {
+    $staff = lockStaff('NhanVien A');
+    $table = posTable(['status' => 'occupied']);
+    $firstToken = actingAs($staff)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])
+        ->assertOk()->json('lock.owner_token');
+    $this->travel(91)->seconds();
+    $secondToken = actingAs($staff)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])
+        ->assertOk()->json('lock.owner_token');
+
+    expect($firstToken)->not->toBe($secondToken);
+    actingAs($staff)->postJson('/staff/pos/checkout-lock/release', ['table_id' => $table->id, 'owner_token' => $firstToken])->assertForbidden();
+    actingAs($staff)->postJson('/staff/pos/checkout-lock/renew', ['table_id' => $table->id, 'owner_token' => $firstToken])->assertForbidden();
+    actingAs($staff)->getJson("/staff/pos/checkout-lock/status?table_ids[]={$table->id}")
+        ->assertJsonPath("locks.{$table->id}.owner_token", $secondToken);
 });
 
 test('owner release xong nguoi khac acquire duoc', function () {
@@ -55,8 +71,8 @@ test('owner release xong nguoi khac acquire duoc', function () {
     $second = lockStaff('NhanVien B');
     $table = posTable(['status' => 'occupied']);
 
-    actingAs($first)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])->assertOk();
-    actingAs($first)->postJson('/staff/pos/checkout-lock/release', ['table_id' => $table->id])->assertOk();
+    $token = actingAs($first)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])->assertOk()->json('lock.owner_token');
+    actingAs($first)->postJson('/staff/pos/checkout-lock/release', ['table_id' => $table->id, 'owner_token' => $token])->assertOk();
 
     actingAs($second)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])
         ->assertOk()
@@ -69,7 +85,9 @@ test('nguoi khong phai owner release bi 403 va lock van giu', function () {
     $table = posTable(['status' => 'occupied']);
 
     actingAs($first)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])->assertOk();
-    actingAs($second)->postJson('/staff/pos/checkout-lock/release', ['table_id' => $table->id])->assertStatus(403);
+    actingAs($second)->postJson('/staff/pos/checkout-lock/release', [
+        'table_id' => $table->id, 'owner_token' => (string) Str::uuid(),
+    ])->assertStatus(403);
 
     actingAs($second)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])->assertStatus(409);
 });
@@ -79,8 +97,8 @@ test('admin release lock cua nguoi khac duoc (privileged)', function () {
     $admin = posAdmin();
     $table = posTable(['status' => 'occupied']);
 
-    actingAs($staff)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])->assertOk();
-    actingAs($admin)->postJson('/staff/pos/checkout-lock/release', ['table_id' => $table->id])->assertOk();
+    $token = actingAs($staff)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])->assertOk()->json('lock.owner_token');
+    actingAs($admin)->postJson('/staff/pos/checkout-lock/release', ['table_id' => $table->id, 'owner_token' => $token])->assertOk();
 
     actingAs($admin)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])->assertOk();
 });
@@ -104,10 +122,10 @@ test('owner renew (heartbeat) gia han lock qua TTL goc', function () {
     $other = lockStaff('NhanVien B');
     $table = posTable(['status' => 'occupied']);
 
-    actingAs($owner)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])->assertOk();
+    $token = actingAs($owner)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])->assertOk()->json('lock.owner_token');
 
     $this->travel(60)->seconds();
-    actingAs($owner)->postJson('/staff/pos/checkout-lock/renew', ['table_id' => $table->id])
+    actingAs($owner)->postJson('/staff/pos/checkout-lock/renew', ['table_id' => $table->id, 'owner_token' => $token])
         ->assertOk()
         ->assertJsonPath('lock.user_id', $owner->id);
 
@@ -122,10 +140,10 @@ test('nguoi khac renew bi 403, renew lock khong ton tai bi 404', function () {
     $other = lockStaff('NhanVien B');
     $table = posTable(['status' => 'occupied']);
 
-    actingAs($other)->postJson('/staff/pos/checkout-lock/renew', ['table_id' => $table->id])->assertStatus(404);
+    actingAs($other)->postJson('/staff/pos/checkout-lock/renew', ['table_id' => $table->id, 'owner_token' => (string) Str::uuid()])->assertStatus(404);
 
     actingAs($owner)->postJson('/staff/pos/checkout-lock/acquire', ['table_id' => $table->id])->assertOk();
-    actingAs($other)->postJson('/staff/pos/checkout-lock/renew', ['table_id' => $table->id])->assertStatus(403);
+    actingAs($other)->postJson('/staff/pos/checkout-lock/renew', ['table_id' => $table->id, 'owner_token' => (string) Str::uuid()])->assertStatus(403);
 });
 
 test('status tra ve lock hoac null', function () {
@@ -176,6 +194,7 @@ test('checkout bi 409 khi ban dang lock boi nguoi khac, owner van checkout duoc'
         'order_id' => $order->id,
         'payment_method' => 'cash',
         'amount_received' => 20000,
+        'idempotency_key' => 'lock-checkout-other',
     ])->assertStatus(409)
         ->assertJsonPath('lock.user_id', $owner->id);
 
@@ -185,6 +204,7 @@ test('checkout bi 409 khi ban dang lock boi nguoi khac, owner van checkout duoc'
         'order_id' => $order->id,
         'payment_method' => 'cash',
         'amount_received' => 20000,
+        'idempotency_key' => 'lock-checkout-owner',
     ])->assertOk();
 
     expect($order->fresh()->status)->toBe('paid');

@@ -11,13 +11,14 @@ class MoneyLedgerEntry extends Model
     protected $fillable = [
         'direction', 'type', 'amount', 'method',
         'actor_id', 'shift_id', 'invoice_id', 'order_id', 'supplier_id',
-        'warning_flags', 'meta',
+        'reference', 'reason', 'occurred_at', 'warning_flags', 'meta',
     ];
 
     protected $casts = [
         'amount' => 'float',
         'warning_flags' => 'array',
         'meta' => 'array',
+        'occurred_at' => 'datetime',
     ];
 
     protected static function booted(): void

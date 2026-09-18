@@ -186,3 +186,20 @@ test('setup password preserves current session deletes other session and rotates
         ->and(Hash::check('newsetup123', $user->fresh()->password))->toBeTrue()
         ->and(SecurityAuditLog::where('action', 'user.sessions.revoked')->where('actor_id', $user->id)->count())->toBe(1);
 });
+
+test('session version revokes cache backed peer while preserving current session', function () {
+    config()->set('session.driver', 'array');
+    $user = sessionTestUser();
+    $user->forceFill(['session_version' => 3])->save();
+    $current = app('session.store');
+    request()->setLaravelSession($current);
+    $current->put('session_version', 3);
+
+    SessionRevoker::revokeOthers($user, $current->getId());
+
+    expect($user->fresh()->session_version)->toBe(4)
+        ->and($current->get('session_version'))->toBe(4);
+
+    $this->actingAs($user)->withSession(['session_version' => 3])->get('/')->assertRedirect('/login');
+    $this->actingAs($user)->withSession(['session_version' => 4])->get('/')->assertForbidden();
+});

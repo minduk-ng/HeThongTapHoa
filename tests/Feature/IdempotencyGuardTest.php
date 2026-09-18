@@ -15,15 +15,15 @@ test('deposit double-submit cung order/amount/method chi tao 1 coc', function ()
     $this->actingAs(posAdmin());
     $order = idemDepositOrder();
 
-    // Request 1 (không idempotency_key — giả lập client cũ double-click)
+    $key = 'deposit-double-'.uniqid();
     $r1 = $this->postJson('/staff/pos/deposit', [
-        'order_id' => $order->id, 'amount' => 100000, 'method' => 'cash',
+        'order_id' => $order->id, 'amount' => 100000, 'method' => 'cash', 'idempotency_key' => $key,
     ]);
     $r1->assertOk();
 
     // Request 2 cùng fingerprint trong 5s — phải bị chặn (success ngầm, không tạo cọc mới)
     $r2 = $this->postJson('/staff/pos/deposit', [
-        'order_id' => $order->id, 'amount' => 100000, 'method' => 'cash',
+        'order_id' => $order->id, 'amount' => 100000, 'method' => 'cash', 'idempotency_key' => $key,
     ]);
     $r2->assertOk();
 

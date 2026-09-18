@@ -117,6 +117,8 @@ class ProductController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
+        $oldImage = $product->image;
+        $newImage = null;
         if ($request->hasFile('image')) {
             $disk = config('filesystems.disks.sirv.enabled') ? 'sirv' : 'public';
             $file = $request->file('image');
@@ -126,7 +128,7 @@ class ProductController extends Controller
                 throw new \RuntimeException('Không thể tải lên ảnh sản phẩm.');
             }
             $validated['image'] = Storage::disk($disk)->url('products/'.$filename);
-            $this->deleteProductImage($product->image);
+            $newImage = $validated['image'];
         } else {
             unset($validated['image']);
         }
@@ -134,7 +136,15 @@ class ProductController extends Controller
         $validated['vat_rate'] = $validated['vat_rate'] ?? 0;
         $validated['is_available'] = $request->boolean('is_available', true);
 
-        $product->update($validated);
+        try {
+            $product->update($validated);
+        } catch (\Throwable $e) {
+            $this->deleteProductImage($newImage);
+            throw $e;
+        }
+        if ($newImage !== null) {
+            $this->deleteProductImage($oldImage);
+        }
 
         return back()->with('success', 'Cập nhật sản phẩm thành công!');
     }
@@ -347,8 +357,9 @@ class ProductController extends Controller
             }
 
             // Cache temp import data
-            $tempId = 'import_'.Str::random(10);
+            $tempId = 'product-import:'.$request->user()->id.':'.Str::random(32);
             $tempPayload = [
+                'actor_id' => $request->user()->id,
                 'rows' => $rows,
                 'duplicates' => $duplicates,
                 'new_items' => $newItems,
@@ -386,7 +397,15 @@ class ProductController extends Controller
             'action' => 'required|in:replace_all,add_only_new',
         ]);
 
-        $tempData = Cache::get($request->temp_id);
+        $previewKey = (string) $request->temp_id;
+        $tempData = Cache::get($previewKey);
+        if (! $tempData) {
+            return response()->json(['message' => 'Dữ liệu tạm không tồn tại hoặc đã hết hạn.'], 400);
+        }
+        if ((int) ($tempData['actor_id'] ?? 0) !== (int) $request->user()->id) {
+            abort(403);
+        }
+        $tempData = Cache::lock($previewKey.':consume', 10)->block(3, fn () => Cache::pull($previewKey));
         if (! $tempData) {
             return response()->json(['message' => 'Dữ liệu tạm không tồn tại hoặc đã hết hạn.'], 400);
         }

@@ -49,7 +49,14 @@ class OtpController extends Controller
             return redirect('/login');
         }
 
-        $otp = OtpCode::attemptVerify($email, $type, $request->code);
+        $otp = OtpCode::consume($email, $type, $request->code, function () use ($email, $type, $request): void {
+            if ($type === 'signup' && ($user = User::where('email', $email)->first())) {
+                $user->update(['email_verified_at' => now()]);
+                Auth::login($user);
+                $request->session()->regenerate();
+                $request->session()->put('session_version', (int) $user->session_version);
+            }
+        });
 
         if (! $otp) {
             if ($request->wantsJson()) {
@@ -61,17 +68,7 @@ class OtpController extends Controller
             ]);
         }
 
-        // Delete used OTP
-        $otp->delete();
-
         if ($type === 'signup') {
-            $user = User::where('email', $email)->first();
-            if ($user) {
-                $user->update(['email_verified_at' => now()]);
-                Auth::login($user);
-                $request->session()->regenerate();
-            }
-
             $request->session()->forget(['otp_email', 'otp_type']);
 
             if ($request->wantsJson()) {

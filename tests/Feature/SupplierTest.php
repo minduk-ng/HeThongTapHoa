@@ -202,11 +202,17 @@ test('historically paid voucher without allocations stays debt-free and backfill
     expect($v->fresh()->outstandingAmount())->toBe(0.0);
     expect($supplier->debt())->toBe(0.0);
 
+    SupplierPayment::create([
+        'supplier_id' => $supplier->id, 'amount' => 25000, 'paid_at' => now(), 'note' => 'real payment',
+    ]);
+    $realTotalBefore = SupplierPayment::where('is_migration_backfill', false)->sum('amount');
     $migration = require database_path('migrations/2026_09_17_000006_backfill_supplier_payment_allocations.php');
     $migration->up();
 
     expect((float) SupplierPaymentAllocation::where('voucher_id', $v->id)->sum('amount'))->toBe(100000.0);
-    expect($supplier->debt())->toBe(0.0);
+    expect($supplier->debt())->toBe(0.0)
+        ->and((float) SupplierPayment::where('is_migration_backfill', false)->sum('amount'))->toBe((float) $realTotalBefore)
+        ->and(SupplierPayment::where('is_migration_backfill', true)->count())->toBe(1);
 
     // Idempotent: chay lai khong tao them.
     $migration->up();

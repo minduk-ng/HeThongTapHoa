@@ -144,6 +144,14 @@ test('directly created codes are hashed at write time and verify', function () {
     $this->post('/verify-otp', ['code' => '123456'])->assertRedirect('/reset-password');
 });
 
+test('successful otp consume only succeeds once', function () {
+    $email = 'otp_consume_'.uniqid().'@example.com';
+    $code = OtpCode::issue($email, 'reset_password');
+
+    expect(OtpCode::consume($email, 'reset_password', $code))->not->toBeNull()
+        ->and(OtpCode::consume($email, 'reset_password', $code))->toBeNull();
+});
+
 test('resend rotates otp code and replaces locked code', function () {
     Mail::fake();
     $user = otpHardeningUser('otp_resend_'.uniqid().'@example.com');

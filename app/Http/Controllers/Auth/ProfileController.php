@@ -125,21 +125,17 @@ class ProfileController extends Controller
             return response()->json(['errors' => ['code' => 'Yêu cầu đổi email không hợp lệ.']], 422);
         }
 
-        $otp = OtpCode::attemptVerify($newEmail, 'change_email', $request->code);
-
-        if (! $otp) {
-            return response()->json(['errors' => ['code' => 'Mã xác thực không đúng hoặc đã hết hạn.']], 422);
-        }
-
         $user = Auth::user();
         $oldEmail = $user->email;
-
-        DB::transaction(function () use ($otp, $user, $oldEmail, $newEmail, $request): void {
-            $otp->delete();
+        $otp = OtpCode::consume($newEmail, 'change_email', $request->code, function () use ($user, $oldEmail, $newEmail, $request): void {
             $user->forceFill(['email' => $newEmail])->save();
             SessionRevoker::revokeOthers($user, $request->session()->getId());
             SecurityAuditLog::record($user, 'user.email.updated', $user, ['email' => $oldEmail], ['email' => $newEmail], $request->ip(), $request->userAgent());
         });
+
+        if (! $otp) {
+            return response()->json(['errors' => ['code' => 'Mã xác thực không đúng hoặc đã hết hạn.']], 422);
+        }
 
         // Queued after commit: EmailChangeAlert is ShouldQueue, so an SMTP failure
         // retries via the queue instead of leaving a half-applied state.
@@ -251,17 +247,14 @@ class ProfileController extends Controller
             return response()->json(['errors' => ['code' => 'Yêu cầu đổi mật khẩu không hợp lệ.']], 422);
         }
 
-        $otp = OtpCode::attemptVerify($user->email, 'change_password', $request->code);
+        $otp = OtpCode::consume($user->email, 'change_password', $request->code, function () use ($user, $newPasswordHash, $request): void {
+            $user->update(['password' => $newPasswordHash]);
+            SessionRevoker::revokeOthers($user, $request->session()->getId());
+        });
 
         if (! $otp) {
             return response()->json(['errors' => ['code' => 'Mã xác thực không đúng hoặc đã hết hạn.']], 422);
         }
-
-        DB::transaction(function () use ($otp, $user, $newPasswordHash, $request): void {
-            $otp->delete();
-            $user->update(['password' => $newPasswordHash]);
-            SessionRevoker::revokeOthers($user, $request->session()->getId());
-        });
 
         $request->session()->regenerate(true);
         $request->session()->forget(['pending_new_password', 'otp_email', 'otp_type']);

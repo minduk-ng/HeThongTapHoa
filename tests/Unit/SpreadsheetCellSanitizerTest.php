@@ -13,6 +13,7 @@ it('neutralizes spreadsheet formulas', function (string $input) {
     '@cmd',
     "\tformula",
     "\rformula",
+    "\nformula",
 ]);
 
 it('leaves safe values untouched', function (mixed $input) {

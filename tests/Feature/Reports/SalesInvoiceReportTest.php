@@ -129,4 +129,25 @@ class SalesInvoiceReportTest extends TestCase
                 ->where('invoices.0.discount_amount', 20000)
             );
     }
+
+    public function test_detail_rows_are_capped_with_total_metadata()
+    {
+        $now = now()->format('Y-m-d H:i:s');
+        $rows = [];
+        for ($i = 0; $i < 501; $i++) {
+            $rows[] = [
+                'invoice_code' => 'CAP-'.$i, 'table_name' => 'B01', 'payment_method' => 'cash',
+                'amount_received' => 1000, 'change_amount' => 0, 'total_amount' => 1000,
+                'subtotal_amount' => 1000, 'discount_amount' => 0, 'deposit_amount' => 0,
+                'issued_at' => $now, 'created_at' => $now, 'updated_at' => $now,
+            ];
+        }
+        Invoice::insert($rows);
+
+        $this->actingAs($this->adminUser())->get('/reports/sales-invoices')
+            ->assertInertia(fn ($page) => $page
+                ->has('invoices', 500)
+                ->where('pagination.total_count', 501)
+                ->where('pagination.truncated', true));
+    }
 }

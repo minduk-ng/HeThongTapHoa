@@ -33,7 +33,8 @@ class CheckoutLockController extends Controller
     {
         $tableId = $this->tableId($request);
         $user = $request->user();
-        $result = $this->locks->release($tableId, $user->id, $this->isPrivileged($user));
+        $token = $request->validate(['owner_token' => 'required|string|uuid'])['owner_token'];
+        $result = $this->locks->release($tableId, $user->id, $token, $this->isPrivileged($user));
 
         if ($result['forbidden']) {
             return response()->json(['error' => 'Chỉ người giữ lock hoặc quản trị mới được giải phóng.'], 403);
@@ -45,7 +46,8 @@ class CheckoutLockController extends Controller
     public function renew(Request $request): JsonResponse
     {
         $tableId = $this->tableId($request);
-        $result = $this->locks->renew($tableId, $request->user()->id);
+        $token = $request->validate(['owner_token' => 'required|string|uuid'])['owner_token'];
+        $result = $this->locks->renew($tableId, $request->user()->id, $token);
 
         if ($result['lock'] === null) {
             return response()->json(['error' => 'Lock không tồn tại hoặc đã hết hạn.'], 404);

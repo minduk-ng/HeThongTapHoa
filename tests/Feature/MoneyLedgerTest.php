@@ -7,6 +7,7 @@ use App\Models\MoneyLedgerEntry;
 use App\Models\Shift;
 use App\Models\StockVoucher;
 use App\Models\Supplier;
+use App\Services\Manager\ShiftService;
 use App\Services\MoneyLedgerService;
 use Illuminate\Support\Facades\Cache;
 
@@ -78,6 +79,7 @@ test('checkout writes sale ledger row without double deducting cash_change', fun
 
     $this->actingAs($staff)->postJson('/staff/pos/checkout', [
         'order_id' => $order->id, 'payment_method' => 'cash', 'amount_received' => 60000,
+        'idempotency_key' => 'ledger-checkout-1',
     ])->assertOk();
 
     expect(MoneyLedgerEntry::where('type', 'sale')->where('direction', 'in')->count())->toBe(1)
@@ -93,6 +95,7 @@ test('refund writes order_refund ledger row', function () {
 
     $this->actingAs($staff)->postJson('/staff/pos/checkout', [
         'order_id' => $order->id, 'payment_method' => 'cash', 'amount_received' => 50000,
+        'idempotency_key' => 'ledger-checkout-2',
     ])->assertOk();
 
     $invoice = $order->fresh()->invoice;
@@ -102,6 +105,7 @@ test('refund writes order_refund ledger row', function () {
         'invoice_id' => $invoice->id,
         'items' => [['invoice_line_id' => $line->id, 'qty' => 1]],
         'reason' => 'Hàng lỗi',
+        'idempotency_key' => 'ledger-refund-1',
     ])->assertOk();
 
     expect(MoneyLedgerEntry::where('type', 'order_refund')->where('direction', 'out')->count())->toBe(1);
@@ -117,10 +121,12 @@ test('deposit and supplier payment and shift movement write ledger rows', functi
     $order = posOrder(posTable(['status' => 'occupied']), [], ['status' => 'pending']);
     $this->actingAs($staff)->postJson('/staff/pos/deposit', [
         'order_id' => $order->id, 'amount' => 50000, 'method' => 'cash',
+        'idempotency_key' => 'ledger-deposit-1',
     ])->assertOk();
 
     $this->actingAs($staff)->postJson('/staff/shifts/movements', [
         'type' => 'expense', 'category' => 'khac', 'amount' => 10000,
+        'idempotency_key' => 'ledger-movement-1',
     ])->assertOk();
 
     $supplier = Supplier::create(['name' => 'NCC '.uniqid()]);
@@ -133,6 +139,7 @@ test('deposit and supplier payment and shift movement write ledger rows', functi
 
     $this->actingAs($staff)->post("/manager/suppliers/{$supplier->id}/payments", [
         'amount' => 100000, 'voucher_ids' => [$voucher->id], 'note' => 'Tra no dot 1',
+        'idempotency_key' => 'ledger-supplier-1',
     ])->assertStatus(302);
 
     expect(MoneyLedgerEntry::where('type', 'deposit')->count())->toBe(1)
@@ -162,6 +169,41 @@ test('cash deposit refund does not raise bank_to_cash_refund', function () {
         ->and($entry->warning_flags)->not->toContain('bank_to_cash_refund');
 });
 
+test('ledger persists operational fields and emits required warning flags', function () {
+    config()->set('money.refund_burst_threshold', 2);
+    config()->set('money.large_deposit_threshold', 100000);
+    $admin = posAdmin();
+    $occurredAt = now()->subHour();
+    $outside = app(MoneyLedgerService::class)->recordIn('deposit', 100000, 'cash', $admin, [], [
+        'reference' => 'REF-1', 'reason' => 'Dat coc', 'occurred_at' => $occurredAt,
+    ]);
+    expect($outside->warning_flags)->toContain('outside_shift')
+        ->and($outside->warning_flags)->toContain('large_deposit')
+        ->and($outside->reference)->toBe('REF-1')
+        ->and($outside->reason)->toBe('Dat coc')
+        ->and($outside->occurred_at->format('Y-m-d H:i:s'))->toBe($occurredAt->format('Y-m-d H:i:s'));
+
+    $shift = Shift::create(['opened_at' => now()->subMinute(), 'opening_cash' => 100000, 'status' => 'open', 'opened_by' => $admin->id]);
+    app(MoneyLedgerService::class)->recordOut('order_refund', 1000, 'cash', $admin, ['shift_id' => $shift->id]);
+    $burst = app(MoneyLedgerService::class)->recordOut('deposit_refund', 1000, 'cash', $admin, ['shift_id' => $shift->id]);
+    expect($burst->warning_flags)->toContain('refund_burst');
+});
+
+test('expected cash uses cash ledger rows once and ignores non cash rows', function () {
+    $admin = posAdmin();
+    $shift = Shift::create(['opened_at' => now()->subMinute(), 'opening_cash' => 100000, 'status' => 'open', 'opened_by' => $admin->id]);
+    $ledger = app(MoneyLedgerService::class);
+    $ledger->recordIn('sale', 50000, 'cash', $admin, ['shift_id' => $shift->id]);
+    $ledger->recordIn('deposit', 30000, 'cash', $admin, ['shift_id' => $shift->id]);
+    $ledger->recordIn('sale', 999999, 'bank_transfer', $admin, ['shift_id' => $shift->id]);
+    $ledger->recordOut('supplier_payment', 20000, 'cash', $admin, ['shift_id' => $shift->id]);
+    $ledger->recordOut('order_refund', 10000, 'cash', $admin, ['shift_id' => $shift->id]);
+    $ledger->recordIn('shift_income', 5000, 'cash', $admin, ['shift_id' => $shift->id]);
+    $ledger->recordOut('shift_expense', 2000, 'cash', $admin, ['shift_id' => $shift->id]);
+
+    expect(app(ShiftService::class)->expectedCash($shift, now()))->toBe(153000.0);
+});
+
 test('reservation cancel refund writes cash payout ledger, forfeit writes nothing', function () {
     $staff = posStaff(
         ['pos.view', 'pos.create', 'orders.cancel', 'deposits.refund'],
@@ -171,7 +213,7 @@ test('reservation cancel refund writes cash payout ledger, forfeit writes nothin
     $bankOrder = posOrder(posTable(['status' => 'reserved']), [], ['status' => 'reserved']);
     Deposit::create(['order_id' => $bankOrder->id, 'amount' => 100000, 'method' => 'bank_transfer', 'status' => 'held']);
     $this->actingAs($staff)->postJson('/staff/pos/reservation/cancel', [
-        'order_id' => $bankOrder->id, 'deposit_resolution' => 'refund', 'note' => 'Khach huy',
+        'order_id' => $bankOrder->id, 'deposit_resolution' => 'refund', 'note' => 'Khach huy', 'idempotency_key' => 'cancel-bank',
     ])->assertOk();
 
     $bankEntry = MoneyLedgerEntry::where('type', 'deposit_refund')->where('order_id', $bankOrder->id)->first();
@@ -184,7 +226,7 @@ test('reservation cancel refund writes cash payout ledger, forfeit writes nothin
     $cashOrder = posOrder(posTable(['status' => 'reserved']), [], ['status' => 'reserved']);
     Deposit::create(['order_id' => $cashOrder->id, 'amount' => 50000, 'method' => 'cash', 'status' => 'held']);
     $this->actingAs($staff)->postJson('/staff/pos/reservation/cancel', [
-        'order_id' => $cashOrder->id, 'deposit_resolution' => 'refund',
+        'order_id' => $cashOrder->id, 'deposit_resolution' => 'refund', 'idempotency_key' => 'cancel-cash',
     ])->assertOk();
 
     $cashEntry = MoneyLedgerEntry::where('type', 'deposit_refund')->where('order_id', $cashOrder->id)->first();
@@ -194,7 +236,7 @@ test('reservation cancel refund writes cash payout ledger, forfeit writes nothin
     $forfeitOrder = posOrder(posTable(['status' => 'reserved']), [], ['status' => 'reserved']);
     Deposit::create(['order_id' => $forfeitOrder->id, 'amount' => 50000, 'method' => 'cash', 'status' => 'held']);
     $this->actingAs($staff)->postJson('/staff/pos/reservation/cancel', [
-        'order_id' => $forfeitOrder->id, 'deposit_resolution' => 'forfeit',
+        'order_id' => $forfeitOrder->id, 'deposit_resolution' => 'forfeit', 'idempotency_key' => 'cancel-forfeit',
     ])->assertOk();
 
     expect(MoneyLedgerEntry::where('type', 'deposit_refund')->where('order_id', $forfeitOrder->id)->count())->toBe(0);
@@ -225,6 +267,7 @@ test('shift income movement writes shift_income ledger row with meta', function 
 
     $this->actingAs($staff)->postJson('/staff/shifts/movements', [
         'type' => 'income', 'category' => 'boa', 'amount' => 20000, 'note' => 'Tien boa',
+        'idempotency_key' => 'ledger-movement-2',
     ])->assertOk();
 
     $entry = MoneyLedgerEntry::where('type', 'shift_income')->first();
@@ -246,6 +289,7 @@ test('warned_count covers the full filtered set, not the display slice', functio
             'method' => 'cash',
             'actor_id' => $admin->id,
             'warning_flags' => json_encode($i % 2 === 0 ? ['large_cash_out'] : []),
+            'occurred_at' => $now,
             'created_at' => $now,
             'updated_at' => $now,
         ];

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\IdempotencyRecord;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -28,7 +29,7 @@ class IdempotencyGuard
     public static function check(Request $request, string $action, array $fingerprint = []): JsonResponse|RedirectResponse|null
     {
         $clientKey = $request->input('idempotency_key');
-        $fpHash = $fingerprint !== [] ? md5(json_encode($fingerprint) ?: '') : null;
+        $fpHash = $fingerprint !== [] ? hash('sha256', json_encode(self::canonicalize($fingerprint)) ?: '') : null;
         $fpKey = 'idempotency:'.$action.':'.($fpHash ?? 'default');
 
         if ($clientKey) {
@@ -50,6 +51,9 @@ class IdempotencyGuard
                 }
 
                 if ($record->status === 'processing') {
+                    if (self::recoverCommittedResource($record)) {
+                        return self::replayResponse($record->fresh(), $request);
+                    }
                     if ($record->updated_at && $record->updated_at->lt(now()->subMinutes(5))) {
                         $affected = IdempotencyRecord::where('id', $record->id)
                             ->where('status', 'processing')
@@ -115,6 +119,9 @@ class IdempotencyGuard
                     }
 
                     if ($record->status === 'processing') {
+                        if (self::recoverCommittedResource($record)) {
+                            return self::replayResponse($record->fresh(), $request);
+                        }
                         if ($record->updated_at && $record->updated_at->lt(now()->subMinutes(5))) {
                             $affected = IdempotencyRecord::where('id', $record->id)
                                 ->where('status', 'processing')
@@ -235,6 +242,34 @@ class IdempotencyGuard
         return $response;
     }
 
+    /** @param array<string, mixed> $body */
+    public static function recordSuccessInTransaction(
+        Request $request,
+        string $action,
+        Model $resource,
+        array $body,
+        int $code = 200,
+        ?string $redirectUrl = null,
+    ): void {
+        $clientKey = $request->input('idempotency_key');
+        if (! $clientKey) {
+            return;
+        }
+        if ($redirectUrl !== null) {
+            $body = ['__type' => 'redirect', 'url' => $redirectUrl, 'flash' => $body];
+        }
+        IdempotencyRecord::where('action', $action)
+            ->where('idempotency_key', $clientKey)
+            ->where('status', 'processing')
+            ->update([
+                'status' => 'succeeded',
+                'resource_type' => $resource::class,
+                'resource_id' => $resource->getKey(),
+                'response_code' => $code,
+                'response_body' => json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ]);
+    }
+
     /**
      * Xóa các key idempotency khi thao tác thất bại — đánh dấu record failed và cho phép retry.
      *
@@ -251,7 +286,7 @@ class IdempotencyGuard
                 ->update(['status' => 'failed']);
         }
 
-        $fpHash = $fingerprint !== [] ? md5(json_encode($fingerprint) ?: '') : 'default';
+        $fpHash = $fingerprint !== [] ? hash('sha256', json_encode(self::canonicalize($fingerprint)) ?: '') : 'default';
         Cache::forget("idempotency:{$action}:{$fpHash}");
     }
 
@@ -302,6 +337,34 @@ class IdempotencyGuard
         return response()->json([], $code, [
             'X-Idempotent-Replay' => 'true',
         ]);
+    }
+
+    private static function recoverCommittedResource(IdempotencyRecord $record): bool
+    {
+        if (! $record->resource_type || ! $record->resource_id || ! is_a($record->resource_type, Model::class, true)) {
+            return false;
+        }
+        if (! $record->resource_type::query()->whereKey($record->resource_id)->exists()) {
+            return false;
+        }
+
+        return IdempotencyRecord::whereKey($record->id)->where('status', 'processing')->update(['status' => 'succeeded']) === 1;
+    }
+
+    private static function canonicalize(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+        if (array_is_list($value)) {
+            $value = array_map(self::canonicalize(...), $value);
+            usort($value, fn (mixed $a, mixed $b): int => strcmp(json_encode($a) ?: '', json_encode($b) ?: ''));
+
+            return $value;
+        }
+        ksort($value);
+
+        return array_map(self::canonicalize(...), $value);
     }
 
     protected static function conflictResponse(Request $request): JsonResponse

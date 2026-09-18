@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Cache;
  * @property string|null $password
  * @property string|null $remember_token
  * @property bool $is_root_admin
+ * @property int $session_version
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -43,6 +44,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_root_admin' => 'boolean',
+            'session_version' => 'integer',
         ];
     }
 

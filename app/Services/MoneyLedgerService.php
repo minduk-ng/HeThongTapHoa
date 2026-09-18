@@ -48,6 +48,7 @@ class MoneyLedgerService
             throw new InvalidArgumentException('Số tiền ledger phải lớn hơn 0.');
         }
 
+        $shiftId = $links['shift_id'] ?? Shift::open()->latest('id')->value('id');
         $flags = [];
         $threshold = (float) config('money.large_cash_out_threshold', self::LARGE_CASH_OUT_THRESHOLD);
         if ($direction === 'out' && $method === 'cash' && $amount >= $threshold) {
@@ -58,6 +59,20 @@ class MoneyLedgerService
             && ($meta['source_method'] ?? null) === 'bank_transfer') {
             $flags[] = 'bank_to_cash_refund';
         }
+        if ($shiftId === null) {
+            $flags[] = 'outside_shift';
+        }
+        if ($type === 'deposit' && $amount >= (float) config('money.large_deposit_threshold', 10_000_000)) {
+            $flags[] = 'large_deposit';
+        }
+        if (in_array($type, ['order_refund', 'deposit_refund'], true) && $shiftId !== null) {
+            $threshold = (int) config('money.refund_burst_threshold', 5);
+            $refundCount = MoneyLedgerEntry::where('shift_id', $shiftId)
+                ->whereIn('type', ['order_refund', 'deposit_refund'])->count() + 1;
+            if ($refundCount >= $threshold) {
+                $flags[] = 'refund_burst';
+            }
+        }
 
         return MoneyLedgerEntry::create([
             'direction' => $direction,
@@ -65,10 +80,13 @@ class MoneyLedgerService
             'amount' => $amount,
             'method' => $method,
             'actor_id' => $actor?->id,
-            'shift_id' => $links['shift_id'] ?? Shift::open()->latest('id')->value('id'),
+            'shift_id' => $shiftId,
             'invoice_id' => $links['invoice_id'] ?? null,
             'order_id' => $links['order_id'] ?? null,
             'supplier_id' => $links['supplier_id'] ?? null,
+            'reference' => $meta['reference'] ?? null,
+            'reason' => $meta['reason'] ?? null,
+            'occurred_at' => $meta['occurred_at'] ?? now(),
             'warning_flags' => array_values(array_unique($flags)),
             'meta' => $meta === [] ? null : $meta,
         ]);

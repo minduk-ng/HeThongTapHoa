@@ -3,22 +3,25 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Reports\DateRangeReportRequest;
 use App\Models\Shift;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ShiftReportController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(DateRangeReportRequest $request): Response
     {
         $startDate = $request->input('start_date', today()->toDateString());
         $endDate = $request->input('end_date', today()->toDateString());
 
-        $shifts = Shift::query()
+        $query = Shift::query()
             ->with(['openedBy:id,name', 'closedBy:id,name'])
-            ->whereBetween('opened_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
+            ->whereBetween('opened_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"]);
+        $totalCount = (clone $query)->count();
+        $shifts = $query
             ->orderByDesc('opened_at')
+            ->limit(500)
             ->get()
             ->map(function (Shift $shift) {
                 $closing = $shift->closing_cash !== null ? (float) $shift->closing_cash : null;
@@ -52,6 +55,7 @@ class ShiftReportController extends Controller
             ],
             'startDate' => $startDate,
             'endDate' => $endDate,
+            'pagination' => ['total_count' => $totalCount, 'truncated' => $totalCount > 500],
         ]);
     }
 }

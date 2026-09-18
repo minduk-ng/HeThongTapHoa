@@ -88,6 +88,9 @@ export default function POSCartPanel({
         auth?.permissions?.includes('pos.cancel_item') ||
         auth?.permissions?.includes('kitchen.cancel_item')
     );
+    const canCancelOrder = !!(
+        auth?.is_admin || auth?.permissions?.includes('orders.cancel')
+    );
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
     const [isCheckoutDropUpOpen, setIsCheckoutDropUpOpen] = useState(false);
@@ -389,7 +392,7 @@ export default function POSCartPanel({
                                 />
                                 <div className="animate-in fade-in slide-in-from-top-1 absolute top-full right-0 z-50 mt-1 w-44 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg duration-100 dark:border-zinc-800 dark:bg-zinc-950">
                                     {confirmedItems.length > 0 &&
-                                        canCancel &&
+                                        canCancelOrder &&
                                         confirmedItems.some(
                                             (i) => !i.isKitchenCompleted,
                                         ) && (

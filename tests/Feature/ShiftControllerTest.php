@@ -4,6 +4,7 @@ use App\Models\Deposit;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Shift;
+use App\Services\MoneyLedgerService;
 
 test('mở ca thành công và chặn ca mở thứ hai', function () {
     $this->actingAs(posStaff(['shifts.open', 'shifts.view', 'shifts.close'], ['/staff/shifts']))
@@ -24,6 +25,7 @@ test('current tính expected_cash theo payments cash trong ca (bỏ qua bank)', 
         'amount_received' => 50000, 'change_amount' => 5000, 'issued_at' => now(),
     ]);
     Payment::create(['invoice_id' => $invCash->id, 'method' => 'cash', 'amount' => 50000]);
+    app(MoneyLedgerService::class)->recordIn('sale', 50000, 'cash', auth()->user(), ['shift_id' => $shift->id]);
 
     $invBank = Invoice::create([
         'invoice_code' => 'INV-BANK', 'table_name' => 'B1', 'total_amount' => 70000, 'payment_method' => 'bank_transfer',
@@ -44,6 +46,7 @@ test('đóng ca lưu đối soát và trả chênh lệch', function () {
     ]);
     $invClose = Invoice::where('invoice_code', 'INV-CLOSE')->first();
     Payment::create(['invoice_id' => $invClose->id, 'method' => 'cash', 'amount' => 30000]);
+    app(MoneyLedgerService::class)->recordIn('sale', 30000, 'cash', auth()->user(), ['shift_id' => $shift->id]);
 
     $response = $this->postJson('/staff/shifts/close', ['actual_cash' => 135000])->assertOk();
     expect((float) $response->json('expected_cash'))->toBe(130000.0);
@@ -63,6 +66,7 @@ test('expected_cash gom coc cash nhan trong ca, khong dem lai coc da applied', f
     $item = posMenuItem(['price' => 100000]);
     $order = posOrder(posTable(), [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']]);
     Deposit::create(['order_id' => $order->id, 'amount' => 30000, 'method' => 'cash', 'status' => 'held']);
+    app(MoneyLedgerService::class)->recordIn('deposit', 30000, 'cash', auth()->user(), ['shift_id' => $shift->id]);
 
     $response = $this->getJson('/staff/shifts/current')->assertOk();
     expect((float) $response->json('expected_cash'))->toBe(30000.0);
@@ -77,9 +81,11 @@ test('expected_cash tru coc cash da hoan trong ca (refunded)', function () {
 
     // Cọc cash nhận trong ca
     $deposit = Deposit::create(['order_id' => $order->id, 'amount' => 30000, 'method' => 'cash', 'status' => 'held']);
+    app(MoneyLedgerService::class)->recordIn('deposit', 30000, 'cash', auth()->user(), ['shift_id' => $shift->id]);
 
     // Khách hủy đặt bàn → hoàn cọc (status refunded, resolved_at = now)
     $deposit->update(['status' => 'refunded', 'resolved_at' => now()]);
+    app(MoneyLedgerService::class)->recordOut('deposit_refund', 30000, 'cash', auth()->user(), ['shift_id' => $shift->id]);
 
     $response = $this->getJson('/staff/shifts/current')->assertOk();
     // 0 mở + 0 checkout + 30000 cọc nhận − 30000 hoàn = 0
@@ -93,6 +99,7 @@ test('expected_cash khong dem lai coc da applied (payment row Tiền cọc)', fu
     $item = posMenuItem(['price' => 100000]);
     $order = posOrder(posTable(), [['item' => $item, 'qty' => 1, 'price' => 100000, 'status' => 'completed']]);
     $deposit = Deposit::create(['order_id' => $order->id, 'amount' => 30000, 'method' => 'cash', 'status' => 'held']);
+    app(MoneyLedgerService::class)->recordIn('deposit', 30000, 'cash', auth()->user(), ['shift_id' => $shift->id]);
 
     // Cọc applied qua checkout: payment row 'Tiền cọc đơn X' + deposit trả lại đếm lúc nhận
     $inv = Invoice::create([
@@ -101,6 +108,7 @@ test('expected_cash khong dem lai coc da applied (payment row Tiền cọc)', fu
     ]);
     Payment::create(['invoice_id' => $inv->id, 'method' => 'cash', 'amount' => 40000]); // trả thêm
     Payment::create(['invoice_id' => $inv->id, 'method' => 'cash', 'amount' => 30000, 'note' => 'Tiền cọc đơn '.$order->id]);
+    app(MoneyLedgerService::class)->recordIn('sale', 40000, 'cash', auth()->user(), ['shift_id' => $shift->id]);
 
     // expected = cọc 30000 (nhận) + trả thêm 40000 = 70000 (không đếm lại 30000 applied)
     $response = $this->getJson('/staff/shifts/current')->assertOk();

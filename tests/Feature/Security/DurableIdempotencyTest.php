@@ -210,6 +210,7 @@ test('refund mutation is durable and idempotent', function () {
         'order_id' => $order->id,
         'payment_method' => 'cash',
         'amount_received' => 50000,
+        'idempotency_key' => 'refund-setup-'.uniqid(),
     ])->assertOk();
 
     $invoice = Invoice::with('lines')->latest('id')->firstOrFail();
@@ -380,11 +381,8 @@ test('processing record older than 5 minutes allows retry instead of permanent 4
         'idempotency_key' => $key,
     ];
 
-    $fp = [
-        'order_id' => $order->id,
-        'amount_received' => 50000,
-    ];
-    $fpHash = md5(json_encode($fp) ?: '');
+    $fp = ['amount_received' => 50000, 'order_id' => $order->id, 'payment_method' => 'cash'];
+    $fpHash = hash('sha256', json_encode($fp) ?: '');
 
     $record = IdempotencyRecord::create([
         'action' => 'checkout',
@@ -403,4 +401,59 @@ test('processing record older than 5 minutes allows retry instead of permanent 4
 
     $record->refresh();
     expect($record->status)->toBe('succeeded');
+});
+
+test('stale processing record linked to committed deposit replays without duplicate mutation', function () {
+    $admin = posAdmin();
+    $order = posOrder(posTable(), [['item' => posMenuItem(['price' => 50000]), 'qty' => 1, 'price' => 50000, 'status' => 'completed']]);
+    $deposit = Deposit::create(['order_id' => $order->id, 'amount' => 20000, 'method' => 'cash', 'status' => 'held']);
+    $key = 'crash-after-commit-'.uniqid();
+    $fingerprint = ['amount' => 20000, 'method' => 'cash', 'order_id' => $order->id];
+    $record = IdempotencyRecord::create([
+        'action' => 'deposit', 'idempotency_key' => $key, 'user_id' => $admin->id,
+        'resource_fingerprint' => hash('sha256', json_encode($fingerprint) ?: ''),
+        'resource_type' => Deposit::class, 'resource_id' => $deposit->id,
+        'status' => 'processing', 'response_code' => 200, 'response_body' => json_encode(['success' => true]),
+    ]);
+    $record->timestamps = false;
+    $record->updated_at = now()->subMinutes(6);
+    $record->save();
+
+    $this->actingAs($admin)->postJson('/staff/pos/deposit', $fingerprint + ['idempotency_key' => $key])
+        ->assertOk()->assertHeader('X-Idempotent-Replay', 'true');
+
+    expect(Deposit::where('order_id', $order->id)->count())->toBe(1)
+        ->and($record->fresh()->status)->toBe('succeeded');
+});
+
+test('all financial endpoint families require an idempotency key', function () {
+    $admin = posAdmin();
+    $order = posOrder(posTable(), [['item' => posMenuItem(['price' => 10000]), 'qty' => 1, 'price' => 10000, 'status' => 'completed']]);
+    $supplier = Supplier::create(['name' => 'Required key supplier']);
+    Shift::create(['opened_at' => now(), 'opening_cash' => 0, 'status' => 'open', 'opened_by' => $admin->id]);
+
+    $responses = [];
+    $responses['checkout'] = $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id, 'payment_method' => 'cash', 'amount_received' => 10000, 'idempotency_key' => null,
+    ]);
+    $responses['bulk_checkout'] = $this->actingAs($admin)->postJson('/staff/pos/bulk-checkout', [
+        'order_ids' => [$order->id], 'payment_method' => 'cash', 'amount_received' => 10000, 'idempotency_key' => null,
+    ]);
+    $responses['deposit'] = $this->actingAs($admin)->postJson('/staff/pos/deposit', [
+        'order_id' => $order->id, 'amount' => 1000, 'method' => 'cash', 'idempotency_key' => null,
+    ]);
+    $responses['refund'] = $this->actingAs($admin)->postJson('/staff/pos/refund', [
+        'invoice_id' => 1, 'items' => [['invoice_line_id' => 1, 'qty' => 1]], 'reason' => 'test', 'idempotency_key' => null,
+    ]);
+    $responses['supplier_payment'] = $this->actingAs($admin)->postJson("/manager/suppliers/{$supplier->id}/payments", [
+        'amount' => 1000, 'voucher_ids' => [1], 'idempotency_key' => null,
+    ]);
+    $responses['cash_movement'] = $this->actingAs($admin)->postJson('/staff/shifts/movements', [
+        'type' => 'income', 'category' => 'test', 'amount' => 1000, 'idempotency_key' => null,
+    ]);
+
+    foreach ($responses as $family => $response) {
+        expect($response->status())->toBe(422, $family)
+            ->and($response->json('errors.idempotency_key'))->not->toBeNull($family);
+    }
 });

@@ -81,6 +81,7 @@ class AuthController extends Controller
         // Đăng nhập thành công, xóa Cache
         Cache::forget($cacheKey);
         $request->session()->regenerate();
+        $request->session()->put('session_version', (int) $user->session_version);
 
         return redirect()->intended('/');
     }

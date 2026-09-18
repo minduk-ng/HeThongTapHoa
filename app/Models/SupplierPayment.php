@@ -8,9 +8,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SupplierPayment extends Model
 {
-    protected $fillable = ['supplier_id', 'amount', 'paid_at', 'note', 'created_by'];
+    protected $fillable = ['supplier_id', 'amount', 'paid_at', 'note', 'created_by', 'is_migration_backfill'];
 
-    protected $casts = ['amount' => 'float', 'paid_at' => 'datetime'];
+    protected $casts = ['amount' => 'float', 'paid_at' => 'datetime', 'is_migration_backfill' => 'boolean'];
 
     /** @return BelongsTo<Supplier, $this> */
     public function supplier(): BelongsTo

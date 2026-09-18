@@ -31,6 +31,7 @@ class CancelledReportController extends Controller
         // Đơn huỷ nguyên: mốc huỷ ~ updated_at (Order chưa có cột cancelled_at riêng).
         $cancelledOrders = (clone $ordersQuery)->with(['table', 'items'])
             ->orderByDesc('updated_at')
+            ->limit(500)
             ->get()
             ->values()
             ->map(fn (Order $o) => [
@@ -60,6 +61,7 @@ class CancelledReportController extends Controller
                 'users.name as cancelled_by_name',
                 'order_items.cancelled_at',
             ])
+            ->limit(500)
             ->get()
             ->values()
             ->map(fn (\stdClass $r) => [
@@ -84,6 +86,11 @@ class CancelledReportController extends Controller
             ],
             'startDate' => $startDate,
             'endDate' => $endDate,
+            'pagination' => [
+                'orders_total_count' => $cancelledOrdersCount,
+                'items_total_count' => $cancelledItemsCount,
+                'truncated' => $cancelledOrdersCount > 500 || $cancelledItemsCount > 500,
+            ],
         ]);
     }
 }

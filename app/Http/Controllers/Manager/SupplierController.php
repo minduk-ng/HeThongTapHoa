@@ -108,13 +108,10 @@ class SupplierController extends Controller
             'allocations.*.amount' => 'required|numeric|gt:0',
             'voucher_ids' => 'required_without:allocations|prohibits:allocations|array|min:1',
             'voucher_ids.*' => 'exists:stock_vouchers,id',
-            'idempotency_key' => 'nullable|string|max:100',
+            'idempotency_key' => 'required|string|max:100',
         ]);
 
-        $fp = [
-            'supplier_id' => $supplier->id,
-            'amount' => $validated['amount'],
-        ];
+        $fp = ['supplier_id' => $supplier->id] + array_diff_key($validated, ['idempotency_key' => true]);
 
         if ($response = IdempotencyGuard::check($request, 'supplier_payment', $fp)) {
             return $response;
@@ -205,11 +202,15 @@ class SupplierController extends Controller
                     ['supplier_id' => $supplier->id],
                     array_filter(['note' => $validated['note'] ?? null, 'allocations' => $allocMeta])
                 );
+                IdempotencyGuard::recordSuccessInTransaction(
+                    $request, 'supplier_payment', $payment,
+                    ['success' => 'Đã ghi nhận thanh toán công nợ!'], 302, url()->previous()
+                );
             });
 
             $response = back()->with('success', 'Đã ghi nhận thanh toán công nợ!');
 
-            return IdempotencyGuard::recordSuccess($request, 'supplier_payment', $response);
+            return $response;
         } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'supplier_payment', $fp);
             throw $e;

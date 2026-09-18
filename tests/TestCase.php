@@ -9,6 +9,8 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    private int $financialRequestSequence = 0;
+
     /**
      * Test env mặc định BROADCAST_CONNECTION=null → channels.php (booted callback
      * của withBroadcasting) không đăng ký channel lên broadcaster thật → không test
@@ -71,5 +73,26 @@ abstract class TestCase extends BaseTestCase
         $this->flushSession();
 
         return parent::actingAs($user, $guard);
+    }
+
+    public function call($method, $uri, $parameters = [], $cookies = [], $files = [], $server = [], $content = null)
+    {
+        $financialRoutes = [
+            '/staff/pos/checkout', '/staff/pos/bulk-checkout', '/staff/pos/deposit',
+            '/staff/pos/refund', '/staff/shifts/movements',
+        ];
+        $isFinancial = in_array(parse_url((string) $uri, PHP_URL_PATH), $financialRoutes, true)
+            || preg_match('#^/manager/suppliers/\d+/payments$#', (string) parse_url((string) $uri, PHP_URL_PATH));
+        if (strtoupper((string) $method) === 'POST' && $isFinancial) {
+            $json = is_string($content) ? json_decode($content, true) : null;
+            if (is_array($json) && ! array_key_exists('idempotency_key', $json)) {
+                $json['idempotency_key'] = 'test-'.(++$this->financialRequestSequence).'-'.bin2hex(random_bytes(8));
+                $content = json_encode($json);
+            } elseif ($content === null && ! array_key_exists('idempotency_key', $parameters)) {
+                $parameters['idempotency_key'] = 'test-'.(++$this->financialRequestSequence).'-'.bin2hex(random_bytes(8));
+            }
+        }
+
+        return parent::call($method, $uri, $parameters, $cookies, $files, $server, $content);
     }
 }

@@ -32,13 +32,11 @@ class RefundController extends Controller
             'items.*.qty' => 'required|integer|min:1',
             'reason' => 'required|string|max:50',
             'note' => 'nullable|string|max:255',
-            'idempotency_key' => 'nullable|string|max:100',
+            'idempotency_key' => 'required|string|max:100',
         ]);
 
-        if ($response = IdempotencyGuard::checkJson($request, 'refund', [
-            'invoice_id' => $validated['invoice_id'],
-            'items' => $validated['items'],
-        ])) {
+        $fingerprint = array_diff_key($validated, ['idempotency_key' => true]);
+        if ($response = IdempotencyGuard::checkJson($request, 'refund', $fingerprint)) {
             return $response;
         }
 
@@ -75,7 +73,7 @@ class RefundController extends Controller
                 }
 
                 // Payment âm
-                Payment::create([
+                $refundPayment = Payment::create([
                     'invoice_id' => $invoice->id,
                     'method' => 'cash',
                     'amount' => -$refundTotal,
@@ -141,6 +139,7 @@ class RefundController extends Controller
                         ], $linesMap),
                     ]);
                 }
+                IdempotencyGuard::recordSuccessInTransaction($request, 'refund', $refundPayment, ['success' => true, 'message' => 'Hoàn trả thành công!']);
             });
 
             Cache::tags(['dashboard'])->flush();
@@ -148,11 +147,10 @@ class RefundController extends Controller
 
             $response = response()->json(['success' => true, 'message' => 'Hoàn trả thành công!']);
 
-            return IdempotencyGuard::recordSuccess($request, 'refund', $response);
+            return $response;
         } catch (\Throwable $e) {
             IdempotencyGuard::release($request, 'refund', [
-                'invoice_id' => $validated['invoice_id'],
-                'items' => $validated['items'],
+                ...$fingerprint,
             ]);
             Log::error('Refund error: '.$e->getMessage());
 

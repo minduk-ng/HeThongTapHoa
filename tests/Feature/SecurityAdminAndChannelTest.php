@@ -79,4 +79,9 @@ test('presence pos-room requires pos view or create permission', function () {
     $this->actingAs($allowed)->postJson('/broadcasting/auth', [
         'socket_id' => '1.1', 'channel_name' => 'presence-pos-room',
     ])->assertOk();
+
+    $viewOnly = posStaff(['pos.view'], []);
+    $this->actingAs($viewOnly)->postJson('/broadcasting/auth', [
+        'socket_id' => '1.1', 'channel_name' => 'presence-pos-room',
+    ])->assertOk();
 });

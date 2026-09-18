@@ -16,7 +16,7 @@ final class SpreadsheetCellSanitizer
         }
 
         return match ($value[0]) {
-            '=', '+', '-', '@', "\t", "\r" => "'".$value,
+            '=', '+', '-', '@', "\t", "\r", "\n" => "'".$value,
             default => $value,
         };
     }
