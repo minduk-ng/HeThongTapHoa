@@ -4,6 +4,7 @@ namespace App\Services\POS;
 
 use App\Events\CheckoutLockUpdated;
 use Illuminate\Cache\RedisStore;
+use Illuminate\Redis\Connections\PredisConnection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -118,7 +119,7 @@ class CheckoutLockService
             $tokenKey = $key.':owner';
             $script = "if redis.call('exists', KEYS[1]) == 1 then return 0 end redis.call('setex', KEYS[1], ARGV[1], ARGV[2]); redis.call('setex', KEYS[2], ARGV[1], ARGV[3]); return 1";
 
-            return (int) $store->connection()->eval($script, [$key, $tokenKey, self::ttl(), json_encode($payload), $payload['owner_token']], 2) === 1;
+            return $this->evalScript($store, $script, [$key, $tokenKey, self::ttl(), json_encode($payload), $payload['owner_token']]);
         }
 
         return Cache::add(self::key($tableId), $payload, self::ttl());
@@ -131,7 +132,7 @@ class CheckoutLockService
             $key = $store->getPrefix().self::key($tableId);
             $script = "if redis.call('get', KEYS[2]) ~= ARGV[1] then return 0 end redis.call('del', KEYS[1], KEYS[2]); return 1";
 
-            return (int) $store->connection()->eval($script, [$key, $key.':owner', $ownerToken], 2) === 1;
+            return $this->evalScript($store, $script, [$key, $key.':owner', $ownerToken]);
         }
 
         return Cache::lock(self::key($tableId).':mutation', 5)->block(2, function () use ($tableId, $ownerToken): bool {
@@ -153,7 +154,7 @@ class CheckoutLockService
             $key = $store->getPrefix().self::key($tableId);
             $script = "if redis.call('get', KEYS[2]) ~= ARGV[1] then return 0 end redis.call('setex', KEYS[1], ARGV[2], ARGV[3]); redis.call('expire', KEYS[2], ARGV[2]); return 1";
 
-            return (int) $store->connection()->eval($script, [$key, $key.':owner', $ownerToken, self::ttl(), json_encode($payload)], 2) === 1;
+            return $this->evalScript($store, $script, [$key, $key.':owner', $ownerToken, self::ttl(), json_encode($payload)]);
         }
 
         return Cache::lock(self::key($tableId).':mutation', 5)->block(2, function () use ($tableId, $ownerToken, $payload): bool {
@@ -165,5 +166,21 @@ class CheckoutLockService
 
             return true;
         });
+    }
+
+    /**
+     * Lua eval với 2 KEYS đầu tiên trong $args. Từng driver nhận đúng định dạng của nó:
+     * phpredis: eval(script, args[], numKeys); predis: eval(script, numKeys, ...keys/args).
+     *
+     * @param  array<int, mixed>  $args  [key, ownerKey, ...argv]
+     */
+    private function evalScript(RedisStore $store, string $script, array $args): bool
+    {
+        $connection = $store->connection();
+        $result = $connection instanceof PredisConnection
+            ? $connection->command('eval', [$script, 2, ...$args])
+            : $connection->command('eval', [$script, $args, 2]);
+
+        return (int) $result === 1;
     }
 }

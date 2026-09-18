@@ -97,6 +97,52 @@ class ProfitReportTest extends TestCase
             );
     }
 
+    public function test_summary_metrics_cover_all_items_beyond_500_cap()
+    {
+        $invoice = Invoice::create([
+            'invoice_code' => 'HD-'.strtoupper(uniqid()),
+            'table_name' => 'B01',
+            'payment_method' => 'cash',
+            'amount_received' => 0,
+            'change_amount' => 0,
+            'total_amount' => 0,
+            'deposit_amount' => 0,
+        ]);
+        $invoice->forceFill(['issued_at' => '2026-07-15 12:00:00'])->save();
+
+        // 501 món khác nhau, mỗi món 1 dòng qty 1 giá 10000 → doanh thu 5.010.000.
+        $now = now();
+        $lines = [];
+        for ($i = 0; $i < 501; $i++) {
+            $item = posMenuItem(['price' => 10000]);
+            $lines[] = [
+                'invoice_id' => $invoice->id,
+                'menu_item_id' => $item->id,
+                'name_snapshot' => $item->name,
+                'quantity' => 1,
+                'unit_price' => 10000,
+                'subtotal' => 10000,
+                'vat_rate' => 0,
+                'vat_amount' => 0,
+                'discount_amount' => 0,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+        InvoiceLine::insert($lines);
+
+        $this->actingAs($this->adminUser())
+            ->get('/reports/profit?start_date=2026-07-01&end_date=2026-07-31')
+            ->assertInertia(fn ($page) => $page
+                ->has('rows', 500)
+                ->where('metrics.revenue', 5010000)
+                ->where('metrics.cost', 0)
+                ->where('metrics.profit', 5010000)
+                ->where('pagination.total_count', 501)
+                ->where('pagination.truncated', true)
+            );
+    }
+
     public function test_profit_uses_net_revenue_after_discount()
     {
         $itemA = posMenuItem(['name' => 'Món Net', 'price' => 50000]);

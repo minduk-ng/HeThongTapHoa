@@ -88,8 +88,9 @@ class ProfitReportController extends Controller
                 'profit' => $d['profit'],
             ]);
 
-        $revenue = (float) $rows->sum('revenue');
-        $cost = (float) $rows->sum('cost');
+        // Summary trên toàn bộ $items (không cap); $rows chỉ lấy 500 món đầu để hiển thị.
+        $revenue = (float) $items->sum('revenue');
+        $cost = (float) $items->sum(fn (\stdClass $r) => (int) $r->quantity * (float) ($recipeCost[$r->menu_item_id] ?? 0));
 
         return Inertia::render('reports/ProfitReport', [
             'rows' => $rows,

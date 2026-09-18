@@ -23,7 +23,11 @@ class ProductDetailsReportController extends Controller
             ->leftJoin('menu_categories', 'menu_categories.id', '=', 'menu_items.category_id')
             ->groupBy('invoice_lines.menu_item_id', 'invoice_lines.name_snapshot', 'menu_categories.name')
             ->selectRaw('invoice_lines.menu_item_id, invoice_lines.name_snapshot as item_name, menu_categories.name as category_name, SUM(invoice_lines.quantity) as quantity, SUM(invoice_lines.subtotal - invoice_lines.discount_amount) as revenue, SUM(invoice_lines.discount_amount) as discount_amount');
-        $totalCount = DB::query()->fromSub(clone $query, 'product_rows')->count();
+        // Summary trên toàn dải (SQL qua subquery), không theo 500 dòng hiển thị.
+        $summaryQuery = DB::query()->fromSub(clone $query, 'product_rows');
+        $totalCount = (clone $summaryQuery)->count();
+        $revenueTotal = (float) (clone $summaryQuery)->sum('revenue');
+        $quantityTotal = (int) (clone $summaryQuery)->sum('quantity');
         $rows = $query->orderByDesc('revenue')->limit(500)
             ->get()
             ->values()
@@ -39,9 +43,9 @@ class ProductDetailsReportController extends Controller
         return Inertia::render('reports/ProductDetailsReport', [
             'rows' => $rows,
             'metrics' => [
-                'revenue' => (float) $rows->sum('revenue'),
-                'quantity_total' => (int) $rows->sum('quantity'),
-                'item_count' => $rows->count(),
+                'revenue' => $revenueTotal,
+                'quantity_total' => $quantityTotal,
+                'item_count' => $totalCount,
                 'top_item' => $rows->first()['item_name'] ?? null,
             ],
             'categories' => MenuCategory::orderBy('sort_order')->get(['id', 'name'])->values(),

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Reports;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Reports\DateRangeReportRequest;
 use App\Models\Order;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,6 +23,14 @@ class ReservationsReportController extends Controller
         $total = (clone $baseQuery)->count();
         $arrived = (clone $baseQuery)->where('status', 'paid')->count();
         $cancelled = (clone $baseQuery)->where('status', 'cancelled')->count();
+
+        // Cọc held trên toàn dải (SQL), không theo 500 dòng hiển thị.
+        $depositTotal = (float) DB::table('deposits')
+            ->join('orders', 'orders.id', '=', 'deposits.order_id')
+            ->whereNotNull('orders.reservation_name')
+            ->whereBetween('orders.reservation_time', $range)
+            ->where('deposits.status', 'held')
+            ->sum('deposits.amount');
 
         $rows = (clone $baseQuery)->with('table')
             ->withSum(
@@ -53,7 +62,7 @@ class ReservationsReportController extends Controller
                 'total' => $total,
                 'arrived' => $arrived,
                 'cancelled' => $cancelled,
-                'deposit_total' => (float) $rows->sum('deposit_total'),
+                'deposit_total' => $depositTotal,
             ],
             'startDate' => $startDate,
             'endDate' => $endDate,

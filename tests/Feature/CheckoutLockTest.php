@@ -2,6 +2,10 @@
 
 use App\Events\CheckoutLockUpdated;
 use App\Models\User;
+use App\Services\POS\CheckoutLockService;
+use Illuminate\Cache\RedisStore;
+use Illuminate\Redis\Connections\PredisConnection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 
 use function Pest\Laravel\actingAs;
@@ -208,4 +212,70 @@ test('checkout bi 409 khi ban dang lock boi nguoi khac, owner van checkout duoc'
     ])->assertOk();
 
     expect($order->fresh()->status)->toBe('paid');
+});
+
+test('redis path goi lua eval dung dang: 2 keys roi argv (phpredis)', function () {
+    Event::fake([CheckoutLockUpdated::class]);
+
+    $prefix = 'laravel_database_';
+    $key = $prefix.CheckoutLockService::key(7);
+    $ownerKey = $key.':owner';
+    $payload = [
+        'table_id' => 7, 'user_id' => 1, 'user_name' => 'Tester',
+        'acquired_at' => now()->toIso8601String(), 'owner_token' => 'tok-1',
+    ];
+
+    // phpredis branch: command('eval', [$script, $argsArray, 2]) — argsArray = [key, ownerKey, ...argv].
+    $connection = Mockery::mock();
+    // acquire: key, ownerKey, ttl (int), json payload, owner_token
+    $connection->shouldReceive('command')->once()
+        ->withArgs(fn ($method, $params) => $method === 'eval' && $params[2] === 2
+            && $params[1][0] === $key && $params[1][1] === $ownerKey
+            && count($params[1]) === 5 && is_int($params[1][2]))
+        ->andReturn(1);
+    // renew: key, ownerKey, owner_token, ttl (int), json payload
+    $connection->shouldReceive('command')->once()
+        ->withArgs(fn ($method, $params) => $method === 'eval' && $params[2] === 2
+            && $params[1][0] === $key && $params[1][1] === $ownerKey
+            && $params[1][2] === 'tok-1' && count($params[1]) === 5 && is_int($params[1][3]))
+        ->andReturn(1);
+    // release: key, ownerKey, owner_token
+    $connection->shouldReceive('command')->once()
+        ->withArgs(fn ($method, $params) => $method === 'eval' && $params[2] === 2
+            && $params[1] === [$key, $ownerKey, 'tok-1'])
+        ->andReturn(1);
+    $connection->shouldReceive('get')->andReturn(json_encode($payload));
+
+    $store = Mockery::mock(RedisStore::class);
+    $store->shouldReceive('getPrefix')->andReturn($prefix);
+    $store->shouldReceive('connection')->andReturn($connection);
+    Cache::setStore($store);
+
+    $service = new CheckoutLockService;
+    expect($service->acquire(7, 1, 'Tester')['acquired'])->toBeTrue();
+    expect($service->renew(7, 1, 'tok-1')['renewed'])->toBeTrue();
+    expect($service->release(7, 1, 'tok-1', false)['released'])->toBeTrue();
+});
+
+test('redis path goi lua eval dung dang flat (predis)', function () {
+    Event::fake([CheckoutLockUpdated::class]);
+
+    $prefix = 'laravel_database_';
+    $key = $prefix.CheckoutLockService::key(7);
+    $ownerKey = $key.':owner';
+
+    // predis branch: command('eval', [$script, 2, $key, $ownerKey, ...argv]) — flat.
+    $connection = Mockery::mock(PredisConnection::class);
+    $connection->shouldReceive('command')->once()
+        ->withArgs(fn ($method, $params) => $method === 'eval' && $params[1] === 2
+            && $params[2] === $key && $params[3] === $ownerKey
+            && count($params) === 7 && is_int($params[4]))
+        ->andReturn(1);
+
+    $store = Mockery::mock(RedisStore::class);
+    $store->shouldReceive('getPrefix')->andReturn($prefix);
+    $store->shouldReceive('connection')->andReturn($connection);
+    Cache::setStore($store);
+
+    expect((new CheckoutLockService)->acquire(7, 1, 'Tester')['acquired'])->toBeTrue();
 });

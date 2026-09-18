@@ -66,3 +66,25 @@
 - `npm run build`: PASS. Existing chunk-size advisory only.
 - `git diff --check`: PASS.
 - `node .gitnexus/run.cjs detect-changes --scope all`: CRITICAL blast radius, 92 changed symbols, 95 affected flows; expected auth/payment/report security scope.
+
+## Re-review Fixes (NB1/NB2)
+
+1. **NB1 (Critical): Redis eval() argument order in `CheckoutLockService`**
+   - `add`/`compareAndDelete`/`compareAndPut` passed the args array where `numKeys` belongs → TypeError on every Redis acquire/release/renew.
+   - Fixed via one `evalScript()` helper calling `command('eval', ...)` per driver: phpredis `(script, args[], 2)`, predis `(script, 2, ...keys/args)` (base `Connection::command` is typed, so phpstan stays honest; Lua scripts unchanged).
+   - Tests: two mocked-connection tests assert the eval shape for both phpredis (acquire/renew/release) and predis (acquire) branches; existing array-driver `Cache::lock` fallback tests untouched and green.
+2. **NB2 (Important): summary metrics from capped 500-row window**
+   - `InvoiceItemsReportController`: total_amount/discount/quantity/invoice_count now SQL aggregates on the cloned base query (`sum`/`COUNT(DISTINCT invoice_id)`); `line_count` = uncapped `total_count`.
+   - `ProductDetailsReportController`: revenue/quantity summed via SQL over the uncapped grouped subquery; `item_count` = uncapped `total_count`; `top_item` still from capped rows (row 1 by revenue is the true top).
+   - `ProfitReportController`: headline revenue/cost computed from the uncapped `$items` collection (same recipe-cost formula as `daily`); `rows` stays capped at 500 items.
+   - `ReservationsReportController`: `deposit_total` = SQL sum of held `deposits.amount` joined to the full filtered reservation range.
+   - Tests: InvoiceItems (502 lines on 1 invoice) and Profit (501 items × 1 line) assert exact full-range summary totals with 500-row detail cap and `pagination.truncated` true.
+
+### Verification (re-review wave)
+
+- `php artisan test`: PASS, 620 tests, 3220 assertions.
+- `composer types:check`: PASS, 0 errors.
+- `vendor/bin/pint --test`: PASS.
+- `npx eslint .`: PASS.
+- `npx tsc --noEmit`: PASS.
+- `npm run build`: PASS. Existing chunk-size advisory only.
