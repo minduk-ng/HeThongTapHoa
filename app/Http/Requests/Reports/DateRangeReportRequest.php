@@ -29,10 +29,15 @@ class DateRangeReportRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'start_date' => ['nullable', 'date_format:Y-m-d'],
+            'start_date' => [
+                'nullable',
+                'date_format:Y-m-d',
+                'required_with:end_date',
+            ],
             'end_date' => [
                 'nullable',
                 'date_format:Y-m-d',
+                'required_with:start_date',
                 'after_or_equal:start_date',
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     $startDate = $this->input('start_date');
@@ -66,6 +71,8 @@ class DateRangeReportRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'start_date.required_with' => 'Vui lòng chọn ngày bắt đầu khi có ngày kết thúc.',
+            'end_date.required_with' => 'Vui lòng chọn ngày kết thúc khi có ngày bắt đầu.',
             'end_date.after_or_equal' => 'Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.',
             'start_date.date_format' => 'Ngày bắt đầu không đúng định dạng Y-m-d.',
             'end_date.date_format' => 'Ngày kết thúc không đúng định dạng Y-m-d.',

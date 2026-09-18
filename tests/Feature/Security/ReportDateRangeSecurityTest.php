@@ -76,6 +76,47 @@ test('invalid date format fails validation', function () {
         ->assertJsonValidationErrors(['end_date']);
 });
 
+test('providing only start_date or only end_date is rejected with 422', function () {
+    $admin = reportAdmin();
+
+    // Providing only start_date requires end_date
+    $this->actingAs($admin)
+        ->getJson('/reports/sales-invoices?start_date=2020-01-01')
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['end_date']);
+
+    $this->actingAs($admin)
+        ->get('/reports/sales-invoices?start_date=2020-01-01')
+        ->assertSessionHasErrors(['end_date']);
+
+    // Providing only end_date requires start_date
+    $this->actingAs($admin)
+        ->getJson('/reports/sales-invoices?end_date=2020-01-01')
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['start_date']);
+
+    $this->actingAs($admin)
+        ->get('/reports/sales-invoices?end_date=2020-01-01')
+        ->assertSessionHasErrors(['start_date']);
+});
+
+test('all seven report endpoints reject unpaired start_date', function (string $endpoint) {
+    $admin = reportAdmin();
+
+    $this->actingAs($admin)
+        ->getJson("{$endpoint}?start_date=2020-01-01")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['end_date']);
+})->with([
+    '/reports/sales-invoices',
+    '/reports/cancelled',
+    '/reports/reservations',
+    '/reports/payments',
+    '/reports/invoice-items',
+    '/reports/consumption',
+    '/reports/stock-movement',
+]);
+
 test('all seven report endpoints reject date range exceeding 90 days', function (string $endpoint) {
     $admin = reportAdmin();
 
