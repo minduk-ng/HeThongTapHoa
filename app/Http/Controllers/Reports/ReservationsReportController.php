@@ -3,25 +3,31 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Reports\DateRangeReportRequest;
 use App\Models\Order;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ReservationsReportController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(DateRangeReportRequest $request): Response
     {
-        $startDate = $request->input('start_date', today()->toDateString());
-        $endDate = $request->input('end_date', today()->toDateString());
+        $startDate = $request->startDate();
+        $endDate = $request->endDate();
+        $range = $request->dateRange();
 
-        $rows = Order::with('table')
+        $baseQuery = Order::whereNotNull('reservation_name')
+            ->whereBetween('reservation_time', $range);
+
+        $total = (clone $baseQuery)->count();
+        $arrived = (clone $baseQuery)->where('status', 'paid')->count();
+        $cancelled = (clone $baseQuery)->where('status', 'cancelled')->count();
+
+        $rows = (clone $baseQuery)->with('table')
             ->withSum(
                 ['deposits as deposit_total' => fn ($q) => $q->where('status', 'held')],
                 'amount',
             )
-            ->whereNotNull('reservation_name')
-            ->whereBetween('reservation_time', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
             ->orderBy('reservation_time')
             ->get()
             ->values()
@@ -43,9 +49,9 @@ class ReservationsReportController extends Controller
         return Inertia::render('reports/ReservationsReport', [
             'rows' => $rows,
             'metrics' => [
-                'total' => $rows->count(),
-                'arrived' => $rows->where('result', 'arrived')->count(),
-                'cancelled' => $rows->where('result', 'cancelled')->count(),
+                'total' => $total,
+                'arrived' => $arrived,
+                'cancelled' => $cancelled,
                 'deposit_total' => (float) $rows->sum('deposit_total'),
             ],
             'startDate' => $startDate,

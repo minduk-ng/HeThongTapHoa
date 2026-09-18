@@ -3,23 +3,30 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Reports\DateRangeReportRequest;
 use App\Models\Deposit;
 use App\Models\Invoice;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PaymentsReportController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(DateRangeReportRequest $request): Response
     {
-        $startDate = $request->input('start_date', today()->toDateString());
-        $endDate = $request->input('end_date', today()->toDateString());
+        $startDate = $request->startDate();
+        $endDate = $request->endDate();
+        $range = $request->dateRange();
 
-        $rows = Invoice::query()
+        $invoiceQuery = Invoice::query()->whereBetween('issued_at', $range);
+        $revenue = (float) (clone $invoiceQuery)->sum('total_amount');
+        $grossRevenue = (float) (clone $invoiceQuery)->sum('subtotal_amount');
+        $totalDiscount = (float) (clone $invoiceQuery)->sum('discount_amount');
+        $discountedCount = (clone $invoiceQuery)->where('discount_amount', '>', 0)->count();
+        $invoiceCount = (clone $invoiceQuery)->count();
+
+        $rows = (clone $invoiceQuery)
             ->with(['payments' => fn ($q) => $q->select('invoice_id', 'method', 'amount')])
-            ->whereBetween('issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
             ->orderByDesc('issued_at')
             ->get()
             ->values()
@@ -37,34 +44,28 @@ class PaymentsReportController extends Controller
                 'payments' => $i->payments->groupBy('method')->map(fn ($p) => (float) $p->sum('amount'))->toArray(),
             ]);
 
-        $revenue = (float) $rows->sum('total_amount');
-
-        $grossRevenue = (float) $rows->sum('gross_amount');
-        $totalDiscount = (float) $rows->sum('discount_amount');
-        $discountedCount = (int) $rows->where('discount_amount', '>', 0)->count();
-
         $cashTotal = (float) $rows->sum(fn ($r) => (float) ($r['payments']['cash'] ?? 0));
         $bankTotal = (float) $rows->sum(fn ($r) => (float) ($r['payments']['bank_transfer'] ?? 0));
 
         // Cọc đang giữ tạo trong kỳ (chưa có invoice — tiền thật đã thu)
-        $heldDeposits = Deposit::query()
+        $heldQuery = Deposit::query()
             ->where('status', 'held')
-            ->whereBetween('created_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
-            ->get();
+            ->whereBetween('created_at', $range);
 
-        $heldCash = (float) $heldDeposits->where('method', 'cash')->sum('amount');
-        $heldBank = (float) $heldDeposits->where('method', 'bank_transfer')->sum('amount');
-        $heldTotal = (float) $heldDeposits->sum('amount');
+        $heldTotal = (float) (clone $heldQuery)->sum('amount');
+        $heldCash = (float) (clone $heldQuery)->where('method', 'cash')->sum('amount');
+        $heldBank = (float) (clone $heldQuery)->where('method', 'bank_transfer')->sum('amount');
+        $heldCount = (clone $heldQuery)->count();
 
         // Cọc hoàn/trả trong kỳ (tiền đã ra khỏi máy)
-        $refundedDeposits = Deposit::query()
+        $refundedQuery = Deposit::query()
             ->whereIn('status', ['refunded', 'forfeited'])
-            ->whereBetween('resolved_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
-            ->get();
+            ->whereBetween('resolved_at', $range);
 
-        $refundedCash = (float) $refundedDeposits->where('method', 'cash')->sum('amount');
-        $refundedBank = (float) $refundedDeposits->where('method', 'bank_transfer')->sum('amount');
-        $refundedTotal = (float) $refundedDeposits->sum('amount');
+        $refundedTotal = (float) (clone $refundedQuery)->sum('amount');
+        $refundedCash = (float) (clone $refundedQuery)->where('method', 'cash')->sum('amount');
+        $refundedBank = (float) (clone $refundedQuery)->where('method', 'bank_transfer')->sum('amount');
+        $refundedCount = (clone $refundedQuery)->count();
 
         // Kỳ liền trước cùng độ dài.
         $start = Carbon::parse($startDate);
@@ -84,18 +85,18 @@ class PaymentsReportController extends Controller
                 'revenue' => $revenue,
                 'cash_total' => $cashTotal,
                 'bank_total' => $bankTotal,
-                'invoice_count' => $rows->count(),
+                'invoice_count' => $invoiceCount,
                 'gross_revenue' => $grossRevenue,
                 'total_discount' => $totalDiscount,
                 'discounted_invoice_count' => $discountedCount,
                 'held_deposit_total' => $heldTotal,
                 'held_deposit_cash' => $heldCash,
                 'held_deposit_bank' => $heldBank,
-                'held_deposit_count' => $heldDeposits->count(),
+                'held_deposit_count' => $heldCount,
                 'refunded_deposit_total' => $refundedTotal,
                 'refunded_deposit_cash' => $refundedCash,
                 'refunded_deposit_bank' => $refundedBank,
-                'refunded_deposit_count' => $refundedDeposits->count(),
+                'refunded_deposit_count' => $refundedCount,
             ],
             'comparison' => [
                 'prev_revenue' => $prevRevenue,
