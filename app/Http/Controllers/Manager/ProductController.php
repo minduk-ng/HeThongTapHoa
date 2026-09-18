@@ -350,7 +350,6 @@ class ProductController extends Controller
                 'new_items' => $newItems,
             ];
             Cache::put($tempId, $tempPayload, now()->addMinutes(30));
-            session([$tempId => $tempPayload]);
 
             return response()->json([
                 'temp_id' => $tempId,
@@ -362,9 +361,17 @@ class ProductController extends Controller
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
-            Log::error('Lỗi import sản phẩm: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            $correlationId = (string) Str::uuid();
 
-            return response()->json(['message' => 'Có lỗi xảy ra khi xử lý file import. Vui lòng kiểm tra định dạng file.'], 422);
+            Log::error('Lỗi import sản phẩm: '.$e->getMessage(), [
+                'correlation_id' => $correlationId,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'message' => 'Có lỗi xảy ra khi xử lý file import. Vui lòng kiểm tra định dạng file.',
+                'error_id' => $correlationId,
+            ], 422);
         }
     }
 
@@ -375,7 +382,7 @@ class ProductController extends Controller
             'action' => 'required|in:replace_all,add_only_new',
         ]);
 
-        $tempData = Cache::get($request->temp_id) ?? session($request->temp_id);
+        $tempData = Cache::get($request->temp_id);
         if (! $tempData) {
             return response()->json(['message' => 'Dữ liệu tạm không tồn tại hoặc đã hết hạn.'], 400);
         }
@@ -442,7 +449,6 @@ class ProductController extends Controller
         }
 
         Cache::forget($request->temp_id);
-        session()->forget($request->temp_id);
 
         return back()->with('success', 'Nhập dữ liệu Excel thành công!');
     }

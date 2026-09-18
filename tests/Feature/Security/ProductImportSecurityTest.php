@@ -131,10 +131,10 @@ test('valid CSV with <= 5000 rows parses correctly and returns preview data', fu
     expect(Cache::has($tempId))->toBeTrue();
     $cached = Cache::get($tempId);
     expect($cached['rows'])->toHaveCount(2);
-    expect(session($tempId))->not->toBeNull();
+    expect(session()->has($tempId))->toBeFalse();
 });
 
-test('confirmImport processes cached data and clears cache and session', function () {
+test('confirmImport processes cached data and clears cache', function () {
     $admin = productImportAdmin();
 
     $tempId = 'import_test_12345';
@@ -156,12 +156,6 @@ test('confirmImport processes cached data and clears cache and session', functio
         'new_items' => $rows,
     ], now()->addMinutes(30));
 
-    session([$tempId => [
-        'rows' => $rows,
-        'duplicates' => [],
-        'new_items' => $rows,
-    ]]);
-
     $response = $this->actingAs($admin)
         ->post('/manager/products/confirm-import', [
             'temp_id' => $tempId,
@@ -172,10 +166,9 @@ test('confirmImport processes cached data and clears cache and session', functio
     $this->assertDatabaseHas('menu_items', ['name' => 'Trà vải dưa hấu']);
 
     expect(Cache::has($tempId))->toBeFalse();
-    expect(session($tempId))->toBeNull();
 });
 
-test('confirmImport with replace_all updates existing items and clears cache and session', function () {
+test('confirmImport with replace_all updates existing items and clears cache', function () {
     $admin = productImportAdmin();
 
     $category = MenuCategory::create(['name' => 'Trà', 'sort_order' => 1]);
@@ -206,12 +199,6 @@ test('confirmImport with replace_all updates existing items and clears cache and
         'new_items' => [],
     ], now()->addMinutes(30));
 
-    session([$tempId => [
-        'rows' => $rows,
-        'duplicates' => $rows,
-        'new_items' => [],
-    ]]);
-
     $response = $this->actingAs($admin)
         ->post('/manager/products/confirm-import', [
             'temp_id' => $tempId,
@@ -227,10 +214,9 @@ test('confirmImport with replace_all updates existing items and clears cache and
     ]);
 
     expect(Cache::has($tempId))->toBeFalse();
-    expect(session($tempId))->toBeNull();
 });
 
-test('internal or unhandled parser errors do not leak internal exception messages to client', function () {
+test('internal or unhandled parser errors do not leak internal exception messages and return error_id', function () {
     $admin = productImportAdmin();
 
     Log::spy();
@@ -244,9 +230,13 @@ test('internal or unhandled parser errors do not leak internal exception message
         ->postJson('/manager/products/check-import', ['file' => $file]);
 
     $response->assertStatus(422)
+        ->assertJsonStructure(['message', 'error_id'])
         ->assertJson([
             'message' => 'Có lỗi xảy ra khi xử lý file import. Vui lòng kiểm tra định dạng file.',
         ]);
+
+    $errorId = $response->json('error_id');
+    expect($errorId)->toBeString()->not->toBeEmpty();
 
     // Ensure raw exception message is NOT leaked in response
     $response->assertJsonMissing([
@@ -255,7 +245,9 @@ test('internal or unhandled parser errors do not leak internal exception message
     expect($response->getContent())->not->toContain('db_pass_secret');
 
     Log::shouldHaveReceived('error')
-        ->withArgs(function ($message, $context = []) {
-            return str_contains($message, 'Lỗi import sản phẩm') && isset($context['trace']);
+        ->withArgs(function ($message, $context = []) use ($errorId) {
+            return str_contains($message, 'Lỗi import sản phẩm')
+                && ($context['correlation_id'] ?? null) === $errorId
+                && isset($context['trace']);
         });
 });
