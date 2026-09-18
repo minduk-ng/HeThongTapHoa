@@ -189,7 +189,7 @@ class PaymentController extends Controller
                     throw new \Exception('Bàn đang được thanh toán bởi '.($conflict['user_name'] ?? 'nhân viên khác').'.', 409);
                 }
                 if (in_array($order->status, ['paid', 'cancelled'])) {
-                    throw new \Exception('Đơn hàng này đã được thanh toán hoặc đã hủy.');
+                    throw new \Exception('Đơn hàng này đã được thanh toán hoặc đã hủy.', 422);
                 }
 
                 if ($order->status === 'reserved') {
@@ -305,19 +305,29 @@ class PaymentController extends Controller
             ]);
             Log::error('POS checkout DB error: '.$e->getMessage());
 
-            $status = (int) ($e->getCode() === 409 ? 409 : 422);
+            if ($e->getCode() === 409) {
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'error' => 'Thanh toán thất bại: '.$e->getMessage(),
+                    ], 409);
+                }
 
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'error' => 'Thanh toán thất bại: '.$e->getMessage(),
-                ], $status);
-            }
-
-            if ($status === 409) {
                 abort(409, $e->getMessage());
             }
 
-            return back()->withErrors(['error' => 'Thanh toán thất bại: '.$e->getMessage()]);
+            $is422 = $e->getCode() === 422;
+            $status = $is422 ? 422 : 500;
+            $msg = $is422
+                ? 'Thanh toán thất bại: '.$e->getMessage()
+                : 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.';
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'error' => $msg,
+                ], $status);
+            }
+
+            return back()->withErrors(['error' => $msg]);
         }
     }
 
@@ -370,12 +380,12 @@ class PaymentController extends Controller
                 $orders = Order::with(['items.menuItem'])->whereIn('id', $validated['order_ids'])->lockForUpdate()->get();
 
                 if ($orders->count() !== count($validated['order_ids'])) {
-                    throw new \Exception('Một số đơn hàng không tồn tại.');
+                    throw new \Exception('Một số đơn hàng không tồn tại.', 422);
                 }
 
                 $invalidOrder = $orders->first(fn ($o) => in_array($o->status, ['paid', 'cancelled']));
                 if ($invalidOrder) {
-                    throw new \Exception("Đơn {$invalidOrder->order_code} đã được thanh toán hoặc đã hủy.");
+                    throw new \Exception("Đơn {$invalidOrder->order_code} đã được thanh toán hoặc đã hủy.", 422);
                 }
 
                 $reservedOrder = $orders->first(fn ($o) => $o->status === 'reserved');
@@ -509,17 +519,25 @@ class PaymentController extends Controller
             ]);
             Log::error('POS bulk checkout error: '.$e->getMessage());
 
-            $status = (int) ($e->getCode() === 409 ? 409 : 422);
+            if ($e->getCode() === 409) {
+                if ($request->wantsJson()) {
+                    return response()->json(['error' => 'Thanh toán thất bại: '.$e->getMessage()], 409);
+                }
 
-            if ($request->wantsJson()) {
-                return response()->json(['error' => 'Thanh toán thất bại: '.$e->getMessage()], $status);
-            }
-
-            if ($status === 409) {
                 abort(409, $e->getMessage());
             }
 
-            return back()->withErrors(['error' => 'Thanh toán thất bại: '.$e->getMessage()]);
+            $is422 = $e->getCode() === 422;
+            $status = $is422 ? 422 : 500;
+            $msg = $is422
+                ? 'Thanh toán thất bại: '.$e->getMessage()
+                : 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.';
+
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $msg], $status);
+            }
+
+            return back()->withErrors(['error' => $msg]);
         }
     }
 

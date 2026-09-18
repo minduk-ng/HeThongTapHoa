@@ -70,7 +70,7 @@ test('cash-flow page requires cash-flow.view permission', function () {
     $this->actingAs(posAdmin())->get('/manager/cash-flow')->assertOk();
 });
 
-test('checkout writes sale and cash_change ledger rows', function () {
+test('checkout writes sale ledger row without double deducting cash_change', function () {
     $staff = posStaff(['pos.view', 'pos.create'], ['/staff/pos']);
     $item = posMenuItem(['price' => 50000, 'vat_rate' => 0]);
     $table = posTable();
@@ -81,7 +81,8 @@ test('checkout writes sale and cash_change ledger rows', function () {
     ])->assertOk();
 
     expect(MoneyLedgerEntry::where('type', 'sale')->where('direction', 'in')->count())->toBe(1)
-        ->and(MoneyLedgerEntry::where('type', 'cash_change')->where('direction', 'out')->count())->toBe(1);
+        ->and(MoneyLedgerEntry::where('type', 'sale')->first()->amount)->toEqual(50000.0)
+        ->and(MoneyLedgerEntry::where('type', 'cash_change')->count())->toBe(0);
 });
 
 test('refund writes order_refund ledger row', function () {

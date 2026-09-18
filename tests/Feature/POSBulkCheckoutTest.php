@@ -3,6 +3,7 @@
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\OrderActivity;
+use App\Services\MoneyLedgerService;
 
 /*
 |--------------------------------------------------------------------------
@@ -290,4 +291,27 @@ test('bulk checkout ghi lines cho moi don va tong payments', function () {
     expect((float) $invoice->subtotal_amount)->toBe(100000.0);
     expect((float) $invoice->total_amount)->toBe(100000.0);
     expect($invoice->payments)->toHaveCount(1);
+});
+
+test('bulk checkout tra ve generic message khi gap loi 500 he thong', function () {
+    $admin = posAdmin();
+    $item = posMenuItem(['price' => 50000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order1 = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 50000, 'status' => 'completed']], ['status' => 'completed']);
+
+    $mock = Mockery::mock(MoneyLedgerService::class);
+    $mock->shouldReceive('recordIn')->andThrow(new RuntimeException('Secret DB deadlock'));
+    app()->instance(MoneyLedgerService::class, $mock);
+
+    $res = $this->actingAs($admin)->postJson('/staff/pos/bulk-checkout', [
+        'order_ids' => [$order1->id],
+        'table_id' => $table->id,
+        'payment_method' => 'cash',
+        'amount_received' => 50000,
+    ]);
+
+    $res->assertStatus(500)
+        ->assertJson([
+            'error' => 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.',
+        ]);
 });

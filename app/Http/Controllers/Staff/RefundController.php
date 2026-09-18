@@ -156,10 +156,13 @@ class RefundController extends Controller
             ]);
             Log::error('Refund error: '.$e->getMessage());
 
+            $is422 = $e->getCode() === 422;
+            $message = $is422 ? $e->getMessage() : 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.';
+
             return response()->json([
-                'error' => $e->getMessage(),
-                'message' => $e->getMessage(),
-            ], $e->getCode() === 422 ? 422 : 500);
+                'error' => $message,
+                'message' => $message,
+            ], $is422 ? 422 : 500);
         }
     }
 }

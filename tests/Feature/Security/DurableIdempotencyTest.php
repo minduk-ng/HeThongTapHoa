@@ -365,3 +365,42 @@ test('reuse same idempotency key with different payload returns 422 error', func
     $res2->assertStatus(422)
         ->assertJsonFragment(['error' => 'Khóa trùng lặp đã được sử dụng cho một yêu cầu khác.']);
 });
+
+test('processing record older than 5 minutes allows retry instead of permanent 409', function () {
+    $admin = posAdmin();
+    $order = posOrder(posTable(), [
+        ['item' => posMenuItem(['price' => 50000]), 'qty' => 1, 'price' => 50000, 'status' => 'completed'],
+    ]);
+
+    $key = 'abandoned_process_'.uniqid();
+    $payload = [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 50000,
+        'idempotency_key' => $key,
+    ];
+
+    $fp = [
+        'order_id' => $order->id,
+        'amount_received' => 50000,
+    ];
+    $fpHash = md5(json_encode($fp) ?: '');
+
+    $record = IdempotencyRecord::create([
+        'action' => 'checkout',
+        'idempotency_key' => $key,
+        'user_id' => $admin->id,
+        'resource_fingerprint' => $fpHash,
+        'status' => 'processing',
+    ]);
+    $record->timestamps = false;
+    $record->created_at = now()->subMinutes(6);
+    $record->updated_at = now()->subMinutes(6);
+    $record->save();
+
+    $res = $this->actingAs($admin)->postJson('/staff/pos/checkout', $payload);
+    $res->assertOk();
+
+    $record->refresh();
+    expect($record->status)->toBe('succeeded');
+});

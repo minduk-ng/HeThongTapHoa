@@ -337,9 +337,6 @@ class CheckoutService
                     $meta
                 );
             }
-            if ((float) $invoice->change_amount > 0) {
-                $ledger->recordOut('cash_change', (float) $invoice->change_amount, 'cash', $actor, ['invoice_id' => $invoice->id]);
-            }
 
             // 6. Ghi invoice_lines
             foreach ($lineInputs as $li) {

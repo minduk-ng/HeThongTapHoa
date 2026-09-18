@@ -6,6 +6,7 @@ use App\Models\Payment;
 use App\Models\ProductRecipe;
 use App\Models\StockVoucher;
 use App\Services\Inventory\LotService;
+use App\Services\MoneyLedgerService;
 
 test('refund mot phan dong tao payment am va tra kho', function () {
     $admin = posAdmin();
@@ -57,5 +58,38 @@ test('khong hoan qua so luong da mua', function () {
         'invoice_id' => $invoice->id,
         'items' => [['invoice_line_id' => $line->id, 'qty' => 2]],
         'reason' => 'Khách hủy',
-    ])->assertStatus(422);
+    ])->assertStatus(422)
+        ->assertJson([
+            'error' => 'Số lượng hoàn vượt quá số đã mua (còn 1).',
+            'message' => 'Số lượng hoàn vượt quá số đã mua (còn 1).',
+        ]);
+});
+
+test('refund tra ve generic message khi gap loi 500 he thong', function () {
+    $admin = posAdmin();
+    $item = posMenuItem(['price' => 10000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 10000, 'status' => 'completed']], ['status' => 'pending']);
+    $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id, 'payment_method' => 'cash', 'amount_received' => 10000,
+    ])->assertOk();
+
+    $invoice = $order->fresh()->invoice;
+    $line = InvoiceLine::where('invoice_id', $invoice->id)->first();
+
+    $mockLedger = Mockery::mock(MoneyLedgerService::class);
+    $mockLedger->shouldReceive('recordOut')->andThrow(new RuntimeException('Secret DB crash'));
+    app()->instance(MoneyLedgerService::class, $mockLedger);
+
+    $res = $this->actingAs($admin)->postJson('/staff/pos/refund', [
+        'invoice_id' => $invoice->id,
+        'items' => [['invoice_line_id' => $line->id, 'qty' => 1]],
+        'reason' => 'Khách hủy',
+    ]);
+
+    $res->assertStatus(500)
+        ->assertJson([
+            'error' => 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.',
+            'message' => 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.',
+        ]);
 });

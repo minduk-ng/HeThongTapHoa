@@ -50,6 +50,21 @@ class IdempotencyGuard
                 }
 
                 if ($record->status === 'processing') {
+                    if ($record->updated_at && $record->updated_at->lt(now()->subMinutes(5))) {
+                        $affected = IdempotencyRecord::where('id', $record->id)
+                            ->where('status', 'processing')
+                            ->where('updated_at', '<=', now()->subMinutes(5))
+                            ->update([
+                                'status' => 'processing',
+                                'resource_fingerprint' => $fpHash,
+                                'user_id' => $request->user()?->id,
+                                'updated_at' => now(),
+                            ]);
+                        if ($affected > 0) {
+                            return null; // allow retry
+                        }
+                    }
+
                     return self::conflictResponse($request);
                 }
 
@@ -100,6 +115,21 @@ class IdempotencyGuard
                     }
 
                     if ($record->status === 'processing') {
+                        if ($record->updated_at && $record->updated_at->lt(now()->subMinutes(5))) {
+                            $affected = IdempotencyRecord::where('id', $record->id)
+                                ->where('status', 'processing')
+                                ->where('updated_at', '<=', now()->subMinutes(5))
+                                ->update([
+                                    'status' => 'processing',
+                                    'resource_fingerprint' => $fpHash,
+                                    'user_id' => $request->user()?->id,
+                                    'updated_at' => now(),
+                                ]);
+                            if ($affected > 0) {
+                                return null;
+                            }
+                        }
+
                         return self::conflictResponse($request);
                     }
 
@@ -221,7 +251,8 @@ class IdempotencyGuard
                 ->update(['status' => 'failed']);
         }
 
-        Cache::forget("idempotency:{$action}:".md5(json_encode($fingerprint) ?: ''));
+        $fpHash = $fingerprint !== [] ? md5(json_encode($fingerprint) ?: '') : 'default';
+        Cache::forget("idempotency:{$action}:{$fpHash}");
     }
 
     /**

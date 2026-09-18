@@ -65,4 +65,11 @@ abstract class TestCase extends BaseTestCase
 
         return $app;
     }
+
+    public function actingAs($user, $guard = null)
+    {
+        $this->flushSession();
+
+        return parent::actingAs($user, $guard);
+    }
 }

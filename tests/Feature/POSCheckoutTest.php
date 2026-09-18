@@ -7,6 +7,7 @@ use App\Models\OrderActivity;
 use App\Models\OrderPromotion;
 use App\Models\PromotionCode;
 use App\Models\StockVoucher;
+use App\Services\MoneyLedgerService;
 use App\Services\Promotions\PromotionCodeService;
 
 /*
@@ -488,4 +489,26 @@ test('bếp vẫn hoàn thành món sau khi đơn đã thanh toán', function ()
     ])->assertOk();
 
     expect($orderItem->fresh()->status)->toBe('completed');
+});
+
+test('checkout tra ve generic message khi gap loi 500 he thong', function () {
+    $admin = posAdmin();
+    $item = posMenuItem(['price' => 10000, 'vat_rate' => 0]);
+    $table = posTable();
+    $order = posOrder($table, [['item' => $item, 'qty' => 1, 'price' => 10000, 'status' => 'completed']], ['status' => 'pending']);
+
+    $mock = Mockery::mock(MoneyLedgerService::class);
+    $mock->shouldReceive('recordIn')->andThrow(new RuntimeException('Secret DB deadlock'));
+    app()->instance(MoneyLedgerService::class, $mock);
+
+    $res = $this->actingAs($admin)->postJson('/staff/pos/checkout', [
+        'order_id' => $order->id,
+        'payment_method' => 'cash',
+        'amount_received' => 10000,
+    ]);
+
+    $res->assertStatus(500)
+        ->assertJson([
+            'error' => 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.',
+        ]);
 });
