@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class AuthorizationSeeder extends Seeder
@@ -375,6 +376,14 @@ class AuthorizationSeeder extends Seeder
             ]);
         }
 
+        $dashboardViewPermId = DB::table('permissions')->where('name', 'dashboard.view')->value('id');
+        if ($dashboardViewPermId && $guestRoleId) {
+            DB::table('role_permissions')->updateOrInsert([
+                'role_id' => $guestRoleId,
+                'permission_id' => $dashboardViewPermId,
+            ]);
+        }
+
         // 7. Cashier role: operational money/cancel permissions.
         // Guest/kitchen/inventory roles are intentionally excluded.
         DB::table('roles')->updateOrInsert(
@@ -410,6 +419,13 @@ class AuthorizationSeeder extends Seeder
                     'page_id' => $pageId,
                 ]);
             }
+        }
+
+        Cache::forget('system_page_roles');
+        try {
+            Cache::tags(['user_inertia'])->flush();
+        } catch (\Throwable) {
+            // Tags not supported on some drivers
         }
     }
 }

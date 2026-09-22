@@ -56,6 +56,17 @@ class GoogleAuthController extends Controller
             }
         }
 
+        $adminEmail = (string) config('services.admin.email');
+        if ($adminEmail !== '' && strcasecmp($user->email, $adminEmail) === 0) {
+            if (! $user->is_root_admin) {
+                $user->update(['is_root_admin' => true]);
+            }
+            $adminRole = Role::where('name', 'admin')->first();
+            if ($adminRole && ! $user->hasRole('admin')) {
+                $user->roles()->syncWithoutDetaching([$adminRole->id]);
+            }
+        }
+
         Auth::login($user, true);
         $request->session()->regenerate();
         $request->session()->put('session_version', (int) $user->session_version);

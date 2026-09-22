@@ -43,3 +43,19 @@ test('cashier reseed removes stale dangerous permission and is idempotent', func
 
     expect($cashier->fresh()->permissions()->where('name', 'roles.delete')->exists())->toBeFalse();
 });
+
+test('guest role has dashboard.view permission and can access homepage', function () {
+    config()->set('services.admin.email', 'root@example.com');
+    config()->set('services.admin.default_password', 'password123');
+    $this->seed(AuthorizationSeeder::class);
+
+    $guestRole = Role::where('name', 'guest')->firstOrFail();
+    expect($guestRole->permissions()->where('name', 'dashboard.view')->exists())->toBeTrue();
+
+    $user = User::factory()->create(['email' => 'guest@example.com']);
+    $user->roles()->attach($guestRole);
+
+    $this->actingAs($user)
+        ->get('/')
+        ->assertOk();
+});
