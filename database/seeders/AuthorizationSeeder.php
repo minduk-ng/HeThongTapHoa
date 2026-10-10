@@ -40,6 +40,36 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 13,
             ],
             [
+                'name' => 'Dữ liệu thử nghiệm',
+                'route_path' => '/admin/planning/synthetic',
+                'group_name' => 'Phân quyền',
+                'sort_order' => 13,
+            ],
+            [
+                'name' => 'Tổng quan',
+                'route_path' => '/planning',
+                'group_name' => 'Dự báo & Kế hoạch',
+                'sort_order' => 50,
+            ],
+            [
+                'name' => 'Dự báo sản phẩm',
+                'route_path' => '/planning/products',
+                'group_name' => 'Dự báo & Kế hoạch',
+                'sort_order' => 51,
+            ],
+            [
+                'name' => 'Đề xuất nhập hàng',
+                'route_path' => '/planning/procurement',
+                'group_name' => 'Dự báo & Kế hoạch',
+                'sort_order' => 52,
+            ],
+            [
+                'name' => 'Đánh giá mô hình',
+                'route_path' => '/planning/evaluation',
+                'group_name' => 'Dự báo & Kế hoạch',
+                'sort_order' => 53,
+            ],
+            [
                 'name' => 'Tổng quan',
                 'route_path' => '/',
                 'group_name' => 'Trang chủ',
@@ -290,7 +320,8 @@ class AuthorizationSeeder extends Seeder
             'reports.view',
             'payments.refund', 'deposits.create', 'deposits.refund',
             'suppliers.pay', 'orders.cancel', 'shifts.movement', 'cash-flow.view',
-            'planning.experiments',
+            'planning.view', 'planning.run', 'planning.configure',
+            'planning.apply_model', 'planning.procurement_review', 'planning.experiments',
         ];
 
         foreach ($permissions as $permission) {

@@ -88,8 +88,25 @@
 | `/admin/pages` | `Admin\PageController` | `resources/js/pages/admin/PagesManager.tsx` | Quản lý cấu hình trang hệ thống & gom nhóm navigation |
 | `/admin/roles` | `Admin\RoleController` | `resources/js/pages/admin/RolesManager.tsx` | Quản lý nhóm quyền (Role) & phân quyền chi tiết cho trang/chức năng |
 | `/admin/permissions` | `Admin\UserPermissionController` | `resources/js/pages/admin/UsersPermission.tsx` | Gán nhóm quyền (Role) cho tài khoản người dùng |
+| `/admin/planning/synthetic` | `Admin\SyntheticDatasetController` | `resources/js/pages/admin/planning/SyntheticDatasets.tsx` | Quản lý và sinh tập dữ liệu nhu cầu mô phỏng (Synthetic Demand Datasets) |
 
-### 2.5 Màn Hình Báo Cáo (Reports Routes)
+### 2.5 Màn Hình Dự Báo & Kế Hoạch (Planning Routes)
+| Route Path | Controller | React Page Component | Chức Năng Chính |
+| :--- | :--- | :--- | :--- |
+| `/planning` | `Planning\PlanningOverviewController` | `resources/js/pages/planning/Overview.tsx` | Tổng quan dự báo & sức khỏe mô hình, lịch sử forecast runs (quyền `planning.view`) |
+| `/planning/products` | `Planning\ProductForecastController` | `resources/js/pages/planning/ProductForecasts.tsx` | Xem dự báo nhu cầu sản phẩm, khoảng tin cậy và chất lượng dữ liệu (quyền `planning.view`) |
+| `/planning/procurement` | `Planning\ProcurementRecommendationController` | `resources/js/pages/planning/ProcurementRecommendations.tsx` | Danh sách đề xuất nhập hàng nguyên liệu theo tồn kho an toàn & ROP (quyền `planning.view`) |
+| `/planning/evaluation` | `Planning\ModelEvaluationController` | `resources/js/pages/planning/ModelEvaluation.tsx` | Kết quả đánh giá so sánh mô hình (WAPE/MAE/RMSE) bằng rolling-origin backtest (quyền `planning.view`) |
+
+**Các API xử lý tiến trình & biến động Kế hoạch** (prefix `/planning`, bảo vệ bởi `CheckPageAccess` và granular permission):
+| Endpoint | Method | Middleware / Quyền | Chức Năng |
+| :--- | :--- | :--- | :--- |
+| `/planning/runs` | POST | `permission:planning.run` | Xếp hàng tiến trình tính toán dự báo nhu cầu (`RunDemandForecast`) |
+| `/planning/evaluation/runs` | POST | `permission:planning.run` | Xếp hàng tiến trình backtest đánh giá mô hình (`EvaluateForecastModels`) |
+| `/planning/models/apply` | POST | `permission:planning.apply_model` | Áp dụng mô hình dự báo thủ công theo món hoặc toàn hệ thống |
+| `/planning/procurement/plans` | POST | `permission:planning.procurement_review` | Phê duyệt đề xuất và tạo kế hoạch nhập hàng gom theo nhà cung cấp |
+
+### 2.6 Màn Hình Báo Cáo (Reports Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
 | `/reports/sales-invoices` | `Reports\SalesInvoiceReportController` | `resources/js/pages/reports/SalesInvoiceReport.tsx` | Báo cáo hoá đơn bán hàng (doanh thu, số hoá đơn, avg/HĐ, HĐ chuyển khoản, lọc theo khoảng ngày & PTTT, CSV/XLSX export, in báo cáo) |
@@ -110,17 +127,18 @@
 - `ReportDonut.tsx`: Biểu đồ tròn Recharts hiển thị tỷ trọng các phương thức thanh toán.
 - `ReportDailyBars.tsx`: Biểu đồ cột Recharts hiển thị so sánh doanh thu & lợi nhuận theo ngày.
 
-### 2.6 Navigation Sidebar & Nhóm Báo Cáo (Menu `__subs` + Sidebar Flyout)
+### 2.7 Navigation Sidebar & Nhóm Báo Cáo (Menu `__subs` + Sidebar Flyout)
 - **Nguồn dữ liệu menu**: bảng `pages` (group_name, sub_group, sort_order) → `HandleInertiaRequests.php` build `navigation`. Group có `sub_group` trở thành object `{ __subs: { <sub_group>: [...] } }`; group không có là mảng phẳng. `RolesManager` / `PagesManager` chỉnh nhóm trang.
 - **Nhóm Báo cáo** gồm 4 sub_group chuyên biệt:
   - **Kho**: `/reports/inventory-value`, `/reports/low-stock`, `/reports/expiring`, `/reports/stock-movement`, `/reports/consumption`.
   - **Bán hàng**: `/reports/sales-invoices`, `/reports/invoice-items`, `/reports/product-details`.
   - **Tài chính**: `/reports/profit`, `/reports/payments`.
   - **Vận hành**: `/reports/cancelled`, `/reports/reservations`, `/reports/shifts`.
+- **Nhóm Dự báo & Kế hoạch**: Các trang `/planning`, `/planning/products`, `/planning/procurement`, `/planning/evaluation` (thuộc group `Dự báo & Kế hoạch`, mảng phẳng theo `sort_order` 50-53).
 - **Sidebar (menu header)**: `resources/js/components/Sidebar.tsx` — group có `__subs` render **flyout 2 cấp kiểu file-tree** (cấp 1 danh sách sub_group dọc, cấp 2 mở sang phải ngang hàng mục cha, chỉ hiện khi hover/click mục cha — xem quy tắc mục 15 trong `AGENTS.md`). Group phẳng giữ dropdown 1 cột cũ.
 - **Trang chủ** là group riêng đứng đầu sidebar (`group_name = "Trang chủ"`, `sort_order = 1`, route `/`).
 
-### 2.7 Shared Components Dùng Chung (`resources/js/components`)
+### 2.8 Shared Components Dùng Chung (`resources/js/components`)
 - **`resources/js/components/DatePicker.tsx`**: DatePicker dùng chung (mode `single`/`range`, controlled, wire `Y-m-d`, hiển thị `dd/mm/yyyy`, segmented input dd/mm/yyyy, nhảy nhanh tháng/năm, hỗ trợ min/max + dark mode). Helpers: `resources/js/utils/date.ts`. Spec: `docs/superpowers/specs/2026-07-31-date-picker-design.md`. Ứng dụng trong PromotionFormDrawer (mode `single`; ngày bắt đầu 00:00, ngày kết thúc 23:59:59).
 
 ---
@@ -187,6 +205,14 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
 - Từ khóa chuẩn (`view`, `create`, `edit`, `update`, `delete`, `import`, `export`, `cancel`, `approve`) được tự động chuyển Tiếng Việt.
 - Tính năng riêng khai báo trong `PERMISSION_LABEL_DICTIONARY` (ví dụ `cancel_item` $\rightarrow$ **"Hủy món đã gửi bếp kèm lý do"**).
 - Tên mới dạng `snake_case` chưa khai báo từ điển sẽ tự động chuyển sang **Title Case** (ví dụ `force_unlock` $\rightarrow$ **"Force Unlock"**).
+
+### 6.4 Phân Quyền Dự Báo & Kế Hoạch (Planning Permissions)
+- `planning.view`: Xem tổng quan dự báo, sản phẩm, đánh giá mô hình, đề xuất mua hàng.
+- `planning.run`: Kích hoạt lượt chạy dự báo và đánh giá mô hình thủ công.
+- `planning.configure`: Cấu hình tham số và chính sách dự báo.
+- `planning.apply_model`: Áp dụng mô hình dự báo đã đánh giá vào hệ thống.
+- `planning.procurement_review`: Phê duyệt đề xuất mua hàng thành kế hoạch mua hàng.
+- `planning.experiments`: Quản lý, sinh và xóa dữ liệu nhu cầu mô phỏng (Synthetic Datasets).
 
 ---
 

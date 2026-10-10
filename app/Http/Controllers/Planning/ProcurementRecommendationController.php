@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Planning;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Planning\ReviewProcurementRequest;
+use App\Models\ForecastRun;
 use App\Models\Ingredient;
 use App\Models\InventoryRecommendation;
 use App\Models\ProcurementPlan;
@@ -12,10 +13,40 @@ use App\Models\SecurityAuditLog;
 use App\Services\Forecasting\RecommendationFreshness;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class ProcurementRecommendationController extends Controller
 {
+    public function index(Request $request): Response
+    {
+        $datasetId = $request->query('synthetic_dataset_id') !== null
+            ? (int) $request->query('synthetic_dataset_id')
+            : null;
+
+        $activeRun = ForecastRun::where('kind', 'forecast')
+            ->where('is_active', true)
+            ->when($datasetId !== null, fn ($q) => $q->where('synthetic_dataset_id', $datasetId), fn ($q) => $q->whereNull('synthetic_dataset_id'))
+            ->latest('id')
+            ->first();
+
+        $recommendations = $activeRun
+            ? InventoryRecommendation::with(['ingredient', 'supplier'])
+                ->where('forecast_run_id', $activeRun->id)
+                ->get()
+            : [];
+
+        return Inertia::render('planning/ProcurementRecommendations', [
+            'activeRun' => $activeRun,
+            'recommendations' => $recommendations,
+            'filters' => [
+                'synthetic_dataset_id' => $datasetId,
+            ],
+        ]);
+    }
+
     /**
      * Review recommendations and create approved procurement plans grouped by supplier.
      * Note: Does NOT modify ingredient stock_quantity.
