@@ -2,9 +2,26 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string|null $phone
+ * @property string|null $address
+ * @property string|null $note
+ * @property bool $is_active
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, StockVoucher> $vouchers
+ * @property-read Collection<int, SupplierPayment> $payments
+ * @property-read Collection<int, IngredientSupplierPolicy> $policies
+ * @property-read Collection<int, ProcurementPlan> $procurementPlans
+ * @property-read Collection<int, InventoryRecommendation> $recommendations
+ */
 class Supplier extends Model
 {
     protected $fillable = ['name', 'phone', 'address', 'note', 'is_active'];
@@ -21,6 +38,24 @@ class Supplier extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(SupplierPayment::class)->where('is_migration_backfill', false);
+    }
+
+    /** @return HasMany<IngredientSupplierPolicy, $this> */
+    public function policies(): HasMany
+    {
+        return $this->hasMany(IngredientSupplierPolicy::class, 'supplier_id');
+    }
+
+    /** @return HasMany<ProcurementPlan, $this> */
+    public function procurementPlans(): HasMany
+    {
+        return $this->hasMany(ProcurementPlan::class, 'supplier_id');
+    }
+
+    /** @return HasMany<InventoryRecommendation, $this> */
+    public function recommendations(): HasMany
+    {
+        return $this->hasMany(InventoryRecommendation::class, 'supplier_id');
     }
 
     public function debt(): float

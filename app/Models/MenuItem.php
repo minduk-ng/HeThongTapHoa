@@ -21,6 +21,9 @@ use Illuminate\Support\Facades\Cache;
  * @property int $max_servings
  * @property-read MenuCategory|null $category
  * @property-read Collection<int, ProductRecipe> $recipes
+ * @property-read Collection<int, DailyProductDemand> $dailyDemands
+ * @property-read Collection<int, ProductForecast> $forecasts
+ * @property-read Collection<int, ForecastModelEvaluation> $modelEvaluations
  */
 class MenuItem extends Model
 {
@@ -64,5 +67,23 @@ class MenuItem extends Model
     public function recipes(): HasMany
     {
         return $this->hasMany(ProductRecipe::class, 'menu_item_id');
+    }
+
+    /** @return HasMany<DailyProductDemand, $this> */
+    public function dailyDemands(): HasMany
+    {
+        return $this->hasMany(DailyProductDemand::class, 'menu_item_id');
+    }
+
+    /** @return HasMany<ProductForecast, $this> */
+    public function forecasts(): HasMany
+    {
+        return $this->hasMany(ProductForecast::class, 'menu_item_id');
+    }
+
+    /** @return HasMany<ForecastModelEvaluation, $this> */
+    public function modelEvaluations(): HasMany
+    {
+        return $this->hasMany(ForecastModelEvaluation::class, 'menu_item_id');
     }
 }

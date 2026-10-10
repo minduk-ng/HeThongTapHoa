@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\ForecastRun;
+use App\Models\Ingredient;
+use App\Models\InventoryRecommendation;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Order;
@@ -218,4 +221,58 @@ function linesV2(): Collection
         ['order_item_id' => 1, 'menu_item_id' => 10, 'quantity' => 2, 'subtotal' => 100000, 'category_id' => 3],
         ['order_item_id' => 2, 'menu_item_id' => 11, 'quantity' => 1, 'subtotal' => 50000, 'category_id' => 4],
     ]);
+}
+
+/**
+ * Tạo ForecastRun với giá trị mặc định hợp lệ cho mọi cột bắt buộc.
+ *
+ * @param  array<string, mixed>  $overrides
+ */
+function planningForecastRun(array $overrides = []): ForecastRun
+{
+    return ForecastRun::create(array_merge([
+        'kind' => 'forecast',
+        'horizon_days' => 7,
+        'data_cutoff' => now()->startOfDay(),
+        'status' => 'completed',
+        'configuration' => ['horizon_days' => 7],
+        'started_at' => now()->subMinutes(5),
+        'completed_at' => now(),
+        'is_active' => true,
+    ], $overrides));
+}
+
+/**
+ * Tạo InventoryRecommendation gắn với active completed run, snapshot tồn kho hiện tại,
+ * hash BOM/policy xác định và method=eoq.
+ *
+ * @param  array<string, mixed>  $overrides
+ */
+function planningRecommendation(Ingredient $ingredient, float $suggestedQuantity, array $overrides = []): InventoryRecommendation
+{
+    $runId = $overrides['forecast_run_id'] ?? planningForecastRun()->id;
+    $stock = (float) $ingredient->stock_quantity;
+
+    return InventoryRecommendation::create(array_merge([
+        'forecast_run_id' => $runId,
+        'ingredient_id' => $ingredient->id,
+        'supplier_id' => null,
+        'demand_quantity' => $suggestedQuantity,
+        'stock_quantity' => $stock,
+        'reserved_quantity' => 0.0,
+        'safety_stock' => 5.0,
+        'reorder_point' => 15.0,
+        'raw_quantity' => $suggestedQuantity,
+        'after_moq_quantity' => $suggestedQuantity,
+        'final_quantity' => $suggestedQuantity,
+        'suggested_quantity' => $suggestedQuantity,
+        'method' => 'eoq',
+        'unit' => $ingredient->unit,
+        'purchase_unit' => $ingredient->purchase_unit ?? $ingredient->unit,
+        'bom_hash' => hash('sha256', "bom:{$ingredient->id}"),
+        'policy_hash' => hash('sha256', "policy:{$ingredient->id}"),
+        'stock_snapshot_at' => now(),
+        'stock_snapshot_quantity' => $stock,
+        'status' => 'pending',
+    ], $overrides));
 }
