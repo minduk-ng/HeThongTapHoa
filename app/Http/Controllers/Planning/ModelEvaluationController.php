@@ -17,9 +17,19 @@ class ModelEvaluationController extends Controller
 {
     public function index(Request $request): Response
     {
-        $datasetId = $request->query('synthetic_dataset_id') !== null
+        $datasetId = $request->query('synthetic_dataset_id') !== null && $request->query('synthetic_dataset_id') !== ''
             ? (int) $request->query('synthetic_dataset_id')
             : null;
+
+        $candidateKeys = [
+            'sma_7',
+            'sma_14',
+            'sma_28',
+            'holt_winters_additive',
+            'holt_winters_multiplicative',
+        ];
+
+        $approvedMetrics = ['mae', 'rmse', 'wape'];
 
         $activeRun = ForecastRun::where('kind', 'evaluate')
             ->where('is_active', true)
@@ -33,13 +43,93 @@ class ModelEvaluationController extends Controller
                 ->get()
             : [];
 
+        // Build comparison table for 5 candidate models
+        $candidateNames = [
+            'sma_7' => 'SMA (7 ngày)',
+            'sma_14' => 'SMA (14 ngày)',
+            'sma_28' => 'SMA (28 ngày)',
+            'holt_winters_additive' => 'Holt-Winters (Cộng)',
+            'holt_winters_multiplicative' => 'Holt-Winters (Nhân)',
+        ];
+
+        $evaluationsCollection = collect($evaluations);
+
+        $modelComparison = collect($candidateKeys)->map(function ($key) use ($evaluationsCollection, $candidateNames) {
+            $filtered = $evaluationsCollection->where('model_key', $key);
+            $count = $filtered->count();
+
+            $avgMae = $count > 0 ? (float) $filtered->avg('mae') : 0.0;
+            $avgRmse = $count > 0 ? (float) $filtered->avg('rmse') : 0.0;
+            $avgWape = $count > 0 ? (float) $filtered->avg('wape') : 0.0;
+            $selectedCount = $filtered->where('is_selected', true)->count();
+            $originsCount = $count > 0 ? (int) ($filtered->max('origins_evaluated') ?: 8) : 8;
+
+            $parameters = match ($key) {
+                'sma_7' => ['window' => 7],
+                'sma_14' => ['window' => 14],
+                'sma_28' => ['window' => 28],
+                'holt_winters_additive' => ['season_length' => 7, 'trend' => 'add', 'seasonal' => 'add'],
+                'holt_winters_multiplicative' => ['season_length' => 7, 'trend' => 'add', 'seasonal' => 'mul'],
+                default => [],
+            };
+
+            return [
+                'model_key' => $key,
+                'name' => $candidateNames[$key] ?? $key,
+                'avg_mae' => round($avgMae, 4),
+                'avg_rmse' => round($avgRmse, 4),
+                'avg_wape' => round($avgWape, 4),
+                'selected_count' => $selectedCount,
+                'origins_count' => $originsCount,
+                'is_selected' => $selectedCount > 0,
+                'parameters' => $parameters,
+            ];
+        })->values()->all();
+
+        // History: Recent evaluation runs
+        $recentRuns = ForecastRun::where('kind', 'evaluate')
+            ->when($datasetId !== null, fn ($q) => $q->where('synthetic_dataset_id', $datasetId), fn ($q) => $q->whereNull('synthetic_dataset_id'))
+            ->latest('id')
+            ->take(10)
+            ->get();
+
+        $user = $request->user();
+        $canApplyModel = $user !== null && ($user->isAdmin() || $user->hasPermission('planning.apply_model'));
+
         return Inertia::render('planning/ModelEvaluation', [
             'activeRun' => $activeRun,
             'evaluations' => $evaluations,
-            'candidates' => config('forecasting.models.candidates', []),
+            'candidates' => $candidateKeys,
+            'candidate_keys' => $candidateKeys,
+            'metrics' => $approvedMetrics,
+            'modelComparison' => $modelComparison,
+            'recentRuns' => $recentRuns,
+            'methodology' => [
+                'initial_training_window' => (int) config('forecasting.evaluation.initial_training_window', 56),
+                'horizon' => (int) config('forecasting.evaluation.horizon', 7),
+                'origin_step' => (int) config('forecasting.evaluation.origin_step', 7),
+                'origins_count' => (int) config('forecasting.evaluation.origins_default', 8),
+                'origins_min' => (int) config('forecasting.evaluation.origins_min', 3),
+                'primary_metric' => (string) config('forecasting.evaluation.primary_metric', 'wape'),
+                'tie_break_wape_threshold' => (float) config('forecasting.evaluation.tie_break_wape_threshold', 0.5),
+                'snapshot_id' => $activeRun ? "eval-snap-{$activeRun->id}" : 'eval-snap-default',
+                'config_id' => 'eval-cfg-v1',
+                'data_cutoff' => $activeRun?->data_cutoff?->toISOString(),
+                'formulas' => [
+                    'mae' => 'MAE = (1 / n) * \sum |y_t - \hat{y}_t|',
+                    'rmse' => 'RMSE = \sqrt{(1 / n) * \sum (y_t - \hat{y}_t)^2}',
+                    'wape' => 'WAPE = (\sum |y_t - \hat{y}_t| / \sum y_t) * 100%',
+                ],
+                'limitations' => [
+                    'Yêu cầu tối thiểu 14 ngày dữ liệu cho SMA và 56 ngày cho Holt-Winters để đảm bảo độ tin cậy.',
+                    'Sản phẩm mới bán hoặc có chuỗi bán gián đoạn tự động chuyển về mô hình mặc định SMA (7 ngày).',
+                    'Biến động đột ngột từ các đợt khuyến mãi hoặc lễ tết chưa phản ánh đầy đủ trong mô hình chuỗi thời gian đơn thuần.',
+                ],
+            ],
             'filters' => [
                 'synthetic_dataset_id' => $datasetId,
             ],
+            'can_apply_model' => $canApplyModel,
         ]);
     }
 
