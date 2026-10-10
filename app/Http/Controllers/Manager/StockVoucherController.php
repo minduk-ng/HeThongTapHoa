@@ -9,6 +9,8 @@ use App\Models\Ingredient;
 use App\Models\Invoice;
 use App\Models\MenuItem;
 use App\Models\Order;
+use App\Models\ProcurementPlan;
+use App\Models\ProcurementPlanItem;
 use App\Models\ProductRecipe;
 use App\Models\StockVoucher;
 use App\Models\Supplier;
@@ -54,11 +56,36 @@ class StockVoucherController extends Controller
 
         $ingredients = Ingredient::orderBy('name')->get(['id', 'code', 'name', 'unit', 'purchase_unit', 'unit_conversion', 'stock_quantity', 'min_stock_alert', 'cost_price']);
 
+        $prefill = null;
+        if ($request->filled('procurement_plan_id')) {
+            $planId = (int) $request->input('procurement_plan_id');
+            $plan = ProcurementPlan::query()->with(['items.ingredient', 'supplier'])->whereKey($planId)->first();
+            if ($plan instanceof ProcurementPlan) {
+                $prefill = [
+                    'procurement_plan_id' => $plan->id,
+                    'plan_code' => $plan->plan_code,
+                    'supplier_id' => $plan->supplier_id,
+                    'note' => "Nhập kho theo kế hoạch {$plan->plan_code}",
+                    'items' => $plan->items
+                        ->filter(fn ($item) => $item->stock_voucher_item_id === null)
+                        ->map(fn ($item) => [
+                            'procurement_plan_item_id' => $item->id,
+                            'ingredient_id' => $item->ingredient_id,
+                            'ingredient_name' => $item->ingredient->name,
+                            'unit' => $item->unit,
+                            'quantity' => (float) $item->final_quantity,
+                            'unit_price' => (float) $item->unit_price,
+                        ])->values()->all(),
+                ];
+            }
+        }
+
         return Inertia::render('manager/inventory/vouchers/StockVouchersManager', [
             'vouchers' => $vouchers,
             'filters' => $request->only(['type', 'from', 'to', 'search']),
             'ingredients' => $ingredients,
             'suppliers' => Supplier::orderBy('name')->get(['id', 'name']),
+            'prefill' => $prefill,
         ]);
     }
 
@@ -69,7 +96,9 @@ class StockVoucherController extends Controller
             'transacted_at' => ['nullable', 'date'],
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'is_paid' => ['nullable', 'boolean'],
+            'procurement_plan_id' => ['nullable', 'exists:procurement_plans,id'],
             'items' => ['required', 'array', 'min:1'],
+            'items.*.procurement_plan_item_id' => ['nullable', 'exists:procurement_plan_items,id'],
             'items.*.ingredient_id' => ['required', 'exists:ingredients,id'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
@@ -121,13 +150,39 @@ class StockVoucherController extends Controller
                     'cost_price' => round($newAvgCost, 2),
                 ]);
 
-                $voucher->items()->create([
+                $voucherItem = $voucher->items()->create([
                     'ingredient_id' => $ingredient->id,
                     'quantity' => $importQty,
                     'unit_price' => $importPrice,
                     'expiry_date' => $item['expiry_date'] ?? null,
                     'quantity_remaining' => $importQty,
                 ]);
+
+                // ponytail: link voucher item back to procurement plan item
+                if (! empty($item['procurement_plan_item_id'])) {
+                    ProcurementPlanItem::where('id', $item['procurement_plan_item_id'])->update([
+                        'stock_voucher_item_id' => $voucherItem->id,
+                        'status' => 'received',
+                    ]);
+                } elseif (! empty($validated['procurement_plan_id'])) {
+                    $planItem = ProcurementPlanItem::where('procurement_plan_id', $validated['procurement_plan_id'])
+                        ->where('ingredient_id', $ingredient->id)
+                        ->whereNull('stock_voucher_item_id')
+                        ->first();
+                    if ($planItem) {
+                        $planItem->update([
+                            'stock_voucher_item_id' => $voucherItem->id,
+                            'status' => 'received',
+                        ]);
+                    }
+                }
+            }
+
+            if (! empty($validated['procurement_plan_id'])) {
+                $plan = ProcurementPlan::query()->whereKey((int) $validated['procurement_plan_id'])->first();
+                if ($plan instanceof ProcurementPlan && $plan->items()->whereNull('stock_voucher_item_id')->count() === 0) {
+                    $plan->update(['status' => 'completed']);
+                }
             }
         });
 
@@ -151,7 +206,7 @@ class StockVoucherController extends Controller
             // Fallback: Nếu không match theo prefix trên, bóc tách các token trong note
             if (empty($codes)) {
                 $tokens = array_filter(preg_split('/[\s,;]+/', $voucher->note) ?: []);
-                $matchedInvoices = Invoice::whereIn('invoice_code', $tokens)->pluck('invoice_code')->all();
+                $matchedInvoices = Invoice::whereNull('synthetic_dataset_id')->whereIn('invoice_code', $tokens)->pluck('invoice_code')->all();
                 $matchedOrders = Order::whereIn('order_code', $tokens)->pluck('order_code')->all();
                 $codes = array_merge($matchedInvoices, $matchedOrders);
             }
@@ -162,13 +217,13 @@ class StockVoucherController extends Controller
 
                 $otherCodes = array_diff($codes, $invoiceCodes, $orderCodes);
                 if (! empty($otherCodes)) {
-                    $foundInv = Invoice::whereIn('invoice_code', $otherCodes)->pluck('invoice_code')->all();
+                    $foundInv = Invoice::whereNull('synthetic_dataset_id')->whereIn('invoice_code', $otherCodes)->pluck('invoice_code')->all();
                     $invoiceCodes = array_merge($invoiceCodes, $foundInv);
                     $orderCodes = array_merge($orderCodes, array_diff($otherCodes, $foundInv));
                 }
 
                 if (! empty($invoiceCodes)) {
-                    $invoices = Invoice::whereIn('invoice_code', $invoiceCodes)->with(['lines', 'orders.items.menuItem'])->get();
+                    $invoices = Invoice::whereNull('synthetic_dataset_id')->whereIn('invoice_code', $invoiceCodes)->with(['lines', 'orders.items.menuItem'])->get();
                     foreach ($invoices as $inv) {
                         if ($inv->lines->isNotEmpty()) {
                             foreach ($inv->lines as $line) {

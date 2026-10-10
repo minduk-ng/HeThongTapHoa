@@ -18,6 +18,7 @@ class InvoiceItemsReportController extends Controller
 
         $query = DB::table('invoice_lines')
             ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
+            ->whereNull('invoices.synthetic_dataset_id')
             ->whereBetween('invoices.issued_at', $range);
         $totalCount = (clone $query)->count();
         // Summary tính trên toàn dải (SQL), không theo 500 dòng hiển thị.

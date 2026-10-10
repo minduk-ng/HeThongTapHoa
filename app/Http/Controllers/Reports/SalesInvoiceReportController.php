@@ -16,7 +16,7 @@ class SalesInvoiceReportController extends Controller
         $endDate = $request->endDate();
         $range = $request->dateRange();
 
-        $baseQuery = Invoice::whereBetween('issued_at', $range);
+        $baseQuery = Invoice::whereNull('synthetic_dataset_id')->whereBetween('issued_at', $range);
         $count = (clone $baseQuery)->count();
         $revenue = (float) (clone $baseQuery)->sum('total_amount');
         $bankTransferCount = (clone $baseQuery)->where('payment_method', 'bank_transfer')->count();

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SyntheticDatasetController;
 use App\Http\Controllers\Admin\UserPermissionController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
@@ -23,6 +24,10 @@ use App\Http\Controllers\Manager\StocktakeController;
 use App\Http\Controllers\Manager\StockVoucherController;
 use App\Http\Controllers\Manager\SupplierController;
 use App\Http\Controllers\Manager\TableController;
+use App\Http\Controllers\Planning\ModelEvaluationController;
+use App\Http\Controllers\Planning\PlanningOverviewController;
+use App\Http\Controllers\Planning\ProcurementRecommendationController;
+use App\Http\Controllers\Planning\ProductForecastController;
 use App\Http\Controllers\Reports\CancelledReportController;
 use App\Http\Controllers\Reports\ConsumptionReportController;
 use App\Http\Controllers\Reports\ExpiringReportController;
@@ -110,6 +115,39 @@ Route::middleware('auth')->group(function () {
         Route::get('/permissions', [UserPermissionController::class, 'index'])->middleware('permission:users.view');
         Route::put('/permissions/{user}', [UserPermissionController::class, 'update'])->middleware('permission:users.edit');
         Route::post('/permissions/bulk', [UserPermissionController::class, 'bulkAction'])->middleware('permission:users.edit');
+
+        // Synthetic Datasets (Planning & Experiments)
+        Route::get('/synthetic-datasets', [SyntheticDatasetController::class, 'index'])->middleware('permission:planning.experiments');
+        Route::post('/synthetic-datasets', [SyntheticDatasetController::class, 'store'])->middleware('permission:planning.experiments');
+        Route::get('/synthetic-datasets/{syntheticDataset}', [SyntheticDatasetController::class, 'show'])->middleware('permission:planning.experiments');
+        Route::delete('/synthetic-datasets/{syntheticDataset}', [SyntheticDatasetController::class, 'destroy'])->middleware('permission:planning.experiments');
+        Route::get('/planning/synthetic', [SyntheticDatasetController::class, 'index'])->middleware('permission:planning.experiments');
+    });
+
+    // Planning Routes (/planning)
+    Route::prefix('planning')->middleware(CheckPageAccess::class)->group(function () {
+        Route::get('/', [PlanningOverviewController::class, 'index'])
+            ->middleware('permission:planning.view');
+        Route::post('/runs', [PlanningOverviewController::class, 'storeRun'])
+            ->middleware('permission:planning.run');
+
+        Route::get('/products', [ProductForecastController::class, 'index'])
+            ->middleware('permission:planning.view');
+
+        Route::get('/procurement', [ProcurementRecommendationController::class, 'index'])
+            ->middleware('permission:planning.view');
+        Route::post('/procurement/plans', [ProcurementRecommendationController::class, 'store'])
+            ->middleware('permission:planning.procurement_review');
+
+        Route::get('/evaluation', [ModelEvaluationController::class, 'index'])
+            ->middleware('permission:planning.view');
+        Route::post('/evaluation/runs', [ModelEvaluationController::class, 'storeRun'])
+            ->middleware('permission:planning.run');
+        Route::post('/models/apply', [ModelEvaluationController::class, 'applyModel'])
+            ->middleware('permission:planning.apply_model');
+
+        Route::get('/synthetic', [SyntheticDatasetController::class, 'index'])
+            ->middleware('permission:planning.experiments');
     });
 
     // Store Management Routes (/manager/)

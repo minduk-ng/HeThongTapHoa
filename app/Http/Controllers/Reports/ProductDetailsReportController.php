@@ -18,6 +18,7 @@ class ProductDetailsReportController extends Controller
 
         $query = DB::table('invoice_lines')
             ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
+            ->whereNull('invoices.synthetic_dataset_id')
             ->whereBetween('invoices.issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
             ->join('menu_items', 'menu_items.id', '=', 'invoice_lines.menu_item_id')
             ->leftJoin('menu_categories', 'menu_categories.id', '=', 'menu_items.category_id')

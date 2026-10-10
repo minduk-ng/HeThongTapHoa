@@ -2,30 +2,26 @@
 
 namespace App\Console\Commands;
 
-use App\Models\CashMovement;
-use App\Models\DailyPromotionStat;
 use App\Models\Deposit;
 use App\Models\Employee;
 use App\Models\Ingredient;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
-use App\Models\InvoicePromotion;
 use App\Models\MenuItem;
 use App\Models\MoneyLedgerEntry;
 use App\Models\Order;
-use App\Models\OrderActivity;
 use App\Models\OrderItem;
-use App\Models\OrderPromotion;
 use App\Models\Payment;
 use App\Models\ProductRecipe;
 use App\Models\Shift;
 use App\Models\StockVoucher;
 use App\Models\StockVoucherItem;
 use App\Models\Supplier;
-use App\Models\SupplierPayment;
-use App\Models\SupplierPaymentAllocation;
+use App\Models\SyntheticDataset;
 use App\Models\Table;
 use App\Models\User;
+use App\Services\Forecasting\SeededPrng;
+use App\Services\Forecasting\SyntheticDemandGenerator;
 use Carbon\CarbonInterface;
 use Database\Seeders\AuthorizationSeeder;
 use Database\Seeders\DefaultMenuAndInventorySeeder;
@@ -33,6 +29,7 @@ use Database\Seeders\DefaultTableSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class GenerateMockDataCommand extends Command
@@ -43,7 +40,9 @@ class GenerateMockDataCommand extends Command
      * @var string
      */
     protected $signature = 'data:generate-mock 
-                            {--days=30 : Số ngày sinh dữ liệu trong quá khứ} 
+                            {--dataset= : Tên dataset mô phỏng (tùy chọn)} 
+                            {--seed=42 : Random seed} 
+                            {--days=120 : Số ngày sinh dữ liệu trong quá khứ} 
                             {--orders-per-day=20 : Số đơn trung bình mỗi ngày} 
                             {--fresh-mock : Dọn sạch giao dịch cũ trước khi sinh mới}';
 
@@ -54,24 +53,101 @@ class GenerateMockDataCommand extends Command
      */
     protected $description = 'Sinh ngẫu nhiên dữ liệu giao dịch thực tế, chuẩn nghiệp vụ cho 13 trang báo cáo';
 
-    public function handle(): int
+    private SeededPrng $prng;
+
+    public function handle(SyntheticDemandGenerator $generator): int
     {
+        $datasetName = $this->option('dataset') ? (string) $this->option('dataset') : null;
+        $seed = (int) ($this->option('seed') ?? 42);
         $days = max(1, (int) $this->option('days'));
         $ordersPerDay = max(1, (int) $this->option('orders-per-day'));
         $freshMock = (bool) $this->option('fresh-mock');
 
-        if ($freshMock) {
-            if (! app()->runningUnitTests() && ! $this->confirm('CẢNH BÁO: Thao tác này sẽ xóa toàn bộ dữ liệu giao dịch cũ (Đơn, Hoá đơn, Phiếu kho, Ca, Sổ quỹ) và giữ nguyên Master Data (Món, Bàn, NVL). Bạn có chắc chắn muốn tiếp tục?')) {
-                $this->warn('Đã hủy thao tác.');
+        $this->prng = new SeededPrng($seed);
 
-                return self::SUCCESS;
-            }
+        if ($freshMock && empty($datasetName)) {
+            $this->error('LỖI: Tùy chọn --fresh-mock chỉ được phép sử dụng cùng với --dataset.');
 
-            $this->cleanTransactionalData();
+            return self::FAILURE;
         }
 
         $this->ensureMasterData();
 
+        if (! empty($datasetName)) {
+            return $this->handleSyntheticDataset($generator, $datasetName, $seed, $days, $ordersPerDay, $freshMock);
+        }
+
+        return $this->handleRealMockData($days, $ordersPerDay);
+    }
+
+    private function handleSyntheticDataset(
+        SyntheticDemandGenerator $generator,
+        string $datasetName,
+        int $seed,
+        int $days,
+        int $ordersPerDay,
+        bool $freshMock
+    ): int {
+        $existing = SyntheticDataset::where('name', $datasetName)->first();
+
+        if ($freshMock && $existing) {
+            $this->info("Đang xóa các giao dịch cũ của dataset '{$datasetName}'...");
+            DB::transaction(function () use ($existing) {
+                $invoiceIds = Invoice::where('synthetic_dataset_id', $existing->id)->pluck('id');
+                if ($invoiceIds->isNotEmpty()) {
+                    InvoiceLine::whereIn('invoice_id', $invoiceIds)->delete();
+                    Invoice::where('synthetic_dataset_id', $existing->id)->delete();
+                }
+            });
+        }
+
+        $config = [
+            'days' => $days,
+            'orders_per_day' => $ordersPerDay,
+            'start_date' => now()->subDays($days - 1)->toDateString(),
+            'weekly' => true,
+            'trend' => 0.002,
+            'noise' => 0.10,
+            'zero_demand_rate' => 0.02,
+            'outlier_rate' => 0.01,
+            'missing_rate' => 0.0,
+            'stockout_censor_rate' => 0.01,
+        ];
+        $configHash = hash('sha256', (string) json_encode($config));
+
+        $dataset = SyntheticDataset::firstOrCreate(
+            ['name' => $datasetName],
+            [
+                'seed' => $seed,
+                'configuration' => $config,
+                'configuration_hash' => $configHash,
+                'generator_version' => SyntheticDemandGenerator::VERSION,
+                'dataset_hash' => '',
+                'created_by' => null,
+            ]
+        );
+
+        $this->info("Đang sinh dữ liệu mô phỏng cho dataset '{$datasetName}' (seed: {$seed})...");
+        $demand = $generator->generate($config, $seed);
+        $datasetHash = $generator->hash($demand);
+
+        $dataset->update([
+            'seed' => $seed,
+            'configuration' => $config,
+            'configuration_hash' => $configHash,
+            'generator_version' => SyntheticDemandGenerator::VERSION,
+            'dataset_hash' => $datasetHash,
+        ]);
+
+        $generator->persist($dataset, $demand);
+
+        $this->info("Sinh dữ liệu mô phỏng thành công cho dataset '{$datasetName}' (hash: {$datasetHash}).");
+
+        return self::SUCCESS;
+    }
+
+    private function handleRealMockData(int $days, int $ordersPerDay): int
+    {
         $this->info("Bắt đầu sinh dữ liệu mẫu cho {$days} ngày gần nhất (khoảng {$ordersPerDay} đơn/ngày)...");
 
         $startDate = now()->subDays($days)->startOfDay();
@@ -146,22 +222,21 @@ class GenerateMockDataCommand extends Command
             );
 
             // 4. Sinh đơn hàng trong ngày
-            $dailyOrderCount = (int) round($ordersPerDay * (mt_rand(80, 120) / 100));
+            $dailyOrderCount = (int) round($ordersPerDay * ($this->rand(80, 120) / 100));
             $orderSeq = 1;
 
             for ($i = 0; $i < $dailyOrderCount; $i++) {
                 $totalOrders++;
-                // Xác định giờ đặt: 45% trưa (11:30 - 13:30), 45% tối (18:00 - 21:00), 10% các giờ khác
-                $randSlot = mt_rand(1, 100);
+                $randSlot = $this->rand(1, 100);
                 if ($randSlot <= 45) {
-                    $orderHour = mt_rand(11, 13);
-                    $orderMinute = mt_rand(0, 59);
+                    $orderHour = $this->rand(11, 13);
+                    $orderMinute = $this->rand(0, 59);
                 } elseif ($randSlot <= 90) {
-                    $orderHour = mt_rand(18, 21);
-                    $orderMinute = mt_rand(0, 59);
+                    $orderHour = $this->rand(18, 21);
+                    $orderMinute = $this->rand(0, 59);
                 } else {
-                    $orderHour = mt_rand(8, 17);
-                    $orderMinute = mt_rand(0, 59);
+                    $orderHour = $this->rand(8, 17);
+                    $orderMinute = $this->rand(0, 59);
                 }
 
                 $orderTime = $currentDay->copy()->setTime($orderHour, $orderMinute);
@@ -171,15 +246,13 @@ class GenerateMockDataCommand extends Command
 
                 $currentShift = $orderHour < 15 ? $shift1 : $shift2;
 
-                // 70% ngồi bàn, 30% mang đi
-                $isTakeAway = mt_rand(1, 100) > 70 || $tables->isEmpty();
-                $table = $isTakeAway ? null : $tables->random();
+                $isTakeAway = $this->rand(1, 100) > 70 || $tables->isEmpty();
+                $table = $isTakeAway ? null : $this->randomItem($tables);
 
-                // Sinh mã order theo quy tắc của dự án
                 $tablePrefix = $table ? str_replace('-', '', strtoupper(Str::slug($table->table_number))) : 'MD';
                 $orderCode = sprintf('%s-%s-%02d', $tablePrefix, $yymmdd, $orderSeq++);
 
-                $isCancelledOrder = mt_rand(1, 100) <= 4; // 4% đơn huỷ toàn bộ
+                $isCancelledOrder = $this->rand(1, 100) <= 4;
 
                 $order = Order::create([
                     'order_code' => $orderCode,
@@ -192,23 +265,21 @@ class GenerateMockDataCommand extends Command
                     'total' => 0,
                     'note' => $isCancelledOrder ? 'Khách bận việc đột xuất' : null,
                     'created_at' => $orderTime,
-                    'updated_at' => $orderTime->copy()->addMinutes(mt_rand(10, 45)),
+                    'updated_at' => $orderTime->copy()->addMinutes($this->rand(10, 45)),
                 ]);
 
-                // Tạo order_items
-                $itemCount = mt_rand(1, 4);
-                $selectedMenuItems = $menuItems->random(min($itemCount, $menuItems->count()));
+                $itemCount = $this->rand(1, 4);
+                $selectedMenuItems = $this->randomItems($menuItems, min($itemCount, $menuItems->count()));
 
                 $orderSubtotal = 0.0;
                 $activeOrderItems = [];
 
                 foreach ($selectedMenuItems as $menuItem) {
-                    $itemQty = mt_rand(1, 3);
+                    $itemQty = $this->rand(1, 3);
                     $itemUnitPrice = (float) $menuItem->price;
                     $itemSubtotal = $itemQty * $itemUnitPrice;
 
-                    // 3% món bị huỷ lẻ trong các đơn không bị huỷ toàn bộ
-                    $isCancelledItem = ! $isCancelledOrder && mt_rand(1, 100) <= 3;
+                    $isCancelledItem = ! $isCancelledOrder && $this->rand(1, 100) <= 3;
 
                     $orderItem = OrderItem::create([
                         'order_id' => $order->id,
@@ -247,16 +318,14 @@ class GenerateMockDataCommand extends Command
                     continue;
                 }
 
-                // 10% các đơn có giảm giá (5% - 10%)
-                $hasDiscount = mt_rand(1, 100) <= 10;
-                $discountAmount = $hasDiscount ? round($orderSubtotal * (mt_rand(5, 10) / 100), 0) : 0.0;
+                $hasDiscount = $this->rand(1, 100) <= 10;
+                $discountAmount = $hasDiscount ? round($orderSubtotal * ($this->rand(5, 10) / 100), 0) : 0.0;
                 $orderTotal = max(0.0, $orderSubtotal - $discountAmount);
 
-                $invoiceTime = $orderTime->copy()->addMinutes(mt_rand(20, 60));
+                $invoiceTime = $orderTime->copy()->addMinutes($this->rand(20, 60));
 
-                // 5. Tạo Hoá Đơn (INV-...)
                 $invoiceCode = 'INV-'.$dateStr.strtoupper(Str::random(4));
-                $paymentMethod = mt_rand(1, 100) <= 55 ? 'cash' : (mt_rand(1, 100) <= 85 ? 'bank_transfer' : 'mixed');
+                $paymentMethod = $this->rand(1, 100) <= 55 ? 'cash' : ($this->rand(1, 100) <= 85 ? 'bank_transfer' : 'mixed');
 
                 $receivedAmount = $paymentMethod === 'cash' ? (ceil($orderTotal / 10000) * 10000) : $orderTotal;
                 $changeAmount = max(0.0, $receivedAmount - $orderTotal);
@@ -287,7 +356,6 @@ class GenerateMockDataCommand extends Command
                     'status' => 'paid',
                 ]);
 
-                // 6. Ghi Invoice Lines 1-1 với Order Items hợp lệ
                 $allocatedDiscount = 0.0;
                 $activeCount = count($activeOrderItems);
 
@@ -313,7 +381,6 @@ class GenerateMockDataCommand extends Command
                     ]);
                 }
 
-                // 7. Ghi nhận Payments & Dòng tiền MoneyLedger
                 if ($paymentMethod === 'mixed') {
                     $halfTotal = round($orderTotal / 2, 0);
                     $remainTotal = $orderTotal - $halfTotal;
@@ -329,7 +396,7 @@ class GenerateMockDataCommand extends Command
                         'invoice_id' => $invoice->id,
                         'method' => 'bank_transfer',
                         'amount' => $remainTotal,
-                        'reference' => 'MB'.mt_rand(10000000, 99999999),
+                        'reference' => 'MB'.$this->rand(10000000, 99999999),
                         'received_by' => $staffUser->id,
                         'created_at' => $invoiceTime,
                     ]);
@@ -347,7 +414,7 @@ class GenerateMockDataCommand extends Command
                         'invoice_id' => $invoice->id,
                         'method' => $paymentMethod,
                         'amount' => $orderTotal,
-                        'reference' => $paymentMethod === 'bank_transfer' ? ('MB'.mt_rand(10000000, 99999999)) : null,
+                        'reference' => $paymentMethod === 'bank_transfer' ? ('MB'.$this->rand(10000000, 99999999)) : null,
                         'received_by' => $staffUser->id,
                         'created_at' => $invoiceTime,
                     ]);
@@ -363,15 +430,13 @@ class GenerateMockDataCommand extends Command
                     }
                 }
 
-                // 8. Tự động sinh Phiếu Xuất Kho (PX-...) theo đúng công thức món
                 $this->createStockExportVoucher($invoice, $activeOrderItems, $employee, $staffUser->id, $invoiceTime, $dateStr, $exportSeqCounter++);
                 $totalExportVouchers++;
             }
 
-            // Đóng ca và ghi nhận chênh lệch thực tế
             if ($shift1->status === 'closed') {
                 $closingCash = 1500000 + $shift1CashSales;
-                $diff = mt_rand(-1, 1) * 10000; // chênh lệch nhẹ -10k, 0, +10k
+                $diff = $this->rand(-1, 1) * 10000;
                 $shift1->update([
                     'closing_cash' => $closingCash,
                     'actual_cash' => $closingCash + $diff,
@@ -380,7 +445,7 @@ class GenerateMockDataCommand extends Command
 
             if ($shift2->status === 'closed') {
                 $closingCash = 1500000 + $shift2CashSales;
-                $diff = mt_rand(-1, 1) * 10000;
+                $diff = $this->rand(-1, 1) * 10000;
                 $shift2->update([
                     'closing_cash' => $closingCash,
                     'actual_cash' => $closingCash + $diff,
@@ -393,7 +458,6 @@ class GenerateMockDataCommand extends Command
         $progressBar->finish();
         $this->newLine(2);
 
-        // Xóa cache dashboard
         Cache::tags(['dashboard'])->flush();
         try {
             Cache::tags(['pos_promotions'])->flush();
@@ -420,29 +484,53 @@ class GenerateMockDataCommand extends Command
         return self::SUCCESS;
     }
 
-    private function cleanTransactionalData(): void
+    /** @phpstan-impure */
+    private function rand(int $min, int $max): int
     {
-        $this->info('Đang làm sạch dữ liệu giao dịch cũ...');
+        return $this->prng->nextInt($min, $max);
+    }
 
-        MoneyLedgerEntry::query()->delete();
-        SupplierPaymentAllocation::query()->delete();
-        SupplierPayment::query()->delete();
-        Payment::query()->delete();
-        InvoicePromotion::query()->delete();
-        OrderPromotion::query()->delete();
-        DailyPromotionStat::query()->delete();
-        InvoiceLine::query()->delete();
-        Invoice::query()->delete();
-        Deposit::query()->delete();
-        OrderItem::query()->delete();
-        OrderActivity::query()->delete();
-        Order::query()->delete();
-        StockVoucherItem::query()->delete();
-        StockVoucher::query()->delete();
-        CashMovement::query()->delete();
-        Shift::query()->delete();
+    /**
+     * @phpstan-impure
+     *
+     * @template T
+     *
+     * @param  Collection<int, T>  $items
+     * @return T|null
+     */
+    private function randomItem(Collection $items)
+    {
+        if ($items->isEmpty()) {
+            return null;
+        }
+        $idx = $this->prng->nextInt(0, $items->count() - 1);
 
-        $this->info('Đã xóa sạch các bảng giao dịch. Master Data vẫn nguyên vẹn.');
+        return $items->values()->get($idx);
+    }
+
+    /**
+     * @phpstan-impure
+     *
+     * @template T
+     *
+     * @param  Collection<int, T>  $items
+     * @return Collection<int, T>
+     */
+    private function randomItems(Collection $items, int $count): Collection
+    {
+        if ($items->isEmpty() || $count <= 0) {
+            return collect();
+        }
+        $count = min($count, $items->count());
+        $indices = range(0, $items->count() - 1);
+        for ($i = count($indices) - 1; $i > 0; $i--) {
+            $j = $this->prng->nextInt(0, $i);
+            [$indices[$i], $indices[$j]] = [$indices[$j], $indices[$i]];
+        }
+        $selectedIndices = array_slice($indices, 0, $count);
+        $values = $items->values();
+
+        return collect($selectedIndices)->map(fn ($idx) => $values->get($idx));
     }
 
     private function ensureMasterData(): void
@@ -652,19 +740,23 @@ class GenerateMockDataCommand extends Command
         }
 
         $names = ['Anh Tuấn', 'Chị Hương', 'Anh Dũng', 'Chị Mai', 'Anh Hoàng', 'Chị Lan', 'Anh Nam'];
-        $resCount = mt_rand(1, 2);
+        $resCount = $this->rand(1, 2);
 
         for ($r = 0; $r < $resCount; $r++) {
-            $resTable = $tables->random();
-            $resTime = $currentDay->copy()->setTime(mt_rand(18, 20), mt_rand(0, 3) * 15);
-            $resName = $names[array_rand($names)];
-            $resPhone = '09'.mt_rand(10000000, 99999999);
+            $resTable = $this->randomItem($tables);
+            if (! $resTable) {
+                continue;
+            }
+            $resTime = $currentDay->copy()->setTime($this->rand(18, 20), $this->rand(0, 3) * 15);
+            $resName = $names[$this->rand(0, count($names) - 1)];
+            $resPhone = '09'.$this->rand(10000000, 99999999);
 
-            $depositAmount = [100000, 200000, 500000][array_rand([100000, 200000, 500000])];
-            $method = mt_rand(1, 100) <= 60 ? 'bank_transfer' : 'cash';
+            $depositAmounts = [100000, 200000, 500000];
+            $depositAmount = $depositAmounts[$this->rand(0, 2)];
+            $method = $this->rand(1, 100) <= 60 ? 'bank_transfer' : 'cash';
 
             // Phân bổ trạng thái cọc
-            $randStatus = mt_rand(1, 100);
+            $randStatus = $this->rand(1, 100);
             if ($currentDay->isToday() && $resTime->isFuture()) {
                 $status = 'held';
                 $resolvedAt = null;
@@ -695,14 +787,14 @@ class GenerateMockDataCommand extends Command
                 'reservation_note' => 'Khách đặt bàn trước kèm cọc',
                 'subtotal' => 0,
                 'total' => 0,
-                'created_at' => $resTime->copy()->subHours(mt_rand(4, 24)),
+                'created_at' => $resTime->copy()->subHours($this->rand(4, 24)),
             ]);
 
             Deposit::create([
                 'order_id' => $order->id,
                 'amount' => $depositAmount,
                 'method' => $method,
-                'reference' => $method === 'bank_transfer' ? ('MB'.mt_rand(10000000, 99999999)) : null,
+                'reference' => $method === 'bank_transfer' ? ('MB'.$this->rand(10000000, 99999999)) : null,
                 'status' => $status,
                 'received_by_user_id' => $staffUser->id,
                 'resolved_by_user_id' => $status !== 'held' ? $staffUser->id : null,
@@ -715,12 +807,12 @@ class GenerateMockDataCommand extends Command
 
             // Nếu đơn đặt bàn đã đến và thanh toán (applied) -> sinh món, hoá đơn, trừ kho hợp lệ
             if ($orderStatus === 'paid' && $menuItems->isNotEmpty()) {
-                $selectedItems = $menuItems->random(min(2, $menuItems->count()));
+                $selectedItems = $this->randomItems($menuItems, min(2, $menuItems->count()));
                 $subtotal = 0.0;
                 $activeOrderItems = [];
 
                 foreach ($selectedItems as $menuItem) {
-                    $qty = mt_rand(1, 2);
+                    $qty = $this->rand(1, 2);
                     $price = (float) $menuItem->price;
                     $itemSub = $qty * $price;
                     $subtotal += $itemSub;
@@ -746,7 +838,7 @@ class GenerateMockDataCommand extends Command
                     ];
                 }
 
-                $invoiceTime = $resTime->copy()->addMinutes(mt_rand(30, 90));
+                $invoiceTime = $resTime->copy()->addMinutes($this->rand(30, 90));
                 $invoiceCode = 'INV-'.$dateStr.strtoupper(Str::random(4));
 
                 $invoice = Invoice::create([

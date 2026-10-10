@@ -42,9 +42,9 @@ class RefundController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $request) {
-                $invoice = Invoice::with(['lines', 'orders'])->lockForUpdate()->where('id', $validated['invoice_id'])->firstOrFail();
+                $invoice = Invoice::with(['lines', 'orders'])->lockForUpdate()->whereNull('synthetic_dataset_id')->where('id', $validated['invoice_id'])->first();
 
-                if ($invoice->payment_method === '') {
+                if (! $invoice || $invoice->payment_method === '') {
                     throw new \Exception('Hóa đơn không hợp lệ để hoàn.', 422);
                 }
 
