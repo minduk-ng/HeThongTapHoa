@@ -24,6 +24,7 @@ use App\Http\Controllers\Manager\StocktakeController;
 use App\Http\Controllers\Manager\StockVoucherController;
 use App\Http\Controllers\Manager\SupplierController;
 use App\Http\Controllers\Manager\TableController;
+use App\Http\Controllers\Planning\ProcurementRecommendationController;
 use App\Http\Controllers\Reports\CancelledReportController;
 use App\Http\Controllers\Reports\ConsumptionReportController;
 use App\Http\Controllers\Reports\ExpiringReportController;
@@ -117,6 +118,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/synthetic-datasets', [SyntheticDatasetController::class, 'store'])->middleware('permission:planning.experiments');
         Route::get('/synthetic-datasets/{syntheticDataset}', [SyntheticDatasetController::class, 'show'])->middleware('permission:planning.experiments');
         Route::delete('/synthetic-datasets/{syntheticDataset}', [SyntheticDatasetController::class, 'destroy'])->middleware('permission:planning.experiments');
+    });
+
+    // Planning Routes
+    Route::prefix('planning')->group(function () {
+        Route::post('/procurement/plans', [ProcurementRecommendationController::class, 'store'])
+            ->middleware('permission:planning.procurement_review');
     });
 
     // Store Management Routes (/manager/)

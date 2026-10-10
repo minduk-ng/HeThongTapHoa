@@ -4,11 +4,27 @@ import React, { useState } from 'react';
 import DatePicker from '../../../../../components/DatePicker';
 import type { IngredientData } from './IngredientTable';
 
+export interface StockImportPrefill {
+    procurement_plan_id?: number;
+    plan_code?: string;
+    supplier_id?: number | null;
+    note?: string;
+    items?: Array<{
+        procurement_plan_item_id?: number;
+        ingredient_id: number;
+        ingredient_name?: string;
+        unit?: string;
+        quantity: number;
+        unit_price: number;
+    }>;
+}
+
 interface StockImportModalProps {
     ingredients: IngredientData[];
     suppliers?: { id: number; name: string }[];
     isOpen: boolean;
     onClose: () => void;
+    prefill?: StockImportPrefill | null;
 }
 
 interface ImportLine {
@@ -17,6 +33,7 @@ interface ImportLine {
     quantity: string;
     unit_price: string;
     expiry_date: string;
+    procurement_plan_item_id?: number;
 }
 
 const formatCurrency = (val: number) =>
@@ -30,18 +47,34 @@ export default function StockImportModal({
     suppliers = [],
     isOpen,
     onClose,
+    prefill = null,
 }: StockImportModalProps) {
-    const [lines, setLines] = useState<ImportLine[]>([
-        {
-            ingredient_id: '',
-            unit_used: 'base',
-            quantity: '',
-            unit_price: '',
-            expiry_date: '',
-        },
-    ]);
-    const [note, setNote] = useState('');
-    const [supplierId, setSupplierId] = useState('');
+    const [lines, setLines] = useState<ImportLine[]>(() => {
+        if (prefill?.items && prefill.items.length > 0) {
+            return prefill.items.map((item) => ({
+                ingredient_id: String(item.ingredient_id),
+                unit_used: 'purchase',
+                quantity: String(item.quantity),
+                unit_price: String(item.unit_price),
+                expiry_date: '',
+                procurement_plan_item_id: item.procurement_plan_item_id,
+            }));
+        }
+
+        return [
+            {
+                ingredient_id: '',
+                unit_used: 'base',
+                quantity: '',
+                unit_price: '',
+                expiry_date: '',
+            },
+        ];
+    });
+    const [note, setNote] = useState(() => prefill?.note || '');
+    const [supplierId, setSupplierId] = useState(() =>
+        prefill?.supplier_id ? String(prefill.supplier_id) : '',
+    );
     const [isPaid, setIsPaid] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -149,7 +182,10 @@ export default function StockImportModal({
         router.post(
             '/manager/inventory/vouchers',
             {
+                procurement_plan_id: prefill?.procurement_plan_id || null,
                 items: validLines.map((l) => ({
+                    procurement_plan_item_id:
+                        l.procurement_plan_item_id || null,
                     ingredient_id: Number(l.ingredient_id),
                     quantity: toBaseQuantity(l),
                     unit_price: toBasePrice(l),
@@ -212,7 +248,8 @@ export default function StockImportModal({
                         type="button"
                         onClick={onClose}
                         className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
-                     aria-label="Đóng">
+                        aria-label="Đóng"
+                    >
                         <X className="h-5 w-5 stroke-[1.5]" />
                     </button>
                 </div>
@@ -274,8 +311,7 @@ export default function StockImportModal({
                                                         updateLine(
                                                             idx,
                                                             'unit_used',
-                                                            targetIng
-                                                                ?.purchase_unit
+                                                            targetIng?.purchase_unit
                                                                 ? 'purchase'
                                                                 : 'base',
                                                         );
@@ -337,9 +373,7 @@ export default function StockImportModal({
                                                         )
                                                     }
                                                     placeholder={
-                                                        unit
-                                                            ? `0 ${unit}`
-                                                            : '0'
+                                                        unit ? `0 ${unit}` : '0'
                                                     }
                                                     className="w-full rounded-xl border border-zinc-200 bg-white px-2 py-2 text-center text-xs font-semibold text-zinc-900 tabular-nums transition-colors outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                                 />

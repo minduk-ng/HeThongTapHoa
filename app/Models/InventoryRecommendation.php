@@ -83,6 +83,11 @@ class InventoryRecommendation extends Model
         'stock_snapshot_quantity' => 'float',
     ];
 
+    public function getCurrentStockAttribute(): float
+    {
+        return (float) ($this->stock_snapshot_quantity ?? $this->stock_quantity);
+    }
+
     /** @return BelongsTo<ForecastRun, $this> */
     public function forecastRun(): BelongsTo
     {

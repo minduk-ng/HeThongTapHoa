@@ -12,6 +12,7 @@ import DataTable from '../../../../components/DataTable';
 import DatePicker from '../../../../components/DatePicker';
 import ManagerPageLayout from '../../../../components/ManagerPageLayout';
 import DashboardLayout from '../../../../layouts/DashboardLayout';
+import type { StockImportPrefill } from '../ingredients/components/StockImportModal';
 import StockImportModal from '../ingredients/components/StockImportModal';
 
 interface VoucherData {
@@ -29,6 +30,7 @@ interface StockVouchersManagerProps {
     filters: { type?: string; from?: string; to?: string; search?: string };
     ingredients?: any[]; // optional, cho modal nhập từ trang này
     suppliers?: { id: number; name: string }[]; // optional, cho modal nhập gắn nhà cung cấp
+    prefill?: StockImportPrefill | null;
 }
 
 const columns: DataTableColumn<VoucherData>[] = [
@@ -99,8 +101,9 @@ export default function StockVouchersManager({
     filters = {},
     ingredients = [],
     suppliers = [],
+    prefill = null,
 }: StockVouchersManagerProps) {
-    const [isImportOpen, setIsImportOpen] = useState(false);
+    const [isImportOpen, setIsImportOpen] = useState(Boolean(prefill));
     const [typeFilter, setTypeFilter] = useState(filters.type || 'all');
     const [from, setFrom] = useState(filters.from || '');
     const [to, setTo] = useState(filters.to || '');
@@ -240,6 +243,33 @@ export default function StockVouchersManager({
                     </div>
                 }
             >
+                {prefill && (
+                    <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-sky-200 bg-sky-50/80 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-sky-800/80 dark:bg-sky-950/40">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="rounded-md bg-sky-600 px-2 py-0.5 font-mono text-xs font-semibold text-white">
+                                    {prefill.plan_code}
+                                </span>
+                                <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                                    Kế hoạch mua hàng đã duyệt
+                                </span>
+                            </div>
+                            <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                                {prefill.note} ({prefill.items?.length ?? 0} mặt
+                                hàng)
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsImportOpen(true)}
+                            className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-emerald-700"
+                        >
+                            <Plus className="h-3.5 w-3.5 stroke-2" />
+                            <span>Nhập kho từ kế hoạch</span>
+                        </button>
+                    </div>
+                )}
+
                 <DataTable
                     columns={columns}
                     rows={vouchers}
@@ -269,6 +299,7 @@ export default function StockVouchersManager({
                 suppliers={suppliers}
                 isOpen={isImportOpen}
                 onClose={() => setIsImportOpen(false)}
+                prefill={prefill}
             />
         </DashboardLayout>
     );
