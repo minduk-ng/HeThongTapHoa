@@ -106,6 +106,8 @@
 | `/planning/models/apply` | POST | `permission:planning.apply_model` | Áp dụng mô hình dự báo thủ công theo món hoặc toàn hệ thống |
 | `/planning/procurement/plans` | POST | `permission:planning.procurement_review` | Phê duyệt đề xuất và tạo kế hoạch nhập hàng gom theo nhà cung cấp |
 
+> **Tài liệu Thuật toán & Thực nghiệm (Algorithm & Experiment Guide)**: Chi tiết công thức toán học (SMA, Holt-Winters Additive/Multiplicative, SS, ROP, EOQ, WAPE/MAE/RMSE), quy trình rolling-origin backtest và cách ly dữ liệu mô phỏng tại [`docs/forecasting/algorithm-and-experiment-guide.md`](file:///d:/Projects/TapHoa/docs/forecasting/algorithm-and-experiment-guide.md).
+
 ### 2.6 Màn Hình Báo Cáo (Reports Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |

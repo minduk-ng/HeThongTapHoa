@@ -125,7 +125,7 @@ class IngredientDemandCalculator
     public function bomHash(Collection $recipes): string
     {
         $tuples = $recipes->map(function ($recipe) {
-            $updatedAt = $recipe->updated_at?->format('Y-m-d H:i:s') ?? '';
+            $updatedAt = $recipe->updated_at ? $recipe->updated_at->format('Y-m-d H:i:s') : '';
 
             return [
                 'menu_item_id' => (int) ($recipe->menu_item_id ?? 0),

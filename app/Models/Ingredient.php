@@ -103,14 +103,14 @@ class Ingredient extends Model
     public function convertToStockUnit(float $amount, string $fromUnit): ?float
     {
         $from = strtolower(trim($fromUnit));
-        $to = strtolower(trim($this->unit));
+        $to = strtolower(trim((string) $this->unit));
 
         if ($from === $to) {
             return $amount;
         }
 
         // Exact match with purchase_unit and unit_conversion
-        if ($this->purchase_unit && $from === strtolower(trim($this->purchase_unit))) {
+        if ($this->purchase_unit && $from === strtolower(trim((string) $this->purchase_unit))) {
             if ($this->unit_conversion && (float) $this->unit_conversion > 0) {
                 return $amount * (float) $this->unit_conversion;
             }

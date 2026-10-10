@@ -183,6 +183,14 @@ class ModelEvaluationController extends Controller
         $menuItemId = isset($validated['menu_item_id']) ? (int) $validated['menu_item_id'] : null;
         $runId = isset($validated['forecast_run_id']) ? (int) $validated['forecast_run_id'] : null;
 
+        if ($runId === null) {
+            $activeRunId = ForecastRun::where('kind', 'evaluate')
+                ->where('is_active', true)
+                ->latest('id')
+                ->value('id');
+            $runId = $activeRunId !== null ? (int) $activeRunId : null;
+        }
+
         DB::transaction(function () use ($modelKey, $menuItemId, $runId) {
             $baseQuery = ForecastModelEvaluation::query();
 

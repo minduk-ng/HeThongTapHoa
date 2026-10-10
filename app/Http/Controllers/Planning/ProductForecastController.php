@@ -142,9 +142,9 @@ class ProductForecastController extends Controller
                 ];
             })->values()->all();
 
-            $modelKey = $first?->model_key ?? 'sma_7';
-            $dataQuality = $first?->data_quality ?? 'sufficient';
-            $cutoff = $first?->data_cutoff?->toISOString() ?? $activeRun->data_cutoff?->toISOString();
+            $modelKey = $first ? $first->model_key : 'sma_7';
+            $dataQuality = $first ? $first->data_quality : 'sufficient';
+            $cutoff = $first ? $first->data_cutoff->toISOString() : $activeRun->data_cutoff->toISOString();
 
             return [
                 'id' => $item->id,
@@ -160,10 +160,10 @@ class ProductForecastController extends Controller
                 'model_key' => $modelKey,
                 'data_quality' => $dataQuality,
                 'data_cutoff' => $cutoff,
-                'mae' => $eval?->mae ?? ($first?->metrics['mae'] ?? null),
-                'rmse' => $eval?->rmse ?? ($first?->metrics['rmse'] ?? null),
-                'wape' => $eval?->wape ?? ($first?->metrics['wape'] ?? null),
-                'origins_count' => $eval?->origins_evaluated ?? ($first?->metrics['origins_count'] ?? 8),
+                'mae' => $eval ? $eval->mae : ($first?->metrics['mae'] ?? null),
+                'rmse' => $eval ? $eval->rmse : ($first?->metrics['rmse'] ?? null),
+                'wape' => $eval ? $eval->wape : ($first?->metrics['wape'] ?? null),
+                'origins_count' => $eval ? $eval->origins_evaluated : ($first?->metrics['origins_count'] ?? 8),
                 'daily_forecasts' => $dailyForecasts,
             ];
         });

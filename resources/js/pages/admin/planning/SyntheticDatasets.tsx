@@ -99,6 +99,7 @@ export default function SyntheticDatasets({
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
 
     // Filter datasets
     const filteredDatasets = useMemo(() => {
@@ -258,6 +259,7 @@ export default function SyntheticDatasets({
         }
 
         setIsDeleting(true);
+        setDeleteError(null);
 
         router.delete(`/admin/synthetic-datasets/${datasetToDelete.id}`, {
             data: {
@@ -268,10 +270,11 @@ export default function SyntheticDatasets({
                 setIsDeleting(false);
                 setDatasetToDelete(null);
                 setDeleteConfirmationInput('');
+                setDeleteError(null);
             },
             onError: (err) => {
                 setIsDeleting(false);
-                alert(String(Object.values(err)[0] || 'Lỗi khi xóa tập dữ liệu.'));
+                setDeleteError(String(Object.values(err)[0] || 'Lỗi khi xóa tập dữ liệu.'));
             },
         });
     };
@@ -883,6 +886,7 @@ export default function SyntheticDatasets({
                             onClick={() => {
                                 if (!isDeleting) {
                                     setDatasetToDelete(null);
+                                    setDeleteError(null);
                                 }
                             }}
                             aria-hidden="true"
@@ -916,11 +920,20 @@ export default function SyntheticDatasets({
                                 className="mt-3 w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-900 focus:border-rose-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                             />
 
+                            {deleteError && (
+                                <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300">
+                                    {deleteError}
+                                </div>
+                            )}
+
                             <div className="mt-5 flex items-center justify-end gap-2">
                                 <button
                                     type="button"
                                     disabled={isDeleting}
-                                    onClick={() => setDatasetToDelete(null)}
+                                    onClick={() => {
+                                        setDatasetToDelete(null);
+                                        setDeleteError(null);
+                                    }}
                                     className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300"
                                 >
                                     Hủy bỏ

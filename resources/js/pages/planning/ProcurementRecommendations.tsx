@@ -228,7 +228,10 @@ export default function ProcurementRecommendations({
         });
     }, [reviewItems]);
 
-    const canSubmitReview = reviewItems.length > 0 && invalidAdjustedItems.length === 0;
+    const canSubmitReview =
+        reviewItems.length > 0 &&
+        invalidAdjustedItems.length === 0 &&
+        reviewItems.every((item) => item.finalQuantity > 0);
 
     // Review bar summary metrics
     const selectedMetrics = useMemo(() => {

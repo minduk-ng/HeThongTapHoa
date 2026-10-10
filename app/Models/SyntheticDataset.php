@@ -43,6 +43,7 @@ class SyntheticDataset extends Model
     protected $casts = [
         'seed' => 'integer',
         'configuration' => 'array',
+        'created_by' => 'integer',
     ];
 
     /** @return HasMany<ForecastRun, $this> */

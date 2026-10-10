@@ -130,7 +130,8 @@ class HoltWintersForecaster
                 $safeSeason = abs($prevSeason) < self::EPSILON ? self::EPSILON : $prevSeason;
                 $level = ($alpha * ($y / $safeSeason)) + ((1.0 - $alpha) * ($prevLevel + $prevTrend));
                 $trend = ($beta * ($level - $prevLevel)) + ((1.0 - $beta) * $prevTrend);
-                $safeLevel = abs($level) < self::EPSILON ? self::EPSILON : $level;
+                // ponytail: clamp divisor to EPSILON to avoid zero division on near-zero level
+                $safeLevel = max(self::EPSILON, $level);
                 $season[$seasonIndex] = ($gamma * ($y / $safeLevel)) + ((1.0 - $gamma) * $prevSeason);
                 $season[$seasonIndex] = max(0.0, $season[$seasonIndex]);
             }
