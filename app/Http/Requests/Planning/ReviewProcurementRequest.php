@@ -21,7 +21,7 @@ class ReviewProcurementRequest extends FormRequest
     {
         return [
             'items' => ['required', 'array', 'min:1'],
-            'items.*.recommendation_id' => ['required', 'integer', 'exists:inventory_recommendations,id'],
+            'items.*.recommendation_id' => ['required', 'integer', 'distinct', 'exists:inventory_recommendations,id'],
             'items.*.final_quantity' => ['required', 'numeric', 'gt:0'],
             'items.*.adjustment_reason' => ['nullable', 'string'],
             'notes' => ['nullable', 'string', 'max:1000'],

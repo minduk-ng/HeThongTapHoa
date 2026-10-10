@@ -17,6 +17,13 @@ class RecommendationFreshness
      */
     public static function assertFresh(InventoryRecommendation $recommendation): void
     {
+        // 0. Recommendation must be pending
+        if ($recommendation->status !== 'pending') {
+            throw ValidationException::withMessages([
+                'recommendation' => "Đề xuất đã ở trạng thái '{$recommendation->status}', không thể xem xét lại.",
+            ]);
+        }
+
         // 1. Forecast run must be completed and active
         $run = $recommendation->relationLoaded('forecastRun')
             ? $recommendation->forecastRun

@@ -66,14 +66,16 @@ class StockVoucherController extends Controller
                     'plan_code' => $plan->plan_code,
                     'supplier_id' => $plan->supplier_id,
                     'note' => "Nhập kho theo kế hoạch {$plan->plan_code}",
-                    'items' => $plan->items->map(fn ($item) => [
-                        'procurement_plan_item_id' => $item->id,
-                        'ingredient_id' => $item->ingredient_id,
-                        'ingredient_name' => $item->ingredient->name,
-                        'unit' => $item->unit,
-                        'quantity' => (float) $item->final_quantity,
-                        'unit_price' => (float) $item->unit_price,
-                    ])->values()->all(),
+                    'items' => $plan->items
+                        ->filter(fn ($item) => $item->stock_voucher_item_id === null)
+                        ->map(fn ($item) => [
+                            'procurement_plan_item_id' => $item->id,
+                            'ingredient_id' => $item->ingredient_id,
+                            'ingredient_name' => $item->ingredient->name,
+                            'unit' => $item->unit,
+                            'quantity' => (float) $item->final_quantity,
+                            'unit_price' => (float) $item->unit_price,
+                        ])->values()->all(),
                 ];
             }
         }

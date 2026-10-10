@@ -295,6 +295,7 @@ export default function StockVouchersManager({
             </ManagerPageLayout>
 
             <StockImportModal
+                key={prefill?.procurement_plan_id ?? 'default'}
                 ingredients={ingredients}
                 suppliers={suppliers}
                 isOpen={isImportOpen}

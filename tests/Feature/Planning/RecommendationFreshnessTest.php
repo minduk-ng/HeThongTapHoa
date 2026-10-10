@@ -94,3 +94,13 @@ it('assertFresh throws ValidationException when supplier policy updated after sn
 
     expect(fn () => RecommendationFreshness::assertFresh($rec))->toThrow(ValidationException::class);
 });
+
+it('assertFresh throws ValidationException when recommendation status is not pending', function () {
+    $ingredient = Ingredient::create([
+        'code' => 'FRESH-6', 'name' => 'Nguyên liệu status', 'unit' => 'kg',
+        'stock_quantity' => 20, 'min_stock_alert' => 5, 'cost_price' => 15000,
+    ]);
+    $rec = planningRecommendation($ingredient, 10, ['status' => 'approved']);
+
+    expect(fn () => RecommendationFreshness::assertFresh($rec))->toThrow(ValidationException::class);
+});

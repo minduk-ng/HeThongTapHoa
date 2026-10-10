@@ -101,7 +101,11 @@ class ProcurementRecommendationController extends Controller
                     $suggestedQty = (float) $rec->suggested_quantity;
                     $reason = $itemData['adjustment_reason'] ?? null;
 
+                    $unit = $rec->purchase_unit ?: ($rec->unit ?: ($ingredient->purchase_unit ?: $ingredient->unit));
                     $unitPrice = (float) ($ingredient->cost_price ?? 0.0);
+                    if ($ingredient->purchase_unit && $unit === $ingredient->purchase_unit && (float) ($ingredient->unit_conversion ?? 0) > 0) {
+                        $unitPrice = round($unitPrice * (float) $ingredient->unit_conversion, 2);
+                    }
                     $totalPrice = round($finalQty * $unitPrice, 2);
 
                     $planItem = ProcurementPlanItem::create([
@@ -111,7 +115,7 @@ class ProcurementRecommendationController extends Controller
                         'supplier_id' => $supplierId,
                         'suggested_quantity' => $suggestedQty,
                         'final_quantity' => $finalQty,
-                        'unit' => $rec->purchase_unit ?: ($rec->unit ?: ($ingredient->purchase_unit ?: $ingredient->unit)),
+                        'unit' => $unit,
                         'unit_price' => $unitPrice,
                         'total_price' => $totalPrice,
                         'adjustment_reason' => $reason,

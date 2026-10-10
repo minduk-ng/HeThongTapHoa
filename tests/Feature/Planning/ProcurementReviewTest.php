@@ -3,6 +3,7 @@
 use App\Models\Ingredient;
 use App\Models\IngredientSupplierPolicy;
 use App\Models\ProcurementPlan;
+use App\Models\ProcurementPlanItem;
 use App\Models\SecurityAuditLog;
 use App\Models\Supplier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -256,4 +257,104 @@ it('links voucher items to procurement plan items on stock voucher store', funct
 
     expect($ingredient->fresh()->stock_quantity)->toBe(30.0);
     expect($planItem->fresh()->stock_voucher_item_id)->not->toBeNull();
+});
+
+it('calculates plan item unit price using purchase unit conversion', function () {
+    $ingredient = Ingredient::create([
+        'code' => 'ING-CONV-PRICE',
+        'name' => 'Sữa đặc',
+        'unit' => 'ml',
+        'stock_quantity' => 1000,
+        'min_stock_alert' => 500,
+        'cost_price' => 35,
+        'purchase_unit' => 'can',
+        'unit_conversion' => 950,
+    ]);
+    $recommendation = planningRecommendation($ingredient, 10);
+
+    $this->actingAs(posAdmin())->post('/planning/procurement/plans', [
+        'items' => [[
+            'recommendation_id' => $recommendation->id,
+            'final_quantity' => 10,
+            'adjustment_reason' => null,
+        ]],
+    ])->assertRedirect();
+
+    $item = ProcurementPlanItem::where('inventory_recommendation_id', $recommendation->id)->firstOrFail();
+    expect($item->unit)->toBe('can')
+        ->and($item->unit_price)->toBe(33250.0)
+        ->and($item->total_price)->toBe(332500.0);
+});
+
+it('rejects duplicate recommendation ids in items array', function () {
+    $ingredient = Ingredient::create([
+        'code' => 'ING-DUP',
+        'name' => 'Nguyên liệu trùng',
+        'unit' => 'kg',
+        'stock_quantity' => 10,
+        'min_stock_alert' => 5,
+        'cost_price' => 10000,
+    ]);
+    $rec = planningRecommendation($ingredient, 10);
+
+    $response = $this->actingAs(posAdmin())->postJson('/planning/procurement/plans', [
+        'items' => [
+            ['recommendation_id' => $rec->id, 'final_quantity' => 10, 'adjustment_reason' => null],
+            ['recommendation_id' => $rec->id, 'final_quantity' => 10, 'adjustment_reason' => null],
+        ],
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['items.0.recommendation_id', 'items.1.recommendation_id']);
+});
+
+it('filters already received plan items from voucher prefill', function () {
+    $supplier = Supplier::create(['name' => 'NCC Filter', 'phone' => '0908888777']);
+    $ing1 = Ingredient::create([
+        'code' => 'ING-F1', 'name' => 'Item F1', 'unit' => 'kg',
+        'stock_quantity' => 10, 'min_stock_alert' => 5, 'cost_price' => 10000,
+    ]);
+    $ing2 = Ingredient::create([
+        'code' => 'ING-F2', 'name' => 'Item F2', 'unit' => 'kg',
+        'stock_quantity' => 10, 'min_stock_alert' => 5, 'cost_price' => 20000,
+    ]);
+
+    $rec1 = planningRecommendation($ing1, 5, ['supplier_id' => $supplier->id]);
+    $rec2 = planningRecommendation($ing2, 8, ['supplier_id' => $supplier->id]);
+
+    $this->actingAs(posAdmin())->post('/planning/procurement/plans', [
+        'items' => [
+            ['recommendation_id' => $rec1->id, 'final_quantity' => 5, 'adjustment_reason' => null],
+            ['recommendation_id' => $rec2->id, 'final_quantity' => 8, 'adjustment_reason' => null],
+        ],
+    ])->assertRedirect();
+
+    $plan = ProcurementPlan::firstOrFail();
+    $item1 = $plan->items()->where('ingredient_id', $ing1->id)->firstOrFail();
+
+    // Mark item1 as already received via stock voucher
+    $this->actingAs(posAdmin())->post('/manager/inventory/vouchers', [
+        'procurement_plan_id' => $plan->id,
+        'supplier_id' => $supplier->id,
+        'items' => [[
+            'procurement_plan_item_id' => $item1->id,
+            'ingredient_id' => $ing1->id,
+            'quantity' => 5,
+            'unit_price' => 10000,
+        ]],
+    ])->assertRedirect();
+
+    expect($item1->fresh()->stock_voucher_item_id)->not->toBeNull();
+
+    // Now request prefill for the plan: only item2 should be in prefill items
+    $response = $this->actingAs(posAdmin())
+        ->get("/manager/inventory/vouchers?procurement_plan_id={$plan->id}");
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('manager/inventory/vouchers/StockVouchersManager')
+            ->has('prefill.items', 1)
+            ->where('prefill.items.0.ingredient_id', $ing2->id)
+            ->where('prefill.items.0.quantity', 8)
+        );
 });
