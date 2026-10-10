@@ -3,10 +3,12 @@
 use App\Models\Ingredient;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
+use App\Models\InvoicePromotion;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Page;
 use App\Models\ProductRecipe;
+use App\Models\Promotion;
 use App\Models\Role;
 use App\Models\SyntheticDataset;
 use App\Models\User;
@@ -331,4 +333,133 @@ it('excludes synthetic invoices from sales invoice, profit, payments, invoice it
     $ingRow = $rows->firstWhere('id', $ingredient->id);
     expect($ingRow)->not->toBeNull()
         ->and($ingRow['quantity'])->toBe(20.0);
+});
+
+it('lists synthetic datasets via GET /admin/synthetic-datasets', function () {
+    SyntheticDataset::create([
+        'name' => 'list-demo-1',
+        'seed' => 42,
+        'configuration' => ['days' => 10],
+        'configuration_hash' => hash('sha256', '1'),
+        'generator_version' => '1.0.0',
+        'dataset_hash' => hash('sha256', '1'),
+    ]);
+    SyntheticDataset::create([
+        'name' => 'list-demo-2',
+        'seed' => 43,
+        'configuration' => ['days' => 10],
+        'configuration_hash' => hash('sha256', '2'),
+        'generator_version' => '1.0.0',
+        'dataset_hash' => hash('sha256', '2'),
+    ]);
+
+    $user = userWithPermission('planning.experiments');
+
+    $response = $this->actingAs($user)
+        ->getJson('/admin/synthetic-datasets');
+
+    $response->assertSuccessful()
+        ->assertJsonStructure(['data' => [['id', 'name', 'seed']]]);
+
+    expect(count($response->json('data')))->toBeGreaterThanOrEqual(2);
+});
+
+it('creates synthetic dataset via POST /admin/synthetic-datasets', function () {
+    $user = userWithPermission('planning.experiments');
+
+    $response = $this->actingAs($user)
+        ->postJson('/admin/synthetic-datasets', [
+            'name' => 'api-created-dataset',
+            'description' => 'Test dataset via API',
+            'seed' => 42,
+            'configuration' => [
+                'days' => 5,
+                'orders_per_day' => 10,
+            ],
+        ]);
+
+    $response->assertCreated()
+        ->assertJsonPath('data.name', 'api-created-dataset')
+        ->assertJsonPath('data.seed', 42);
+
+    $dataset = SyntheticDataset::where('name', 'api-created-dataset')->first();
+    expect($dataset)->not->toBeNull()
+        ->and($dataset->dataset_hash)->not->toBeEmpty();
+    expect(Invoice::where('synthetic_dataset_id', $dataset->id)->count())->toBeGreaterThan(0);
+});
+
+it('excludes synthetic invoices from promotion analytics revenue', function () {
+    $admin = User::factory()->create();
+    $adminRole = Role::where('name', 'admin')->first();
+    $admin->roles()->attach($adminRole);
+
+    $promotion = Promotion::create([
+        'name' => 'Summer Promo',
+        'slug' => 'summer-promo-test-'.uniqid(),
+        'start_date' => now()->subDays(5)->toDateString(),
+        'end_date' => now()->addDays(5)->toDateString(),
+        'is_active' => true,
+        'apply_type' => 'all',
+    ]);
+
+    $realInvoice = Invoice::create([
+        'invoice_code' => 'INV-REAL-PROMO',
+        'table_name' => 'B01',
+        'payment_method' => 'cash',
+        'subtotal_amount' => 50000,
+        'discount_amount' => 5000,
+        'vat_amount' => 0,
+        'total_amount' => 45000,
+        'amount_received' => 45000,
+        'change_amount' => 0,
+        'issued_at' => now(),
+        'synthetic_dataset_id' => null,
+    ]);
+    InvoicePromotion::create([
+        'invoice_id' => $realInvoice->id,
+        'promotion_id' => $promotion->id,
+        'code' => 'PROMO-REAL',
+        'name' => 'Real Promo',
+        'discount_type' => 'fixed',
+        'discount_value' => 5000,
+        'amount' => 5000,
+    ]);
+
+    $dataset = SyntheticDataset::create([
+        'name' => 'promo-syn-dataset',
+        'seed' => 42,
+        'configuration' => ['days' => 5],
+        'configuration_hash' => hash('sha256', 'promo'),
+        'generator_version' => '1.0.0',
+        'dataset_hash' => hash('sha256', 'promo'),
+    ]);
+    $synInvoice = Invoice::create([
+        'invoice_code' => 'SYN-PROMO-001',
+        'table_name' => 'Synthetic',
+        'payment_method' => 'cash',
+        'subtotal_amount' => 100000,
+        'discount_amount' => 10000,
+        'vat_amount' => 0,
+        'total_amount' => 90000,
+        'amount_received' => 90000,
+        'change_amount' => 0,
+        'issued_at' => now(),
+        'synthetic_dataset_id' => $dataset->id,
+    ]);
+    InvoicePromotion::create([
+        'invoice_id' => $synInvoice->id,
+        'promotion_id' => $promotion->id,
+        'code' => 'PROMO-SYN',
+        'name' => 'Syn Promo',
+        'discount_type' => 'fixed',
+        'discount_value' => 10000,
+        'amount' => 10000,
+    ]);
+
+    $res = $this->actingAs($admin)->get('/manager/promotions');
+    $res->assertSuccessful();
+    $promos = collect($res->original->getData()['page']['props']['promotions']);
+    $promoRow = $promos->firstWhere('id', $promotion->id);
+    expect($promoRow)->not->toBeNull()
+        ->and((float) $promoRow['revenue'])->toBe(45000.0);
 });

@@ -9,42 +9,6 @@ use App\Models\SyntheticDataset;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
-class SeededPrng
-{
-    private int $state;
-
-    public function __construct(int $seed)
-    {
-        $s = $seed % 2147483647;
-        if ($s <= 0) {
-            $s += 2147483646;
-        }
-        $this->state = $s;
-    }
-
-    /** @phpstan-impure */
-    public function nextInt(int $min = 0, int $max = 2147483646): int
-    {
-        $this->state = (int) (($this->state * 48271) % 2147483647);
-        if ($min === $max) {
-            return $min;
-        }
-        if ($min > $max) {
-            [$min, $max] = [$max, $min];
-        }
-
-        $range = ($max - $min + 1);
-
-        return $min + ($this->state % $range);
-    }
-
-    /** @phpstan-impure */
-    public function nextFloat(): float
-    {
-        return $this->nextInt(0, 2147483646) / 2147483647.0;
-    }
-}
-
 class SyntheticDemandGenerator
 {
     public const VERSION = '1.0.0';
@@ -75,7 +39,7 @@ class SyntheticDemandGenerator
         $menuItemIds = array_map('intval', $menuItemIds);
         sort($menuItemIds);
 
-        $base = (float) ($configuration['base'] ?? 20.0);
+        $base = (float) ($configuration['base'] ?? ($configuration['orders_per_day'] ?? 20.0));
         $trend = (float) ($configuration['trend'] ?? 0.0);
         $weeklyEnabled = (bool) ($configuration['weekly'] ?? true);
         $noiseRatio = (float) ($configuration['noise'] ?? 0.0);
