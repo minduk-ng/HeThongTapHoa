@@ -58,6 +58,23 @@ class Supplier extends Model
         return $this->hasMany(InventoryRecommendation::class, 'supplier_id');
     }
 
+    public function policyFor(Ingredient|int $ingredient): ?IngredientSupplierPolicy
+    {
+        $ingredientId = $ingredient instanceof Ingredient ? $ingredient->id : $ingredient;
+
+        if ($this->relationLoaded('policies')) {
+            return $this->policies->firstWhere('ingredient_id', $ingredientId);
+        }
+
+        return $this->policies()->where('ingredient_id', $ingredientId)->first();
+    }
+
+    /** @return HasMany<IngredientSupplierPolicy, $this> */
+    public function primaryPolicies(): HasMany
+    {
+        return $this->policies()->where('is_primary', true);
+    }
+
     public function debt(): float
     {
         // tổng dư nợ = SUM(dư còn lại từng phiếu nhập) — phiếu trả một phần vẫn còn nợ phần dư
