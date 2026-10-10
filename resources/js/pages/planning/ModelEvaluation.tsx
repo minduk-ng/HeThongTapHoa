@@ -118,9 +118,11 @@ export default function ModelEvaluation({
 
     // Determine the best/winning candidate or currently selected model
     const winningCandidate =
-        modelComparison.find((m) => m.is_selected) ||
-        [...modelComparison].sort((a, b) => a.avg_wape - b.avg_wape)[0] ||
-        null;
+        [...modelComparison].sort(
+            (a, b) =>
+                ((b.selected_count ?? 0) - (a.selected_count ?? 0)) ||
+                ((a.avg_wape ?? 999) - (b.avg_wape ?? 999))
+        )[0] || null;
 
     const handleOpenConfirm = (modelKey: string) => {
         if (!can_apply_model) {

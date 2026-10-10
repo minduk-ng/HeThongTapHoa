@@ -8,7 +8,7 @@ import {
     Search,
     X,
 } from 'lucide-react';
-import { useRef, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import DataQualityBadge from '../../components/planning/DataQualityBadge';
 import ForecastDetailDrawer from '../../components/planning/ForecastDetailDrawer';
 import type {ProductForecastItem} from '../../components/planning/ForecastDetailDrawer';
@@ -92,7 +92,6 @@ export default function ProductForecasts({
     // Drawer state
     const [selectedProduct, setSelectedProduct] = useState<ProductForecastItem | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-    const triggerRefs = useRef<Record<number, HTMLButtonElement | null>>({});
 
     const handleOpenDrawer = (product: ProductForecastItem) => {
         setSelectedProduct(product);
@@ -391,9 +390,6 @@ export default function ProductForecasts({
                                                     </td>
                                                     <td className="px-6 py-3.5 text-center">
                                                         <button
-                                                            ref={(el) => {
-                                                                triggerRefs.current[item.id] = el;
-                                                            }}
                                                             type="button"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
@@ -466,9 +462,6 @@ export default function ProductForecasts({
 
                                             <div className="flex justify-end pt-1">
                                                 <button
-                                                    ref={(el) => {
-                                                        triggerRefs.current[item.id] = el;
-                                                    }}
                                                     type="button"
                                                     onClick={(e) => {
                                                         e.stopPropagation();

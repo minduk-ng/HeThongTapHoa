@@ -133,7 +133,7 @@ export default function ForecastDetailDrawer({
     }
 
     const modelName = MODEL_NAMES[product.model_key] || product.model_key;
-    const hasBounds = product.lower_bound !== null && product.upper_bound !== null;
+    const hasBounds = product.lower_bound != null && product.upper_bound != null;
 
     return (
         <div
@@ -318,7 +318,7 @@ export default function ForecastDetailDrawer({
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                                         {product.daily_forecasts.map((d, idx) => {
-                                            const hasDayBounds = d.lower_bound !== null && d.upper_bound !== null;
+                                            const hasDayBounds = d.lower_bound != null && d.upper_bound != null;
 
                                             return (
                                                 <tr

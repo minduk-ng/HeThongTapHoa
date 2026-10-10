@@ -103,10 +103,18 @@ class ProductForecastController extends Controller
             ->get()
             ->groupBy('menu_item_id');
 
+        $activeEvalRun = ForecastRun::where('kind', 'evaluate')
+            ->where('is_active', true)
+            ->when($datasetId !== null, fn ($q) => $q->where('synthetic_dataset_id', $datasetId), fn ($q) => $q->whereNull('synthetic_dataset_id'))
+            ->latest('id')
+            ->first();
+
         $evaluationsByItem = ForecastModelEvaluation::whereIn('menu_item_id', $itemIds)
             ->where('is_selected', true)
+            ->when($activeEvalRun !== null, fn ($q) => $q->where('forecast_run_id', $activeEvalRun->id))
             ->latest('id')
             ->get()
+            ->unique('menu_item_id')
             ->keyBy('menu_item_id');
 
         $paginatedProducts = $paginatedItems->through(function ($item) use ($forecastsByItem, $evaluationsByItem, $activeRun) {
@@ -168,7 +176,7 @@ class ProductForecastController extends Controller
             'filters' => [
                 'search' => $search ?: null,
                 'category_id' => $categoryId,
-                'horizon_days' => $horizonDays ?? ($activeRun->horizon_days ?? 7),
+                'horizon_days' => (int) $activeRun->horizon_days,
                 'quality' => $quality ?: null,
                 'synthetic_dataset_id' => $datasetId,
             ],

@@ -63,7 +63,7 @@ export function formatWape(wape: number | null | undefined): string {
         return '-';
     }
 
-    return `${(wape * 100).toFixed(1)}%`;
+    return `${Number(wape).toFixed(1)}%`;
 }
 
 export function isRunStale(

@@ -61,10 +61,11 @@ describe('formatWape', () => {
     });
 
     it('formats numeric wape value into percentage string', () => {
-        equal(formatWape(0.125), '12.5%');
+        equal(formatWape(12.5), '12.5%');
         equal(formatWape(0), '0.0%');
-        equal(formatWape(0.0543), '5.4%');
-        equal(formatWape(1.0), '100.0%');
+        equal(formatWape(5.43), '5.4%');
+        equal(formatWape(100.0), '100.0%');
+        equal(formatWape(15.4), '15.4%');
     });
 });
 

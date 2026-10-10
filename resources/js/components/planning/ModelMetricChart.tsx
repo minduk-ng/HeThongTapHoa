@@ -124,10 +124,10 @@ export default function ModelMetricChart({
     // Format YAxis ticks
     const formatYTick = (val: number) => {
         if (metric === 'wape') {
-            return `${(val * 100).toFixed(0)}%`;
+            return `${Number(val).toFixed(0)}%`;
         }
 
-        return formatQuantity(val, 1);
+        return Number(val).toLocaleString('vi-VN');
     };
 
     return (
