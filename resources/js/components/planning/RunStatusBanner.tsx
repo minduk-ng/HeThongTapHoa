@@ -61,8 +61,7 @@ export default function RunStatusBanner({
     const isEmpty = !run || !run.id;
     const isStaleRun = Boolean(
         !isEmpty &&
-            isCompleted &&
-            (run.status === 'stale' || isRunStale(run.completed_at || run.data_cutoff, 24))
+            (run.status === 'stale' || (isCompleted && isRunStale(run.completed_at || run.data_cutoff, 24)))
     );
 
     const sourceLabel = formatSourceLabel(

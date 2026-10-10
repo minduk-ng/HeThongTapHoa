@@ -20,6 +20,7 @@ import {
     formatCurrency,
     formatQuantity,
     formatWape,
+    MODEL_NAMES,
 } from '../../components/planning/planningFormatters';
 import RunStatusBanner from '../../components/planning/RunStatusBanner';
 import type {ForecastRunSummary} from '../../components/planning/RunStatusBanner';
@@ -94,14 +95,6 @@ interface OverviewProps {
     urgentReorders?: UrgentReorderItem[];
     filters?: OverviewFilters;
 }
-
-const MODEL_NAMES: Record<string, string> = {
-    sma_7: 'SMA (7 ngày)',
-    sma_14: 'SMA (14 ngày)',
-    sma_28: 'SMA (28 ngày)',
-    holt_winters_additive: 'Holt-Winters (Cộng)',
-    holt_winters_multiplicative: 'Holt-Winters (Nhân)',
-};
 
 export default function Overview({
     activeRun,
@@ -530,7 +523,7 @@ export default function Overview({
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">
                                         {safeTopGrowing.map((prod) => (
-                                            <tr key={prod.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-750">
+                                            <tr key={prod.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/60">
                                                 <td className="py-2.5 font-medium text-slate-800 dark:text-slate-200">
                                                     {prod.name}
                                                 </td>
@@ -542,7 +535,7 @@ export default function Overview({
                                                 </td>
                                                 <td className="py-2.5 text-center">
                                                     <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                                                        {prod.model_key}
+                                                        {MODEL_NAMES[prod.model_key] || prod.model_key}
                                                     </span>
                                                 </td>
                                                 <td className="py-2.5 text-right">

@@ -34,7 +34,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read ForecastRun $forecastRun
- * @property-read Ingredient $ingredient
+ * @property-read Ingredient|null $ingredient
  * @property-read Supplier|null $supplier
  * @property-read Collection<int, ProcurementPlanItem> $procurementPlanItems
  */

@@ -180,13 +180,13 @@ class PlanningOverviewController extends Controller
                     return [
                         'id' => (int) $rec->id,
                         'ingredient_id' => (int) $rec->ingredient_id,
-                        'ingredient_name' => (string) $rec->ingredient->name,
+                        'ingredient_name' => (string) ($rec->ingredient->name ?? "Nguyên liệu #{$rec->ingredient_id}"),
                         'supplier_name' => $rec->supplier?->name,
                         'stock_quantity' => round((float) $rec->stock_quantity, 2),
                         'safety_stock' => round((float) $rec->safety_stock, 2),
                         'reorder_point' => round((float) $rec->reorder_point, 2),
                         'suggested_quantity' => round((float) $rec->suggested_quantity, 2),
-                        'unit' => (string) ($rec->purchase_unit ?: ($rec->unit ?: $rec->ingredient->unit)),
+                        'unit' => (string) ($rec->purchase_unit ?: ($rec->unit ?: ($rec->ingredient->unit ?? ''))),
                         'status' => (string) $rec->status,
                     ];
                 })

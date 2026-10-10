@@ -5,6 +5,14 @@ export type RunStatusKey = 'empty' | 'queued' | 'running' | 'completed' | 'faile
 
 export type QualityTone = 'emerald' | 'amber' | 'rose' | 'zinc';
 
+export const MODEL_NAMES: Record<string, string> = {
+    sma_7: 'SMA (7 ngày)',
+    sma_14: 'SMA (14 ngày)',
+    sma_28: 'SMA (28 ngày)',
+    holt_winters_additive: 'Holt-Winters (Cộng)',
+    holt_winters_multiplicative: 'Holt-Winters (Nhân)',
+};
+
 export function formatRunStatusLabel(status?: string | null): string {
     if (!status || status === 'empty') {
         return 'Chưa có dự báo';

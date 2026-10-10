@@ -12,6 +12,7 @@ import {
     formatStaleTimestamp,
     formatWape,
     isRunStale,
+    MODEL_NAMES,
 } from './planningFormatters.ts';
 
 describe('formatRunStatusLabel', () => {
@@ -138,3 +139,14 @@ describe('formatQuantity and formatCurrency', () => {
         equal(formatted.includes('₫') || formatted.includes('đ') || formatted.includes('VND'), true);
     });
 });
+
+describe('MODEL_NAMES', () => {
+    it('contains readable Vietnamese labels for candidate models', () => {
+        equal(MODEL_NAMES.sma_7, 'SMA (7 ngày)');
+        equal(MODEL_NAMES.sma_14, 'SMA (14 ngày)');
+        equal(MODEL_NAMES.sma_28, 'SMA (28 ngày)');
+        equal(MODEL_NAMES.holt_winters_additive, 'Holt-Winters (Cộng)');
+        equal(MODEL_NAMES.holt_winters_multiplicative, 'Holt-Winters (Nhân)');
+    });
+});
+
