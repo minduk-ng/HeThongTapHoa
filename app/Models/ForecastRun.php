@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,15 +14,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $synthetic_dataset_id
  * @property string $kind
  * @property int $horizon_days
- * @property Carbon $data_cutoff
+ * @property CarbonInterface|Carbon $data_cutoff
  * @property string $status
  * @property array<string, mixed>|null $configuration
- * @property Carbon|null $started_at
- * @property Carbon|null $completed_at
+ * @property CarbonInterface|Carbon|null $started_at
+ * @property CarbonInterface|Carbon|null $completed_at
  * @property string|null $error_message
  * @property bool $is_active
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonInterface|Carbon|null $created_at
+ * @property CarbonInterface|Carbon|null $updated_at
  * @property-read SyntheticDataset|null $syntheticDataset
  * @property-read Collection<int, ProductForecast> $productForecasts
  * @property-read Collection<int, ForecastModelEvaluation> $modelEvaluations
