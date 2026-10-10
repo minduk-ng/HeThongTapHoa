@@ -100,7 +100,11 @@ class DemandSeriesBuilder
         }
 
         $minDateStr = (string) $query->min('demand_date');
-        $startDate = $minDateStr !== '' ? Carbon::parse($minDateStr) : $windowStart;
+        if ($minDateStr === '') {
+            return [];
+        }
+
+        $startDate = Carbon::parse($minDateStr);
         if ($startDate->lt($windowStart)) {
             $startDate = $windowStart;
         }

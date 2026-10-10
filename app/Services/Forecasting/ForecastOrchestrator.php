@@ -6,6 +6,7 @@ use App\Models\ForecastModelEvaluation;
 use App\Models\ForecastRun;
 use App\Models\MenuItem;
 use App\Models\ProductForecast;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Throwable;
@@ -127,10 +128,16 @@ class ForecastOrchestrator
                 ? $latestEval->parameters
                 : ['window' => 7];
 
-            $predictions = $this->generatePredictions($modelKey, $series, $parameters, $horizon);
-
-            $nonZeroCount = count(array_filter($series, fn ($v) => $v > 0));
-            $dataQuality = ($nonZeroCount < 7 || count($series) < 14) ? 'sparse' : 'sufficient';
+            // ponytail: items with < 7 days have insufficient history to fit SMA/HW; emit 0.0 without crashing
+            if (count($series) < 7) {
+                $predictions = array_fill(0, $horizon, 0.0);
+                $dataQuality = 'insufficient';
+            } else {
+                $predictions = $this->generatePredictions($modelKey, $series, $parameters, $horizon);
+                $nonZeroCount = count(array_filter($series, fn ($v) => $v > 0));
+                // ponytail: standard vocabulary: sufficient, limited, insufficient (Spec Section 4.3)
+                $dataQuality = ($nonZeroCount < 7 || count($series) < 14) ? 'limited' : 'sufficient';
+            }
 
             for ($day = 1; $day <= $horizon; $day++) {
                 $forecastDate = $run->data_cutoff->copy()->addDays($day)->toDateString();
@@ -245,7 +252,19 @@ class ForecastOrchestrator
 
     private function executeAggregation(ForecastRun $run): void
     {
-        $this->seriesBuilder->aggregate($run->synthetic_dataset_id);
+        $config = is_array($run->configuration) ? $run->configuration : [];
+        $fromDate = isset($config['from']) && is_string($config['from'])
+            ? Carbon::parse($config['from'])
+            : null;
+
+        $toDate = null;
+        if (isset($config['to']) && is_string($config['to'])) {
+            $toDate = Carbon::parse($config['to']);
+        } elseif ($run->data_cutoff) {
+            $toDate = Carbon::parse($run->data_cutoff);
+        }
+
+        $this->seriesBuilder->aggregate($run->synthetic_dataset_id, $fromDate, $toDate);
     }
 
     /**

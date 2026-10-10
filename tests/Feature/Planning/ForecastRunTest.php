@@ -57,6 +57,17 @@ it('keeps the previous run active when forecasting fails', function () {
 
     $item = posMenuItem(['name' => 'Failing Item']);
 
+    for ($i = 0; $i < 14; $i++) {
+        DailyProductDemand::create([
+            'synthetic_dataset_id' => null,
+            'menu_item_id' => $item->id,
+            'demand_date' => now()->subDay()->subDays(13 - $i)->toDateString(),
+            'quantity' => 10.0,
+            'refunded_quantity' => 0.0,
+            'order_count' => 1,
+        ]);
+    }
+
     $failingOrchestrator = new ForecastOrchestrator(
         customForecasters: [
             'sma_7' => function () {
@@ -252,4 +263,119 @@ it('executes model evaluation run and records selected model', function () {
     $evals = ForecastModelEvaluation::where('forecast_run_id', $run->id)->get();
     expect($evals->count())->toBeGreaterThanOrEqual(1)
         ->and($evals->where('is_selected', true)->count())->toBe(1);
+});
+
+it('aggregates daily demands respecting from and to bounds in configuration', function () {
+    $item = posMenuItem(['name' => 'Bounded Item']);
+
+    // Create invoices on 3 different dates
+    $dates = ['2026-04-01', '2026-04-05', '2026-04-10'];
+    foreach ($dates as $idx => $d) {
+        $inv = Invoice::create([
+            'invoice_code' => "INV-BOUND-{$idx}",
+            'table_name' => 'T1',
+            'payment_method' => 'cash',
+            'subtotal_amount' => 10000,
+            'discount_amount' => 0,
+            'vat_amount' => 0,
+            'total_amount' => 10000,
+            'amount_received' => 10000,
+            'change_amount' => 0,
+            'issued_at' => Carbon::parse("{$d} 12:00:00"),
+            'synthetic_dataset_id' => null,
+        ]);
+        InvoiceLine::create([
+            'invoice_id' => $inv->id,
+            'menu_item_id' => $item->id,
+            'name_snapshot' => 'Bounded Item',
+            'quantity' => 2,
+            'unit_price' => 5000,
+            'subtotal' => 10000,
+        ]);
+    }
+
+    $run = ForecastRun::create([
+        'kind' => 'aggregate',
+        'synthetic_dataset_id' => null,
+        'horizon_days' => 0,
+        'data_cutoff' => Carbon::parse('2026-04-08'),
+        'status' => 'queued',
+        'configuration' => [
+            'from' => '2026-04-03',
+            'to' => '2026-04-08',
+        ],
+        'is_active' => false,
+    ]);
+
+    app(ForecastOrchestrator::class)->run($run);
+
+    expect($run->fresh()->status)->toBe('completed');
+
+    // Only 2026-04-05 should be aggregated; 2026-04-01 is before 'from', 2026-04-10 is after 'to'
+    $demands = DailyProductDemand::where('menu_item_id', $item->id)->get();
+    expect($demands->count())->toBe(1)
+        ->and($demands->first()->demand_date->toDateString())->toBe('2026-04-05');
+});
+
+it('produces insufficient quality forecasts for menu items with short series without crashing', function () {
+    $shortItem = posMenuItem(['name' => 'New Short Item']);
+    $normalItem = posMenuItem(['name' => 'Normal Item']);
+
+    $cutoff = Carbon::parse('2026-03-01');
+
+    // shortItem has only 3 days of demand (< 7 days)
+    for ($i = 0; $i < 3; $i++) {
+        DailyProductDemand::create([
+            'synthetic_dataset_id' => null,
+            'menu_item_id' => $shortItem->id,
+            'demand_date' => $cutoff->copy()->subDays(2 - $i)->toDateString(),
+            'quantity' => 5.0,
+            'refunded_quantity' => 0.0,
+            'order_count' => 1,
+        ]);
+    }
+
+    // normalItem has 14 days of demand
+    for ($i = 0; $i < 14; $i++) {
+        DailyProductDemand::create([
+            'synthetic_dataset_id' => null,
+            'menu_item_id' => $normalItem->id,
+            'demand_date' => $cutoff->copy()->subDays(13 - $i)->toDateString(),
+            'quantity' => 10.0,
+            'refunded_quantity' => 0.0,
+            'order_count' => 1,
+        ]);
+    }
+
+    $run = ForecastRun::create([
+        'kind' => 'forecast',
+        'horizon_days' => 7,
+        'data_cutoff' => $cutoff,
+        'status' => 'queued',
+        'is_active' => false,
+    ]);
+
+    app(ForecastOrchestrator::class)->run($run);
+
+    expect($run->fresh()->status)->toBe('completed');
+
+    $shortForecasts = ProductForecast::where('forecast_run_id', $run->id)
+        ->where('menu_item_id', $shortItem->id)
+        ->get();
+
+    expect($shortForecasts->count())->toBe(7);
+    foreach ($shortForecasts as $f) {
+        expect($f->forecast_quantity)->toBe(0.0)
+            ->and($f->data_quality)->toBe('insufficient');
+    }
+
+    $normalForecasts = ProductForecast::where('forecast_run_id', $run->id)
+        ->where('menu_item_id', $normalItem->id)
+        ->get();
+
+    expect($normalForecasts->count())->toBe(7);
+    foreach ($normalForecasts as $f) {
+        expect($f->forecast_quantity)->toBeGreaterThan(0.0)
+            ->and($f->data_quality)->toBe('sufficient');
+    }
 });
