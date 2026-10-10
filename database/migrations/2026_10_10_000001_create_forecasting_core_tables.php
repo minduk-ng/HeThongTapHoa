@@ -23,7 +23,7 @@ return new class extends Migration
 
         Schema::create('forecast_runs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('synthetic_dataset_id')->nullable()->constrained('synthetic_datasets')->nullOnDelete();
+            $table->foreignId('synthetic_dataset_id')->nullable()->constrained('synthetic_datasets')->cascadeOnDelete();
             $table->string('kind', 24); // aggregate, evaluate, forecast
             $table->unsignedSmallInteger('horizon_days');
             $table->timestamp('data_cutoff');
@@ -38,7 +38,7 @@ return new class extends Migration
 
         Schema::create('daily_product_demands', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('synthetic_dataset_id')->nullable()->constrained('synthetic_datasets')->nullOnDelete();
+            $table->foreignId('synthetic_dataset_id')->nullable()->constrained('synthetic_datasets')->cascadeOnDelete();
             $table->foreignId('menu_item_id')->constrained('menu_items')->cascadeOnDelete();
             $table->date('demand_date')->index();
             $table->decimal('quantity', 12, 4)->default(0);

@@ -2,10 +2,15 @@
 
 namespace App\Services\Forecasting;
 
+use App\Models\DailyProductDemand;
 use App\Models\ForecastModelEvaluation;
 use App\Models\ForecastRun;
+use App\Models\Ingredient;
+use App\Models\IngredientSupplierPolicy;
+use App\Models\InventoryRecommendation;
 use App\Models\MenuItem;
 use App\Models\ProductForecast;
+use App\Models\ProductRecipe;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -159,6 +164,118 @@ class ForecastOrchestrator
                     'metrics' => $latestEval?->metrics,
                 ]);
             }
+        }
+
+        $forecasts = ProductForecast::where('forecast_run_id', $run->id)->get();
+        $recipes = ProductRecipe::with('ingredient')->get();
+
+        class_exists(InventoryOptimizer::class);
+        $calcResult = (new IngredientDemandCalculator)->calculate($forecasts, $recipes);
+        $bomHash = IngredientDemandCalculator::bomHash($recipes);
+
+        $demands = $calcResult['demands'];
+        foreach ($demands as $ingredientId => $demandData) {
+            $ingredient = Ingredient::find($ingredientId);
+            if (! $ingredient) {
+                continue;
+            }
+
+            /** @var IngredientSupplierPolicy|null $policy */
+            $policy = IngredientSupplierPolicy::where('ingredient_id', $ingredient->id)->where('is_preferred', true)->first()
+                ?? IngredientSupplierPolicy::where('ingredient_id', $ingredient->id)->first();
+
+            $ingredientRecipes = $recipes->where('ingredient_id', $ingredient->id);
+            $menuItemIds = $ingredientRecipes->pluck('menu_item_id')->unique()->all();
+
+            $dailyDemandStdDev = 0.0;
+            if (! empty($menuItemIds)) {
+                $demandsHistory = DailyProductDemand::whereIn('menu_item_id', $menuItemIds)
+                    ->when(
+                        $run->synthetic_dataset_id === null,
+                        fn ($q) => $q->whereNull('synthetic_dataset_id'),
+                        fn ($q) => $q->where('synthetic_dataset_id', $run->synthetic_dataset_id)
+                    )
+                    ->whereDate('demand_date', '<=', $run->data_cutoff->toDateString())
+                    ->get();
+
+                if ($demandsHistory->isNotEmpty()) {
+                    $dailyTotals = [];
+                    foreach ($demandsHistory as $demandRecord) {
+                        $dateKey = is_string($demandRecord->demand_date)
+                            ? substr($demandRecord->demand_date, 0, 10)
+                            : $demandRecord->demand_date->toDateString();
+                        $recipe = $ingredientRecipes->firstWhere('menu_item_id', $demandRecord->menu_item_id);
+                        $conv = $recipe ? ($ingredient->convertToStockUnit((float) $recipe->amount, (string) $recipe->unit) ?? 0.0) : 0.0;
+                        $dailyTotals[$dateKey] = ($dailyTotals[$dateKey] ?? 0.0) + ((float) $demandRecord->quantity * $conv);
+                    }
+
+                    $vals = array_values($dailyTotals);
+                    $count = count($vals);
+                    if ($count > 1) {
+                        $mean = array_sum($vals) / $count;
+                        $variance = array_sum(array_map(fn ($x) => ($x - $mean) ** 2, $vals)) / ($count - 1);
+                        $dailyDemandStdDev = round(sqrt($variance), 4);
+                    }
+                }
+            }
+
+            $totalDemand = (float) ($demandData['demand_quantity'] ?? 0.0);
+            $dailyDemandRate = $horizon > 0 ? ($totalDemand / $horizon) : 0.0;
+            $annualDemand = $dailyDemandRate * 365.0;
+
+            $leadDays = $policy ? (int) $policy->lead_days : 1;
+            $serviceFactor = $policy && (float) $policy->service_factor > 0 ? (float) $policy->service_factor : 1.65;
+            $orderingCost = $policy && (float) $policy->ordering_cost > 0 ? (float) $policy->ordering_cost : null;
+            $annualHoldingCost = $policy && (float) $policy->annual_holding_cost > 0 ? (float) $policy->annual_holding_cost : null;
+            $moq = $policy ? (float) $policy->moq : 0.0;
+            $orderMultiple = $policy && (float) $policy->order_multiple > 0 ? (float) $policy->order_multiple : 1.0;
+            $packSize = $policy && (float) $policy->pack_size > 0 ? (float) $policy->pack_size : 1.0;
+            $available = (float) $ingredient->stock_quantity;
+
+            $input = new InventoryInput(
+                available: $available,
+                dailyDemandStdDev: $dailyDemandStdDev,
+                leadDays: $leadDays,
+                serviceFactor: $serviceFactor,
+                annualDemand: $annualDemand,
+                orderingCost: $orderingCost,
+                annualHoldingCost: $annualHoldingCost,
+                moq: $moq,
+                orderMultiple: $orderMultiple,
+                packSize: $packSize,
+                dailyDemand: $dailyDemandRate,
+                reserved: 0.0,
+            );
+
+            $decision = InventoryOptimizer::recommend($input);
+
+            InventoryRecommendation::updateOrCreate(
+                [
+                    'forecast_run_id' => $run->id,
+                    'ingredient_id' => $ingredient->id,
+                ],
+                [
+                    'supplier_id' => $policy?->supplier_id,
+                    'demand_quantity' => round($totalDemand, 4),
+                    'stock_quantity' => round($available, 4),
+                    'reserved_quantity' => 0.0,
+                    'safety_stock' => round($decision->safetyStock, 4),
+                    'reorder_point' => round($decision->reorderPoint, 4),
+                    'raw_quantity' => round($decision->rawQuantity, 4),
+                    'after_moq_quantity' => round($decision->afterMoqQuantity, 4),
+                    'final_quantity' => round($decision->finalQuantity, 4),
+                    'suggested_quantity' => round($decision->suggestedQuantity, 4),
+                    'method' => $decision->method,
+                    'unit' => (string) $ingredient->unit,
+                    'purchase_unit' => (string) ($ingredient->purchase_unit ?? $ingredient->unit),
+                    'bom_hash' => $bomHash,
+                    'policy_hash' => $policy?->policy_hash,
+                    'stock_snapshot_at' => now(),
+                    'stock_snapshot_quantity' => round($available, 4),
+                    'status' => 'pending',
+                    'notes' => $decision->notes,
+                ]
+            );
         }
     }
 

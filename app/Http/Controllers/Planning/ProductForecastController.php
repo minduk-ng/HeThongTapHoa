@@ -144,7 +144,7 @@ class ProductForecastController extends Controller
 
             $modelKey = $first ? $first->model_key : 'sma_7';
             $dataQuality = $first ? $first->data_quality : 'sufficient';
-            $cutoff = $first ? $first->data_cutoff->toISOString() : $activeRun->data_cutoff->toISOString();
+            $cutoff = $first?->data_cutoff?->toISOString() ?? $activeRun?->data_cutoff?->toISOString() ?? null;
 
             return [
                 'id' => $item->id,

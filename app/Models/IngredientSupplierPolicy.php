@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $ingredient_id
  * @property int $supplier_id
  * @property bool $is_primary
+ * @property bool $is_preferred
  * @property int $lead_days
  * @property float $moq
  * @property float $order_multiple
@@ -33,6 +34,7 @@ class IngredientSupplierPolicy extends Model
         'ingredient_id',
         'supplier_id',
         'is_primary',
+        'is_preferred',
         'lead_days',
         'moq',
         'order_multiple',
@@ -48,6 +50,7 @@ class IngredientSupplierPolicy extends Model
         'ingredient_id' => 'integer',
         'supplier_id' => 'integer',
         'is_primary' => 'boolean',
+        'is_preferred' => 'boolean',
         'lead_days' => 'integer',
         'moq' => 'float',
         'order_multiple' => 'float',
@@ -57,6 +60,17 @@ class IngredientSupplierPolicy extends Model
         'unit_cost' => 'float',
         'service_factor' => 'float',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (IngredientSupplierPolicy $policy) {
+            if ($policy->is_primary && ! $policy->is_preferred) {
+                $policy->is_preferred = true;
+            } elseif ($policy->is_preferred && ! $policy->is_primary) {
+                $policy->is_primary = true;
+            }
+        });
+    }
 
     /** @return BelongsTo<Ingredient, $this> */
     public function ingredient(): BelongsTo

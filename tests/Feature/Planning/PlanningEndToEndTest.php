@@ -234,9 +234,10 @@ it('executes the full demand forecasting and inventory optimization lifecycle en
     // Calculate recipe-level BOM hash consistent with RecommendationFreshness assertion
     $currentBomHash = $demandCalculator->bomHash(ProductRecipe::where('ingredient_id', $ingredient->id)->get());
 
-    $recommendation = InventoryRecommendation::create([
+    $recommendation = InventoryRecommendation::updateOrCreate([
         'forecast_run_id' => $forecastRun->id,
         'ingredient_id' => $ingredient->id,
+    ], [
         'supplier_id' => $supplier->id,
         'demand_quantity' => $ingredientDemandQty,
         'stock_quantity' => (float) $ingredient->stock_quantity,

@@ -13,6 +13,7 @@ return new class extends Migration
             $table->foreignId('ingredient_id')->constrained('ingredients')->cascadeOnDelete();
             $table->foreignId('supplier_id')->constrained('suppliers')->cascadeOnDelete();
             $table->boolean('is_primary')->default(false)->index();
+            $table->boolean('is_preferred')->default(false)->index();
             $table->unsignedInteger('lead_days')->default(1);
             $table->decimal('moq', 12, 4)->default(0);
             $table->decimal('order_multiple', 12, 4)->default(1);

@@ -4,9 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Planning\SyntheticDatasetRequest;
+use App\Models\DailyProductDemand;
+use App\Models\ForecastModelEvaluation;
 use App\Models\ForecastRun;
+use App\Models\InventoryRecommendation;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
+use App\Models\ProcurementPlan;
+use App\Models\ProcurementPlanItem;
+use App\Models\ProductForecast;
 use App\Models\SyntheticDataset;
 use App\Services\Forecasting\SyntheticDemandGenerator;
 use Illuminate\Http\JsonResponse;
@@ -64,6 +70,8 @@ class SyntheticDatasetController extends Controller
 
     public function store(SyntheticDatasetRequest $request, SyntheticDemandGenerator $generator): JsonResponse|RedirectResponse
     {
+        abort_unless(config('forecasting.synthetic_enabled', false), 403, 'Tạo dữ liệu mô phỏng bị vô hiệu hóa.');
+
         $validated = $request->validated();
         $seed = (int) ($validated['seed'] ?? 42);
         $config = (array) ($validated['configuration'] ?? ['days' => 120]);
@@ -99,7 +107,25 @@ class SyntheticDatasetController extends Controller
 
     public function destroy(SyntheticDatasetRequest $request, SyntheticDataset $syntheticDataset): JsonResponse|RedirectResponse
     {
+        abort_unless(config('forecasting.synthetic_enabled', false), 403, 'Tạo dữ liệu mô phỏng bị vô hiệu hóa.');
+
         DB::transaction(function () use ($syntheticDataset) {
+            DailyProductDemand::where('synthetic_dataset_id', $syntheticDataset->id)->delete();
+
+            ForecastRun::where('synthetic_dataset_id', $syntheticDataset->id)->each(function (ForecastRun $run) {
+                ProductForecast::where('forecast_run_id', $run->id)->delete();
+                ForecastModelEvaluation::where('forecast_run_id', $run->id)->delete();
+
+                $recIds = InventoryRecommendation::where('forecast_run_id', $run->id)->pluck('id');
+                if ($recIds->isNotEmpty()) {
+                    ProcurementPlanItem::whereIn('inventory_recommendation_id', $recIds)->delete();
+                    InventoryRecommendation::whereIn('id', $recIds)->delete();
+                }
+
+                ProcurementPlan::where('forecast_run_id', $run->id)->delete();
+                $run->delete();
+            });
+
             $invoiceIds = Invoice::where('synthetic_dataset_id', $syntheticDataset->id)->pluck('id');
 
             if ($invoiceIds->isNotEmpty()) {

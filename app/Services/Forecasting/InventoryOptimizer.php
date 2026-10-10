@@ -9,7 +9,7 @@ class InventoryOptimizer
     /**
      * Recommend inventory reorder quantity and track intermediate stages.
      */
-    public function recommend(InventoryInput $input): InventoryDecision
+    public static function recommend(InventoryInput $input): InventoryDecision
     {
         $available = (float) $input->available;
         $reserved = (float) $input->reserved;

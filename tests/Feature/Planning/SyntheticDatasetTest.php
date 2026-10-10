@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\DailyProductDemand;
+use App\Models\ForecastRun;
 use App\Models\Ingredient;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
@@ -22,6 +24,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->seed(AuthorizationSeeder::class);
+    config(['forecasting.synthetic_enabled' => true]);
 });
 
 function userWithPermission(string ...$permissions): User
@@ -462,4 +465,94 @@ it('excludes synthetic invoices from promotion analytics revenue', function () {
     $promoRow = $promos->firstWhere('id', $promotion->id);
     expect($promoRow)->not->toBeNull()
         ->and((float) $promoRow['revenue'])->toBe(45000.0);
+});
+
+it('blocks store and destroy endpoints when synthetic forecasting is disabled by config', function () {
+    config(['forecasting.synthetic_enabled' => false]);
+    $user = userWithPermission('planning.experiments');
+
+    $dataset = SyntheticDataset::create([
+        'name' => 'disabled-dataset',
+        'seed' => 42,
+        'configuration' => ['days' => 10],
+        'configuration_hash' => hash('sha256', '10'),
+        'generator_version' => '1.0.0',
+        'dataset_hash' => hash('sha256', 'dis'),
+    ]);
+
+    $this->actingAs($user)
+        ->postJson('/admin/synthetic-datasets', [
+            'name' => 'should-fail-creation',
+            'configuration' => ['days' => 5],
+        ])
+        ->assertForbidden();
+
+    $this->actingAs($user)
+        ->deleteJson("/admin/synthetic-datasets/{$dataset->id}", ['confirmation' => 'disabled-dataset'])
+        ->assertForbidden();
+});
+
+it('removes linked DailyProductDemand and ForecastRun records on deletion and never converts them to real data', function () {
+    $item = posMenuItem(['name' => 'Syn Menu Item']);
+
+    $dataset = SyntheticDataset::create([
+        'name' => 'dataset-to-cascade',
+        'seed' => 999,
+        'configuration' => ['days' => 20],
+        'configuration_hash' => hash('sha256', '20'),
+        'generator_version' => '1.0.0',
+        'dataset_hash' => hash('sha256', 'cascade'),
+    ]);
+
+    $synDemand = DailyProductDemand::create([
+        'synthetic_dataset_id' => $dataset->id,
+        'menu_item_id' => $item->id,
+        'demand_date' => '2026-03-01',
+        'quantity' => 15.0,
+        'refunded_quantity' => 0.0,
+        'order_count' => 5,
+    ]);
+
+    $synRun = ForecastRun::create([
+        'kind' => 'forecast',
+        'synthetic_dataset_id' => $dataset->id,
+        'horizon_days' => 7,
+        'data_cutoff' => now()->startOfDay(),
+        'status' => 'completed',
+        'is_active' => true,
+    ]);
+
+    $realDemand = DailyProductDemand::create([
+        'synthetic_dataset_id' => null,
+        'menu_item_id' => $item->id,
+        'demand_date' => '2026-03-01',
+        'quantity' => 25.0,
+        'refunded_quantity' => 0.0,
+        'order_count' => 10,
+    ]);
+
+    $realRun = ForecastRun::create([
+        'kind' => 'forecast',
+        'synthetic_dataset_id' => null,
+        'horizon_days' => 7,
+        'data_cutoff' => now()->startOfDay(),
+        'status' => 'completed',
+        'is_active' => true,
+    ]);
+
+    $user = userWithPermission('planning.experiments');
+
+    $this->actingAs($user)
+        ->deleteJson("/admin/synthetic-datasets/{$dataset->id}", ['confirmation' => 'dataset-to-cascade'])
+        ->assertSuccessful();
+
+    expect(SyntheticDataset::find($dataset->id))->toBeNull()
+        ->and(DailyProductDemand::find($synDemand->id))->toBeNull()
+        ->and(DailyProductDemand::where('synthetic_dataset_id', $dataset->id)->count())->toBe(0)
+        ->and(DailyProductDemand::whereNull('synthetic_dataset_id')->count())->toBe(1)
+        ->and(DailyProductDemand::whereNull('synthetic_dataset_id')->first()->id)->toBe($realDemand->id)
+        ->and(ForecastRun::find($synRun->id))->toBeNull()
+        ->and(ForecastRun::where('synthetic_dataset_id', $dataset->id)->count())->toBe(0)
+        ->and(ForecastRun::whereNull('synthetic_dataset_id')->count())->toBe(1)
+        ->and(ForecastRun::whereNull('synthetic_dataset_id')->first()->id)->toBe($realRun->id);
 });

@@ -67,7 +67,9 @@ class RecommendationFreshness
             $currentBomHash = hash('sha256', "bom:{$ingredient->id}");
         }
 
-        if (! empty($recommendation->bom_hash) && $currentBomHash !== $recommendation->bom_hash) {
+        $allRecipesHash = (new IngredientDemandCalculator)->bomHash(ProductRecipe::all());
+
+        if (! empty($recommendation->bom_hash) && $currentBomHash !== $recommendation->bom_hash && $allRecipesHash !== $recommendation->bom_hash) {
             throw ValidationException::withMessages([
                 'recommendation' => "Công thức định lượng của nguyên liệu '{$ingredient->name}' đã thay đổi kể từ khi tạo đề xuất.",
             ]);

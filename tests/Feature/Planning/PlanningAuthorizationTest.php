@@ -6,6 +6,7 @@ use App\Models\ForecastModelEvaluation;
 use App\Models\ForecastRun;
 use App\Models\Page;
 use App\Models\Permission;
+use App\Models\SecurityAuditLog;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -109,6 +110,13 @@ it('allows model apply for user with planning.apply_model permission', function 
 
     $response->assertRedirect();
     expect(ForecastModelEvaluation::where('model_key', 'sma_7')->value('is_selected'))->toBeTrue();
+
+    $log = SecurityAuditLog::where('action', 'planning.apply_model')->first();
+    expect($log)->not->toBeNull()
+        ->and($log->actor_id)->toBe($user->id)
+        ->and($log->target_type)->toBe(ForecastModelEvaluation::class)
+        ->and($log->after['model_key'])->toBe('sma_7')
+        ->and($log->after['menu_item_id'])->toBe($item->id);
 });
 
 it('enforces granular page permissions across all planning GET pages', function () {

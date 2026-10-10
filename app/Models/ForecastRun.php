@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $synthetic_dataset_id
  * @property string $kind
  * @property int $horizon_days
- * @property CarbonInterface|Carbon $data_cutoff
+ * @property CarbonInterface|Carbon|null $data_cutoff
  * @property string $status
  * @property array<string, mixed>|null $configuration
  * @property CarbonInterface|Carbon|null $started_at

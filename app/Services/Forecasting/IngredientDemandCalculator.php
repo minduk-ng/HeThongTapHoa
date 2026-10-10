@@ -113,7 +113,7 @@ class IngredientDemandCalculator
         return [
             'demands' => $demands,
             'issues' => $issues,
-            'bom_hash' => $this->bomHash($recipes),
+            'bom_hash' => static::bomHash($recipes),
         ];
     }
 
@@ -122,7 +122,7 @@ class IngredientDemandCalculator
      *
      * @param  Collection<int, ProductRecipe>  $recipes
      */
-    public function bomHash(Collection $recipes): string
+    public static function bomHash(Collection $recipes): string
     {
         $tuples = $recipes->map(function ($recipe) {
             $updatedAt = $recipe->updated_at ? $recipe->updated_at->format('Y-m-d H:i:s') : '';

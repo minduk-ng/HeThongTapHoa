@@ -4,14 +4,20 @@ use App\Jobs\Planning\RunDemandForecast;
 use App\Models\DailyProductDemand;
 use App\Models\ForecastModelEvaluation;
 use App\Models\ForecastRun;
+use App\Models\Ingredient;
+use App\Models\IngredientSupplierPolicy;
+use App\Models\InventoryRecommendation;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\ProductForecast;
+use App\Models\ProductRecipe;
+use App\Models\Supplier;
 use App\Models\SyntheticDataset;
 use App\Services\Forecasting\DemandSeriesBuilder;
 use App\Services\Forecasting\ForecastOrchestrator;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
@@ -378,4 +384,137 @@ it('produces insufficient quality forecasts for menu items with short series wit
         expect($f->forecast_quantity)->toBeGreaterThan(0.0)
             ->and($f->data_quality)->toBe('sufficient');
     }
+});
+
+it('automatically creates inventory recommendations for ingredients with recipes during forecast run', function () {
+    $item = posMenuItem(['name' => 'Pho Bo']);
+    $ingredient = Ingredient::create([
+        'code' => 'ING-BEEF',
+        'name' => 'Thit Bo',
+        'unit' => 'kg',
+        'stock_quantity' => 10.0,
+        'min_stock_alert' => 5.0,
+        'cost_price' => 200000.0,
+    ]);
+    $supplier = Supplier::create([
+        'name' => 'Nha Cung Cap Bo',
+        'is_active' => true,
+    ]);
+    IngredientSupplierPolicy::create([
+        'ingredient_id' => $ingredient->id,
+        'supplier_id' => $supplier->id,
+        'is_primary' => true,
+        'lead_days' => 2,
+        'moq' => 5.0,
+        'order_multiple' => 1.0,
+        'pack_size' => 1.0,
+        'ordering_cost' => 50000.0,
+        'annual_holding_cost' => 10000.0,
+        'service_factor' => 1.65,
+        'policy_hash' => hash('sha256', 'policy-beef'),
+    ]);
+
+    ProductRecipe::create([
+        'menu_item_id' => $item->id,
+        'ingredient_id' => $ingredient->id,
+        'amount' => 0.2,
+        'unit' => 'kg',
+    ]);
+
+    $cutoff = Carbon::parse('2026-03-01');
+    for ($i = 0; $i < 14; $i++) {
+        DailyProductDemand::create([
+            'synthetic_dataset_id' => null,
+            'menu_item_id' => $item->id,
+            'demand_date' => $cutoff->copy()->subDays(13 - $i)->toDateString(),
+            'quantity' => 20.0,
+            'refunded_quantity' => 0.0,
+            'order_count' => 10,
+        ]);
+    }
+
+    $run = ForecastRun::create([
+        'kind' => 'forecast',
+        'horizon_days' => 7,
+        'data_cutoff' => $cutoff,
+        'status' => 'queued',
+        'is_active' => false,
+    ]);
+
+    app(ForecastOrchestrator::class)->run($run);
+
+    expect($run->fresh()->status)->toBe('completed');
+
+    $recommendation = InventoryRecommendation::where('forecast_run_id', $run->id)
+        ->where('ingredient_id', $ingredient->id)
+        ->first();
+
+    expect($recommendation)->not->toBeNull()
+        ->and($recommendation->demand_quantity)->toBeGreaterThan(0.0)
+        ->and($recommendation->unit)->toBe('kg')
+        ->and($recommendation->bom_hash)->not->toBeEmpty()
+        ->and($recommendation->policy_hash)->toBe(hash('sha256', 'policy-beef'))
+        ->and($recommendation->supplier_id)->toBe($supplier->id)
+        ->and($recommendation->final_quantity)->toBeGreaterThanOrEqual(0.0);
+});
+
+it('creates inventory recommendations when planning:forecast command is executed', function () {
+    $item = posMenuItem(['name' => 'Com Ga']);
+    $ingredient = Ingredient::create([
+        'code' => 'ING-CHICKEN',
+        'name' => 'Thit Ga',
+        'unit' => 'kg',
+        'stock_quantity' => 5.0,
+        'min_stock_alert' => 2.0,
+        'cost_price' => 80000.0,
+    ]);
+    $supplier = Supplier::create([
+        'name' => 'Nha Cung Cap Ga',
+        'is_active' => true,
+    ]);
+    IngredientSupplierPolicy::create([
+        'ingredient_id' => $ingredient->id,
+        'supplier_id' => $supplier->id,
+        'is_primary' => true,
+        'lead_days' => 1,
+        'moq' => 2.0,
+        'order_multiple' => 1.0,
+        'pack_size' => 1.0,
+        'ordering_cost' => 20000.0,
+        'annual_holding_cost' => 5000.0,
+        'service_factor' => 1.65,
+    ]);
+
+    ProductRecipe::create([
+        'menu_item_id' => $item->id,
+        'ingredient_id' => $ingredient->id,
+        'amount' => 0.25,
+        'unit' => 'kg',
+    ]);
+
+    $cutoff = now()->startOfDay();
+    for ($i = 0; $i < 14; $i++) {
+        DailyProductDemand::create([
+            'synthetic_dataset_id' => null,
+            'menu_item_id' => $item->id,
+            'demand_date' => $cutoff->copy()->subDays(13 - $i)->toDateString(),
+            'quantity' => 10.0,
+            'refunded_quantity' => 0.0,
+            'order_count' => 5,
+        ]);
+    }
+
+    $exitCode = Artisan::call('planning:forecast', ['--horizon' => 7]);
+    expect($exitCode)->toBe(0);
+
+    $latestRun = ForecastRun::where('kind', 'forecast')->latest('id')->first();
+    expect($latestRun)->not->toBeNull();
+
+    $recommendation = InventoryRecommendation::where('forecast_run_id', $latestRun->id)
+        ->where('ingredient_id', $ingredient->id)
+        ->first();
+
+    expect($recommendation)->not->toBeNull()
+        ->and($recommendation->demand_quantity)->toBeGreaterThan(0.0)
+        ->and($recommendation->suggested_quantity)->toBeGreaterThanOrEqual(0.0);
 });

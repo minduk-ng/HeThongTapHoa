@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\Planning\EvaluateForecastModels;
 use App\Models\ForecastModelEvaluation;
 use App\Models\ForecastRun;
+use App\Models\SecurityAuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -191,7 +192,7 @@ class ModelEvaluationController extends Controller
             $runId = $activeRunId !== null ? (int) $activeRunId : null;
         }
 
-        DB::transaction(function () use ($modelKey, $menuItemId, $runId) {
+        DB::transaction(function () use ($request, $modelKey, $menuItemId, $runId) {
             $baseQuery = ForecastModelEvaluation::query();
 
             if ($runId !== null) {
@@ -201,12 +202,36 @@ class ModelEvaluationController extends Controller
                 $baseQuery->where('menu_item_id', $menuItemId);
             }
 
+            $previousSelected = (clone $baseQuery)->where('is_selected', true)->first();
+
             (clone $baseQuery)->update(['is_selected' => false]);
 
             (clone $baseQuery)->where('model_key', $modelKey)->update([
                 'is_selected' => true,
                 'selection_notes' => 'Manually selected by user',
             ]);
+
+            $newSelected = (clone $baseQuery)->where('model_key', $modelKey)->first();
+
+            SecurityAuditLog::record(
+                actor: $request->user(),
+                action: 'planning.apply_model',
+                target: $newSelected ?? ForecastModelEvaluation::class,
+                before: [
+                    'model_key' => $previousSelected?->model_key,
+                    'menu_item_id' => $menuItemId,
+                    'forecast_run_id' => $runId,
+                    'selection_notes' => $previousSelected?->selection_notes,
+                ],
+                after: [
+                    'model_key' => $modelKey,
+                    'menu_item_id' => $menuItemId,
+                    'forecast_run_id' => $runId,
+                    'selection_notes' => 'Manually selected by user',
+                ],
+                ip: $request->ip(),
+                userAgent: $request->userAgent(),
+            );
         });
 
         if ($request->wantsJson()) {
