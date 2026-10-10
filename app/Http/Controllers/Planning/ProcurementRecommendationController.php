@@ -29,11 +29,16 @@ class ProcurementRecommendationController extends Controller
         $activeRun = ForecastRun::where('kind', 'forecast')
             ->where('is_active', true)
             ->when($datasetId !== null, fn ($q) => $q->where('synthetic_dataset_id', $datasetId), fn ($q) => $q->whereNull('synthetic_dataset_id'))
+            ->with('syntheticDataset')
             ->latest('id')
             ->first();
 
         $recommendations = $activeRun
-            ? InventoryRecommendation::with(['ingredient', 'supplier'])
+            ? InventoryRecommendation::with([
+                'ingredient.primarySupplierPolicy.supplier',
+                'ingredient.supplierPolicies.supplier',
+                'supplier',
+            ])
                 ->where('forecast_run_id', $activeRun->id)
                 ->get()
             : [];

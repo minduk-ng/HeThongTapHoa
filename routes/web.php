@@ -145,6 +145,9 @@ Route::middleware('auth')->group(function () {
             ->middleware('permission:planning.run');
         Route::post('/models/apply', [ModelEvaluationController::class, 'applyModel'])
             ->middleware('permission:planning.apply_model');
+
+        Route::get('/synthetic', [SyntheticDatasetController::class, 'index'])
+            ->middleware('permission:planning.experiments');
     });
 
     // Store Management Routes (/manager/)
