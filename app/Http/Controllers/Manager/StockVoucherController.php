@@ -151,7 +151,7 @@ class StockVoucherController extends Controller
             // Fallback: Nếu không match theo prefix trên, bóc tách các token trong note
             if (empty($codes)) {
                 $tokens = array_filter(preg_split('/[\s,;]+/', $voucher->note) ?: []);
-                $matchedInvoices = Invoice::whereIn('invoice_code', $tokens)->pluck('invoice_code')->all();
+                $matchedInvoices = Invoice::whereNull('synthetic_dataset_id')->whereIn('invoice_code', $tokens)->pluck('invoice_code')->all();
                 $matchedOrders = Order::whereIn('order_code', $tokens)->pluck('order_code')->all();
                 $codes = array_merge($matchedInvoices, $matchedOrders);
             }
@@ -162,13 +162,13 @@ class StockVoucherController extends Controller
 
                 $otherCodes = array_diff($codes, $invoiceCodes, $orderCodes);
                 if (! empty($otherCodes)) {
-                    $foundInv = Invoice::whereIn('invoice_code', $otherCodes)->pluck('invoice_code')->all();
+                    $foundInv = Invoice::whereNull('synthetic_dataset_id')->whereIn('invoice_code', $otherCodes)->pluck('invoice_code')->all();
                     $invoiceCodes = array_merge($invoiceCodes, $foundInv);
                     $orderCodes = array_merge($orderCodes, array_diff($otherCodes, $foundInv));
                 }
 
                 if (! empty($invoiceCodes)) {
-                    $invoices = Invoice::whereIn('invoice_code', $invoiceCodes)->with(['lines', 'orders.items.menuItem'])->get();
+                    $invoices = Invoice::whereNull('synthetic_dataset_id')->whereIn('invoice_code', $invoiceCodes)->with(['lines', 'orders.items.menuItem'])->get();
                     foreach ($invoices as $inv) {
                         if ($inv->lines->isNotEmpty()) {
                             foreach ($inv->lines as $line) {

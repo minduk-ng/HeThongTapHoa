@@ -239,6 +239,7 @@ class PromotionController extends Controller
         $query = InvoicePromotion::query()
             ->where('promotion_id', $promotion->id)
             ->join('invoices', 'invoices.id', '=', 'invoice_promotions.invoice_id')
+            ->whereNull('invoices.synthetic_dataset_id')
             ->select('invoices.id', 'invoices.invoice_code', 'invoices.issued_at', 'invoices.table_name',
                 'invoices.subtotal_amount', 'invoices.discount_amount', 'invoices.total_amount', 'invoices.payment_method')
             ->orderBy('invoices.issued_at', 'desc')
@@ -294,7 +295,7 @@ class PromotionController extends Controller
             return 0.0;
         }
 
-        return (float) DB::table('invoices')->whereIn('id', $ids)->sum('total_amount');
+        return (float) DB::table('invoices')->whereNull('synthetic_dataset_id')->whereIn('id', $ids)->sum('total_amount');
     }
 
     /**

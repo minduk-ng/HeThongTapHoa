@@ -34,6 +34,12 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 12,
             ],
             [
+                'name' => 'Dữ liệu mô phỏng',
+                'route_path' => '/admin/synthetic-datasets',
+                'group_name' => 'Thử nghiệm',
+                'sort_order' => 13,
+            ],
+            [
                 'name' => 'Tổng quan',
                 'route_path' => '/',
                 'group_name' => 'Trang chủ',
@@ -284,6 +290,7 @@ class AuthorizationSeeder extends Seeder
             'reports.view',
             'payments.refund', 'deposits.create', 'deposits.refund',
             'suppliers.pay', 'orders.cancel', 'shifts.movement', 'cash-flow.view',
+            'planning.experiments',
         ];
 
         foreach ($permissions as $permission) {

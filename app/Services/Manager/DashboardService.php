@@ -75,8 +75,8 @@ final class DashboardService
     public function kpis(Carbon $start, Carbon $end, Carbon $prevStart, Carbon $prevEnd): array
     {
         return $this->cached('dashboard_kpis_'.$start->toDateString().'_'.$end->toDateString(), 120, function () use ($start, $end, $prevStart, $prevEnd) {
-            $revenue = Invoice::whereBetween('issued_at', [$start, $end])->sum('total_amount');
-            $prevRevenue = Invoice::whereBetween('issued_at', [$prevStart, $prevEnd])->sum('total_amount');
+            $revenue = Invoice::whereNull('synthetic_dataset_id')->whereBetween('issued_at', [$start, $end])->sum('total_amount');
+            $prevRevenue = Invoice::whereNull('synthetic_dataset_id')->whereBetween('issued_at', [$prevStart, $prevEnd])->sum('total_amount');
 
             $diffPercentage = 0;
             if ($prevRevenue > 0) {
@@ -163,7 +163,7 @@ final class DashboardService
     public function chartData(string $range, Carbon $start, Carbon $end): array
     {
         return $this->cached('dashboard_chart_'.$range.'_'.$start->toDateString(), 120, function () use ($range, $start, $end) {
-            $invoices = Invoice::whereBetween('issued_at', [$start, $end])->get();
+            $invoices = Invoice::whereNull('synthetic_dataset_id')->whereBetween('issued_at', [$start, $end])->get();
 
             if ($range === 'today' || $range === 'yesterday') {
                 $data = $invoices->groupBy(fn ($invoice) => Carbon::parse($invoice->issued_at)->hour)
@@ -207,6 +207,7 @@ final class DashboardService
         return $this->cached('dashboard_top_products_'.$start->toDateString().'_'.$end->toDateString(), 300, function () use ($start, $end) {
             return DB::table('invoice_lines')
                 ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
+                ->whereNull('invoices.synthetic_dataset_id')
                 ->whereBetween('invoices.issued_at', [$start, $end])
                 ->selectRaw('invoice_lines.name_snapshot as name, SUM(invoice_lines.quantity) as sales_count')
                 ->groupBy('invoice_lines.name_snapshot')

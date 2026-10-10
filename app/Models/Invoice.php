@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -105,5 +106,14 @@ class Invoice extends Model
     public function syntheticDataset(): BelongsTo
     {
         return $this->belongsTo(SyntheticDataset::class, 'synthetic_dataset_id');
+    }
+
+    /**
+     * @param  Builder<Invoice>  $query
+     * @return Builder<Invoice>
+     */
+    public function scopeReal(Builder $query): Builder
+    {
+        return $query->whereNull('invoices.synthetic_dataset_id');
     }
 }

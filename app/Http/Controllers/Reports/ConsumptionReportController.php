@@ -21,6 +21,7 @@ class ConsumptionReportController extends Controller
         $range = $request->dateRange($defaultStart, $defaultEnd);
 
         $lines = InvoiceLine::whereBetween('created_at', $range)
+            ->whereHas('invoice', fn ($q) => $q->whereNull('synthetic_dataset_id'))
             ->where('quantity', '>', 0)
             ->get(['menu_item_id', 'quantity']);
 

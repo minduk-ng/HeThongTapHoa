@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SyntheticDatasetController;
 use App\Http\Controllers\Admin\UserPermissionController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
@@ -110,6 +111,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/permissions', [UserPermissionController::class, 'index'])->middleware('permission:users.view');
         Route::put('/permissions/{user}', [UserPermissionController::class, 'update'])->middleware('permission:users.edit');
         Route::post('/permissions/bulk', [UserPermissionController::class, 'bulkAction'])->middleware('permission:users.edit');
+
+        // Synthetic Datasets (Planning & Experiments)
+        Route::get('/synthetic-datasets', [SyntheticDatasetController::class, 'index'])->middleware('permission:planning.experiments');
+        Route::post('/synthetic-datasets', [SyntheticDatasetController::class, 'store'])->middleware('permission:planning.experiments');
+        Route::get('/synthetic-datasets/{syntheticDataset}', [SyntheticDatasetController::class, 'show'])->middleware('permission:planning.experiments');
+        Route::delete('/synthetic-datasets/{syntheticDataset}', [SyntheticDatasetController::class, 'destroy'])->middleware('permission:planning.experiments');
     });
 
     // Store Management Routes (/manager/)
