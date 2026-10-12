@@ -8,20 +8,32 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\GoogleProvider;
 
 class GoogleAuthController extends Controller
 {
     public function redirect(): \Symfony\Component\HttpFoundation\RedirectResponse
     {
-        return Socialite::driver('google')->redirect();
+        /** @var GoogleProvider $driver */
+        $driver = Socialite::driver('google');
+
+        return $driver->stateless()->redirect();
     }
 
     public function callback(Request $request): RedirectResponse
     {
         try {
-            $googleUser = Socialite::driver('google')->user();
+            /** @var GoogleProvider $driver */
+            $driver = Socialite::driver('google');
+            $googleUser = $driver->stateless()->user();
         } catch (\Exception $e) {
+            Log::error('Google Auth callback error: '.$e->getMessage(), [
+                'exception' => $e,
+                'input' => $request->except(['code', 'state']),
+            ]);
+
             return redirect('/login')->withErrors([
                 'email' => 'Không thể xác thực với Google. Vui lòng thử lại.',
             ]);

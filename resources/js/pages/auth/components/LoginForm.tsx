@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import GoogleButton from './GoogleButton';
@@ -15,17 +15,22 @@ interface LoginFormProps {
     onSwitchToForgot: () => void;
 }
 
-export default function LoginForm({ onSwitchToSignup, onSwitchToForgot }: LoginFormProps) {
+export default function LoginForm({
+    onSwitchToSignup,
+    onSwitchToForgot,
+}: LoginFormProps) {
+    const { errors: pageErrors } = usePage().props;
     const [showPassword, setShowPassword] = useState(false);
     const [failedAttempts, setFailedAttempts] = useState(0);
     const [showSpinner, setShowSpinner] = useState(false);
 
-    const { data, setData, post, processing, errors, setError, clearErrors } = useForm({
-        email: '',
-        password: '',
-        remember: false,
-        recaptcha_token: '',
-    });
+    const { data, setData, post, processing, errors, setError, clearErrors } =
+        useForm({
+            email: '',
+            password: '',
+            remember: false,
+            recaptcha_token: '',
+        });
 
     useEffect(() => {
         if (!processing) {
@@ -45,15 +50,15 @@ export default function LoginForm({ onSwitchToSignup, onSwitchToForgot }: LoginF
     // Hàm gọi API check số lần sai khi rời ô nhập email (onBlur)
     const checkEmailAttempts = async (email: string) => {
         if (!email || !email.includes('@')) {
-return;
-}
+            return;
+        }
 
         try {
             const res = await fetch('/login/check-attempts', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                 },
                 body: JSON.stringify({ email }),
             });
@@ -74,7 +79,9 @@ return;
         if (failedAttempts >= 5 && siteKey) {
             const initCaptcha = () => {
                 if (window.grecaptcha && window.grecaptcha.render) {
-                    const container = document.getElementById('recaptcha-container');
+                    const container = document.getElementById(
+                        'recaptcha-container',
+                    );
 
                     if (container && container.innerHTML === '') {
                         window.grecaptcha.render('recaptcha-container', {
@@ -102,7 +109,10 @@ return;
         e.preventDefault();
 
         if (failedAttempts >= 5 && !data.recaptcha_token) {
-            setError('recaptcha_token', 'Vui lòng hoàn thành xác thực reCAPTCHA.');
+            setError(
+                'recaptcha_token',
+                'Vui lòng hoàn thành xác thực reCAPTCHA.',
+            );
 
             return;
         }
@@ -110,7 +120,7 @@ return;
         post('/login', {
             onError: () => {
                 // Tăng số lần sai cục bộ khi gửi thất bại
-                setFailedAttempts(prev => prev + 1);
+                setFailedAttempts((prev) => prev + 1);
 
                 // Reset recaptcha checkbox
                 if (window.grecaptcha && window.grecaptcha.reset) {
@@ -122,17 +132,18 @@ return;
                 }
 
                 setData('recaptcha_token', '');
-            }
+            },
         });
     };
 
-    const isSubmitDisabled = processing || (failedAttempts >= 5 && !data.recaptcha_token);
+    const isSubmitDisabled =
+        processing || (failedAttempts >= 5 && !data.recaptcha_token);
 
     return (
         <form onSubmit={handleSubmit} className="space-y-5">
             <div className="text-center">
                 <h2 className="auth-heading">Đăng nhập</h2>
-                <p className="mt-1 auth-subtitle">Chào mừng bạn trở lại</p>
+                <p className="auth-subtitle mt-1">Chào mừng bạn trở lại</p>
             </div>
 
             <div>
@@ -149,7 +160,13 @@ return;
                     placeholder="you@example.com"
                     required
                 />
-                {errors.email && <p className="form-error">{errors.email}</p>}
+                {(errors.email ||
+                    (pageErrors as Record<string, string>)?.email) && (
+                    <p className="form-error">
+                        {errors.email ||
+                            (pageErrors as Record<string, string>)?.email}
+                    </p>
+                )}
             </div>
 
             <div>
@@ -179,7 +196,9 @@ return;
                         )}
                     </button>
                 </div>
-                {errors.password && <p className="form-error">{errors.password}</p>}
+                {errors.password && (
+                    <p className="form-error">{errors.password}</p>
+                )}
             </div>
 
             {/* Google reCAPTCHA v2 explicit container */}
@@ -187,7 +206,9 @@ return;
                 <div className="my-4 flex flex-col items-center justify-center">
                     <div id="recaptcha-container" className="g-recaptcha"></div>
                     {errors.recaptcha_token && (
-                        <p className="form-error mt-2 text-center">{errors.recaptcha_token}</p>
+                        <p className="form-error mt-2 text-center">
+                            {errors.recaptcha_token}
+                        </p>
                     )}
                 </div>
             )}
@@ -214,7 +235,7 @@ return;
             <button
                 type="submit"
                 disabled={isSubmitDisabled}
-                className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
                 {showSpinner ? (
                     <span className="flex items-center justify-center gap-2">
@@ -236,7 +257,11 @@ return;
 
             <p className="auth-footer">
                 Chưa có tài khoản?{' '}
-                <button type="button" onClick={onSwitchToSignup} className="link-primary">
+                <button
+                    type="button"
+                    onClick={onSwitchToSignup}
+                    className="link-primary"
+                >
                     Đăng ký
                 </button>
             </p>
