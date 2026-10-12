@@ -34,18 +34,6 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 12,
             ],
             [
-                'name' => 'Dữ liệu mô phỏng',
-                'route_path' => '/admin/synthetic-datasets',
-                'group_name' => 'Thử nghiệm',
-                'sort_order' => 13,
-            ],
-            [
-                'name' => 'Dữ liệu thử nghiệm',
-                'route_path' => '/admin/planning/synthetic',
-                'group_name' => 'Phân quyền',
-                'sort_order' => 13,
-            ],
-            [
                 'name' => 'Tổng quan',
                 'route_path' => '/planning',
                 'group_name' => 'Dự báo & Kế hoạch',
@@ -68,6 +56,12 @@ class AuthorizationSeeder extends Seeder
                 'route_path' => '/planning/evaluation',
                 'group_name' => 'Dự báo & Kế hoạch',
                 'sort_order' => 53,
+            ],
+            [
+                'name' => 'Dữ liệu mô phỏng',
+                'route_path' => '/admin/synthetic-datasets',
+                'group_name' => 'Dự báo & Kế hoạch',
+                'sort_order' => 54,
             ],
             [
                 'name' => 'Tổng quan',
@@ -272,6 +266,7 @@ class AuthorizationSeeder extends Seeder
 
         // Upgrade path: delete legacy dashboard page row so no duplicate "Tổng quan" nav item
         DB::table('pages')->where('route_path', '/manager/dashboard')->delete();
+        DB::table('pages')->where('route_path', '/admin/planning/synthetic')->delete();
 
         foreach ($pages as $page) {
             DB::table('pages')->updateOrInsert(

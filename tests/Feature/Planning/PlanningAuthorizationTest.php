@@ -147,7 +147,7 @@ it('seeds exact planning pages and permissions', function () {
         ['route_path' => '/planning/products', 'name' => 'Dự báo sản phẩm', 'group_name' => 'Dự báo & Kế hoạch', 'sort_order' => 51],
         ['route_path' => '/planning/procurement', 'name' => 'Đề xuất nhập hàng', 'group_name' => 'Dự báo & Kế hoạch', 'sort_order' => 52],
         ['route_path' => '/planning/evaluation', 'name' => 'Đánh giá mô hình', 'group_name' => 'Dự báo & Kế hoạch', 'sort_order' => 53],
-        ['route_path' => '/admin/planning/synthetic', 'name' => 'Dữ liệu thử nghiệm', 'group_name' => 'Phân quyền', 'sort_order' => 13],
+        ['route_path' => '/admin/synthetic-datasets', 'name' => 'Dữ liệu mô phỏng', 'group_name' => 'Dự báo & Kế hoạch', 'sort_order' => 54],
     ];
 
     foreach ($expectedPages as $expected) {
@@ -192,7 +192,7 @@ it('allows admin full access to planning pages and runs', function () {
     $this->actingAs($admin)->get('/planning/products')->assertOk();
     $this->actingAs($admin)->get('/planning/procurement')->assertOk();
     $this->actingAs($admin)->get('/planning/evaluation')->assertOk();
-    $this->actingAs($admin)->get('/admin/planning/synthetic')->assertOk();
+    $this->actingAs($admin)->get('/admin/synthetic-datasets')->assertOk();
 
     $this->actingAs($admin)->post('/planning/runs', ['horizon_days' => 30])->assertRedirect();
     Queue::assertPushed(RunDemandForecast::class);

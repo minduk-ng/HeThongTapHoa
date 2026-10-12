@@ -88,7 +88,6 @@
 | `/admin/pages` | `Admin\PageController` | `resources/js/pages/admin/PagesManager.tsx` | Quản lý cấu hình trang hệ thống & gom nhóm navigation |
 | `/admin/roles` | `Admin\RoleController` | `resources/js/pages/admin/RolesManager.tsx` | Quản lý nhóm quyền (Role) & phân quyền chi tiết cho trang/chức năng |
 | `/admin/permissions` | `Admin\UserPermissionController` | `resources/js/pages/admin/UsersPermission.tsx` | Gán nhóm quyền (Role) cho tài khoản người dùng |
-| `/admin/planning/synthetic` | `Admin\SyntheticDatasetController` | `resources/js/pages/admin/planning/SyntheticDatasets.tsx` | Quản lý và sinh tập dữ liệu nhu cầu mô phỏng (Synthetic Demand Datasets) |
 
 ### 2.5 Màn Hình Dự Báo & Kế Hoạch (Planning Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
@@ -97,6 +96,7 @@
 | `/planning/products` | `Planning\ProductForecastController` | `resources/js/pages/planning/ProductForecasts.tsx` | Xem dự báo nhu cầu sản phẩm, khoảng tin cậy và chất lượng dữ liệu (quyền `planning.view`) |
 | `/planning/procurement` | `Planning\ProcurementRecommendationController` | `resources/js/pages/planning/ProcurementRecommendations.tsx` | Danh sách đề xuất nhập hàng nguyên liệu theo tồn kho an toàn & ROP (quyền `planning.view`) |
 | `/planning/evaluation` | `Planning\ModelEvaluationController` | `resources/js/pages/planning/ModelEvaluation.tsx` | Kết quả đánh giá so sánh mô hình (WAPE/MAE/RMSE) bằng rolling-origin backtest (quyền `planning.view`) |
+| `/admin/synthetic-datasets` | `Admin\SyntheticDatasetController` | `resources/js/pages/admin/planning/SyntheticDatasets.tsx` | Quản lý và sinh tập dữ liệu nhu cầu mô phỏng (Synthetic Demand Datasets) (quyền `planning.experiments`) |
 
 **Các API xử lý tiến trình & biến động Kế hoạch** (prefix `/planning`, bảo vệ bởi `CheckPageAccess` và granular permission):
 | Endpoint | Method | Middleware / Quyền | Chức Năng |
