@@ -19,8 +19,7 @@ use App\Models\SyntheticDataset;
 use App\Services\Forecasting\DemandSeriesBuilder;
 use App\Services\Forecasting\ForecastOrchestrator;
 use App\Services\Forecasting\IngredientDemandCalculator;
-use App\Services\Forecasting\InventoryInput;
-use App\Services\Forecasting\InventoryOptimizer;
+use App\Services\Forecasting\InventoryRecommendationBuilder;
 use App\Services\Forecasting\SyntheticDemandGenerator;
 use App\Services\Manager\DashboardService;
 use Carbon\Carbon;
@@ -163,7 +162,7 @@ it('executes the full demand forecasting and inventory optimization lifecycle en
         ->and($evalRun->is_active)->toBeTrue();
 
     $evaluations = ForecastModelEvaluation::where('forecast_run_id', $evalRun->id)->get();
-    expect($evaluations)->toHaveCount(5);
+    expect($evaluations)->toHaveCount(7);
 
     $candidateKeys = $evaluations->pluck('model_key')->all();
     expect($candidateKeys)->toContain('sma_7', 'sma_14', 'sma_28', 'holt_winters_additive', 'holt_winters_multiplicative');
@@ -213,54 +212,17 @@ it('executes the full demand forecasting and inventory optimization lifecycle en
     $ingredientDemandQty = (float) $bomConversion['demands'][$ingredient->id]['demand_quantity'];
     expect($ingredientDemandQty)->toEqualWithDelta($totalForecastDemand * 20.0, 0.01);
 
-    // Step 6: Generate inventory recommendation
-    $optimizer = app(InventoryOptimizer::class);
-    $decision = $optimizer->recommend(new InventoryInput(
-        available: (float) $ingredient->stock_quantity,
-        dailyDemandStdDev: 50.0,
-        leadDays: (float) $policy->lead_days,
-        serviceFactor: (float) $policy->service_factor,
-        annualDemand: $ingredientDemandQty * 52.0,
-        orderingCost: (float) $policy->ordering_cost,
-        annualHoldingCost: (float) $policy->annual_holding_cost,
-        moq: (float) $policy->moq,
-        orderMultiple: (float) $policy->order_multiple,
-        dailyDemand: $ingredientDemandQty / 7.0,
-    ));
+    // Step 6: Generate inventory recommendation via immutable snapshot builder
+    app(InventoryRecommendationBuilder::class)->build($forecastRun);
 
-    expect($decision->triggersOrder)->toBeTrue()
-        ->and($decision->finalQuantity)->toBeGreaterThanOrEqual((float) $policy->moq);
+    $recommendation = InventoryRecommendation::where('forecast_run_id', $forecastRun->id)
+        ->where('ingredient_id', $ingredient->id)
+        ->firstOrFail();
 
-    // Calculate recipe-level BOM hash consistent with RecommendationFreshness assertion
-    $currentBomHash = $demandCalculator->bomHash(ProductRecipe::where('ingredient_id', $ingredient->id)->get());
+    expect($recommendation->status)->toBe('pending')
+        ->and($recommendation->explanation)->toBeArray();
 
-    $recommendation = InventoryRecommendation::updateOrCreate([
-        'forecast_run_id' => $forecastRun->id,
-        'ingredient_id' => $ingredient->id,
-    ], [
-        'supplier_id' => $supplier->id,
-        'demand_quantity' => $ingredientDemandQty,
-        'stock_quantity' => (float) $ingredient->stock_quantity,
-        'reserved_quantity' => 0.0,
-        'safety_stock' => $decision->safetyStock,
-        'reorder_point' => $decision->reorderPoint,
-        'raw_quantity' => $decision->rawQuantity,
-        'after_moq_quantity' => $decision->afterMoqQuantity,
-        'final_quantity' => $decision->finalQuantity,
-        'suggested_quantity' => $decision->finalQuantity,
-        'method' => $decision->method,
-        'unit' => $ingredient->unit,
-        'purchase_unit' => $ingredient->purchase_unit ?? $ingredient->unit,
-        'bom_hash' => $currentBomHash,
-        'policy_hash' => null,
-        'stock_snapshot_at' => now()->addMinute(),
-        'stock_snapshot_quantity' => (float) $ingredient->stock_quantity,
-        'status' => 'pending',
-    ]);
-
-    expect($recommendation->status)->toBe('pending');
-
-    // Step 7: Approve procurement plan without modifying stock
+    // Step 7: Approve synthetic procurement plan without modifying stock
     $stockBeforeApproval = (float) $ingredient->fresh()->stock_quantity;
     expect($stockBeforeApproval)->toBe(100.0);
 
@@ -268,7 +230,7 @@ it('executes the full demand forecasting and inventory optimization lifecycle en
         'items' => [
             [
                 'recommendation_id' => $recommendation->id,
-                'final_quantity' => $decision->finalQuantity,
+                'final_quantity' => (float) $recommendation->suggested_quantity,
                 'adjustment_reason' => null,
             ],
         ],
@@ -280,11 +242,11 @@ it('executes the full demand forecasting and inventory optimization lifecycle en
     $plan = ProcurementPlan::with('items')->first();
     expect($plan->status)->toBe('approved')
         ->and($plan->supplier_id)->toBe($supplier->id)
+        ->and($plan->synthetic_dataset_id)->toBe($dataset->id)
         ->and($plan->items)->toHaveCount(1);
 
     $planItem = $plan->items->first();
     expect($planItem->ingredient_id)->toBe($ingredient->id)
-        ->and((float) $planItem->final_quantity)->toBe((float) $decision->finalQuantity)
         ->and($planItem->stock_voucher_item_id)->toBeNull();
 
     expect($recommendation->fresh()->status)->toBe('approved');
@@ -292,41 +254,47 @@ it('executes the full demand forecasting and inventory optimization lifecycle en
     // Assert stock remains strictly unchanged upon plan approval
     expect((float) $ingredient->fresh()->stock_quantity)->toBe($stockBeforeApproval);
 
-    // Step 8: Prefill stock voucher from plan and assert stock updates ONLY upon voucher submission
-    $voucherPageResponse = $this->actingAs($admin)->get("/manager/inventory/vouchers?procurement_plan_id={$plan->id}");
-    $voucherPageResponse->assertOk();
-
-    // Submit actual stock import voucher referencing the procurement plan
-    $importQuantity = (float) $planItem->final_quantity;
-    $submitVoucherResponse = $this->actingAs($admin)->post('/manager/inventory/vouchers', [
-        'type' => 'import',
-        'supplier_id' => $supplier->id,
+    // Step 8: Synthetic plan must never touch operational stock
+    $this->actingAs($admin)->get("/manager/inventory/vouchers?procurement_plan_id={$plan->id}")->assertStatus(422);
+    $this->actingAs($admin)->post('/manager/inventory/vouchers', [
         'procurement_plan_id' => $plan->id,
-        'note' => "Import fulfilled from procurement plan {$plan->plan_code}",
-        'items' => [
-            [
-                'procurement_plan_item_id' => $planItem->id,
-                'ingredient_id' => $ingredient->id,
-                'quantity' => $importQuantity,
-                'unit_price' => (float) $planItem->unit_price,
-                'unit' => $planItem->unit,
-            ],
-        ],
+        'supplier_id' => $supplier->id,
+        'items' => [[
+            'procurement_plan_item_id' => $planItem->id,
+            'ingredient_id' => $ingredient->id,
+            'quantity' => (float) $planItem->final_quantity,
+            'unit_price' => (float) $planItem->unit_price,
+        ]],
+    ])->assertStatus(422);
+    expect((float) $ingredient->fresh()->stock_quantity)->toBe($stockBeforeApproval);
+
+    // Step 8b: Operational plan receipt increases stock in base units
+    $opIngredient = Ingredient::create([
+        'code' => 'ING-OP-RECEIPT',
+        'name' => 'Bột operational',
+        'unit' => 'g',
+        'stock_quantity' => 50.0,
+        'cost_price' => 10.0,
+        'purchase_unit' => 'g',
+        'unit_conversion' => 1.0,
     ]);
-
-    $submitVoucherResponse->assertRedirect();
-
-    // Verify stock updated ONLY upon voucher submission
-    $expectedFinalStock = $stockBeforeApproval + $importQuantity;
-    expect((float) $ingredient->fresh()->stock_quantity)->toBe($expectedFinalStock);
-
-    // Verify plan item and procurement plan are marked fulfilled/completed
-    $planItem->refresh();
-    expect($planItem->stock_voucher_item_id)->not->toBeNull()
-        ->and($planItem->status)->toBe('received');
-
-    $plan->refresh();
-    expect($plan->status)->toBe('completed');
+    $opRec = planningRecommendation($opIngredient, suggestedQuantity: 20.0);
+    $this->actingAs($admin)->post('/planning/procurement/plans', [
+        'items' => [['recommendation_id' => $opRec->id, 'final_quantity' => 20.0, 'adjustment_reason' => null]],
+    ])->assertRedirect();
+    $opPlan = ProcurementPlan::where('forecast_run_id', $opRec->forecast_run_id)->firstOrFail();
+    $opItem = $opPlan->items()->firstOrFail();
+    $this->actingAs($admin)->post('/manager/inventory/vouchers', [
+        'procurement_plan_id' => $opPlan->id,
+        'supplier_id' => $opPlan->supplier_id,
+        'items' => [[
+            'procurement_plan_item_id' => $opItem->id,
+            'ingredient_id' => $opIngredient->id,
+            'quantity' => 20.0,
+            'unit_price' => 10.0,
+        ]],
+    ])->assertRedirect();
+    expect((float) $opIngredient->fresh()->stock_quantity)->toBe(70.0);
 });
 
 it('blocks operational refunds against synthetic invoices', function () {

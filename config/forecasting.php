@@ -14,6 +14,83 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Synthetic Presets
+    |--------------------------------------------------------------------------
+    */
+    'presets' => [
+        'stable' => [
+            'base' => 20.0,
+            'noise' => 0.1,
+            'trend' => 0.0,
+            'weekly' => false,
+            'zero_demand_rate' => 0.0,
+            'outlier_rate' => 0.0,
+            'missing_rate' => 0.0,
+            'stockout_censor_rate' => 0.0,
+            'promotion_rate' => 0.0,
+        ],
+        'weekly_seasonal' => [
+            'base' => 20.0,
+            'noise' => 0.1,
+            'trend' => 0.0,
+            'weekly' => true,
+            'season_mode' => 'additive',
+            'zero_demand_rate' => 0.0,
+            'outlier_rate' => 0.0,
+            'missing_rate' => 0.0,
+            'stockout_censor_rate' => 0.0,
+            'promotion_rate' => 0.0,
+        ],
+        'trend_seasonal' => [
+            'base' => 20.0,
+            'noise' => 0.1,
+            'trend' => 0.002,
+            'weekly' => true,
+            'zero_demand_rate' => 0.0,
+            'outlier_rate' => 0.0,
+            'missing_rate' => 0.0,
+            'stockout_censor_rate' => 0.0,
+            'promotion_rate' => 0.0,
+        ],
+        'intermittent' => [
+            'base' => 20.0,
+            'noise' => 0.1,
+            'trend' => 0.0,
+            'weekly' => false,
+            'zero_demand_rate' => 0.6,
+            'outlier_rate' => 0.0,
+            'missing_rate' => 0.0,
+            'stockout_censor_rate' => 0.0,
+            'promotion_rate' => 0.0,
+        ],
+        'level_shift' => [
+            'base' => 20.0,
+            'noise' => 0.1,
+            'trend' => 0.0,
+            'weekly' => false,
+            'shift_fraction' => 0.65,
+            'shift_factor' => 1.8,
+            'zero_demand_rate' => 0.0,
+            'outlier_rate' => 0.0,
+            'missing_rate' => 0.0,
+            'stockout_censor_rate' => 0.0,
+            'promotion_rate' => 0.0,
+        ],
+        'data_stress' => [
+            'base' => 20.0,
+            'noise' => 0.1,
+            'trend' => 0.0,
+            'weekly' => true,
+            'missing_rate' => 0.08,
+            'stockout_censor_rate' => 0.1,
+            'outlier_rate' => 0.03,
+            'zero_demand_rate' => 0.0,
+            'promotion_rate' => 0.0,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Forecasting Horizon & Windows
     |--------------------------------------------------------------------------
     |
@@ -34,6 +111,8 @@ return [
     */
     'models' => [
         'candidates' => [
+            'naive',
+            'seasonal_naive_7',
             'sma_7',
             'sma_14',
             'sma_28',

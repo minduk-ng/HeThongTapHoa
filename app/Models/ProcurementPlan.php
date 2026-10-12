@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $plan_code
  * @property int|null $supplier_id
  * @property int|null $forecast_run_id
+ * @property int|null $synthetic_dataset_id
  * @property string $status
  * @property int|null $approved_by
  * @property Carbon|null $approved_at
@@ -21,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property Carbon|null $updated_at
  * @property-read Supplier|null $supplier
  * @property-read ForecastRun|null $forecastRun
+ * @property-read SyntheticDataset|null $syntheticDataset
  * @property-read User|null $approver
  * @property-read Collection<int, ProcurementPlanItem> $items
  */
@@ -32,6 +34,7 @@ class ProcurementPlan extends Model
         'plan_code',
         'supplier_id',
         'forecast_run_id',
+        'synthetic_dataset_id',
         'status',
         'approved_by',
         'approved_at',
@@ -41,9 +44,16 @@ class ProcurementPlan extends Model
     protected $casts = [
         'supplier_id' => 'integer',
         'forecast_run_id' => 'integer',
+        'synthetic_dataset_id' => 'integer',
         'approved_by' => 'integer',
         'approved_at' => 'datetime',
     ];
+
+    /** @return BelongsTo<SyntheticDataset, $this> */
+    public function syntheticDataset(): BelongsTo
+    {
+        return $this->belongsTo(SyntheticDataset::class, 'synthetic_dataset_id');
+    }
 
     /** @return BelongsTo<Supplier, $this> */
     public function supplier(): BelongsTo

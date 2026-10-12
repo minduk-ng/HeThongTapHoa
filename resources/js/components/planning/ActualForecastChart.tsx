@@ -209,7 +209,7 @@ export default function ActualForecastChart({
                             <Area
                                 type="monotone"
                                 dataKey="confidenceRange"
-                                name="Khoảng tin cậy"
+                                name="Biên tham khảo (±20%)"
                                 stroke="transparent"
                                 fill="#c084fc"
                                 fillOpacity={0.22}

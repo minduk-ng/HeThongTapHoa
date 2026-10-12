@@ -369,6 +369,7 @@ it('lists synthetic datasets via GET /admin/synthetic-datasets', function () {
 
 it('creates synthetic dataset via POST /admin/synthetic-datasets', function () {
     $user = userWithPermission('planning.experiments');
+    $item = posMenuItem();
 
     $response = $this->actingAs($user)
         ->postJson('/admin/synthetic-datasets', [
@@ -378,6 +379,7 @@ it('creates synthetic dataset via POST /admin/synthetic-datasets', function () {
             'configuration' => [
                 'days' => 5,
                 'orders_per_day' => 10,
+                'menu_item_ids' => [$item->id],
             ],
         ]);
 

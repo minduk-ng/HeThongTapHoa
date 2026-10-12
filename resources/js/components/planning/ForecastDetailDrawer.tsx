@@ -21,9 +21,10 @@ import {
 export interface DailyForecastItem {
     id?: number;
     forecast_date: string;
-    forecast_quantity: number;
+    forecast_quantity: number | null;
     lower_bound?: number | null;
     upper_bound?: number | null;
+    status?: string | null;
 }
 
 export interface ProductForecastItem {
@@ -34,10 +35,10 @@ export interface ProductForecastItem {
     category_name?: string | null;
     price?: number;
     image?: string | null;
-    forecast_quantity: number;
+    forecast_quantity: number | null;
     lower_bound?: number | null;
     upper_bound?: number | null;
-    model_key: string;
+    model_key: string | null;
     data_quality: string;
     data_cutoff?: string | null;
     mae?: number | null;
@@ -132,7 +133,7 @@ export default function ForecastDetailDrawer({
         return null;
     }
 
-    const modelName = MODEL_NAMES[product.model_key] || product.model_key;
+    const modelName = (product.model_key ? MODEL_NAMES[product.model_key] : null) || product.model_key || 'Chưa đủ dữ liệu';
     const hasBounds = product.lower_bound != null && product.upper_bound != null;
 
     return (
@@ -202,7 +203,7 @@ export default function ForecastDetailDrawer({
                             <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-800/50">
                                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                                     <Activity className="h-3.5 w-3.5 text-sky-500" />
-                                    Khoảng tin cậy
+                                    Biên tham khảo
                                 </span>
                                 <div className="mt-1.5 font-display text-sm font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
                                     {hasBounds
@@ -210,7 +211,7 @@ export default function ForecastDetailDrawer({
                                         : 'Không có'}
                                 </div>
                                 <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                                    ±20% ước lượng
+                                    ±20% tham khảo
                                 </span>
                             </div>
 

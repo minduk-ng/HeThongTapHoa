@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * @property int $id
  * @property int|null $synthetic_dataset_id
+ * @property int|null $experiment_id
+ * @property string|null $cell_key
  * @property string $kind
  * @property int $horizon_days
  * @property CarbonInterface|Carbon|null $data_cutoff
@@ -24,8 +26,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonInterface|Carbon|null $created_at
  * @property CarbonInterface|Carbon|null $updated_at
  * @property-read SyntheticDataset|null $syntheticDataset
+ * @property-read ForecastExperiment|null $experiment
  * @property-read Collection<int, ProductForecast> $productForecasts
  * @property-read Collection<int, ForecastModelEvaluation> $modelEvaluations
+ * @property-read Collection<int, ForecastEvaluationPoint> $evaluationPoints
  * @property-read Collection<int, InventoryRecommendation> $recommendations
  * @property-read Collection<int, ProcurementPlan> $procurementPlans
  */
@@ -35,6 +39,8 @@ class ForecastRun extends Model
 
     protected $fillable = [
         'synthetic_dataset_id',
+        'experiment_id',
+        'cell_key',
         'kind',
         'horizon_days',
         'data_cutoff',
@@ -48,6 +54,7 @@ class ForecastRun extends Model
 
     protected $casts = [
         'synthetic_dataset_id' => 'integer',
+        'experiment_id' => 'integer',
         'horizon_days' => 'integer',
         'data_cutoff' => 'datetime',
         'configuration' => 'array',
@@ -72,6 +79,12 @@ class ForecastRun extends Model
         return $this->belongsTo(SyntheticDataset::class, 'synthetic_dataset_id');
     }
 
+    /** @return BelongsTo<ForecastExperiment, $this> */
+    public function experiment(): BelongsTo
+    {
+        return $this->belongsTo(ForecastExperiment::class, 'experiment_id');
+    }
+
     /** @return HasMany<ProductForecast, $this> */
     public function productForecasts(): HasMany
     {
@@ -82,6 +95,12 @@ class ForecastRun extends Model
     public function modelEvaluations(): HasMany
     {
         return $this->hasMany(ForecastModelEvaluation::class, 'forecast_run_id');
+    }
+
+    /** @return HasMany<ForecastEvaluationPoint, $this> */
+    public function evaluationPoints(): HasMany
+    {
+        return $this->hasMany(ForecastEvaluationPoint::class, 'forecast_run_id');
     }
 
     /** @return HasMany<InventoryRecommendation, $this> */

@@ -12,6 +12,7 @@ use App\Models\InventoryRecommendation;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\ProductForecast;
+use App\Services\Forecasting\ForecastRunFactory;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -288,23 +289,14 @@ class PlanningOverviewController extends Controller
         ]);
     }
 
-    public function storeRun(RunForecastRequest $request): SymfonyResponse
+    public function storeRun(RunForecastRequest $request, ForecastRunFactory $factory): SymfonyResponse
     {
         $validated = $request->validated();
         $horizon = (int) ($validated['horizon_days'] ?? config('forecasting.horizons.default', 7));
         $datasetId = isset($validated['synthetic_dataset_id']) ? (int) $validated['synthetic_dataset_id'] : null;
+        $cutoff = isset($validated['cutoff']) ? (string) $validated['cutoff'] : null;
 
-        $run = ForecastRun::create([
-            'kind' => 'forecast',
-            'synthetic_dataset_id' => $datasetId,
-            'horizon_days' => $horizon,
-            'data_cutoff' => now()->startOfDay(),
-            'status' => 'queued',
-            'configuration' => [
-                'horizon_days' => $horizon,
-            ],
-            'is_active' => false,
-        ]);
+        $run = $factory->create('forecast', $datasetId, $horizon, $cutoff);
 
         RunDemandForecast::dispatch($run)->afterCommit();
 

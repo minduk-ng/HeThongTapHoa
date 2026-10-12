@@ -137,8 +137,9 @@ it('groups plan items by supplier into distinct procurement plans', function () 
         'stock_quantity' => 10, 'min_stock_alert' => 5, 'cost_price' => 20000,
     ]);
 
-    $rec1 = planningRecommendation($ing1, 5, ['supplier_id' => $sup1->id]);
-    $rec2 = planningRecommendation($ing2, 8, ['supplier_id' => $sup2->id]);
+    $sharedRunId = planningForecastRun()->id;
+    $rec1 = planningRecommendation($ing1, 5, ['supplier_id' => $sup1->id, 'forecast_run_id' => $sharedRunId]);
+    $rec2 = planningRecommendation($ing2, 8, ['supplier_id' => $sup2->id, 'forecast_run_id' => $sharedRunId]);
 
     $this->actingAs(posAdmin())->post('/planning/procurement/plans', [
         'items' => [
@@ -281,9 +282,11 @@ it('calculates plan item unit price using purchase unit conversion', function ()
     ])->assertRedirect();
 
     $item = ProcurementPlanItem::where('inventory_recommendation_id', $recommendation->id)->firstOrFail();
-    expect($item->unit)->toBe('can')
-        ->and($item->unit_price)->toBe(33250.0)
-        ->and($item->total_price)->toBe(332500.0);
+    expect($item->unit)->toBe('ml')
+        ->and($item->purchase_unit)->toBe('can')
+        ->and($item->purchase_quantity)->toEqualWithDelta(10 / 950, 0.0001)
+        ->and($item->unit_price)->toBe(35.0)
+        ->and($item->total_price)->toBe(350.0);
 });
 
 it('rejects duplicate recommendation ids in items array', function () {
@@ -319,8 +322,9 @@ it('filters already received plan items from voucher prefill', function () {
         'stock_quantity' => 10, 'min_stock_alert' => 5, 'cost_price' => 20000,
     ]);
 
-    $rec1 = planningRecommendation($ing1, 5, ['supplier_id' => $supplier->id]);
-    $rec2 = planningRecommendation($ing2, 8, ['supplier_id' => $supplier->id]);
+    $sharedFilterRunId = planningForecastRun()->id;
+    $rec1 = planningRecommendation($ing1, 5, ['supplier_id' => $supplier->id, 'forecast_run_id' => $sharedFilterRunId]);
+    $rec2 = planningRecommendation($ing2, 8, ['supplier_id' => $supplier->id, 'forecast_run_id' => $sharedFilterRunId]);
 
     $this->actingAs(posAdmin())->post('/planning/procurement/plans', [
         'items' => [

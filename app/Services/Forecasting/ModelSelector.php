@@ -12,17 +12,14 @@ class ModelSelector
      * @var list<string>
      */
     public const CANDIDATES = [
+        'naive',
+        'seasonal_naive_7',
         'sma_7',
         'sma_14',
         'sma_28',
         'holt_winters_additive',
         'holt_winters_multiplicative',
     ];
-
-    /**
-     * Threshold in WAPE percentage points for tie-breaking to MAE.
-     */
-    public const TIE_BREAK_WAPE_THRESHOLD = 0.5;
 
     /**
      * Minimum valid origins required to reselect models.
@@ -34,18 +31,20 @@ class ModelSelector
      *
      * @var array<string, int>
      */
-    private const COMPLEXITY_RANK = [
-        'sma_7' => 1,
-        'sma_14' => 2,
-        'sma_28' => 3,
-        'holt_winters_additive' => 4,
-        'holt_winters_multiplicative' => 5,
+    public const COMPLEXITY_RANK = [
+        'naive' => 1,
+        'seasonal_naive_7' => 2,
+        'sma_7' => 3,
+        'sma_14' => 4,
+        'sma_28' => 5,
+        'holt_winters_additive' => 6,
+        'holt_winters_multiplicative' => 7,
     ];
 
     private const EPSILON = 1e-9;
 
     /**
-     * Select best model using WAPE primary, 0.5-point tie-break to MAE, then simpler model complexity.
+     * Select best model using lowest WAPE (primary), MAE tie-break within EPSILON, then simpler model complexity.
      *
      * @param  array<int|string, array<string, mixed>>  $evaluations
      * @return array{model_key: string, parameters: array<string, mixed>, mae: float, rmse: float, wape: float|null}
@@ -60,17 +59,22 @@ class ModelSelector
 
         $normalized = [];
         foreach ($evaluations as $key => $eval) {
+            $status = (string) ($eval['status'] ?? 'evaluated');
+            if (in_array($status, ['skipped', 'failed'], true)) {
+                continue;
+            }
+
             $modelKey = $eval['model_key'] ?? (is_string($key) ? $key : null);
             if ($modelKey === null || $modelKey === '') {
                 throw new InvalidArgumentException("Missing 'model_key' in evaluation item.");
             }
 
             if (! isset($eval['mae']) || ! is_numeric($eval['mae'])) {
-                throw new InvalidArgumentException("Missing or invalid 'mae' in evaluation for {$modelKey}.");
+                continue;
             }
 
             if (! isset($eval['rmse']) || ! is_numeric($eval['rmse'])) {
-                throw new InvalidArgumentException("Missing or invalid 'rmse' in evaluation for {$modelKey}.");
+                continue;
             }
 
             $wape = null;
@@ -95,30 +99,27 @@ class ModelSelector
             ];
         }
 
+        if (empty($normalized)) {
+            throw new InvalidArgumentException('No evaluable candidates found in evaluations list.');
+        }
+
         // Candidates with valid (non-null) WAPE
         $withWape = array_values(array_filter($normalized, fn ($c) => $c['wape'] !== null));
 
         if (! empty($withWape)) {
             $minWape = min(array_map(fn ($c) => $c['wape'], $withWape));
 
-            // Candidates within 0.5 percentage points of minimum WAPE
-            $wapePool = array_values(array_filter(
+            // Candidates strictly tied on minimum WAPE within numerical tolerance (1e-9)
+            $wapeTies = array_values(array_filter(
                 $withWape,
-                fn ($c) => ($c['wape'] - $minWape) <= (self::TIE_BREAK_WAPE_THRESHOLD + self::EPSILON)
+                fn ($c) => abs($c['wape'] - $minWape) <= self::EPSILON
             ));
 
-            if (empty($wapePool)) {
-                $wapePool = $withWape;
-            }
+            usort($wapeTies, function ($a, $b) {
+                if (abs($a['mae'] - $b['mae']) > self::EPSILON) {
+                    return $a['mae'] <=> $b['mae'];
+                }
 
-            $minMae = min(array_map(fn ($c) => $c['mae'], $wapePool));
-
-            $maePool = array_values(array_filter(
-                $wapePool,
-                fn ($c) => abs($c['mae'] - $minMae) <= self::EPSILON
-            ));
-
-            usort($maePool, function ($a, $b) {
                 $rankA = self::COMPLEXITY_RANK[$a['model_key']] ?? 99;
                 $rankB = self::COMPLEXITY_RANK[$b['model_key']] ?? 99;
                 if ($rankA !== $rankB) {
@@ -128,7 +129,7 @@ class ModelSelector
                 return strcmp($a['model_key'], $b['model_key']);
             });
 
-            return $maePool[0];
+            return $wapeTies[0];
         }
 
         // Fallback when all WAPEs are null: lowest MAE then simplest model
@@ -178,6 +179,12 @@ class ModelSelector
             return ['sma_7', 'sma_14'];
         }
 
-        return self::CANDIDATES;
+        return [
+            'sma_7',
+            'sma_14',
+            'sma_28',
+            'holt_winters_additive',
+            'holt_winters_multiplicative',
+        ];
     }
 }

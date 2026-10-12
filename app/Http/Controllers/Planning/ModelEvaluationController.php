@@ -7,6 +7,8 @@ use App\Jobs\Planning\EvaluateForecastModels;
 use App\Models\ForecastModelEvaluation;
 use App\Models\ForecastRun;
 use App\Models\SecurityAuditLog;
+use App\Services\Forecasting\ForecastModelRunner;
+use App\Services\Forecasting\ForecastRunFactory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -22,21 +24,27 @@ class ModelEvaluationController extends Controller
             ? (int) $request->query('synthetic_dataset_id')
             : null;
 
-        $candidateKeys = [
-            'sma_7',
-            'sma_14',
-            'sma_28',
-            'holt_winters_additive',
-            'holt_winters_multiplicative',
-        ];
+        $candidateKeys = ForecastModelRunner::CANDIDATES;
 
         $approvedMetrics = ['mae', 'rmse', 'wape'];
+
+        $horizonFilter = $request->query('horizon_days') !== null && $request->query('horizon_days') !== ''
+            ? (int) $request->query('horizon_days')
+            : ($request->query('horizon') !== null && $request->query('horizon') !== '' ? (int) $request->query('horizon') : null);
 
         $activeRun = ForecastRun::where('kind', 'evaluate')
             ->where('is_active', true)
             ->when($datasetId !== null, fn ($q) => $q->where('synthetic_dataset_id', $datasetId), fn ($q) => $q->whereNull('synthetic_dataset_id'))
+            ->when($horizonFilter !== null, fn ($q) => $q->where('horizon_days', $horizonFilter))
             ->latest('id')
             ->first();
+        if (! $activeRun && $horizonFilter !== null) {
+            $activeRun = ForecastRun::where('kind', 'evaluate')
+                ->where('is_active', true)
+                ->when($datasetId !== null, fn ($q) => $q->where('synthetic_dataset_id', $datasetId), fn ($q) => $q->whereNull('synthetic_dataset_id'))
+                ->latest('id')
+                ->first();
+        }
 
         $evaluations = $activeRun
             ? ForecastModelEvaluation::with('menuItem')
@@ -44,8 +52,10 @@ class ModelEvaluationController extends Controller
                 ->get()
             : [];
 
-        // Build comparison table for 5 candidate models
+        // Build comparison table for 7 candidate models
         $candidateNames = [
+            'naive' => 'Naive (Lặp điểm cuối)',
+            'seasonal_naive_7' => 'Seasonal Naive (Tuần trước)',
             'sma_7' => 'SMA (7 ngày)',
             'sma_14' => 'SMA (14 ngày)',
             'sma_28' => 'SMA (28 ngày)',
@@ -57,15 +67,19 @@ class ModelEvaluationController extends Controller
 
         $modelComparison = collect($candidateKeys)->map(function ($key) use ($evaluationsCollection, $candidateNames) {
             $filtered = $evaluationsCollection->where('model_key', $key);
-            $count = $filtered->count();
+            $evaluated = $filtered->filter(fn ($e) => $e->mae !== null);
+            $count = $evaluated->count();
+            $withWape = $evaluated->filter(fn ($e) => $e->wape !== null);
 
-            $avgMae = $count > 0 ? (float) $filtered->avg('mae') : 0.0;
-            $avgRmse = $count > 0 ? (float) $filtered->avg('rmse') : 0.0;
-            $avgWape = $count > 0 ? (float) $filtered->avg('wape') : 0.0;
+            $avgMae = $count > 0 ? (float) $evaluated->avg('mae') : null;
+            $avgRmse = $count > 0 ? (float) $evaluated->avg('rmse') : null;
+            $avgWape = $withWape->count() > 0 ? (float) $withWape->avg('wape') : null;
             $selectedCount = $filtered->where('is_selected', true)->count();
-            $originsCount = $count > 0 ? (int) ($filtered->max('origins_evaluated') ?: 8) : 8;
+            $originsCount = $count > 0 ? (int) ($filtered->max('origins_evaluated') ?? 0) : 0;
 
             $parameters = match ($key) {
+                'naive' => [],
+                'seasonal_naive_7' => ['period' => 7],
                 'sma_7' => ['window' => 7],
                 'sma_14' => ['window' => 14],
                 'sma_28' => ['window' => 28],
@@ -77,9 +91,9 @@ class ModelEvaluationController extends Controller
             return [
                 'model_key' => $key,
                 'name' => $candidateNames[$key] ?? $key,
-                'avg_mae' => round($avgMae, 4),
-                'avg_rmse' => round($avgRmse, 4),
-                'avg_wape' => round($avgWape, 4),
+                'avg_mae' => $avgMae !== null ? round($avgMae, 4) : null,
+                'avg_rmse' => $avgRmse !== null ? round($avgRmse, 4) : null,
+                'avg_wape' => $avgWape !== null ? round($avgWape, 4) : null,
                 'selected_count' => $selectedCount,
                 'origins_count' => $originsCount,
                 'is_selected' => $selectedCount > 0,
@@ -134,27 +148,19 @@ class ModelEvaluationController extends Controller
         ]);
     }
 
-    public function storeRun(Request $request): SymfonyResponse
+    public function storeRun(Request $request, ForecastRunFactory $factory): SymfonyResponse
     {
         $validated = $request->validate([
-            'horizon_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'horizon_days' => ['nullable', 'integer', 'in:7,30'],
             'synthetic_dataset_id' => ['nullable', 'integer', 'exists:synthetic_datasets,id'],
+            'cutoff' => ['nullable', 'date_format:Y-m-d'],
         ]);
 
         $horizon = (int) ($validated['horizon_days'] ?? config('forecasting.evaluation.horizon', 7));
         $datasetId = isset($validated['synthetic_dataset_id']) ? (int) $validated['synthetic_dataset_id'] : null;
+        $cutoff = isset($validated['cutoff']) ? (string) $validated['cutoff'] : null;
 
-        $run = ForecastRun::create([
-            'kind' => 'evaluate',
-            'synthetic_dataset_id' => $datasetId,
-            'horizon_days' => $horizon,
-            'data_cutoff' => now()->startOfDay(),
-            'status' => 'queued',
-            'configuration' => [
-                'horizon_days' => $horizon,
-            ],
-            'is_active' => false,
-        ]);
+        $run = $factory->create('evaluate', $datasetId, $horizon, $cutoff);
 
         EvaluateForecastModels::dispatch($run)->afterCommit();
 

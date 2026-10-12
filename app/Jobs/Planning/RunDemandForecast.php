@@ -4,6 +4,7 @@ namespace App\Jobs\Planning;
 
 use App\Models\ForecastRun;
 use App\Services\Forecasting\ForecastOrchestrator;
+use App\Services\Forecasting\ForecastRunFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,13 +21,11 @@ class RunDemandForecast implements ShouldBeUnique, ShouldQueue
 
     public function __construct(?ForecastRun $run = null)
     {
-        $this->run = $run ?? ForecastRun::create([
-            'kind' => 'forecast',
-            'horizon_days' => (int) config('forecasting.horizons.default', 7),
-            'data_cutoff' => now()->startOfDay(),
-            'status' => 'queued',
-            'is_active' => false,
-        ]);
+        $this->run = $run ?? app(ForecastRunFactory::class)->create(
+            'forecast',
+            null,
+            (int) config('forecasting.horizons.default', 7)
+        );
     }
 
     public function uniqueId(): string

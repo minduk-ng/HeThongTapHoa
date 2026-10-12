@@ -35,6 +35,20 @@ class RecommendationFreshness
             ]);
         }
 
+        // For synthetic runs: fail closed against frozen snapshot, never fallback to live DB.
+        if ($run->synthetic_dataset_id !== null) {
+            $config = is_array($run->configuration) ? $run->configuration : [];
+            $snapshot = $config['snapshot'] ?? null;
+            $snapshotHash = is_array($snapshot) ? ($snapshot['content_hash'] ?? null) : null;
+            if (empty($snapshotHash) || empty($recommendation->bom_hash) || $recommendation->bom_hash !== $snapshotHash) {
+                throw ValidationException::withMessages([
+                    'recommendation' => 'Đề xuất mô phỏng không khớp snapshot bất biến của đợt dự báo.',
+                ]);
+            }
+
+            return;
+        }
+
         // 2. Ingredient stock must match recommendation snapshot
         $ingredient = $recommendation->relationLoaded('ingredient')
             ? $recommendation->ingredient

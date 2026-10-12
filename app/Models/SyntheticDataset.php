@@ -13,6 +13,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $name
  * @property string|null $description
  * @property int $seed
+ * @property Carbon|null $start_date
+ * @property Carbon|null $end_date
+ * @property string $status
+ * @property string|null $error_message
  * @property array<string, mixed> $configuration
  * @property string $configuration_hash
  * @property string $generator_version
@@ -22,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property Carbon|null $updated_at
  * @property-read Collection<int, ForecastRun> $forecastRuns
  * @property-read Collection<int, DailyProductDemand> $dailyProductDemands
+ * @property-read Collection<int, SyntheticObservation> $observations
  * @property-read Collection<int, Invoice> $invoices
  * @property-read User|null $creator
  */
@@ -33,6 +38,10 @@ class SyntheticDataset extends Model
         'name',
         'description',
         'seed',
+        'start_date',
+        'end_date',
+        'status',
+        'error_message',
         'configuration',
         'configuration_hash',
         'generator_version',
@@ -42,9 +51,17 @@ class SyntheticDataset extends Model
 
     protected $casts = [
         'seed' => 'integer',
+        'start_date' => 'date',
+        'end_date' => 'date',
         'configuration' => 'array',
         'created_by' => 'integer',
     ];
+
+    /** @return HasMany<SyntheticObservation, $this> */
+    public function observations(): HasMany
+    {
+        return $this->hasMany(SyntheticObservation::class, 'synthetic_dataset_id');
+    }
 
     /** @return HasMany<ForecastRun, $this> */
     public function forecastRuns(): HasMany

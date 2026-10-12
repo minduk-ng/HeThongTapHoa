@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property float|null $stock_snapshot_quantity
  * @property string $status
  * @property string|null $notes
+ * @property array<string, mixed>|null $explanation
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read ForecastRun $forecastRun
@@ -64,6 +65,7 @@ class InventoryRecommendation extends Model
         'stock_snapshot_quantity',
         'status',
         'notes',
+        'explanation',
     ];
 
     protected $casts = [
@@ -81,6 +83,7 @@ class InventoryRecommendation extends Model
         'suggested_quantity' => 'float',
         'stock_snapshot_at' => 'datetime',
         'stock_snapshot_quantity' => 'float',
+        'explanation' => 'array',
     ];
 
     public function getCurrentStockAttribute(): float

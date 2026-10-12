@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Planning;
 
+use App\Models\ForecastRun;
 use App\Models\IngredientSupplierPolicy;
 use App\Models\InventoryRecommendation;
 use Illuminate\Foundation\Http\FormRequest;
@@ -37,19 +38,47 @@ class ReviewProcurementRequest extends FormRequest
             }
 
             $recIds = collect($items)->pluck('recommendation_id')->filter()->all();
-            $recommendations = InventoryRecommendation::whereIn('id', $recIds)->get()->keyBy('id');
+            $recommendations = InventoryRecommendation::with('forecastRun')->whereIn('id', $recIds)->get()->keyBy('id');
+
+            $firstRunId = null;
+            foreach ($items as $item) {
+                if (! isset($item['recommendation_id']) || ! isset($recommendations[$item['recommendation_id']])) {
+                    continue;
+                }
+                $rec = $recommendations[$item['recommendation_id']];
+                $recRun = $rec->relationLoaded('forecastRun') ? $rec->getRelation('forecastRun') : $rec->forecastRun()->first();
+                if (! $recRun instanceof ForecastRun) {
+                    continue;
+                }
+                if ($firstRunId === null) {
+                    $firstRunId = (int) $rec->forecast_run_id;
+                } elseif ((int) $rec->forecast_run_id !== $firstRunId) {
+                    $validator->errors()->add('items', 'Tất cả đề xuất phải thuộc cùng một đợt dự báo.');
+
+                    return;
+                }
+            }
 
             foreach ($items as $index => $item) {
                 if (! isset($item['recommendation_id'], $item['final_quantity'])) {
                     continue;
                 }
 
-                $rec = $recommendations->get($item['recommendation_id']);
-                if (! $rec) {
+                if (! isset($recommendations[$item['recommendation_id']])) {
                     continue;
                 }
+                $rec = $recommendations[$item['recommendation_id']];
 
-                $finalQty = (float) $item['final_quantity'];
+                $finalQtyRaw = $item['final_quantity'];
+                if (! is_finite((float) $finalQtyRaw)) {
+                    $validator->errors()->add("items.{$index}.final_quantity", 'Số lượng phải là số hữu hạn.');
+
+                    continue;
+                }
+                $finalQty = (float) $finalQtyRaw;
+                if ($rec->status !== 'pending') {
+                    $validator->errors()->add("items.{$index}.recommendation_id", 'Đề xuất không ở trạng thái chờ duyệt.');
+                }
                 $suggestedQty = (float) $rec->suggested_quantity;
                 $reason = isset($item['adjustment_reason']) ? trim((string) $item['adjustment_reason']) : '';
 
@@ -63,29 +92,88 @@ class ReviewProcurementRequest extends FormRequest
                     }
                 }
 
-                // ponytail: validate MOQ & order multiple against supplier policy
-                $policy = IngredientSupplierPolicy::where('ingredient_id', $rec->ingredient_id)
-                    ->when($rec->supplier_id, fn ($q, $s) => $q->where('supplier_id', $s))
-                    ->orderByDesc('is_primary')
-                    ->first();
+                $run = $rec->relationLoaded('forecastRun') ? $rec->getRelation('forecastRun') : $rec->forecastRun()->first();
+                if (! $run instanceof ForecastRun) {
+                    continue;
+                }
+                $runConfig = $run->configuration;
+                $snapshot = is_array($runConfig) ? ($runConfig['snapshot'] ?? null) : null;
+                $isSynthetic = $run->synthetic_dataset_id !== null;
+                if ($isSynthetic && ! is_array($snapshot)) {
+                    $validator->errors()->add("items.{$index}.recommendation_id", 'Thiếu snapshot bất biến cho đợt mô phỏng.');
 
-                if ($policy) {
-                    if ($policy->moq > 0 && $finalQty < $policy->moq) {
+                    continue;
+                }
+
+                $snapPolicy = is_array($snapshot) ? ($snapshot['policies'][$rec->ingredient_id] ?? null) : null;
+                $snapIng = is_array($snapshot) ? ($snapshot['ingredients'][$rec->ingredient_id] ?? null) : null;
+
+                if (is_array($snapPolicy)) {
+                    $moq = (float) ($snapPolicy['moq'] ?? 0.0);
+                    $multiple = (float) ($snapPolicy['order_multiple'] ?? 1.0);
+                    $packSize = (float) ($snapPolicy['pack_size'] ?? 0.0);
+                } else {
+                    $policy = IngredientSupplierPolicy::where('ingredient_id', $rec->ingredient_id)
+                        ->when($rec->supplier_id, fn ($q, $s) => $q->where('supplier_id', $s))
+                        ->orderByDesc('is_primary')
+                        ->first();
+                    $moq = $policy ? (float) $policy->moq : 0.0;
+                    $multiple = $policy ? (float) $policy->order_multiple : 1.0;
+                    $packSize = $policy ? (float) $policy->pack_size : 0.0;
+                }
+
+                if ($moq > 0 && $finalQty < $moq - 0.0001) {
+                    $validator->errors()->add(
+                        "items.{$index}.final_quantity",
+                        "Số lượng đặt hàng ({$finalQty}) phải tối thiểu đạt MOQ ({$moq})."
+                    );
+                }
+
+                if ($multiple > 0) {
+                    $ratio = $finalQty / $multiple;
+                    if (abs($ratio - round($ratio)) > 0.0001) {
                         $validator->errors()->add(
                             "items.{$index}.final_quantity",
-                            "Số lượng đặt hàng ({$finalQty}) phải tối thiểu đạt MOQ ({$policy->moq})."
+                            "Số lượng đặt hàng ({$finalQty}) phải là bội số của {$multiple}."
                         );
                     }
+                }
 
-                    if ($policy->order_multiple > 0) {
-                        $ratio = $finalQty / $policy->order_multiple;
-                        if (abs($ratio - round($ratio)) > 0.0001) {
-                            $validator->errors()->add(
-                                "items.{$index}.final_quantity",
-                                "Số lượng đặt hàng ({$finalQty}) phải là bội số của {$policy->order_multiple}."
-                            );
-                        }
+                $baseUnit = $snapIng['unit'] ?? $rec->unit;
+                $purchaseUnit = $snapIng['purchase_unit'] ?? $rec->purchase_unit;
+                $conv = $snapIng['unit_conversion'] ?? null;
+                if ($conv === null) {
+                    $ingLive = $rec->relationLoaded('ingredient') ? $rec->ingredient : null;
+                    $conv = $ingLive ? (float) ($ingLive->unit_conversion ?? 1.0) : 1.0;
+                } else {
+                    $conv = (float) $conv;
+                }
+                if (empty($snapPolicy) && $packSize <= 0) {
+                    $packSize = (float) $conv;
+                }
+
+                if (strtolower(trim((string) $baseUnit)) === strtolower(trim((string) $purchaseUnit))) {
+                    if (abs($conv - 1.0) > 1e-9) {
+                        $validator->errors()->add(
+                            "items.{$index}.final_quantity",
+                            'Cấu hình đơn vị không nhất quán: đơn vị cơ sở trùng đơn vị mua thì hệ số quy đổi phải bằng 1.'
+                        );
+                    } elseif ($packSize <= 0) {
+                        $validator->errors()->add(
+                            "items.{$index}.final_quantity",
+                            'Thiếu pack_size hợp lệ cho đề xuất.'
+                        );
                     }
+                } elseif ($conv > 0 && $packSize > 0 && abs($packSize - $conv) > 1e-6 * max(1.0, $conv)) {
+                    $validator->errors()->add(
+                        "items.{$index}.final_quantity",
+                        'Cấu hình đơn vị không nhất quán: pack_size xung đột unit_conversion.'
+                    );
+                } elseif ($conv <= 0 || $packSize <= 0) {
+                    $validator->errors()->add(
+                        "items.{$index}.final_quantity",
+                        'Thiếu hệ số quy đổi đơn vị hợp lệ.'
+                    );
                 }
             }
         });

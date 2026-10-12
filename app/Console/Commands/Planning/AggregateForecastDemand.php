@@ -3,7 +3,7 @@
 namespace App\Console\Commands\Planning;
 
 use App\Jobs\Planning\AggregateDailyDemand;
-use App\Models\ForecastRun;
+use App\Services\Forecasting\ForecastRunFactory;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -16,24 +16,22 @@ class AggregateForecastDemand extends Command
 
     protected $description = 'Aggregate invoice lines into daily product demand series';
 
-    public function handle(): int
+    public function handle(ForecastRunFactory $factory): int
     {
         $datasetId = $this->option('dataset') !== null ? (int) $this->option('dataset') : null;
         $from = $this->option('from') ? Carbon::parse((string) $this->option('from')) : null;
         $to = $this->option('to') ? Carbon::parse((string) $this->option('to')) : null;
 
-        $run = ForecastRun::create([
-            'kind' => 'aggregate',
-            'synthetic_dataset_id' => $datasetId,
-            'horizon_days' => 0,
-            'data_cutoff' => $to ?? now(),
-            'status' => 'queued',
-            'configuration' => [
+        $run = $factory->create(
+            'aggregate',
+            $datasetId,
+            0,
+            $to?->toDateString(),
+            [
                 'from' => $from?->toDateString(),
                 'to' => $to?->toDateString(),
-            ],
-            'is_active' => false,
-        ]);
+            ]
+        );
 
         AggregateDailyDemand::dispatch($run)->afterCommit();
 

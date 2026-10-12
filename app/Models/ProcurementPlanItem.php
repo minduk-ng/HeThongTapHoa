@@ -14,7 +14,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $supplier_id
  * @property float $suggested_quantity
  * @property float $final_quantity
+ * @property float|null $purchase_quantity
  * @property string $unit
+ * @property string|null $purchase_unit
+ * @property float|null $pack_size
  * @property float $unit_price
  * @property float $total_price
  * @property string|null $adjustment_reason
@@ -40,7 +43,10 @@ class ProcurementPlanItem extends Model
         'supplier_id',
         'suggested_quantity',
         'final_quantity',
+        'purchase_quantity',
         'unit',
+        'purchase_unit',
+        'pack_size',
         'unit_price',
         'total_price',
         'adjustment_reason',
@@ -55,6 +61,8 @@ class ProcurementPlanItem extends Model
         'supplier_id' => 'integer',
         'suggested_quantity' => 'float',
         'final_quantity' => 'float',
+        'purchase_quantity' => 'float',
+        'pack_size' => 'float',
         'unit_price' => 'float',
         'total_price' => 'float',
         'stock_voucher_item_id' => 'integer',

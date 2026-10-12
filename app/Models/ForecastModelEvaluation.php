@@ -12,12 +12,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $menu_item_id
  * @property string $model_key
  * @property array<string, mixed>|null $parameters
- * @property float $mae
- * @property float $rmse
+ * @property float|null $mae
+ * @property float|null $rmse
  * @property float|null $wape
  * @property int $origins_evaluated
  * @property bool $is_selected
  * @property string|null $selection_notes
+ * @property string $status
+ * @property string|null $reason
+ * @property array<string, mixed>|null $validation_sums
+ * @property array<string, mixed>|null $holdout_metrics
  * @property array<string, mixed>|null $metrics
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -39,6 +43,10 @@ class ForecastModelEvaluation extends Model
         'origins_evaluated',
         'is_selected',
         'selection_notes',
+        'status',
+        'reason',
+        'validation_sums',
+        'holdout_metrics',
         'metrics',
     ];
 
@@ -51,6 +59,8 @@ class ForecastModelEvaluation extends Model
         'wape' => 'float',
         'origins_evaluated' => 'integer',
         'is_selected' => 'boolean',
+        'validation_sums' => 'array',
+        'holdout_metrics' => 'array',
         'metrics' => 'array',
     ];
 

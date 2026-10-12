@@ -117,11 +117,13 @@ class ProcurementRecommendationController extends Controller
 
                 $firstRec = $groupItems[0]['recommendation'];
                 $supplierId = $firstRec->supplier_id;
+                $forecastRun = $firstRec->relationLoaded('forecastRun') ? $firstRec->forecastRun : $firstRec->forecastRun()->first();
 
                 $plan = ProcurementPlan::create([
                     'plan_code' => $planCode,
                     'supplier_id' => $supplierId,
                     'forecast_run_id' => $firstRec->forecast_run_id,
+                    'synthetic_dataset_id' => $forecastRun?->synthetic_dataset_id,
                     'status' => 'approved',
                     'approved_by' => $user?->id,
                     'approved_at' => now(),
@@ -132,17 +134,41 @@ class ProcurementRecommendationController extends Controller
                     $itemData = $entry['item'];
                     $rec = $entry['recommendation'];
                     $ingredient = $entry['ingredient'];
+                    $recRun = $rec->relationLoaded('forecastRun') ? $rec->forecastRun : $rec->forecastRun()->first();
+                    $recSnapshot = ($recRun && is_array($recRun->configuration)) ? ($recRun->configuration['snapshot'] ?? null) : null;
+                    $snapIng = is_array($recSnapshot) ? ($recSnapshot['ingredients'][$rec->ingredient_id] ?? null) : null;
 
                     $finalQty = (float) $itemData['final_quantity'];
                     $suggestedQty = (float) $rec->suggested_quantity;
                     $reason = $itemData['adjustment_reason'] ?? null;
 
-                    $unit = $rec->purchase_unit ?: ($rec->unit ?: ($ingredient->purchase_unit ?: $ingredient->unit));
-                    $unitPrice = (float) ($ingredient->cost_price ?? 0.0);
-                    if ($ingredient->purchase_unit && $unit === $ingredient->purchase_unit && (float) ($ingredient->unit_conversion ?? 0) > 0) {
-                        $unitPrice = round($unitPrice * (float) $ingredient->unit_conversion, 2);
-                    }
+                    $unit = (string) ($snapIng['unit'] ?? $rec->unit ?: $ingredient->unit);
+                    $purchaseUnit = (string) ($snapIng['purchase_unit'] ?? $rec->purchase_unit ?: ($ingredient->purchase_unit ?: $unit));
+                    $unitPrice = (float) ($snapIng['cost_price'] ?? $ingredient->cost_price ?? 0.0);
                     $totalPrice = round($finalQty * $unitPrice, 2);
+
+                    $packSize = null;
+                    if (is_array($rec->explanation) && isset($rec->explanation['pack_size'])) {
+                        $packSize = (float) $rec->explanation['pack_size'];
+                    } elseif (is_array($recSnapshot) && isset($recSnapshot['policies'][$rec->ingredient_id]['pack_size'])) {
+                        $packSize = (float) $recSnapshot['policies'][$rec->ingredient_id]['pack_size'];
+                    } elseif ($snapIng !== null && isset($snapIng['unit_conversion'])) {
+                        $packSize = (float) $snapIng['unit_conversion'];
+                    } else {
+                        $packSize = (float) ($ingredient->unit_conversion ?? 0.0);
+                    }
+                    if (! is_finite($packSize) || $packSize <= 0.0) {
+                        abort(422, 'Thiếu pack_size hợp lệ cho đề xuất.');
+                    }
+                    $conv = $snapIng !== null && isset($snapIng['unit_conversion'])
+                        ? (float) $snapIng['unit_conversion']
+                        : (float) ($ingredient->unit_conversion ?? 1.0);
+                    if (strtolower(trim($unit)) === strtolower(trim($purchaseUnit))) {
+                        abort_unless(abs($conv - 1.0) <= 1e-9 && $packSize > 0, 422, 'Cấu hình đơn vị không nhất quán.');
+                    } elseif (abs($packSize - $conv) > 1e-6 * max(1.0, $conv)) {
+                        abort(422, 'pack_size xung đột unit_conversion.');
+                    }
+                    $purchaseQty = round($finalQty / $packSize, 4);
 
                     $planItem = ProcurementPlanItem::create([
                         'procurement_plan_id' => $plan->id,
@@ -151,7 +177,10 @@ class ProcurementRecommendationController extends Controller
                         'supplier_id' => $supplierId,
                         'suggested_quantity' => $suggestedQty,
                         'final_quantity' => $finalQty,
+                        'purchase_quantity' => $purchaseQty,
                         'unit' => $unit,
+                        'purchase_unit' => $purchaseUnit,
+                        'pack_size' => $packSize,
                         'unit_price' => $unitPrice,
                         'total_price' => $totalPrice,
                         'adjustment_reason' => $reason,

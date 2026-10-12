@@ -75,10 +75,13 @@ Origin 4 (Cutoff 77): [ Huấn luyện: t0..t76 ]                   [ Kiểm đ�
 
 ### 3.1 Quy chuẩn Cửa sổ
 - **Cửa sổ khởi đầu (`initial_window`)**: Mặc định 56 ngày (đảm bảo đủ 8 chu kỳ tuần cho mô hình Holt-Winters).
-- **Độ dài dự báo (`horizon`)**: $H = 7$ ngày.
+- **Độ dài dự báo (`horizon`)**: $H = 7$ hoặc $30$ ngày, chạy và lưu độc lập theo từng horizon.
 - **Bước trượt (`step`)**: 7 ngày giữa các điểm cutoff kế tiếp.
-- **Số điểm đánh giá tối thiểu (`min_origins`)**: Tối thiểu 3 origins hợp lệ để đủ điều kiện tái chọn mô hình tự động (`can_reselect = true`). Nếu $< 3$ origins, hệ thống giữ nguyên mô hình mặc định.
-- **Số điểm đánh giá tối đa (`max_origins`)**: Mặc định 8 origins gần nhất.
+- **Số điểm đánh giá tối thiểu (`min_origins`)**: Tối thiểu 3 origins hợp lệ để đủ điều kiện tái chọn mô hình tự động (`can_reselect = true`). Nếu $< 3$ origins, hệ thống giữ fallback và không tự chọn.
+- **Số điểm đánh giá tối đa (`max_origins`)**: 8 origins gần nhất (lấy hậu tố danh sách cutoffs, không phải 8 origins đầu tiên).
+- **Holdout cuối**: Đoạn cuối dài đúng $H$ ngày được giữ riêng, chỉ dùng một lần sau khi đã chọn mô hình trên validation. Thay đổi holdout không làm đổi kết quả lựa chọn.
+- **Chồng lấn ở $H=30$**: Các folds validation có thể chồng lấn ngày đích; kết quả là lỗi theo cặp origin/ngày đích, không phải các ngày độc lập.
+- **Mục tiêu đánh giá**: `observed_sales` (lượng bán quan sát được). `latent_demand` chỉ dùng cho chẩn đoán phụ sau dự báo, không đưa vào mô hình và không dùng để chọn winner.
 
 ---
 
@@ -86,13 +89,21 @@ Origin 4 (Cutoff 77): [ Huấn luyện: t0..t76 ]                   [ Kiểm đ�
 
 ### 4.1 Các Mô Hình Dự Báo Chuỗi Thời Gian
 
+Hệ thống đánh giá 7 cấu hình ứng viên thuộc 3 họ phương pháp:
+
+#### 4.1.0 Các Mô Hình Đối Chứng Cơ Sở (Baselines)
+- **Naive (Điểm cuối)**: Lặp lại quan sát thực tế cuối cùng cho toàn bộ chuỗi tương lai $h \ge 1$:
+  $$\hat{y}_{t+h} = y_t$$
+- **Seasonal Naive 7 (Tuần trước)**: Lặp lại giá trị của cùng ngày trong chu kỳ tuần ($m = 7$) gần nhất:
+  $$\hat{y}_{t+h} = y_{t - m + ((h - 1) \bmod m) + 1}$$
+
 #### 4.1.1 Trung Bình Động Giản Đơn (Simple Moving Average - SMA)
 Với kích thước cửa sổ $k \in \{7, 14, 28\}$:
 $$\hat{y}_{t+1} = \frac{1}{k} \sum_{i=0}^{k-1} y_{t-i}$$
 Khi dự báo nhiều bước $h > 1$, giá trị $\hat{y}_{t+h}$ được tính đệ quy bằng cách đưa giá trị vừa dự báo vào đuôi chuỗi lịch sử.
 
 #### 4.1.2 Holt-Winters Additive (Mô hình Xu hướng & Mùa vụ Cộng)
-Với chu kỳ tuần $m = 7$:
+Với chu kỳ tuần $m = 7$ và các tham số làm trơn cố định $\alpha = 0.2, \beta = 0.1, \gamma = 0.3$:
 - **Mức nền (Level)**:
   $$L_t = \alpha (y_t - S_{t-m}) + (1 - \alpha)(L_{t-1} + T_{t-1})$$
 - **Xu hướng (Trend)**:
@@ -111,7 +122,7 @@ Với chu kỳ tuần $m = 7$:
   $$S_t = \gamma \left(\frac{y_t}{\max(\epsilon, L_t)}\right) + (1 - \gamma) S_{t-m}$$
 - **Dự báo bước $h$**:
   $$\hat{y}_{t+h} = \max(0, (L_t + h \cdot T_t) \cdot S_{t - m + ((h - 1) \bmod m) + 1})$$
-*Trong đó $\epsilon = 10^{-9}$ được dùng để chặn chia cho 0 khi mức nền hoặc chỉ số mùa vụ tiến về 0.*
+*Trong đó $\epsilon = 10^{-9}$ được dùng để chặn chia cho 0 khi mức nền hoặc chỉ số mùa vụ tiến về 0. Mô hình bị bỏ qua (skipped) nếu chuỗi huấn luyện có giá trị không dương.*
 
 ---
 
@@ -130,8 +141,12 @@ Với chuỗi thực tế $y_t$ và chuỗi dự báo $\hat{y}_t$ gồm $n$ quan
   *Quy tắc biên: Nếu mẫu số $\sum_{t=1}^n y_t = 0$, hệ thống trả về `null` thay vì chia cho 0.*
 
 - **Quy tắc Chọn Mô hình**:
-  1. Ưu tiên mô hình có WAPE nhỏ nhất.
-  2. Hòa điểm (Tie-break): Khi độ lệch WAPE giữa 2 ứng viên $\le 0.5\%$, chọn mô hình có MAE thấp hơn.
+  1. Chọn mô hình có WAPE nhỏ nhất trên tập validation.
+  2. Hòa điểm (Tie-break): Khi sai số WAPE bằng nhau trong sai số số học $\le 10^{-9}$, chọn mô hình có MAE thấp hơn, sau đó ưu tiên theo độ phức tạp tăng dần (Naive < Seasonal Naive 7 < SMA-7 < SMA-14 < SMA-28 < HW Cộng < HW Nhân).
+  3. Khi chưa đánh giá hoặc không đủ dữ liệu, các chỉ số hiển thị giá trị `null` ("Chưa đánh giá"), không hiển thị bằng 0.
+
+- **Biên tham khảo Dự báo**:
+  Khoảng dự báo hiển thị là biên tham khảo cố định $\pm 20\%$ quanh giá trị dự báo ($\hat{y} \times 0.8$ đến $\hat{y} \times 1.2$), không phải khoảng tin cậy thống kê.
 
 ---
 
@@ -140,9 +155,10 @@ Với chuỗi thực tế $y_t$ và chuỗi dự báo $\hat{y}_t$ gồm $n$ quan
 #### 4.3.1 Tồn kho An toàn (Safety Stock - SS)
 $$\text{SS} = z \cdot \sigma_d \cdot \sqrt{L}$$
 Trong đó:
-- $z$: Hệ số mức độ phục vụ (Service Factor, mặc định $1.65$ tương ứng 95% không đứt hàng).
-- $\sigma_d$: Độ lệch chuẩn nhu cầu hàng ngày của nguyên liệu.
+- $z$: Hệ số mức độ phục vụ (Service Factor, mặc định $1.65$).
+- $\sigma_d$: Độ lệch chuẩn nhu cầu hàng ngày của nguyên liệu (đã quy đổi qua BOM, cùng đơn vị tồn cơ sở).
 - $L$: Thời gian giao hàng của nhà cung cấp (Lead time tính bằng ngày).
+- Công thức trên là heuristic theo độ lệch chuẩn nhu cầu; hệ thống không bảo đảm xác suất đủ hàng 95% khi nhu cầu thực không tuân theo giả định phân phối chuẩn.
 
 #### 4.3.2 Điểm Đặt Hàng Lại (Reorder Point - ROP)
 $$\text{ROP} = d_L + \text{SS}$$

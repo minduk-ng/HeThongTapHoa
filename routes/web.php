@@ -24,6 +24,8 @@ use App\Http\Controllers\Manager\StocktakeController;
 use App\Http\Controllers\Manager\StockVoucherController;
 use App\Http\Controllers\Manager\SupplierController;
 use App\Http\Controllers\Manager\TableController;
+use App\Http\Controllers\Planning\ForecastExperimentController;
+use App\Http\Controllers\Planning\ForecastExportController;
 use App\Http\Controllers\Planning\ModelEvaluationController;
 use App\Http\Controllers\Planning\PlanningOverviewController;
 use App\Http\Controllers\Planning\ProcurementRecommendationController;
@@ -146,7 +148,17 @@ Route::middleware('auth')->group(function () {
         Route::post('/models/apply', [ModelEvaluationController::class, 'applyModel'])
             ->middleware('permission:planning.apply_model');
 
+        Route::get('/runs/{run}/exports/{file}', [ForecastExportController::class, 'export'])
+            ->middleware('permission:planning.view');
         Route::get('/synthetic', [SyntheticDatasetController::class, 'index'])
+            ->middleware('permission:planning.experiments');
+        Route::post('/experiments', [ForecastExperimentController::class, 'store'])
+            ->middleware('permission:planning.experiments');
+        Route::get('/experiments/{experiment}', [ForecastExperimentController::class, 'show'])
+            ->middleware('permission:planning.experiments');
+        Route::get('/experiments/{experiment}/exports/manifest.json', [ForecastExportController::class, 'experimentManifest'])
+            ->middleware('permission:planning.experiments');
+        Route::get('/experiments/{experiment}/exports/summary.csv', [ForecastExportController::class, 'experimentSummary'])
             ->middleware('permission:planning.experiments');
     });
 

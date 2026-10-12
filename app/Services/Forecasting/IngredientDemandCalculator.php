@@ -118,6 +118,136 @@ class IngredientDemandCalculator
     }
 
     /**
+     * Convert product forecasts to ingredient demands using an immutable planning snapshot.
+     *
+     * @param  array<mixed>|Collection<int, mixed>  $productForecasts
+     * @param  array<string, mixed>  $snapshot
+     * @return array{
+     *     demands: array<int, array<string, mixed>>,
+     *     issues: array<int, array<string, mixed>>,
+     *     bom_hash: string
+     * }
+     */
+    public function calculateSnapshot(array|Collection $productForecasts, array $snapshot): array
+    {
+        $forecastsByItem = $this->normalizeForecasts($productForecasts);
+
+        /** @var array<int, array<string, mixed>> $snapshotIngredients */
+        $snapshotIngredients = $snapshot['ingredients'] ?? [];
+        /** @var list<array<string, mixed>> $snapshotRecipes */
+        $snapshotRecipes = $snapshot['recipes'] ?? [];
+
+        // Group recipes by menu_item_id
+        $recipesByItem = [];
+        foreach ($snapshotRecipes as $rec) {
+            $mId = (int) ($rec['menu_item_id'] ?? 0);
+            $recipesByItem[$mId][] = $rec;
+        }
+
+        $demands = [];
+        $issues = [];
+        $unconvertibleIngredients = [];
+
+        foreach ($forecastsByItem as $menuItemId => $dailyForecasts) {
+            if (empty($recipesByItem[$menuItemId])) {
+                $issues[] = [
+                    'menu_item_id' => $menuItemId,
+                    'type' => 'missing_recipe',
+                    'message' => "Menu item ID {$menuItemId} has forecasts but no recipe BOM defined in snapshot.",
+                ];
+
+                continue;
+            }
+
+            foreach ($recipesByItem[$menuItemId] as $recipe) {
+                $ingredientId = (int) ($recipe['ingredient_id'] ?? 0);
+                $ingredientData = $snapshotIngredients[$ingredientId] ?? null;
+
+                if (! $ingredientData) {
+                    $issues[] = [
+                        'menu_item_id' => $menuItemId,
+                        'ingredient_id' => $ingredientId,
+                        'type' => 'missing_ingredient',
+                        'message' => "Ingredient ID {$ingredientId} not found in snapshot.",
+                    ];
+                    $unconvertibleIngredients[$ingredientId] = true;
+
+                    continue;
+                }
+
+                $recipeAmount = (float) ($recipe['amount'] ?? 0);
+                $recipeUnit = strtolower(trim((string) ($recipe['unit'] ?? '')));
+                $baseUnit = strtolower(trim((string) ($ingredientData['unit'] ?? '')));
+                $purchaseUnit = strtolower(trim((string) ($ingredientData['purchase_unit'] ?? $baseUnit)));
+                $conv = (float) ($ingredientData['unit_conversion'] ?? 1.0);
+
+                // Conversion logic
+                $convertedPerProduct = null;
+                if ($recipeUnit === $baseUnit) {
+                    $convertedPerProduct = $recipeAmount;
+                } elseif ($recipeUnit === $purchaseUnit && $conv > 0.0) {
+                    $convertedPerProduct = $recipeAmount * $conv;
+                } elseif ($recipeUnit === 'g' && $baseUnit === 'kg') {
+                    $convertedPerProduct = $recipeAmount / 1000.0;
+                } elseif ($recipeUnit === 'kg' && $baseUnit === 'g') {
+                    $convertedPerProduct = $recipeAmount * 1000.0;
+                } elseif ($recipeUnit === 'ml' && $baseUnit === 'l') {
+                    $convertedPerProduct = $recipeAmount / 1000.0;
+                } elseif ($recipeUnit === 'l' && $baseUnit === 'ml') {
+                    $convertedPerProduct = $recipeAmount * 1000.0;
+                }
+
+                if ($convertedPerProduct === null) {
+                    $issues[] = [
+                        'menu_item_id' => $menuItemId,
+                        'ingredient_id' => $ingredientId,
+                        'type' => 'unconvertible_unit',
+                        'recipe_unit' => $recipeUnit,
+                        'ingredient_unit' => $baseUnit,
+                        'message' => "Recipe unit '{$recipeUnit}' does not match ingredient base unit '{$baseUnit}' and no conversion applies.",
+                    ];
+                    $unconvertibleIngredients[$ingredientId] = true;
+
+                    continue;
+                }
+
+                if (! isset($demands[$ingredientId])) {
+                    $demands[$ingredientId] = [
+                        'ingredient_id' => $ingredientId,
+                        'ingredient_name' => (string) ($ingredientData['name'] ?? ''),
+                        'unit' => (string) ($ingredientData['unit'] ?? ''),
+                        'purchase_unit' => (string) ($ingredientData['purchase_unit'] ?? $ingredientData['unit'] ?? ''),
+                        'demand_quantity' => 0.0,
+                        'daily_demands' => [],
+                    ];
+                }
+
+                foreach ($dailyForecasts as $date => $productQty) {
+                    $ingQty = round($productQty * $convertedPerProduct, 4);
+                    $demands[$ingredientId]['daily_demands'][$date] = round(
+                        ($demands[$ingredientId]['daily_demands'][$date] ?? 0.0) + $ingQty,
+                        4
+                    );
+                    $demands[$ingredientId]['demand_quantity'] = round(
+                        $demands[$ingredientId]['demand_quantity'] + $ingQty,
+                        4
+                    );
+                }
+            }
+        }
+
+        foreach (array_keys($unconvertibleIngredients) as $rejectedId) {
+            unset($demands[$rejectedId]);
+        }
+
+        return [
+            'demands' => $demands,
+            'issues' => $issues,
+            'bom_hash' => (string) ($snapshot['content_hash'] ?? ''),
+        ];
+    }
+
+    /**
      * Deterministic sha256 BOM hash from sorted (menu_item_id, ingredient_id, amount, unit, updated_at) tuples.
      *
      * @param  Collection<int, ProductRecipe>  $recipes

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Planning\SyntheticDatasetRequest;
+use App\Jobs\Planning\GenerateSyntheticDataset;
 use App\Models\DailyProductDemand;
 use App\Models\ForecastModelEvaluation;
 use App\Models\ForecastRun;
@@ -14,6 +15,7 @@ use App\Models\ProcurementPlan;
 use App\Models\ProcurementPlanItem;
 use App\Models\ProductForecast;
 use App\Models\SyntheticDataset;
+use App\Models\SyntheticObservation;
 use App\Services\Forecasting\SyntheticDemandGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -76,9 +78,7 @@ class SyntheticDatasetController extends Controller
         $seed = (int) ($validated['seed'] ?? 42);
         $config = (array) ($validated['configuration'] ?? ['days' => 120]);
 
-        $demand = $generator->generate($config, $seed);
-        $datasetHash = $generator->hash($demand);
-        $configHash = hash('sha256', (string) json_encode($config));
+        $configHash = SyntheticDemandGenerator::canonicalHash($config);
 
         $dataset = SyntheticDataset::create([
             'name' => (string) $validated['name'],
@@ -87,11 +87,12 @@ class SyntheticDatasetController extends Controller
             'configuration' => $config,
             'configuration_hash' => $configHash,
             'generator_version' => SyntheticDemandGenerator::VERSION,
-            'dataset_hash' => $datasetHash,
+            'dataset_hash' => hash('sha256', "pending:{$seed}"),
+            'status' => 'queued',
             'created_by' => $request->user()?->id,
         ]);
 
-        $generator->persist($dataset, $demand);
+        GenerateSyntheticDataset::dispatch($dataset)->afterCommit();
 
         if ($request->wantsJson() && ! $request->header('X-Inertia')) {
             return response()->json(['data' => $dataset], 201);
@@ -111,6 +112,7 @@ class SyntheticDatasetController extends Controller
 
         DB::transaction(function () use ($syntheticDataset) {
             DailyProductDemand::where('synthetic_dataset_id', $syntheticDataset->id)->delete();
+            SyntheticObservation::where('synthetic_dataset_id', $syntheticDataset->id)->delete();
 
             ForecastRun::where('synthetic_dataset_id', $syntheticDataset->id)->each(function (ForecastRun $run) {
                 ProductForecast::where('forecast_run_id', $run->id)->delete();

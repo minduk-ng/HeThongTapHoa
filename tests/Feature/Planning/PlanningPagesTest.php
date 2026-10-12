@@ -21,7 +21,7 @@ it('returns only approved model keys on evaluation page', function () {
         ->assertInertia(fn ($page) => $page
             ->component('planning/ModelEvaluation')
             ->where('candidate_keys', [
-                'sma_7', 'sma_14', 'sma_28',
+                'naive', 'seasonal_naive_7', 'sma_7', 'sma_14', 'sma_28',
                 'holt_winters_additive', 'holt_winters_multiplicative',
             ]));
 });
@@ -32,7 +32,16 @@ it('returns approved metrics and methodology on evaluation page', function () {
             ->component('planning/ModelEvaluation')
             ->where('metrics', ['mae', 'rmse', 'wape'])
             ->has('methodology')
-            ->has('modelComparison', 5)
+            ->has('modelComparison', 7)
+        );
+});
+
+it('scopes evaluation by horizon and keeps null wape as null', function () {
+    $this->actingAs(posAdmin())->get('/planning/evaluation?horizon_days=30')
+        ->assertInertia(fn ($page) => $page
+            ->component('planning/ModelEvaluation')
+            ->has('modelComparison', 7)
+            ->where('modelComparison.0.avg_wape', null)
         );
 });
 

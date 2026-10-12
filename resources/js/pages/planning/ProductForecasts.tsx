@@ -343,14 +343,14 @@ export default function ProductForecasts({
                                             <th className="px-4 py-3 font-semibold">Mô hình áp dụng</th>
                                             <th className="px-4 py-3 font-semibold">Chất lượng DL</th>
                                             <th className="px-4 py-3 font-semibold text-right">Tổng dự báo ({selectedHorizon}d)</th>
-                                            <th className="px-4 py-3 font-semibold text-right">Khoảng tin cậy</th>
+                                            <th className="px-4 py-3 font-semibold text-right">Biên tham khảo (±20%)</th>
                                             <th className="px-4 py-3 font-semibold text-right">Độ lệch WAPE</th>
                                             <th className="px-6 py-3 font-semibold text-center">Thao tác</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                                         {productList.data.map((item) => {
-                                            const modelLabel = MODEL_NAMES[item.model_key] || item.model_key;
+                                            const modelLabel = (item.model_key ? MODEL_NAMES[item.model_key] : null) || item.model_key || 'Chưa đủ dữ liệu';
                                             const hasBounds = item.lower_bound !== null && item.upper_bound !== null;
 
                                             return (
@@ -378,7 +378,9 @@ export default function ProductForecasts({
                                                         <DataQualityBadge quality={item.data_quality} />
                                                     </td>
                                                     <td className="px-4 py-3.5 text-right font-bold text-slate-900 dark:text-slate-100 tabular-nums">
-                                                        {formatQuantity(item.forecast_quantity)}
+                                                        {item.forecast_quantity !== null && item.forecast_quantity !== undefined
+                                                            ? formatQuantity(item.forecast_quantity)
+                                                            : <span className="font-normal text-slate-400">Chưa đủ dữ liệu</span>}
                                                     </td>
                                                     <td className="px-4 py-3.5 text-right text-slate-500 dark:text-slate-400 tabular-nums">
                                                         {hasBounds
@@ -411,7 +413,7 @@ export default function ProductForecasts({
                             {/* Mobile Card List (shown on mobile only) */}
                             <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
                                 {productList.data.map((item) => {
-                                    const modelLabel = MODEL_NAMES[item.model_key] || item.model_key;
+                                    const modelLabel = (item.model_key ? MODEL_NAMES[item.model_key] : null) || item.model_key || 'Chưa đủ dữ liệu';
                                     const hasBounds = item.lower_bound !== null && item.upper_bound !== null;
 
                                     return (
@@ -455,7 +457,7 @@ export default function ProductForecasts({
                                                 </div>
                                                 {hasBounds && (
                                                     <div className="col-span-2 text-[11px] text-slate-400 dark:text-slate-500 tabular-nums">
-                                                        Khoảng tin cậy: {formatQuantity(item.lower_bound)} - {formatQuantity(item.upper_bound)}
+                                                        Biên tham khảo: {formatQuantity(item.lower_bound)} - {formatQuantity(item.upper_bound)}
                                                     </div>
                                                 )}
                                             </div>

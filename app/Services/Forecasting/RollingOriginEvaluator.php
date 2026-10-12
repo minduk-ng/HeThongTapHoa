@@ -37,12 +37,15 @@ class RollingOriginEvaluator
 
     private ?HoltWintersForecaster $holtWintersForecaster = null;
 
+    private ForecastModelRunner $runner;
+
     /**
      * @param  array<string, mixed>  $forecasters
      */
-    public function __construct(array $forecasters = [])
+    public function __construct(array $forecasters = [], ?ForecastModelRunner $runner = null)
     {
         $this->forecasters = $forecasters;
+        $this->runner = $runner ?? app(ForecastModelRunner::class);
     }
 
     /**
@@ -64,7 +67,252 @@ class RollingOriginEvaluator
     }
 
     /**
-     * Perform leak-free expanding-window rolling-origin evaluation across candidate models.
+     * Evaluate observations with strictly leak-free validation and holdout separation.
+     *
+     * @param  list<array{date: string, observed_sales: float|null, is_open: bool, is_missing: bool, is_stockout: bool}>  $rows
+     * @return array{
+     *     origins: list<array<string, mixed>>,
+     *     evaluations: list<array<string, mixed>>,
+     *     selected: array<string, mixed>|null,
+     *     can_reselect: bool,
+     *     origins_count: int,
+     *     holdout: array<string, mixed>,
+     *     points: list<array<string, mixed>>
+     * }
+     */
+    public function evaluateObservations(
+        array $rows,
+        int $horizon,
+        int $initialWindow = 56,
+        int $step = 7,
+        int $maxOrigins = 8
+    ): array {
+        if ($horizon <= 0) {
+            throw new InvalidArgumentException("Horizon must be greater than zero, got {$horizon}.");
+        }
+
+        usort($rows, fn ($a, $b) => strcmp($a['date'], $b['date']));
+        $totalRows = count($rows);
+
+        if ($totalRows < ($horizon + 1)) {
+            return [
+                'origins' => [],
+                'evaluations' => [],
+                'selected' => null,
+                'can_reselect' => false,
+                'origins_count' => 0,
+                'holdout' => [],
+                'points' => [],
+            ];
+        }
+
+        // Split pre-holdout vs final holdout
+        $preHoldoutRows = array_slice($rows, 0, -$horizon);
+        $holdoutRows = array_slice($rows, -$horizon);
+        $preHoldoutCount = count($preHoldoutRows);
+
+        // Find nearest validation cutoffs
+        $allCutoffs = [];
+        for ($c = $initialWindow; $c + $horizon <= $preHoldoutCount; $c += $step) {
+            $allCutoffs[] = $c;
+        }
+
+        $cutoffs = count($allCutoffs) > $maxOrigins ? array_slice($allCutoffs, -$maxOrigins) : $allCutoffs;
+
+        $points = [];
+        $originsData = [];
+        $candidates = ForecastModelRunner::CANDIDATES;
+
+        /** @var array<string, list<float|null>> $candActuals */
+        $candActuals = [];
+        /** @var array<string, list<float|null>> $candPreds */
+        $candPreds = [];
+        foreach ($candidates as $k) {
+            $candActuals[$k] = [];
+            $candPreds[$k] = [];
+        }
+
+        $preprocessor = new DemandPreprocessor;
+        $candSuccess = [];
+        foreach ($candidates as $k) {
+            $candSuccess[$k] = 0;
+        }
+
+        foreach ($cutoffs as $idx => $cutoff) {
+            $trainSlice = array_slice($preHoldoutRows, 0, $cutoff);
+            $originDate = (string) $trainSlice[count($trainSlice) - 1]['date'];
+
+            $trainPrep = $preprocessor->prepare($trainSlice, $originDate);
+            $valSlice = array_slice($preHoldoutRows, $cutoff, $horizon);
+
+            $foldActuals = array_map(fn ($r) => $r['observed_sales'] !== null ? (float) $r['observed_sales'] : null, $valSlice);
+            $foldDates = array_map(fn ($r) => (string) $r['date'], $valSlice);
+
+            $foldForecasts = [];
+            $foldMetrics = [];
+
+            foreach ($candidates as $candKey) {
+                $runRes = $this->runner->run($candKey, $trainPrep['values'], $horizon);
+
+                if ($runRes['status'] === 'evaluated' && ! empty($runRes['predictions'])) {
+                    $candSuccess[$candKey]++;
+                    $foldForecasts[$candKey] = $runRes['predictions'];
+                    $foldMetrics[$candKey] = ForecastMetrics::summarize($foldActuals, $runRes['predictions']);
+
+                    for ($h = 0; $h < $horizon; $h++) {
+                        $act = $foldActuals[$h];
+                        $pred = $runRes['predictions'][$h] ?? null;
+
+                        $candActuals[$candKey][] = $act;
+                        $candPreds[$candKey][] = $pred;
+
+                        $points[] = [
+                            'stage' => 'validation',
+                            'origin_date' => $originDate,
+                            'target_date' => $foldDates[$h],
+                            'model_key' => $candKey,
+                            'observed_actual' => $act,
+                            'predicted' => $pred,
+                            'status' => 'evaluated',
+                            'reason' => null,
+                        ];
+                    }
+                } else {
+                    $foldForecasts[$candKey] = [];
+                    $foldMetrics[$candKey] = ['mae' => null, 'rmse' => null, 'wape' => null];
+
+                    for ($h = 0; $h < $horizon; $h++) {
+                        $points[] = [
+                            'stage' => 'validation',
+                            'origin_date' => $originDate,
+                            'target_date' => $foldDates[$h],
+                            'model_key' => $candKey,
+                            'observed_actual' => $foldActuals[$h],
+                            'predicted' => null,
+                            'status' => $runRes['status'],
+                            'reason' => $runRes['reason'],
+                        ];
+                    }
+                }
+            }
+
+            $originsData[] = [
+                'origin_index' => $idx,
+                'cutoff' => $cutoff,
+                'origin_date' => $originDate,
+                'horizon' => $horizon,
+                'actual' => $foldActuals,
+                'forecasts' => $foldForecasts,
+                'metrics' => $foldMetrics,
+            ];
+        }
+
+        // Aggregate validation metrics per candidate; only fully successful candidates are eligible.
+        $evaluations = [];
+        $totalCutoffs = count($cutoffs);
+        foreach ($candidates as $candKey) {
+            $summary = ForecastMetrics::summarize($candActuals[$candKey], $candPreds[$candKey]);
+            $defaultParams = $this->runner->defaultParametersFor($candKey);
+            $successCount = (int) $candSuccess[$candKey];
+            $eligible = $successCount === $totalCutoffs && $totalCutoffs > 0 && $summary['scored_count'] > 0;
+
+            $evaluations[] = [
+                'model_key' => $candKey,
+                'parameters' => $defaultParams,
+                'mae' => $eligible ? $summary['mae'] : null,
+                'rmse' => $eligible ? $summary['rmse'] : null,
+                'wape' => $eligible ? $summary['wape'] : null,
+                'origins_count' => $successCount,
+                'successful_origins' => $successCount,
+                'eligible_for_selection' => $eligible,
+                'status' => $eligible ? 'evaluated' : 'skipped',
+                'reason' => $eligible ? null : ($successCount < $totalCutoffs ? "Only {$successCount}/{$totalCutoffs} folds succeeded." : 'No scored points.'),
+                'validation_sums' => [
+                    'sum_abs_error' => $summary['sum_abs_error'],
+                    'sum_sq_error' => $summary['sum_sq_error'],
+                    'sum_actual' => $summary['sum_actual'],
+                    'scored_count' => $summary['scored_count'],
+                ],
+            ];
+        }
+
+        $canReselect = count($cutoffs) >= self::MIN_ORIGINS;
+        $selected = null;
+        if ($canReselect) {
+            try {
+                $selected = ModelSelector::select($evaluations);
+            } catch (\Throwable) {
+                $selected = null;
+            }
+        }
+
+        // Final holdout evaluation (strictly separated from model selection)
+        $holdoutOriginDate = (string) $preHoldoutRows[$preHoldoutCount - 1]['date'];
+        $holdoutPrep = $preprocessor->prepare($preHoldoutRows, $holdoutOriginDate);
+
+        $holdoutActuals = array_map(fn ($r) => $r['observed_sales'] !== null ? (float) $r['observed_sales'] : null, $holdoutRows);
+        $holdoutDates = array_map(fn ($r) => (string) $r['date'], $holdoutRows);
+
+        $holdoutKeys = array_values(array_unique(array_filter([
+            $selected['model_key'] ?? null,
+            'naive',
+            'seasonal_naive_7',
+            'sma_7',
+        ])));
+
+        $holdoutMetrics = [];
+        foreach ($holdoutKeys as $hKey) {
+            $hRes = $this->runner->run($hKey, $holdoutPrep['values'], $horizon);
+            if ($hRes['status'] === 'evaluated') {
+                $summary = ForecastMetrics::summarize($holdoutActuals, $hRes['predictions']);
+                $holdoutMetrics[$hKey] = $summary;
+
+                for ($h = 0; $h < $horizon; $h++) {
+                    $points[] = [
+                        'stage' => 'holdout',
+                        'origin_date' => $holdoutOriginDate,
+                        'target_date' => $holdoutDates[$h],
+                        'model_key' => $hKey,
+                        'observed_actual' => $holdoutActuals[$h],
+                        'predicted' => $hRes['predictions'][$h] ?? null,
+                        'status' => 'evaluated',
+                        'reason' => null,
+                    ];
+                }
+            } else {
+                $holdoutMetrics[$hKey] = ['mae' => null, 'rmse' => null, 'wape' => null];
+
+                for ($h = 0; $h < $horizon; $h++) {
+                    $points[] = [
+                        'stage' => 'holdout',
+                        'origin_date' => $holdoutOriginDate,
+                        'target_date' => $holdoutDates[$h],
+                        'model_key' => $hKey,
+                        'observed_actual' => $holdoutActuals[$h],
+                        'predicted' => null,
+                        'status' => $hRes['status'],
+                        'reason' => $hRes['reason'],
+                    ];
+                }
+            }
+        }
+
+        return [
+            'origins' => $originsData,
+            'evaluations' => $evaluations,
+            'selected' => $selected,
+            'can_reselect' => $canReselect,
+            'origins_count' => count($cutoffs),
+            'holdout' => [
+                'origin_date' => $holdoutOriginDate,
+                'metrics' => $holdoutMetrics,
+            ],
+            'points' => $points,
+        ];
+    }
+
+    /**
+     * Backward-compatible evaluate on numeric series array.
      *
      * @param  array<int, float|int>  $series
      * @param  array<int|string, mixed>  $candidates

@@ -61,6 +61,7 @@ class StockVoucherController extends Controller
             $planId = (int) $request->input('procurement_plan_id');
             $plan = ProcurementPlan::query()->with(['items.ingredient', 'supplier'])->whereKey($planId)->first();
             if ($plan instanceof ProcurementPlan) {
+                abort_if($plan->synthetic_dataset_id !== null || $plan->forecastRun?->synthetic_dataset_id !== null, 422, 'Kế hoạch mô phỏng không được nhập vào kho vận hành.');
                 $prefill = [
                     'procurement_plan_id' => $plan->id,
                     'plan_code' => $plan->plan_code,
@@ -109,6 +110,30 @@ class StockVoucherController extends Controller
         $employeeId = Employee::idForUser($userId);
 
         DB::transaction(function () use ($validated, $userId, $employeeId) {
+            $planIds = [];
+            if (! empty($validated['procurement_plan_id'])) {
+                $planIds[] = (int) $validated['procurement_plan_id'];
+            }
+            foreach ($validated['items'] as $inputItem) {
+                if (! empty($inputItem['procurement_plan_item_id'])) {
+                    $linkedItem = ProcurementPlanItem::whereKey($inputItem['procurement_plan_item_id'])->lockForUpdate()->first();
+                    if ($linkedItem === null) {
+                        abort(422, 'Dòng kế hoạch không hợp lệ.');
+                    }
+                    abort_if($linkedItem->ingredient_id !== (int) $inputItem['ingredient_id'] || $linkedItem->stock_voucher_item_id !== null, 422, 'Dòng kế hoạch không hợp lệ hoặc đã nhập kho.');
+                    abort_if(! empty($validated['procurement_plan_id']) && $linkedItem->procurement_plan_id !== (int) $validated['procurement_plan_id'], 422, 'Dòng hàng không thuộc kế hoạch đã chọn.');
+                    $planIds[] = $linkedItem->procurement_plan_id;
+                }
+            }
+            foreach (array_unique($planIds) as $planId) {
+                $linkedPlan = ProcurementPlan::whereKey($planId)->lockForUpdate()->first();
+                if ($linkedPlan === null) {
+                    abort(422, 'Kế hoạch không hợp lệ.');
+                }
+                abort_if($linkedPlan->synthetic_dataset_id !== null || $linkedPlan->forecastRun?->synthetic_dataset_id !== null, 422, 'Kế hoạch mô phỏng không được nhập vào kho vận hành.');
+                abort_if($linkedPlan->status !== 'approved', 422, 'Kế hoạch không ở trạng thái chờ nhập kho.');
+                abort_if($linkedPlan->supplier_id !== (isset($validated['supplier_id']) ? (int) $validated['supplier_id'] : null), 422, 'Nhà cung cấp không khớp kế hoạch.');
+            }
             $dateStr = now()->format('Ymd');
             $prefix = "PN-{$dateStr}-";
             $maxSeq = StockVoucher::where('voucher_code', 'like', $prefix.'%')

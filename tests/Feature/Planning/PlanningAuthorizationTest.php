@@ -194,6 +194,6 @@ it('allows admin full access to planning pages and runs', function () {
     $this->actingAs($admin)->get('/planning/evaluation')->assertOk();
     $this->actingAs($admin)->get('/admin/planning/synthetic')->assertOk();
 
-    $this->actingAs($admin)->post('/planning/runs', ['horizon_days' => 14])->assertRedirect();
+    $this->actingAs($admin)->post('/planning/runs', ['horizon_days' => 30])->assertRedirect();
     Queue::assertPushed(RunDemandForecast::class);
 });

@@ -101,7 +101,13 @@ class GenerateMockDataCommand extends Command
             });
         }
 
-        $config = [
+        $itemIds = MenuItem::pluck('id')->all();
+        if (empty($itemIds)) {
+            $this->error('No menu items available to generate synthetic dataset.');
+
+            return self::FAILURE;
+        }
+        $rawConfig = [
             'days' => $days,
             'orders_per_day' => $ordersPerDay,
             'start_date' => now()->subDays($days - 1)->toDateString(),
@@ -113,7 +119,8 @@ class GenerateMockDataCommand extends Command
             'missing_rate' => 0.0,
             'stockout_censor_rate' => 0.01,
         ];
-        $configHash = hash('sha256', (string) json_encode($config));
+        $config = SyntheticDemandGenerator::resolveConfiguration($rawConfig, array_values(array_map('intval', $itemIds)));
+        $configHash = SyntheticDemandGenerator::canonicalHash($config);
 
         $dataset = SyntheticDataset::firstOrCreate(
             ['name' => $datasetName],

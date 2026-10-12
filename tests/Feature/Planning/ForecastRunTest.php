@@ -74,13 +74,14 @@ it('keeps the previous run active when forecasting fails', function () {
         ]);
     }
 
-    $failingOrchestrator = new ForecastOrchestrator(
-        customForecasters: [
-            'sma_7' => function () {
-                throw new RuntimeException('Candidate forecasting calculation exploded');
-            },
-        ]
-    );
+    $failingSeriesBuilder = new class extends DemandSeriesBuilder
+    {
+        public function observations(int $menuItemId, ?int $syntheticDatasetId, string $from, string $through): array
+        {
+            throw new RuntimeException('Candidate forecasting calculation exploded');
+        }
+    };
+    $failingOrchestrator = new ForecastOrchestrator(seriesBuilder: $failingSeriesBuilder);
 
     $failingOrchestrator->run($new);
 
@@ -371,7 +372,8 @@ it('produces insufficient quality forecasts for menu items with short series wit
 
     expect($shortForecasts->count())->toBe(7);
     foreach ($shortForecasts as $f) {
-        expect($f->forecast_quantity)->toBe(0.0)
+        expect((float) $f->forecast_quantity)->toBe(5.0)
+            ->and($f->status)->toBe('available')
             ->and($f->data_quality)->toBe('insufficient');
     }
 

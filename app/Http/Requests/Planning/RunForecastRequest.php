@@ -17,8 +17,9 @@ class RunForecastRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'horizon_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'horizon_days' => ['nullable', 'integer', 'in:7,30'],
             'synthetic_dataset_id' => ['nullable', 'integer', 'exists:synthetic_datasets,id'],
+            'cutoff' => ['nullable', 'date_format:Y-m-d'],
         ];
     }
 }

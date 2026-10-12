@@ -6,6 +6,8 @@ export type RunStatusKey = 'empty' | 'queued' | 'running' | 'completed' | 'faile
 export type QualityTone = 'emerald' | 'amber' | 'rose' | 'zinc';
 
 export const MODEL_NAMES: Record<string, string> = {
+    naive: 'Naive (Lặp điểm cuối)',
+    seasonal_naive_7: 'Seasonal Naive (Tuần trước)',
     sma_7: 'SMA (7 ngày)',
     sma_14: 'SMA (14 ngày)',
     sma_28: 'SMA (28 ngày)',
@@ -64,6 +66,14 @@ export function formatWape(wape: number | null | undefined): string {
     }
 
     return `${Number(wape).toFixed(1)}%`;
+}
+
+export function formatForecastMetric(value: number | null | undefined): string {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+        return 'Chưa đánh giá';
+    }
+
+    return Number(value).toFixed(2);
 }
 
 export function isRunStale(

@@ -8,52 +8,90 @@ use App\Models\MenuItem;
 use App\Models\SyntheticDataset;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 class SyntheticDemandGenerator
 {
-    public const VERSION = '1.0.0';
+    public const VERSION = '2.0.0';
 
     /**
      * @param  array<string, mixed>  $configuration
-     * @return array<int, array{date: string, menu_item_id: int, quantity: int, signals: array<string, mixed>}>
+     * @return array<int, array{
+     *     date: string,
+     *     menu_item_id: int,
+     *     latent_demand: float,
+     *     observed_sales: float|null,
+     *     is_open: bool,
+     *     is_missing: bool,
+     *     is_stockout: bool,
+     *     quantity: int,
+     *     signals: array<string, mixed>
+     * }>
+     */
+    /**
+     * Resolve full generator configuration with explicit item IDs (no DB access inside generator).
+     *
+     * @param  array<string, mixed>  $configuration
+     * @param  array<int>  $itemIds
+     * @return array<string, mixed>
+     */
+    public static function resolveConfiguration(array $configuration, array $itemIds): array
+    {
+        if (isset($configuration['preset']) && is_string($configuration['preset'])) {
+            $presetKey = $configuration['preset'];
+            $presetDefaults = config("forecasting.presets.{$presetKey}", []);
+            $configuration = array_merge($presetDefaults, $configuration);
+        }
+
+        $ids = array_values(array_map('intval', $itemIds));
+        sort($ids);
+        $configuration['menu_item_ids'] = $ids;
+        $configuration['days'] = max(1, (int) ($configuration['days'] ?? 120));
+        $configuration['start_date'] = (string) ($configuration['start_date'] ?? '2026-01-01');
+
+        return $configuration;
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @return list<array{date: string, menu_item_id: int, latent_demand: float, observed_sales: float|null, is_open: bool, is_missing: bool, is_stockout: bool, quantity: int, signals: array<string, mixed>}>
      */
     public function generate(array $configuration, int $seed): array
     {
-        $prng = new SeededPrng($seed);
+        $rawIds = $configuration['menu_item_ids'] ?? null;
+        if (! is_array($rawIds) || empty($rawIds)) {
+            throw new InvalidArgumentException('menu_item_ids must be provided explicitly (generator does not query DB).');
+        }
+        $configuration = self::resolveConfiguration($configuration, array_values(array_map('intval', $rawIds)));
 
-        $days = max(1, (int) ($configuration['days'] ?? 120));
-        $startDateStr = (string) ($configuration['start_date'] ?? '2026-01-01');
+        $days = (int) $configuration['days'];
+        $startDateStr = (string) $configuration['start_date'];
         $baseDate = Carbon::parse($startDateStr);
 
-        $menuItemIds = $configuration['menu_item_ids'] ?? null;
-        if (! is_array($menuItemIds) || empty($menuItemIds)) {
-            try {
-                $menuItemIds = MenuItem::pluck('id')->all();
-            } catch (\Throwable) {
-                $menuItemIds = [];
-            }
-            if (empty($menuItemIds)) {
-                $menuItemIds = [1];
-            }
-        }
-        $menuItemIds = array_map('intval', $menuItemIds);
-        sort($menuItemIds);
+        $menuItemIds = $configuration['menu_item_ids'];
 
-        $base = (float) ($configuration['base'] ?? ($configuration['orders_per_day'] ?? 20.0));
+        $globalBase = (float) ($configuration['base'] ?? ($configuration['orders_per_day'] ?? 20.0));
         $trend = (float) ($configuration['trend'] ?? 0.0);
         $weeklyEnabled = (bool) ($configuration['weekly'] ?? true);
-        $noiseRatio = (float) ($configuration['noise'] ?? 0.0);
+        $noiseRatio = (float) ($configuration['noise'] ?? 0.1);
 
         $zeroDemandRate = (float) ($configuration['zero_demand_rate'] ?? 0.0);
         $outlierRate = (float) ($configuration['outlier_rate'] ?? 0.0);
         $missingRate = (float) ($configuration['missing_rate'] ?? 0.0);
         $stockoutRate = (float) ($configuration['stockout_censor_rate'] ?? 0.0);
 
-        $promotionRate = (float) ($configuration['promotion_rate'] ?? 0.05);
+        $promotionRate = (float) ($configuration['promotion_rate'] ?? 0.0);
         $promotionFactor = (float) ($configuration['promotion_factor'] ?? 1.5);
 
-        // Day of week factors (1=Monday, ..., 7=Sunday)
-        $weeklyFactors = [
+        $shiftFraction = (float) ($configuration['shift_fraction'] ?? 0.0);
+        $shiftFactor = (float) ($configuration['shift_factor'] ?? 1.0);
+
+        $closedWeekdays = isset($configuration['closed_weekdays']) && is_array($configuration['closed_weekdays'])
+            ? array_map('intval', $configuration['closed_weekdays'])
+            : [];
+
+        // Raw day of week factors (1=Monday, ..., 7=Sunday). Sum = 7.4. Normalize so mean is 1.0.
+        $rawFactors = [
             1 => 0.85,
             2 => 0.90,
             3 => 0.95,
@@ -62,53 +100,101 @@ class SyntheticDemandGenerator
             6 => 1.35,
             7 => 1.15,
         ];
+        $meanRaw = array_sum($rawFactors) / 7.0;
+        $weeklyFactors = [];
+        foreach ($rawFactors as $d => $f) {
+            $weeklyFactors[$d] = $f / $meanRaw;
+        }
 
         $results = [];
 
-        for ($d = 0; $d < $days; $d++) {
-            $currentDate = $baseDate->copy()->addDays($d);
-            $dayOfWeek = (int) $currentDate->isoFormat('E');
-            $weeklyFactor = $weeklyEnabled ? ($weeklyFactors[$dayOfWeek] ?? 1.0) : 1.0;
-            $trendFactor = 1.0 + ($trend * $d);
+        foreach ($menuItemIds as $ordinal => $menuItemId) {
+            // Independent PRNG streams per menu item ordinal: latent vs observation masking.
+            $itemSeed = 1 + (($seed - 1 + 104729 * $ordinal) % 2147483646);
+            $maskSeed = 1 + (($seed - 1 + 104729 * $ordinal + 999983) % 2147483646);
+            $latentPrng = new SeededPrng($itemSeed);
+            $maskPrng = new SeededPrng($maskSeed);
 
-            foreach ($menuItemIds as $menuItemId) {
-                if ($missingRate > 0 && $prng->nextFloat() < $missingRate) {
-                    continue;
+            // Item-specific multiplier and amplitude
+            $multiplier = 0.75 + (0.25 * ($ordinal % 5));
+            $amplitude = 0.5 + (0.25 * ($ordinal % 3));
+            $itemBase = $globalBase * $multiplier;
+
+            // Determine seasonal mode for this item
+            $seasonMode = (string) ($configuration['season_mode'] ?? 'additive');
+            if (isset($configuration['preset']) && $configuration['preset'] === 'trend_seasonal') {
+                $seasonMode = ($ordinal % 2 === 0) ? 'additive' : 'multiplicative';
+            }
+
+            for ($d = 0; $d < $days; $d++) {
+                $currentDate = $baseDate->copy()->addDays($d);
+                $dayOfWeek = (int) $currentDate->isoFormat('E');
+                $isOpen = ! in_array($dayOfWeek, $closedWeekdays, true);
+
+                $weeklyFactor = $weeklyEnabled ? ($weeklyFactors[$dayOfWeek] ?? 1.0) : 1.0;
+                $trendFactor = max(0.0, 1.0 + ($trend * $d));
+
+                $currentBase = $itemBase;
+                if ($shiftFraction > 0.0 && ($d / $days) >= $shiftFraction) {
+                    $currentBase *= $shiftFactor;
                 }
 
-                $isPromotion = $prng->nextFloat() < $promotionRate;
+                $isPromotion = $isOpen && ($promotionRate > 0.0 && $latentPrng->nextFloat() < $promotionRate);
                 $currentPromoFactor = $isPromotion ? $promotionFactor : 1.0;
 
                 $noise = 0.0;
-                if ($noiseRatio > 0) {
-                    $noise = ($prng->nextFloat() * 2.0 - 1.0) * $noiseRatio * $base;
+                if ($isOpen && $noiseRatio > 0.0) {
+                    $noise = ($latentPrng->nextFloat() * 2.0 - 1.0) * $noiseRatio * $currentBase;
                 }
 
-                $rawDemand = ($base * $trendFactor * $weeklyFactor * $currentPromoFactor) + $noise;
-
-                $isZero = false;
-                $isOutlier = false;
-                $isStockout = false;
-
-                if ($zeroDemandRate > 0 && $prng->nextFloat() < $zeroDemandRate) {
-                    $quantity = 0;
+                if (! $isOpen) {
+                    $latentDemand = 0.0;
+                    $observedSales = 0.0;
                     $isZero = true;
-                } elseif ($outlierRate > 0 && $prng->nextFloat() < $outlierRate) {
-                    $quantity = (int) round($rawDemand * 2.5);
-                    $isOutlier = true;
-                } elseif ($stockoutRate > 0 && $prng->nextFloat() < $stockoutRate) {
-                    $quantity = (int) round($rawDemand * 0.4);
-                    $isStockout = true;
+                    $isOutlier = false;
+                    $isStockout = false;
+                    $isMissing = false;
                 } else {
-                    $quantity = (int) round($rawDemand);
-                }
+                    if ($seasonMode === 'multiplicative') {
+                        $rawDemand = ($currentBase * $trendFactor * max(0.0, 1.0 + $amplitude * ($weeklyFactor - 1.0)) * $currentPromoFactor) + $noise;
+                    } else {
+                        $rawDemand = ($currentBase * $trendFactor + $currentBase * $amplitude * ($weeklyFactor - 1.0)) * $currentPromoFactor + $noise;
+                    }
+                    $rawDemand = max(0.0, $rawDemand);
 
-                $quantity = max(0, $quantity);
+                    $isZero = false;
+                    $isOutlier = false;
+
+                    if ($zeroDemandRate > 0.0 && $latentPrng->nextFloat() < $zeroDemandRate) {
+                        $latentDemand = 0.0;
+                        $isZero = true;
+                    } elseif ($outlierRate > 0.0 && $latentPrng->nextFloat() < $outlierRate) {
+                        $latentDemand = round($rawDemand * 2.5, 4);
+                        $isOutlier = true;
+                    } else {
+                        $latentDemand = round($rawDemand, 4);
+                    }
+
+                    // Determine observed sales
+                    $isMissing = false;
+                    $isStockout = false;
+
+                    if ($missingRate > 0.0 && $maskPrng->nextFloat() < $missingRate) {
+                        $observedSales = null;
+                        $isMissing = true;
+                    } elseif ($stockoutRate > 0.0 && $maskPrng->nextFloat() < $stockoutRate) {
+                        $observedSales = floor(0.4 * $latentDemand);
+                        $isStockout = true;
+                    } else {
+                        $observedSales = $latentDemand;
+                    }
+                }
 
                 $signals = [
                     'day_of_week' => $dayOfWeek,
                     'trend_factor' => round($trendFactor, 6),
                     'weekly_factor' => round($weeklyFactor, 4),
+                    'season_mode' => $seasonMode,
                     'promotion' => $isPromotion,
                     'promotion_factor' => $currentPromoFactor,
                     'noise' => round($noise, 4),
@@ -117,16 +203,63 @@ class SyntheticDemandGenerator
                     'stockout' => $isStockout,
                 ];
 
+                $quantity = ($isMissing || $observedSales === null) ? 0 : (int) round($observedSales);
+
                 $results[] = [
                     'date' => $currentDate->toDateString(),
                     'menu_item_id' => $menuItemId,
+                    'latent_demand' => $latentDemand,
+                    'observed_sales' => $observedSales,
+                    'is_open' => $isOpen,
+                    'is_missing' => $isMissing,
+                    'is_stockout' => $isStockout,
                     'quantity' => $quantity,
                     'signals' => $signals,
                 ];
             }
         }
 
+        // Sort results by date then menu_item_id deterministically
+        usort($results, function ($a, $b) {
+            $cmp = strcmp($a['date'], $b['date']);
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+
+            return $a['menu_item_id'] <=> $b['menu_item_id'];
+        });
+
         return $results;
+    }
+
+    /**
+     * Deterministic canonical hash of configuration or data array.
+     *
+     * @param  array<mixed>  $value
+     */
+    public static function canonicalHash(array $value): string
+    {
+        $normalized = self::normalizeCanonical($value);
+
+        return hash('sha256', (string) json_encode($normalized, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+    }
+
+    private static function normalizeCanonical(mixed $data): mixed
+    {
+        if (! is_array($data)) {
+            return $data;
+        }
+
+        $isAssoc = array_keys($data) !== range(0, count($data) - 1);
+        if ($isAssoc) {
+            ksort($data);
+        }
+
+        foreach ($data as $k => $v) {
+            $data[$k] = self::normalizeCanonical($v);
+        }
+
+        return $data;
     }
 
     /**
@@ -134,11 +267,11 @@ class SyntheticDemandGenerator
      */
     public function hash(array $data): string
     {
-        return hash('sha256', (string) json_encode($data, JSON_THROW_ON_ERROR));
+        return self::canonicalHash($data);
     }
 
     /**
-     * @param  array<int, array{date: string, menu_item_id: int, quantity: int, signals: array<string, mixed>}>  $demandRecords
+     * @param  array<int, array<string, mixed>>  $demandRecords
      */
     public function persist(SyntheticDataset $dataset, array $demandRecords): void
     {
@@ -168,10 +301,16 @@ class SyntheticDemandGenerator
                     $subtotal = 0.0;
 
                     foreach ($items as $item) {
-                        $qty = (int) $item['quantity'];
+                        $isMissing = (bool) ($item['is_missing'] ?? false);
+                        if ($isMissing) {
+                            continue;
+                        }
+
+                        $qty = (int) round((float) ($item['observed_sales'] ?? $item['quantity'] ?? 0));
                         if ($qty <= 0) {
                             continue;
                         }
+
                         $mItem = $menuItems->get($item['menu_item_id']);
                         $price = $mItem ? (float) $mItem->price : 50000.0;
                         $lineSub = $qty * $price;

@@ -6,6 +6,7 @@ import { describe, it } from 'node:test';
 import {
     formatCurrency,
     formatDataQuality,
+    formatForecastMetric,
     formatQuantity,
     formatRunStatusLabel,
     formatSourceLabel,
@@ -50,6 +51,20 @@ describe('formatSourceLabel', () => {
 
     it('returns generated name when object only contains id', () => {
         equal(formatSourceLabel({ id: 12 }), 'Tập dữ liệu #12');
+    });
+});
+
+describe('formatForecastMetric', () => {
+    it('returns "Chưa đánh giá" when value is null, undefined, or NaN', () => {
+        equal(formatForecastMetric(null), 'Chưa đánh giá');
+        equal(formatForecastMetric(undefined), 'Chưa đánh giá');
+        equal(formatForecastMetric(Number.NaN), 'Chưa đánh giá');
+    });
+
+    it('formats numeric metric with two decimals', () => {
+        equal(formatForecastMetric(0), '0.00');
+        equal(formatForecastMetric(3.1415), '3.14');
+        equal(formatForecastMetric(15.5), '15.50');
     });
 });
 

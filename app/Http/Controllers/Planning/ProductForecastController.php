@@ -123,12 +123,14 @@ class ProductForecastController extends Controller
             $first = $itemForecasts->first();
             $eval = $evaluationsByItem->get($item->id);
 
-            $totalQty = (float) $itemForecasts->sum('forecast_quantity');
+            $hasNullQty = $itemForecasts->contains(fn ($f) => $f->forecast_quantity === null);
+            $totalQty = $hasNullQty ? null : (float) $itemForecasts->sum('forecast_quantity');
             $hasLower = $itemForecasts->contains(fn ($f) => $f->lower_bound !== null);
             $hasUpper = $itemForecasts->contains(fn ($f) => $f->upper_bound !== null);
+            $hasNullBound = $itemForecasts->contains(fn ($f) => $f->lower_bound === null || $f->upper_bound === null);
 
-            $lowerBoundTotal = $hasLower ? (float) $itemForecasts->sum('lower_bound') : null;
-            $upperBoundTotal = $hasUpper ? (float) $itemForecasts->sum('upper_bound') : null;
+            $lowerBoundTotal = $hasLower && ! $hasNullBound ? (float) $itemForecasts->sum('lower_bound') : null;
+            $upperBoundTotal = $hasUpper && ! $hasNullBound ? (float) $itemForecasts->sum('upper_bound') : null;
 
             $dailyForecasts = $itemForecasts->map(function ($f) {
                 return [
@@ -136,14 +138,15 @@ class ProductForecastController extends Controller
                     'forecast_date' => $f->forecast_date instanceof Carbon
                         ? $f->forecast_date->toDateString()
                         : (string) $f->forecast_date,
-                    'forecast_quantity' => (float) $f->forecast_quantity,
+                    'forecast_quantity' => $f->forecast_quantity !== null ? (float) $f->forecast_quantity : null,
                     'lower_bound' => $f->lower_bound !== null ? (float) $f->lower_bound : null,
                     'upper_bound' => $f->upper_bound !== null ? (float) $f->upper_bound : null,
+                    'status' => $f->status,
                 ];
             })->values()->all();
 
-            $modelKey = $first ? $first->model_key : 'sma_7';
-            $dataQuality = $first ? $first->data_quality : 'sufficient';
+            $modelKey = $first ? $first->model_key : null;
+            $dataQuality = $first ? $first->data_quality : 'insufficient';
             $cutoff = $first?->data_cutoff?->toISOString() ?? $activeRun?->data_cutoff?->toISOString() ?? null;
 
             return [
@@ -154,16 +157,16 @@ class ProductForecastController extends Controller
                 'category_name' => $item->category?->name,
                 'price' => (float) $item->price,
                 'image' => $item->image,
-                'forecast_quantity' => round($totalQty, 2),
+                'forecast_quantity' => $totalQty !== null ? round($totalQty, 2) : null,
                 'lower_bound' => $lowerBoundTotal !== null ? round($lowerBoundTotal, 2) : null,
                 'upper_bound' => $upperBoundTotal !== null ? round($upperBoundTotal, 2) : null,
                 'model_key' => $modelKey,
                 'data_quality' => $dataQuality,
                 'data_cutoff' => $cutoff,
-                'mae' => $eval ? $eval->mae : ($first?->metrics['mae'] ?? null),
-                'rmse' => $eval ? $eval->rmse : ($first?->metrics['rmse'] ?? null),
-                'wape' => $eval ? $eval->wape : ($first?->metrics['wape'] ?? null),
-                'origins_count' => $eval ? $eval->origins_evaluated : ($first?->metrics['origins_count'] ?? 8),
+                'mae' => $eval ? $eval->mae : ($first?->metrics['eval_metrics']['mae'] ?? $first?->metrics['mae'] ?? null),
+                'rmse' => $eval ? $eval->rmse : ($first?->metrics['eval_metrics']['rmse'] ?? $first?->metrics['rmse'] ?? null),
+                'wape' => $eval ? $eval->wape : ($first?->metrics['eval_metrics']['wape'] ?? $first?->metrics['wape'] ?? null),
+                'origins_count' => $eval ? (int) $eval->origins_evaluated : 0,
                 'daily_forecasts' => $dailyForecasts,
             ];
         });
