@@ -73,6 +73,9 @@ it('exports manifest, comparison CSV, and daily errors CSV with matching arithme
         ->assertJsonPath('status', 'completed')
         ->assertJsonPath('start_date', '2026-01-15')
         ->assertJsonPath('dataset_label', 'DS Export');
+    expect($manifestRes->json('input_snapshot'))->toEqual($check->input_snapshot)
+        ->and($manifestRes->json('result'))->toEqual($check->result)
+        ->and($manifestRes->json())->not->toHaveKeys(['submission_token', 'request_hash']);
 
     // 2. Comparison CSV
     $compRes = $this->actingAs($admin)->get("/planning/forecast-checks/{$check->id}/exports/comparison.csv");

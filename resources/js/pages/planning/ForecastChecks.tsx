@@ -14,6 +14,7 @@ import {
     RefreshCw,
 } from 'lucide-react';
 import { useMemo, useRef, useState, useEffect } from 'react';
+import { checkDateBounds, createCheckSubmission, pollForecastCheck } from '../../components/planning/forecastCheckRequests';
 import ForecastCheckResults from '../../components/planning/ForecastCheckResults';
 import {
     initialModelKey,
@@ -52,13 +53,6 @@ interface ForecastChecksProps {
     };
 }
 
-function generateToken(): string {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID();
-    }
-
-    return 'tok-' + Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
-}
 
 export default function ForecastChecks({
     datasets = [],
@@ -95,7 +89,7 @@ export default function ForecastChecks({
         const allowedIds = new Set(activeDataset.configuration.menu_item_ids.map(Number));
         const filtered = menuItems.filter((i) => allowedIds.has(i.id));
 
-        return filtered.length > 0 ? filtered : menuItems;
+        return filtered;
     }, [activeDataset, menuItems]);
 
     const [selectedItemId, setSelectedItemId] = useState<number | string>(() => {
@@ -111,15 +105,15 @@ export default function ForecastChecks({
             return String(initialActiveCheck.start_date);
         }
 
-        if (defaultDataset?.end_date) {
-            return shiftCheckDate(defaultDataset.end_date, -6);
-        }
-
-        return '2026-01-15';
+        return checkDateBounds(defaultDataset?.start_date, defaultDataset?.end_date)?.max ?? '';
     });
 
     const endDate = useMemo(() => shiftCheckDate(startDate, 6), [startDate]);
     const cutoffDate = useMemo(() => shiftCheckDate(startDate, -1), [startDate]);
+    const bounds = checkDateBounds(activeDataset?.start_date, activeDataset?.end_date);
+    const validDate = !!bounds && startDate >= bounds.min && startDate <= bounds.max;
+    const [submission] = useState(() => createCheckSubmission());
+    const activeIdRef = useRef(initialActiveCheck?.id);
 
     const [currentCheck, setCurrentCheck] = useState<ForecastCheckItem | null>(initialActiveCheck);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,9 +131,7 @@ export default function ForecastChecks({
         setSelectedDatasetId(newId);
         const ds = datasets.find((d) => d.id === Number(newId));
 
-        if (ds?.end_date) {
-            setStartDate(shiftCheckDate(ds.end_date, -6));
-        }
+        setStartDate(checkDateBounds(ds?.start_date, ds?.end_date)?.max ?? '');
 
         if (ds?.configuration?.menu_item_ids && ds.configuration.menu_item_ids.length > 0) {
             setSelectedItemId(ds.configuration.menu_item_ids[0]);
@@ -147,57 +139,34 @@ export default function ForecastChecks({
     };
 
     // Polling effect while active check is queued or running
-    const pollIntervalRef = useRef<number | null>(null);
     useEffect(() => {
         if (!currentCheck || !['queued', 'running'].includes(currentCheck.status)) {
-            if (pollIntervalRef.current) {
-                clearInterval(pollIntervalRef.current);
-                pollIntervalRef.current = null;
-            }
-
             return;
         }
 
         const checkId = currentCheck.id;
-        pollIntervalRef.current = window.setInterval(async () => {
-            try {
-                const res = await fetch(`/planning/forecast-checks/${checkId}`, {
-                    headers: { Accept: 'application/json' },
-                });
 
-                if (res.ok) {
-                    const json = await res.json();
+        return pollForecastCheck<ForecastCheckItem>(checkId, async (signal) => {
+            const response = await fetch(`/planning/forecast-checks/${checkId}`, {
+                signal, headers: { Accept: 'application/json' },
+            });
 
-                    if (json.data) {
-                        setCurrentCheck(json.data);
+            if (!response.ok) {
+throw new Error('Không thể đọc trạng thái.');
+}
 
-                        if (['completed', 'failed'].includes(json.data.status)) {
-                            if (pollIntervalRef.current) {
-                                clearInterval(pollIntervalRef.current);
-                                pollIntervalRef.current = null;
-                            }
+            return (await response.json()).data;
+        }, (check) => {
+            if (activeIdRef.current !== checkId) {
+return;
+}
 
-                            if (json.data.result?.candidates) {
-                                const k = initialModelKey(json.data.result.candidates);
+            setCurrentCheck(check);
 
-                                if (k) {
-                                    setSelectedModelKey(k);
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch {
-                // Ignore transient network errors
+            if (check.result?.candidates) {
+                setSelectedModelKey(initialModelKey(check.result.candidates) ?? '');
             }
-        }, 1200);
-
-        return () => {
-            if (pollIntervalRef.current) {
-                clearInterval(pollIntervalRef.current);
-                pollIntervalRef.current = null;
-            }
-        };
+        });
     }, [currentCheck]);
 
     const isFormStale = useMemo(() => {
@@ -214,10 +183,22 @@ export default function ForecastChecks({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!validDate) {
+            setFormError('Chọn khoảng 7 ngày nằm trong dataset và có lịch sử phía trước.');
+
+            return;
+        }
+
+        const token = submission.begin(JSON.stringify([selectedDatasetId, selectedItemId, startDate]));
+
+        if (!token) {
+return;
+}
+
         setFormError(null);
         setIsSubmitting(true);
-
-        const token = generateToken();
+        let confirmed = false;
 
         try {
             const res = await fetch('/planning/forecast-checks', {
@@ -240,6 +221,8 @@ export default function ForecastChecks({
             if (!res.ok) {
                 setFormError(json.message || 'Không thể tạo lượt kiểm tra. Vui lòng kiểm tra lại ngày bắt đầu.');
             } else if (json.data) {
+                confirmed = true;
+                activeIdRef.current = json.data.id;
                 setCurrentCheck(json.data);
 
                 if (json.data.result?.candidates) {
@@ -253,6 +236,7 @@ export default function ForecastChecks({
         } catch (err: any) {
             setFormError(err.message || 'Lỗi kết nối khi gửi yêu cầu.');
         } finally {
+            submission.finish(confirmed);
             setIsSubmitting(false);
         }
     };
@@ -365,6 +349,7 @@ export default function ForecastChecks({
                                     <button
                                         type="button"
                                         title="Lùi 7 ngày"
+                                        disabled={!bounds || shiftCheckDate(startDate, -7) < bounds.min}
                                         onClick={() => setStartDate((s) => shiftCheckDate(s, -7))}
                                         className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                                     >
@@ -372,6 +357,10 @@ export default function ForecastChecks({
                                     </button>
                                     <input
                                         type="date"
+                                        min={bounds?.min}
+                                        max={bounds?.max}
+                                        required
+                                        disabled={!bounds}
                                         value={startDate}
                                         onChange={(e) => setStartDate(e.target.value)}
                                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 shadow-2xs outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200"
@@ -379,6 +368,7 @@ export default function ForecastChecks({
                                     <button
                                         type="button"
                                         title="Tiến 7 ngày"
+                                        disabled={!bounds || shiftCheckDate(startDate, 7) > bounds.max}
                                         onClick={() => setStartDate((s) => shiftCheckDate(s, 7))}
                                         className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                                     >
@@ -390,7 +380,7 @@ export default function ForecastChecks({
                             <div className="flex items-end">
                                 <button
                                     type="submit"
-                                    disabled={isSubmitting || !selectedDatasetId || !selectedItemId}
+                                    disabled={isSubmitting || !validDate || !selectedDatasetId || !datasetMenuItems.some((item) => item.id === Number(selectedItemId))}
                                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-purple-700 focus:ring-2 focus:ring-purple-500/30 disabled:opacity-50 transition"
                                 >
                                     {isSubmitting ? (

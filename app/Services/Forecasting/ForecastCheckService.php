@@ -117,13 +117,13 @@ class ForecastCheckService
                     $act = ($tRow['observed_sales'] ?? null) !== null ? (float) $tRow['observed_sales'] : null;
                     $isScored = in_array($idx, $scoredIndices, true);
 
-                    $signedError = $isScored && $act !== null ? round($pred - $act, 4) : null;
-                    $absError = $isScored && $act !== null ? round(abs($pred - $act), 4) : null;
+                    $signedError = $isScored && $act !== null ? $pred - $act : null;
+                    $absError = $signedError !== null ? abs($signedError) : null;
 
                     $points[] = [
                         'date' => (string) $tRow['date'],
                         'actual' => $act,
-                        'predicted' => round($pred, 4),
+                        'predicted' => $pred,
                         'signed_error' => $signedError,
                         'absolute_error' => $absError,
                         'scored' => $isScored,
@@ -138,7 +138,7 @@ class ForecastCheckService
                 $wape = null;
                 $observedTotal = null;
                 $predScoredTotal = null;
-                $predSevenDayTotal = round(array_sum($preds), 4);
+                $predSevenDayTotal = array_sum($preds);
 
                 if ($scoredCount > 0) {
                     $scoredPreds = [];
@@ -147,12 +147,12 @@ class ForecastCheckService
                     }
 
                     $metrics = ForecastMetrics::calculate($scoredActuals, $scoredPreds);
-                    $mae = round($metrics['mae'], 4);
-                    $rmse = round($metrics['rmse'], 4);
-                    $wape = $metrics['wape'] !== null ? round($metrics['wape'], 4) : null;
+                    $mae = $metrics['mae'];
+                    $rmse = $metrics['rmse'];
+                    $wape = $metrics['wape'];
 
-                    $observedTotal = round(array_sum($scoredActuals), 4);
-                    $predScoredTotal = round(array_sum($scoredPreds), 4);
+                    $observedTotal = array_sum($scoredActuals);
+                    $predScoredTotal = array_sum($scoredPreds);
                 }
 
                 $candidates[] = [

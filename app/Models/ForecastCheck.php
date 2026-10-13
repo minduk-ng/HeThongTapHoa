@@ -37,7 +37,7 @@ class ForecastCheck extends Model
         'snapshot' => '1.0.0',
         'preprocessing' => '1.0.0',
         'model' => '2.0.0',
-        'metrics' => '1.0.0',
+        'metrics' => '1.1.0',
     ];
 
     protected $table = 'forecast_checks';
