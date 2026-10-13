@@ -47,6 +47,16 @@ class InvoiceLine extends Model
     {
         return $query
             ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
+            ->whereNull('invoices.synthetic_dataset_id')
             ->whereBetween('invoices.issued_at', ["{$from} 00:00:00", "{$to} 23:59:59"]);
+    }
+
+    /**
+     * @param  Builder<InvoiceLine>  $query
+     * @return Builder<InvoiceLine>
+     */
+    public function scopeReal(Builder $query): Builder
+    {
+        return $query->whereHas('invoice', fn (Builder $q) => $q->whereNull('synthetic_dataset_id'));
     }
 }

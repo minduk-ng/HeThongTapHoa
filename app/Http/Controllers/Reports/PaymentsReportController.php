@@ -19,7 +19,7 @@ class PaymentsReportController extends Controller
         $endDate = $request->endDate();
         $range = $request->dateRange();
 
-        $invoiceQuery = Invoice::query()->whereBetween('issued_at', $range);
+        $invoiceQuery = Invoice::query()->whereNull('synthetic_dataset_id')->whereBetween('issued_at', $range);
         $revenue = (float) (clone $invoiceQuery)->sum('total_amount');
         $grossRevenue = (float) (clone $invoiceQuery)->sum('subtotal_amount');
         $totalDiscount = (float) (clone $invoiceQuery)->sum('discount_amount');
@@ -49,6 +49,7 @@ class PaymentsReportController extends Controller
         // Tổng cash/bank trên TOÀN BỘ kỳ (không bị cap 500 như $rows)
         $methodTotals = DB::table('payments')
             ->join('invoices', 'invoices.id', '=', 'payments.invoice_id')
+            ->whereNull('invoices.synthetic_dataset_id')
             ->whereBetween('invoices.issued_at', $range)
             ->groupBy('payments.method')
             ->selectRaw('payments.method, SUM(payments.amount) as total')
@@ -83,7 +84,7 @@ class PaymentsReportController extends Controller
         $prevEnd = $start->copy()->subDay();
         $prevStart = $prevEnd->copy()->subDays($dayCount);
 
-        $prevRevenue = (float) Invoice::whereBetween('issued_at', [
+        $prevRevenue = (float) Invoice::whereNull('synthetic_dataset_id')->whereBetween('issued_at', [
             $prevStart->toDateString().' 00:00:00',
             $prevEnd->toDateString().' 23:59:59',
         ])->sum('total_amount');

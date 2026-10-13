@@ -36,14 +36,21 @@ class CheckPageAccess
         $matchedPage = null;
 
         foreach ($pageRoles as $page) {
-            if ($page['route_path'] === '/') {
-                if ($path === '/') {
+            if ($path === $page['route_path']) {
+                $matchedPage = $page;
+                break;
+            }
+        }
+
+        if (! $matchedPage) {
+            $sortedPages = $pageRoles;
+            usort($sortedPages, fn ($a, $b) => strlen($b['route_path']) <=> strlen($a['route_path']));
+
+            foreach ($sortedPages as $page) {
+                if ($page['route_path'] !== '/' && str_starts_with($path, $page['route_path'].'/')) {
                     $matchedPage = $page;
                     break;
                 }
-            } elseif ($path === $page['route_path'] || str_starts_with($path, $page['route_path'].'/')) {
-                $matchedPage = $page;
-                break;
             }
         }
 

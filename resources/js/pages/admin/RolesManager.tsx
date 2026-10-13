@@ -35,9 +35,24 @@ const PERMISSION_LABEL_DICTIONARY: Record<string, string> = {
     cancel: 'Hủy bỏ',
     approve: 'Phê duyệt',
     stocktake: 'Kiểm kê',
+    run: 'Chạy dự báo',
+    configure: 'Cấu hình tham số',
+    apply_model: 'Áp dụng mô hình',
+    procurement_review: 'Duyệt đề xuất nhập hàng',
+    experiments: 'Dữ liệu thử nghiệm',
+    'planning.view': 'Xem dự báo & kế hoạch',
+    'planning.run': 'Chạy tính toán dự báo',
+    'planning.configure': 'Cấu hình tham số dự báo',
+    'planning.apply_model': 'Áp dụng mô hình dự báo',
+    'planning.procurement_review': 'Duyệt kế hoạch nhập hàng',
+    'planning.experiments': 'Quản lý dữ liệu thử nghiệm',
 };
 
 function formatPermissionLabel(permName: string): string {
+    if (PERMISSION_LABEL_DICTIONARY[permName]) {
+        return PERMISSION_LABEL_DICTIONARY[permName];
+    }
+
     const parts = permName.split('.');
     const actionKey = parts[parts.length - 1] || permName;
 

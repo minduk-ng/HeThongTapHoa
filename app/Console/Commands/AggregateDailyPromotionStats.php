@@ -67,6 +67,7 @@ class AggregateDailyPromotionStats extends Command
         // ORDER BY cố định → "dòng cuối nhận phần dư" luôn xác định (rebuild lặp cho kết quả giống nhau).
         $invoiceLines = DB::table('order_promotions')
             ->join('invoices', 'invoices.id', '=', 'order_promotions.invoice_id')
+            ->whereNull('invoices.synthetic_dataset_id')
             ->whereDate('order_promotions.created_at', $date)
             ->whereNotNull('order_promotions.promotion_id')
             ->select(

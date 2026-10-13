@@ -3,9 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\Invoice;
+use App\Models\MoneyLedgerEntry;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Shift;
 use App\Models\StockVoucher;
+use App\Models\SyntheticDataset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -41,19 +44,67 @@ class GenerateMockDataCommandTest extends TestCase
         }
     }
 
-    public function test_command_fresh_mock_cleans_transactional_data(): void
+    public function test_fresh_mock_without_dataset_fails_with_nonzero_exit_code(): void
     {
-        $this->artisan('data:generate-mock', ['--days' => 1, '--orders-per-day' => 2])
+        $this->artisan('data:generate-mock', ['--fresh-mock' => true])
+            ->assertFailed();
+    }
+
+    public function test_fresh_mock_with_dataset_only_cleans_target_dataset_records(): void
+    {
+        // 1. Create a real invoice
+        $real = Invoice::create([
+            'invoice_code' => 'INV-REAL-MOCK',
+            'table_name' => 'B01',
+            'payment_method' => 'cash',
+            'subtotal_amount' => 50000,
+            'discount_amount' => 0,
+            'vat_amount' => 0,
+            'total_amount' => 50000,
+            'amount_received' => 50000,
+            'change_amount' => 0,
+            'issued_at' => now(),
+            'synthetic_dataset_id' => null,
+        ]);
+
+        // 2. Generate dataset 1
+        $this->artisan('data:generate-mock', ['--dataset' => 'dataset-one', '--days' => 3, '--seed' => 42])
             ->assertSuccessful();
 
-        $initialOrders = Order::count();
-        $this->assertGreaterThan(0, $initialOrders);
+        $ds1 = SyntheticDataset::where('name', 'dataset-one')->firstOrFail();
+        $ds1InvoicesCount = Invoice::where('synthetic_dataset_id', $ds1->id)->count();
+        $this->assertGreaterThan(0, $ds1InvoicesCount);
 
-        // Chạy lại với --fresh-mock
-        $this->artisan('data:generate-mock', ['--days' => 1, '--orders-per-day' => 2, '--fresh-mock' => true])
+        // 3. Generate dataset 2
+        $this->artisan('data:generate-mock', ['--dataset' => 'dataset-two', '--days' => 3, '--seed' => 43])
             ->assertSuccessful();
 
-        $this->assertGreaterThan(0, Order::count());
-        $this->assertGreaterThan(0, Invoice::count());
+        $ds2 = SyntheticDataset::where('name', 'dataset-two')->firstOrFail();
+        $ds2InvoicesCount = Invoice::where('synthetic_dataset_id', $ds2->id)->count();
+        $this->assertGreaterThan(0, $ds2InvoicesCount);
+
+        // 4. Re-run dataset 1 with --fresh-mock
+        $this->artisan('data:generate-mock', ['--dataset' => 'dataset-one', '--fresh-mock' => true, '--days' => 2, '--seed' => 42])
+            ->assertSuccessful();
+
+        // 5. Assert: real invoice untouched, dataset 2 untouched
+        $this->assertNotNull(Invoice::find($real->id));
+        $this->assertEquals($ds2InvoicesCount, Invoice::where('synthetic_dataset_id', $ds2->id)->count());
+    }
+
+    public function test_dataset_option_creates_synthetic_invoices_without_payments_or_money_ledger(): void
+    {
+        $this->artisan('data:generate-mock', ['--dataset' => 'analytical-demo', '--days' => 5, '--seed' => 100])
+            ->assertSuccessful();
+
+        $dataset = SyntheticDataset::where('name', 'analytical-demo')->firstOrFail();
+        $invoices = Invoice::where('synthetic_dataset_id', $dataset->id)->get();
+
+        $this->assertNotEmpty($invoices);
+        foreach ($invoices as $invoice) {
+            $this->assertStringStartsWith('SYN-', $invoice->invoice_code);
+            $this->assertEquals(0, Payment::where('invoice_id', $invoice->id)->count());
+            $this->assertEquals(0, MoneyLedgerEntry::where('invoice_id', $invoice->id)->count());
+        }
     }
 }

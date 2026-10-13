@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -25,11 +26,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $external_no
  * @property string|null $external_ref
  * @property Carbon $issued_at
+ * @property int|null $customer_id
+ * @property int|null $synthetic_dataset_id
  * @property-read int $orders_count
  * @property-read Collection<int, Order> $orders
  * @property-read Collection<int, Payment> $payments
  * @property-read Collection<int, InvoiceLine> $lines
  * @property-read Collection<int, InvoicePromotion> $promotions
+ * @property-read SyntheticDataset|null $syntheticDataset
  */
 class Invoice extends Model
 {
@@ -53,6 +57,7 @@ class Invoice extends Model
         'external_ref',
         'issued_at',
         'customer_id',
+        'synthetic_dataset_id',
     ];
 
     protected $casts = [
@@ -64,6 +69,7 @@ class Invoice extends Model
         'vat_amount' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'issued_at' => 'datetime',
+        'synthetic_dataset_id' => 'integer',
     ];
 
     /** @return HasMany<Order, $this> */
@@ -94,5 +100,20 @@ class Invoice extends Model
     public function promotions(): HasMany
     {
         return $this->hasMany(InvoicePromotion::class, 'invoice_id');
+    }
+
+    /** @return BelongsTo<SyntheticDataset, $this> */
+    public function syntheticDataset(): BelongsTo
+    {
+        return $this->belongsTo(SyntheticDataset::class, 'synthetic_dataset_id');
+    }
+
+    /**
+     * @param  Builder<Invoice>  $query
+     * @return Builder<Invoice>
+     */
+    public function scopeReal(Builder $query): Builder
+    {
+        return $query->whereNull('invoices.synthetic_dataset_id');
     }
 }

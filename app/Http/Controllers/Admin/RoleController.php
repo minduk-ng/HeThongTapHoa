@@ -41,6 +41,10 @@ class RoleController extends Controller
             'orders.view',
             'dashboard.view',
             'reports.view',
+            'payments.refund', 'deposits.create', 'deposits.refund',
+            'suppliers.pay', 'orders.cancel', 'shifts.movement', 'cash-flow.view',
+            'planning.view', 'planning.run', 'planning.configure',
+            'planning.apply_model', 'planning.procurement_review', 'planning.experiments',
         ];
 
         foreach ($systemPermissions as $permName) {

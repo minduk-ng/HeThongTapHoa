@@ -28,6 +28,7 @@ class ProfitReportController extends Controller
         // Món bán trong kỳ kèm ngày phát hành (để dựng daily series).
         $items = DB::table('invoice_lines')
             ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
+            ->whereNull('invoices.synthetic_dataset_id')
             ->whereBetween('invoices.issued_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
             ->join('menu_items', 'menu_items.id', '=', 'invoice_lines.menu_item_id')
             ->selectRaw('DATE(invoices.issued_at) as day, invoice_lines.menu_item_id as menu_item_id, invoice_lines.name_snapshot as item_name, SUM(invoice_lines.quantity) as quantity, SUM(invoice_lines.subtotal - invoice_lines.discount_amount) as revenue')

@@ -85,7 +85,7 @@ class PromotionController extends Controller
         $revenueAgg = DB::table(DB::raw('(SELECT DISTINCT ip.promotion_id, ip.invoice_id, invoices.total_amount
                 FROM invoice_promotions ip
                 JOIN invoices ON invoices.id = ip.invoice_id
-                WHERE ip.promotion_id IS NOT NULL) as t'))
+                WHERE ip.promotion_id IS NOT NULL AND invoices.synthetic_dataset_id IS NULL) as t'))
             ->select('promotion_id', DB::raw('SUM(total_amount) as revenue'))
             ->groupBy('promotion_id')
             ->get()
@@ -239,6 +239,7 @@ class PromotionController extends Controller
         $query = InvoicePromotion::query()
             ->where('promotion_id', $promotion->id)
             ->join('invoices', 'invoices.id', '=', 'invoice_promotions.invoice_id')
+            ->whereNull('invoices.synthetic_dataset_id')
             ->select('invoices.id', 'invoices.invoice_code', 'invoices.issued_at', 'invoices.table_name',
                 'invoices.subtotal_amount', 'invoices.discount_amount', 'invoices.total_amount', 'invoices.payment_method')
             ->orderBy('invoices.issued_at', 'desc')
@@ -294,7 +295,7 @@ class PromotionController extends Controller
             return 0.0;
         }
 
-        return (float) DB::table('invoices')->whereIn('id', $ids)->sum('total_amount');
+        return (float) DB::table('invoices')->whereNull('synthetic_dataset_id')->whereIn('id', $ids)->sum('total_amount');
     }
 
     /**
