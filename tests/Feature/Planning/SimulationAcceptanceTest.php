@@ -23,10 +23,10 @@ beforeEach(function () {
 
 it('runs simulation acceptance matrix across presets, seeds and horizons with evidence', function () {
     $admin = posAdmin();
-    $item = posMenuItem();
+    $items = [posMenuItem(), posMenuItem(), posMenuItem()];
 
     $presets = ['stable', 'weekly_seasonal', 'trend_seasonal', 'intermittent', 'level_shift', 'data_stress'];
-    $seeds = [1, 2];
+    $seeds = range(1, 10);
     $horizons = [7, 30];
 
     $experiment = ForecastExperiment::create([
@@ -34,10 +34,10 @@ it('runs simulation acceptance matrix across presets, seeds and horizons with ev
             'presets' => $presets,
             'seeds' => $seeds,
             'horizons' => $horizons,
-            'days' => 150,
+            'days' => 365,
             'start_date' => '2026-01-01',
-            'menu_item_ids' => [$item->id],
-            'summary' => ['total' => 24, 'completed' => 0, 'failed' => 0],
+            'menu_item_ids' => array_map(fn ($item) => $item->id, $items),
+            'summary' => ['total' => 120, 'completed' => 0, 'failed' => 0],
         ],
         'status' => 'queued',
         'created_by' => $admin->id,
@@ -56,11 +56,11 @@ it('runs simulation acceptance matrix across presets, seeds and horizons with ev
     $experiment->refresh();
     $summary = $experiment->configuration['summary'];
 
-    expect($summary['completed'])->toBe(24)
+    expect($summary['completed'])->toBe(120)
         ->and($summary['failed'])->toBe(0)
         ->and($experiment->status)->toBe('completed');
 
-    expect(ForecastRun::where('experiment_id', $experiment->id)->where('status', 'completed')->count())->toBe(48);
+    expect(ForecastRun::where('experiment_id', $experiment->id)->where('status', 'completed')->count())->toBe(240);
 
     $exporter = app(ForecastEvidenceExporter::class);
     $sampleRun = ForecastRun::where('experiment_id', $experiment->id)->where('kind', 'evaluate')->firstOrFail();
@@ -68,5 +68,15 @@ it('runs simulation acceptance matrix across presets, seeds and horizons with ev
     expect($manifest['versions']['generator_version'])->not->toBe('unknown-legacy')
         ->and($manifest['protocol']['target'])->toBe('observed_sales');
 
-    fwrite(STDERR, "\n[acceptance-matrix] 24 cells completed in {$elapsed}s\n");
+    foreach (ForecastRun::where('experiment_id', $experiment->id)->where('kind', 'evaluate')->get() as $run) {
+        expect($run->modelEvaluations()->count())->toBe(21)
+            ->and($run->evaluationPoints()->where('stage', 'validation')->exists())->toBeTrue()
+            ->and($run->evaluationPoints()->where('stage', 'holdout')->exists())->toBeTrue();
+    }
+
+    $artifactDir = $exporter->persistExperimentArtifacts($experiment);
+    expect(\Illuminate\Support\Facades\File::exists("{$artifactDir}/manifest.json"))->toBeTrue()
+        ->and(\Illuminate\Support\Facades\File::exists("{$artifactDir}/summary.csv"))->toBeTrue();
+
+    fwrite(STDERR, "\n[acceptance-matrix] 120 cells, 365 days, 3 items completed in {$elapsed}s. Artifacts saved to {$artifactDir}\n");
 })->group('acceptance');

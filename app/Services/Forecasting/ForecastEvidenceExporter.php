@@ -79,28 +79,229 @@ class ForecastEvidenceExporter
     /**
      * @return array{header: list<string>, rows: list<list<mixed>>}
      */
+    /**
+     * Aggregate experiment evaluation metrics across seeds.
+     * Computes mean and sample stddev without confidence interval labels.
+     *
+     * @return array{header: list<string>, rows: list<list<mixed>>}
+     */
     public function experimentSummary(ForecastExperiment $experiment): array
     {
-        $header = ['preset', 'seed', 'horizon', 'status', 'dataset_id', 'evaluate_run_id', 'forecast_run_id', 'error'];
-        $expConfig = $experiment->configuration;
-        $config = is_array($expConfig) ? $expConfig : [];
-        $cells = $config['cells'] ?? [];
+        $header = [
+            'preset',
+            'horizon',
+            'model_key',
+            'stage',
+            'target',
+            'runs_count',
+            'mean_mae',
+            'stddev_mae',
+            'mean_rmse',
+            'stddev_rmse',
+            'mean_wape',
+            'stddev_wape',
+        ];
+
+        $runs = ForecastRun::where('experiment_id', $experiment->id)
+            ->where('kind', 'evaluate')
+            ->where('status', 'completed')
+            ->with(['modelEvaluations', 'syntheticDataset'])
+            ->get();
+
+        $groups = [];
+
+        foreach ($runs as $run) {
+            $cellKey = (string) $run->cell_key;
+            $parts = explode(':', $cellKey);
+            $preset = $parts[0] !== '' ? $parts[0] : ($run->syntheticDataset?->configuration['preset'] ?? 'default');
+            $horizon = (int) $run->horizon_days;
+
+            $runValidation = [];
+            $runHoldout = [];
+
+            foreach ($run->modelEvaluations as $e) {
+                $modelKey = $e->model_key;
+
+                // Validation stage
+                if ($e->status === 'evaluated' && $e->mae !== null) {
+                    $runValidation[$modelKey]['mae'][] = (float) $e->mae;
+                    $runValidation[$modelKey]['rmse'][] = (float) $e->rmse;
+                    if ($e->wape !== null) {
+                        $runValidation[$modelKey]['wape'][] = (float) $e->wape;
+                    }
+                }
+
+                // Holdout stage
+                $holdout = $e->holdout_metrics;
+                if (is_array($holdout) && ($holdout['scored_count'] ?? 0) > 0 && isset($holdout['mae'])) {
+                    $runHoldout[$modelKey]['mae'][] = (float) $holdout['mae'];
+                    $runHoldout[$modelKey]['rmse'][] = (float) $holdout['rmse'];
+                    if (($holdout['wape'] ?? null) !== null) {
+                        $runHoldout[$modelKey]['wape'][] = (float) $holdout['wape'];
+                    }
+                }
+            }
+
+            // Record run-level macro metrics for validation
+            foreach ($runValidation as $modelKey => $metrics) {
+                $groupKey = "{$preset}|{$horizon}|{$modelKey}|validation|observed_sales";
+                $groups[$groupKey]['preset'] = $preset;
+                $groups[$groupKey]['horizon'] = $horizon;
+                $groups[$groupKey]['model_key'] = $modelKey;
+                $groups[$groupKey]['stage'] = 'validation';
+                $groups[$groupKey]['target'] = 'observed_sales';
+
+                $groups[$groupKey]['mae_runs'][] = array_sum($metrics['mae']) / count($metrics['mae']);
+                $groups[$groupKey]['rmse_runs'][] = array_sum($metrics['rmse']) / count($metrics['rmse']);
+                if (! empty($metrics['wape'])) {
+                    $groups[$groupKey]['wape_runs'][] = array_sum($metrics['wape']) / count($metrics['wape']);
+                }
+            }
+
+            // Record run-level macro metrics for holdout
+            foreach ($runHoldout as $modelKey => $metrics) {
+                $groupKey = "{$preset}|{$horizon}|{$modelKey}|holdout|observed_sales";
+                $groups[$groupKey]['preset'] = $preset;
+                $groups[$groupKey]['horizon'] = $horizon;
+                $groups[$groupKey]['model_key'] = $modelKey;
+                $groups[$groupKey]['stage'] = 'holdout';
+                $groups[$groupKey]['target'] = 'observed_sales';
+
+                $groups[$groupKey]['mae_runs'][] = array_sum($metrics['mae']) / count($metrics['mae']);
+                $groups[$groupKey]['rmse_runs'][] = array_sum($metrics['rmse']) / count($metrics['rmse']);
+                if (! empty($metrics['wape'])) {
+                    $groups[$groupKey]['wape_runs'][] = array_sum($metrics['wape']) / count($metrics['wape']);
+                }
+            }
+        }
+
         $rows = [];
-        foreach ($cells as $cellKey => $cell) {
-            $parts = explode(':', (string) $cellKey);
+        ksort($groups);
+
+        foreach ($groups as $g) {
+            $maeRuns = $g['mae_runs'];
+            $rmseRuns = $g['rmse_runs'];
+            $wapeRuns = $g['wape_runs'] ?? [];
+
+            $runsCount = count($maeRuns);
+            $meanMae = $this->mean($maeRuns);
+            $stddevMae = $this->sampleStdDev($maeRuns, $meanMae);
+
+            $meanRmse = $this->mean($rmseRuns);
+            $stddevRmse = $this->sampleStdDev($rmseRuns, $meanRmse);
+
+            $meanWape = $this->mean($wapeRuns);
+            $stddevWape = $this->sampleStdDev($wapeRuns, $meanWape);
+
             $rows[] = [
-                $parts[0],
-                $parts[1] ?? '',
-                $parts[2] ?? '',
-                $cell['status'] ?? '',
-                $cell['dataset_id'] ?? '',
-                $cell['evaluate_run_id'] ?? '',
-                $cell['forecast_run_id'] ?? '',
-                $cell['error'] ?? '',
+                $g['preset'],
+                $g['horizon'],
+                $g['model_key'],
+                $g['stage'],
+                $g['target'],
+                $runsCount,
+                $meanMae,
+                $stddevMae,
+                $meanRmse,
+                $stddevRmse,
+                $meanWape,
+                $stddevWape,
             ];
         }
 
         return ['header' => $header, 'rows' => $rows];
+    }
+
+    /**
+     * Persist complete acceptance matrix artifacts to disk before test teardown.
+     */
+    public function persistExperimentArtifacts(ForecastExperiment $experiment, ?string $baseDir = null): string
+    {
+        $dir = $baseDir ?? storage_path("app/forecasting-acceptance/{$experiment->id}");
+        \Illuminate\Support\Facades\File::ensureDirectoryExists($dir);
+
+        // 1. Save manifest.json
+        $config = is_array($experiment->configuration) ? $experiment->configuration : [];
+        $runs = $experiment->runs()->get(['id', 'kind', 'horizon_days', 'status', 'cell_key', 'synthetic_dataset_id'])->all();
+        $manifest = [
+            'experiment_id' => $experiment->id,
+            'status' => $experiment->status,
+            'configuration' => $config,
+            'runs' => $runs,
+            'exported_at' => now()->toISOString(),
+        ];
+        file_put_contents("{$dir}/manifest.json", json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        // 2. Save summary.csv
+        $summary = $this->experimentSummary($experiment);
+        $summaryFile = fopen("{$dir}/summary.csv", 'w');
+        if (is_resource($summaryFile)) {
+            fputcsv($summaryFile, $summary['header']);
+            foreach ($summary['rows'] as $row) {
+                fputcsv($summaryFile, array_map(fn ($val) => $val === null ? '' : (string) $val, $row));
+            }
+            fclose($summaryFile);
+        }
+
+        // 3. Save per-run evidence for completed evaluate runs
+        $evalRuns = $experiment->runs()->where('kind', 'evaluate')->where('status', 'completed')->get();
+        foreach ($evalRuns as $run) {
+            $safeCell = str_replace(':', '_', (string) $run->cell_key);
+            $runDir = "{$dir}/runs/run_{$run->id}_{$safeCell}";
+            \Illuminate\Support\Facades\File::ensureDirectoryExists($runDir);
+
+            file_put_contents("{$runDir}/manifest.json", json_encode($this->manifest($run), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+            foreach (['model_metrics.csv', 'holdout_predictions.csv', 'fold_predictions.csv'] as $file) {
+                try {
+                    $export = $this->exportData($run, $file);
+                    $fp = fopen("{$runDir}/{$file}", 'w');
+                    if (is_resource($fp)) {
+                        fputcsv($fp, $export['header']);
+                        foreach ($export['rows'] as $row) {
+                            fputcsv($fp, array_map(fn ($val) => $val === null ? '' : (string) $val, $row));
+                        }
+                        fclose($fp);
+                    }
+                } catch (\Throwable) {
+                    // skip non-existent tables/points
+                }
+            }
+        }
+
+        return $dir;
+    }
+
+    /**
+     * @param  list<float>  $values
+     */
+    private function mean(array $values): ?float
+    {
+        $count = count($values);
+        if ($count === 0) {
+            return null;
+        }
+
+        return round(array_sum($values) / $count, 6);
+    }
+
+    /**
+     * @param  list<float>  $values
+     */
+    private function sampleStdDev(array $values, ?float $mean = null): ?float
+    {
+        $count = count($values);
+        if ($count < 2) {
+            return null;
+        }
+
+        $mean ??= array_sum($values) / $count;
+        $sumSqDiff = 0.0;
+        foreach ($values as $v) {
+            $sumSqDiff += pow($v - $mean, 2);
+        }
+
+        return round(sqrt($sumSqDiff / ($count - 1)), 6);
     }
 
     /**
@@ -213,6 +414,28 @@ class ForecastEvidenceExporter
                 $sums['sum_actual'] ?? '',
                 json_encode($e->parameters ?? []),
             ];
+            $holdout = $e->holdout_metrics;
+            if (is_array($holdout)) {
+                $scoredPoints = (int) ($holdout['scored_count'] ?? 0);
+                $rows[] = [
+                    $e->forecast_run_id,
+                    $e->menu_item_id,
+                    $e->model_key,
+                    'holdout',
+                    'observed_sales',
+                    $scoredPoints > 0 ? 'evaluated' : 'skipped',
+                    0,
+                    $scoredPoints > 0 ? 1 : 0,
+                    $scoredPoints,
+                    $holdout['mae'] ?? null,
+                    $holdout['rmse'] ?? null,
+                    $holdout['wape'] ?? null,
+                    $holdout['sum_abs_error'] ?? null,
+                    $holdout['sum_sq_error'] ?? null,
+                    $holdout['sum_actual'] ?? null,
+                    json_encode($e->parameters ?? []),
+                ];
+            }
         }
 
         return ['header' => $header, 'rows' => $rows];

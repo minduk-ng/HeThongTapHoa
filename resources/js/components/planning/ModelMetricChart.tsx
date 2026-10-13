@@ -15,9 +15,9 @@ export type MetricType = 'wape' | 'mae' | 'rmse';
 export interface ModelMetricPoint {
     model_key: string;
     name: string;
-    avg_mae: number;
-    avg_rmse: number;
-    avg_wape: number;
+    avg_mae: number | null;
+    avg_rmse: number | null;
+    avg_wape: number | null;
     is_selected?: boolean;
     selected_count?: number;
     origins_count?: number;

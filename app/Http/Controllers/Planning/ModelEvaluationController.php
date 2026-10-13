@@ -101,6 +101,44 @@ class ModelEvaluationController extends Controller
             ];
         })->values()->all();
 
+        // Build holdout comparison table for candidate models (independent final test, never used for selection)
+        $holdoutComparison = collect($candidateKeys)->map(function ($key) use ($evaluationsCollection, $candidateNames) {
+            $filtered = $evaluationsCollection->where('model_key', $key);
+            $evaluatedHoldout = $filtered->filter(function ($e) {
+                $h = $e->holdout_metrics;
+
+                return is_array($h) && ($h['scored_count'] ?? 0) > 0 && isset($h['mae']);
+            });
+            $count = $evaluatedHoldout->count();
+            $avgMae = $count > 0 ? (float) $evaluatedHoldout->avg(fn ($e) => $e->holdout_metrics['mae']) : null;
+            $avgRmse = $count > 0 ? (float) $evaluatedHoldout->avg(fn ($e) => $e->holdout_metrics['rmse']) : null;
+            $withWape = $evaluatedHoldout->filter(fn ($e) => ($e->holdout_metrics['wape'] ?? null) !== null);
+            $avgWape = $withWape->count() > 0 ? (float) $withWape->avg(fn ($e) => $e->holdout_metrics['wape']) : null;
+
+            $parameters = match ($key) {
+                'naive' => [],
+                'seasonal_naive_7' => ['period' => 7],
+                'sma_7' => ['window' => 7],
+                'sma_14' => ['window' => 14],
+                'sma_28' => ['window' => 28],
+                'holt_winters_additive' => ['season_length' => 7, 'trend' => 'add', 'seasonal' => 'add'],
+                'holt_winters_multiplicative' => ['season_length' => 7, 'trend' => 'add', 'seasonal' => 'mul'],
+                default => [],
+            };
+
+            return [
+                'model_key' => $key,
+                'name' => $candidateNames[$key] ?? $key,
+                'avg_mae' => $avgMae !== null ? round($avgMae, 4) : null,
+                'avg_rmse' => $avgRmse !== null ? round($avgRmse, 4) : null,
+                'avg_wape' => $avgWape !== null ? round($avgWape, 4) : null,
+                'selected_count' => 0,
+                'origins_count' => $count > 0 ? 1 : 0,
+                'is_selected' => false,
+                'parameters' => $parameters,
+            ];
+        })->values()->all();
+
         // History: Recent evaluation runs
         $recentRuns = ForecastRun::where('kind', 'evaluate')
             ->when($datasetId !== null, fn ($q) => $q->where('synthetic_dataset_id', $datasetId), fn ($q) => $q->whereNull('synthetic_dataset_id'))
@@ -118,15 +156,17 @@ class ModelEvaluationController extends Controller
             'candidate_keys' => $candidateKeys,
             'metrics' => $approvedMetrics,
             'modelComparison' => $modelComparison,
+            'holdoutComparison' => $holdoutComparison,
+            'selectedHorizon' => $activeRun->horizon_days ?? $horizonFilter ?? 7,
             'recentRuns' => $recentRuns,
             'methodology' => [
                 'initial_training_window' => (int) config('forecasting.evaluation.initial_training_window', 56),
-                'horizon' => (int) config('forecasting.evaluation.horizon', 7),
+                'horizon' => (int) ($activeRun->horizon_days ?? config('forecasting.evaluation.horizon', 7)),
                 'origin_step' => (int) config('forecasting.evaluation.origin_step', 7),
                 'origins_count' => (int) config('forecasting.evaluation.origins_default', 8),
                 'origins_min' => (int) config('forecasting.evaluation.origins_min', 3),
                 'primary_metric' => (string) config('forecasting.evaluation.primary_metric', 'wape'),
-                'tie_break_wape_threshold' => (float) config('forecasting.evaluation.tie_break_wape_threshold', 0.5),
+                'tie_break_wape_threshold' => 0.0,
                 'snapshot_id' => $activeRun ? "eval-snap-{$activeRun->id}" : 'eval-snap-default',
                 'config_id' => 'eval-cfg-v1',
                 'data_cutoff' => $activeRun?->data_cutoff?->toISOString(),
@@ -176,9 +216,7 @@ class ModelEvaluationController extends Controller
 
     public function applyModel(Request $request): SymfonyResponse
     {
-        $candidates = (array) config('forecasting.models.candidates', [
-            'sma_7', 'sma_14', 'sma_28', 'holt_winters_additive', 'holt_winters_multiplicative',
-        ]);
+        $candidates = (array) config('forecasting.models.candidates', ForecastModelRunner::CANDIDATES);
 
         $validated = $request->validate([
             'model_key' => ['required', 'string', Rule::in($candidates)],

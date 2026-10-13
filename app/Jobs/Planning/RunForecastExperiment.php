@@ -47,7 +47,9 @@ class RunForecastExperiment implements ShouldQueue
             $startDate = (string) ($config['start_date'] ?? '2026-01-01');
             $itemIds = $config['menu_item_ids'] ?? null;
 
-            $commonSnapshot = $snapshotter->capture();
+            $commonSnapshot = $config['snapshot'] ?? $snapshotter->capture();
+            $config['snapshot'] = $commonSnapshot;
+            $this->experiment->update(['configuration' => $config]);
             $cells = $config['cells'] ?? [];
             $completedCount = 0;
             $failedCount = 0;
@@ -70,6 +72,9 @@ class RunForecastExperiment implements ShouldQueue
                 foreach ($seeds as $seed) {
                     foreach ($horizons as $horizon) {
                         $cellKey = "{$preset}:{$seed}:{$horizon}";
+                        if (($cells[$cellKey]['status'] ?? null) === 'failed') {
+                            $failedCount = max(0, $failedCount - 1);
+                        }
                         if (($cells[$cellKey]['status'] ?? null) === 'completed') {
                             $evalId = $cells[$cellKey]['evaluate_run_id'] ?? null;
                             $fcId = $cells[$cellKey]['forecast_run_id'] ?? null;
@@ -139,7 +144,7 @@ class RunForecastExperiment implements ShouldQueue
                                 continue;
                             }
 
-                            $evalRun = $runFactory->create(
+                            $evalRun = $existingEval ?? $runFactory->create(
                                 'evaluate',
                                 $dataset->id,
                                 $horizon,
@@ -150,10 +155,15 @@ class RunForecastExperiment implements ShouldQueue
                                     'snapshot' => $commonSnapshot,
                                 ]
                             );
-                            $orchestrator->run($evalRun);
+                            if ($evalRun->status !== 'completed') {
+                                $orchestrator->run($evalRun);
+                            }
                             $evalRun->refresh();
+                            if ($evalRun->status !== 'completed') {
+                                throw new \RuntimeException("Evaluation failed: {$evalRun->error_message}");
+                            }
 
-                            $fcRun = $runFactory->create(
+                            $fcRun = $existingFc ?? $runFactory->create(
                                 'forecast',
                                 $dataset->id,
                                 $horizon,
@@ -164,10 +174,12 @@ class RunForecastExperiment implements ShouldQueue
                                     'snapshot' => $commonSnapshot,
                                 ]
                             );
-                            $orchestrator->run($fcRun);
+                            if ($fcRun->status !== 'completed') {
+                                $orchestrator->run($fcRun);
+                            }
                             $fcRun->refresh();
 
-                            if ($evalRun->status !== 'completed' || $fcRun->status !== 'completed') {
+                            if ($fcRun->status !== 'completed') {
                                 throw new \RuntimeException("Child runs failed: eval={$evalRun->status}, forecast={$fcRun->status}. Eval error: {$evalRun->error_message} Forecast error: {$fcRun->error_message}");
                             }
 

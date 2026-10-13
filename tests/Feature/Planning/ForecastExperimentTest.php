@@ -122,3 +122,42 @@ it('fails cells with clear reason when dataset is too short for 3 origins', func
     expect($experiment->configuration['summary']['failed'])->toBe(1)
         ->and($experiment->configuration['cells']['stable:201:7']['error'])->toContain('Dataset too short');
 });
+
+it('resumes a failed child without duplicate runs or a new snapshot', function () {
+    $item = posMenuItem();
+    $experiment = ForecastExperiment::create([
+        'configuration' => [
+            'presets' => ['stable'], 'seeds' => [11], 'horizons' => [7],
+            'days' => 90, 'start_date' => '2026-01-01', 'menu_item_ids' => [$item->id],
+            'summary' => ['total' => 1, 'completed' => 0, 'failed' => 0],
+        ],
+        'status' => 'queued',
+    ]);
+    $failedRunner = new class extends ForecastOrchestrator
+    {
+        public function run(ForecastRun $run): void
+        {
+            $run->update(['status' => 'failed', 'error_message' => 'Injected failure']);
+        }
+    };
+    $builder = app(SyntheticDatasetBuilder::class);
+    $factory = app(ForecastRunFactory::class);
+    $snapshotter = app(PlanningSnapshot::class);
+    (new RunForecastExperiment($experiment))->handle($builder, $factory, $failedRunner, $snapshotter);
+    $experiment->refresh();
+    expect($experiment->status)->toBe('failed')
+        ->and($experiment->configuration['summary']['failed'])->toBe(1)
+        ->and(ForecastRun::where('experiment_id', $experiment->id)->where('kind', 'forecast')->count())->toBe(0);
+    $evalId = ForecastRun::where('experiment_id', $experiment->id)->sole()->id;
+    $snapshot = $experiment->configuration['snapshot'];
+    $unexpectedCapture = Mockery::mock(PlanningSnapshot::class);
+    $unexpectedCapture->shouldNotReceive('capture');
+    (new RunForecastExperiment($experiment))->handle($builder, $factory, app(ForecastOrchestrator::class), $unexpectedCapture);
+    $experiment->refresh();
+    expect($experiment->status)->toBe('completed')
+        ->and($experiment->configuration['summary']['failed'])->toBe(0)
+        ->and($experiment->configuration['summary']['completed'])->toBe(1)
+        ->and($experiment->configuration['snapshot'])->toBe($snapshot)
+        ->and(ForecastRun::where('experiment_id', $experiment->id)->count())->toBe(2)
+        ->and(ForecastRun::findOrFail($evalId)->status)->toBe('completed');
+});
