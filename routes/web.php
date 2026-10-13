@@ -24,6 +24,7 @@ use App\Http\Controllers\Manager\StocktakeController;
 use App\Http\Controllers\Manager\StockVoucherController;
 use App\Http\Controllers\Manager\SupplierController;
 use App\Http\Controllers\Manager\TableController;
+use App\Http\Controllers\Planning\ForecastCheckController;
 use App\Http\Controllers\Planning\ForecastExperimentController;
 use App\Http\Controllers\Planning\ForecastExportController;
 use App\Http\Controllers\Planning\ModelEvaluationController;
@@ -160,6 +161,23 @@ Route::middleware('auth')->group(function () {
             ->middleware('permission:planning.experiments');
         Route::get('/experiments/{experiment}/exports/summary.csv', [ForecastExportController::class, 'experimentSummary'])
             ->middleware('permission:planning.experiments');
+
+        // Weekly Forecast Inspection Routes
+        Route::get('/forecast-checks', [ForecastCheckController::class, 'index'])
+            ->middleware('permission:planning.experiments')
+            ->name('planning.forecast-checks.index');
+        Route::post('/forecast-checks', [ForecastCheckController::class, 'store'])
+            ->middleware('permission:planning.experiments')
+            ->name('planning.forecast-checks.store');
+        Route::get('/forecast-checks/{check}', [ForecastCheckController::class, 'show'])
+            ->middleware('permission:planning.experiments')
+            ->name('planning.forecast-checks.show');
+        Route::post('/forecast-checks/{check}/retry', [ForecastCheckController::class, 'retry'])
+            ->middleware('permission:planning.experiments')
+            ->name('planning.forecast-checks.retry');
+        Route::get('/forecast-checks/{check}/exports/{file}', [ForecastCheckController::class, 'export'])
+            ->middleware('permission:planning.experiments')
+            ->name('planning.forecast-checks.export');
     });
 
     // Store Management Routes (/manager/)

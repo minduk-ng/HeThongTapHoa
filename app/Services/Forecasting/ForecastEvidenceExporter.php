@@ -11,6 +11,7 @@ use App\Models\ProductForecast;
 use App\Models\SyntheticObservation;
 use App\Support\SpreadsheetCellSanitizer;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\File;
 use InvalidArgumentException;
 
 class ForecastEvidenceExporter
@@ -218,7 +219,7 @@ class ForecastEvidenceExporter
     public function persistExperimentArtifacts(ForecastExperiment $experiment, ?string $baseDir = null): string
     {
         $dir = $baseDir ?? storage_path("app/forecasting-acceptance/{$experiment->id}");
-        \Illuminate\Support\Facades\File::ensureDirectoryExists($dir);
+        File::ensureDirectoryExists($dir);
 
         // 1. Save manifest.json
         $config = is_array($experiment->configuration) ? $experiment->configuration : [];
@@ -248,7 +249,7 @@ class ForecastEvidenceExporter
         foreach ($evalRuns as $run) {
             $safeCell = str_replace(':', '_', (string) $run->cell_key);
             $runDir = "{$dir}/runs/run_{$run->id}_{$safeCell}";
-            \Illuminate\Support\Facades\File::ensureDirectoryExists($runDir);
+            File::ensureDirectoryExists($runDir);
 
             file_put_contents("{$runDir}/manifest.json", json_encode($this->manifest($run), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 

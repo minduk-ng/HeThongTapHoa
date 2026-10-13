@@ -188,4 +188,6 @@ CI (GitHub Actions `.github/workflows/tests.yml` + `lint.yml`) chạy PHP 8.3/8.
 ---
 
 ## 📖 Tài Liệu Kiến Trúc & Routing Chi Tiết
-Để xem chi tiết sơ đồ Routing, danh sách Controller và các quy tắc thiết kế hệ thống, xem tại file [docs/PROJECT_CONTEXT_AND_ROUTING.md](docs/PROJECT_CONTEXT_AND_ROUTING.md).
+- Sơ đồ Routing, danh sách Controller và các quy tắc thiết kế hệ thống: [docs/PROJECT_CONTEXT_AND_ROUTING.md](docs/PROJECT_CONTEXT_AND_ROUTING.md).
+- Hướng dẫn thuật toán & quy chuẩn thực nghiệm: [docs/forecasting/algorithm-and-experiment-guide.md](docs/forecasting/algorithm-and-experiment-guide.md).
+- Hướng dẫn kiểm tra dự báo 7 ngày & kịch bản bảo vệ đồ án: [docs/forecasting/weekly-forecast-check-guide.md](docs/forecasting/weekly-forecast-check-guide.md).

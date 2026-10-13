@@ -10,6 +10,7 @@ use App\Services\Forecasting\PlanningSnapshot;
 use App\Services\Forecasting\SyntheticDatasetBuilder;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
 
@@ -75,8 +76,8 @@ it('runs simulation acceptance matrix across presets, seeds and horizons with ev
     }
 
     $artifactDir = $exporter->persistExperimentArtifacts($experiment);
-    expect(\Illuminate\Support\Facades\File::exists("{$artifactDir}/manifest.json"))->toBeTrue()
-        ->and(\Illuminate\Support\Facades\File::exists("{$artifactDir}/summary.csv"))->toBeTrue();
+    expect(File::exists("{$artifactDir}/manifest.json"))->toBeTrue()
+        ->and(File::exists("{$artifactDir}/summary.csv"))->toBeTrue();
 
     fwrite(STDERR, "\n[acceptance-matrix] 120 cells, 365 days, 3 items completed in {$elapsed}s. Artifacts saved to {$artifactDir}\n");
 })->group('acceptance');

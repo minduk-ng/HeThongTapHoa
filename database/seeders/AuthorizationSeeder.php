@@ -64,6 +64,12 @@ class AuthorizationSeeder extends Seeder
                 'sort_order' => 54,
             ],
             [
+                'name' => 'Kiểm tra dự báo 7 ngày',
+                'route_path' => '/planning/forecast-checks',
+                'group_name' => 'Dự báo & Kế hoạch',
+                'sort_order' => 55,
+            ],
+            [
                 'name' => 'Tổng quan',
                 'route_path' => '/',
                 'group_name' => 'Trang chủ',

@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import {
+    Activity,
     AlertTriangle,
     BarChart3,
     CheckCircle2,
@@ -482,6 +483,14 @@ export default function SyntheticDatasets({
                                         >
                                             <ExternalLink className="h-3.5 w-3.5" />
                                             Đề xuất mua
+                                        </Link>
+
+                                        <Link
+                                            href={`/planning/forecast-checks?synthetic_dataset_id=${dataset.id}`}
+                                            className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50/60 px-3 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-100 dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/50"
+                                        >
+                                            <Activity className="h-3.5 w-3.5" />
+                                            Kiểm tra 7 ngày
                                         </Link>
                                     </div>
                                 </div>
