@@ -19,6 +19,95 @@
     font-family: var(--font-display);
 }
 
+:root {
+    --planning-observed: var(--color-sky-700);
+    --planning-predicted: var(--color-purple-700);
+    --planning-grid: var(--color-slate-200);
+    --planning-axis: var(--color-slate-600);
+    --planning-candidate: var(--color-slate-500);
+    --planning-selected: var(--color-sky-700);
+}
+
+.dark {
+    --planning-observed: var(--color-sky-400);
+    --planning-predicted: var(--color-purple-400);
+    --planning-grid: var(--color-slate-700);
+    --planning-axis: var(--color-slate-300);
+    --planning-candidate: var(--color-slate-400);
+    --planning-selected: var(--color-sky-400);
+}
+
+.planning-ui :is(button, a, input, select, textarea, summary):focus-visible {
+    outline: 2px solid var(--planning-selected);
+    outline-offset: 2px;
+    transition: none;
+}
+
+/* Planning-only readability and control sizing, including nested shared badges. */
+.planning-ui {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+}
+
+.planning-ui :is(h1, h2, h3, h4) {
+    font-family: var(--font-display);
+}
+
+.planning-ui :is(.text-\[10px\], .text-\[11px\]) {
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+
+.planning-ui :is(table, input:not([type='checkbox']), select, textarea) {
+    font-size: 0.875rem;
+}
+
+.planning-ui :is(button, a, select, input:not([type='checkbox'])) {
+    min-height: 2.75rem;
+}
+
+.planning-ui button {
+    min-width: 2.75rem;
+}
+
+.planning-ui :is(button, input, select, textarea):disabled {
+    cursor: not-allowed;
+}
+
+.planning-ui :is(.text-slate-400, .text-slate-500) {
+    color: var(--color-slate-600);
+}
+
+.planning-ui .text-amber-600 {
+    color: var(--color-amber-700);
+}
+
+.dark .planning-ui :is(.text-slate-400, .text-slate-500, .dark\:text-slate-400, .dark\:text-slate-500) {
+    color: var(--color-slate-300);
+}
+
+.dark .planning-ui .text-amber-600 {
+    color: var(--color-amber-300);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .planning-ui,
+    .planning-ui *,
+    .planning-ui *::before,
+    .planning-ui *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+
+    .planning-ui :is(button, a):hover,
+    .planning-ui :is(button, a):active {
+        transform: none !important;
+        translate: none !important;
+        scale: none !important;
+    }
+}
+
 @layer components {
     /* Form & Input Controls */
     .input-field {

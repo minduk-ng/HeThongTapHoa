@@ -92,8 +92,8 @@
 ### 2.5 Màn Hình Dự Báo & Kế Hoạch (Planning Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
-| `/planning` | `Planning\PlanningOverviewController` | `resources/js/pages/planning/Overview.tsx` | Tổng quan dự báo & sức khỏe mô hình, lịch sử forecast runs (quyền `planning.view`) |
-| `/planning/products` | `Planning\ProductForecastController` | `resources/js/pages/planning/ProductForecasts.tsx` | Xem dự báo nhu cầu sản phẩm, khoảng tin cậy và chất lượng dữ liệu (quyền `planning.view`) |
+| `/planning` | `Planning\PlanningOverviewController` | `resources/js/pages/planning/Overview.tsx` | KPI, nhu cầu nhập hàng trước biểu đồ, sản phẩm, chất lượng/mô hình và lịch sử lượt chạy (quyền `planning.view`) |
+| `/planning/products` | `Planning\ProductForecastController` | `resources/js/pages/planning/ProductForecasts.tsx` | Xem dự báo nhu cầu sản phẩm, biên tham khảo và chất lượng dữ liệu (quyền `planning.view`) |
 | `/planning/procurement` | `Planning\ProcurementRecommendationController` | `resources/js/pages/planning/ProcurementRecommendations.tsx` | Danh sách đề xuất nhập hàng nguyên liệu theo tồn kho an toàn & ROP (quyền `planning.view`) |
 | `/planning/evaluation` | `Planning\ModelEvaluationController` | `resources/js/pages/planning/ModelEvaluation.tsx` | Kết quả đánh giá so sánh mô hình (WAPE/MAE/RMSE) bằng rolling-origin backtest (quyền `planning.view`) |
 | `/admin/synthetic-datasets` | `Admin\SyntheticDatasetController` | `resources/js/pages/admin/planning/SyntheticDatasets.tsx` | Quản lý và sinh tập dữ liệu nhu cầu mô phỏng (Synthetic Demand Datasets) (quyền `planning.experiments`) |
@@ -107,6 +107,25 @@
 | `/planning/procurement/plans` | POST | `permission:planning.procurement_review` | Phê duyệt đề xuất và tạo kế hoạch nhập hàng gom theo nhà cung cấp |
 
 > **Tài liệu Thuật toán & Thực nghiệm (Algorithm & Experiment Guide)**: Chi tiết công thức toán học (SMA, Holt-Winters Additive/Multiplicative, SS, ROP, EOQ, WAPE/MAE/RMSE), quy trình rolling-origin backtest và cách ly dữ liệu mô phỏng tại [`docs/forecasting/algorithm-and-experiment-guide.md`](file:///d:/Projects/TapHoa/docs/forecasting/algorithm-and-experiment-guide.md).
+
+#### Hợp đồng hiển thị Planning — Plan 1 (2026-10-14)
+
+- Ba controller Overview/Products/Procurement cung cấp `resultSummary` từ `App\Services\Forecasting\PlanningResultSummary`. Chỉ đọc bản ghi đã lưu, không chạy lại bộ tính dự báo/đề xuất.
+- Metadata: `latest_run_status`, `matching_horizon`, `unfiltered_product_count`, `available_product_count`, `recommendation_count`, `positive_recommendation_count`, `empty_reason`. Số sản phẩm distinct được tính trước tìm kiếm, category, quality và phân trang; available yêu cầu quantity khác null và status không phải unavailable.
+- `empty_reason`: `no_run`, `running`, `failed`, `horizon_mismatch`, `missing_forecasts`, `no_recommendation_evidence` hoặc null. Kết quả completed/stale khả dụng được giữ khi lượt mới failed/running; trạng thái lượt mới tách khỏi `activeRun`. Không dùng mảng rỗng làm bằng chứng đủ tồn kho. Không có đề xuất dương chỉ mô tả các bản ghi đã tạo trong lượt đó, kèm thời điểm lượt.
+- Caller giới hạn run theo nguồn operational hoặc `synthetic_dataset_id`, loại forecast và kỳ yêu cầu cho latest attempt. Liên kết liên trang giữ nguồn và kỳ hiệu lực từ kết quả đã lưu; banner không lấy kỳ mặc định của form để mô tả lượt mới chưa biết kỳ.
+- Products phân biệt không có dữ liệu gốc, bộ lọc không khớp và trang vượt phạm vi; liên kết trang đầu giữ query. Procurement xóa bộ lọc tìm kiếm/nhà cung cấp nhưng giữ lựa chọn và số lượng chỉnh sửa. Thiếu bằng chứng đề xuất không che dữ liệu forecast còn dùng được trên Overview.
+- Thứ tự Overview: header/navigation/banner, KPI, **Cần nhập hàng**, biểu đồ, sản phẩm nhu cầu cao, chất lượng/phân bổ mô hình, lịch sử. Overview sở hữu khung biểu đồ; `ActualForecastChart` nhận `embedded` để bỏ khung ngoài trong cả nhánh có dữ liệu/rỗng, mặc định standalone giữ khung.
+- `recommendedModelKeys` ưu tiên `selected_count` dương lớn nhất rồi WAPE hữu hạn thấp nhất; giữ mọi ứng viên đồng hạng theo thứ tự ban đầu. Không có lựa chọn thì không có CTA khuyến nghị khả dụng. WAPE là tham khảo, không tuyên bố sai số thấp nhất toàn cục. Áp dụng dành cho mặt hàng đủ điều kiện trong lượt dự báo tiếp theo, không viết lại lịch sử.
+- Thuật ngữ: **Kỳ dự báo**, **Điểm đặt hàng** (ROP), **Tồn kho an toàn** (SS), **Bù thiếu hụt tồn kho**, **Hiệu năng / Lịch sử / Phương pháp**, **Tập lựa chọn / Tập kiểm tra cuối**. Giá trị thiếu hiển thị `—` tại các vị trí đã sửa; biên ±20% là **Biên tham khảo**, không phải khoảng tin cậy thống kê. WAPE/MAE/RMSE/EOQ giữ tên kỹ thuật và có phần giải thích.
+
+Tài liệu đã duyệt, theo thứ tự triển khai:
+
+1. Thông tin/bố cục: [spec](superpowers/specs/2026-10-14-planning-information-layout-design.md), [plan](superpowers/plans/2026-10-14-planning-information-layout.md).
+2. UI/tương tác: [spec](superpowers/specs/2026-10-14-planning-ui-interactions-design.md), [plan](superpowers/plans/2026-10-14-planning-ui-interactions.md).
+3. Điều hướng responsive: [spec](superpowers/specs/2026-10-14-responsive-navigation-design.md), [plan](superpowers/plans/2026-10-14-responsive-navigation.md).
+
+Trạng thái nghiệm thu riêng tại [verification ledger](superpowers/plans/2026-10-14-planning-ui-verification.md). Mô tả mã nguồn ở đây không chứng minh browser pass hoặc hoàn thành Plan 2/3.
 
 ### 2.6 Màn Hình Báo Cáo (Reports Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
@@ -141,7 +160,9 @@
 - **Trang chủ** là group riêng đứng đầu sidebar (`group_name = "Trang chủ"`, `sort_order = 1`, route `/`).
 
 ### 2.8 Shared Components Dùng Chung (`resources/js/components`)
-- **`resources/js/components/DatePicker.tsx`**: DatePicker dùng chung (mode `single`/`range`, controlled, wire `Y-m-d`, hiển thị `dd/mm/yyyy`, segmented input dd/mm/yyyy, nhảy nhanh tháng/năm, hỗ trợ min/max + dark mode). Helpers: `resources/js/utils/date.ts`. Spec: `docs/superpowers/specs/2026-07-31-date-picker-design.md`. Ứng dụng trong PromotionFormDrawer (mode `single`; ngày bắt đầu 00:00, ngày kết thúc 23:59:59).
+- **`resources/js/components/DatePicker.tsx`**: DatePicker dùng chung (mode `single`/`range`, controlled, wire `Y-m-d`, hiển thị `dd/mm/yyyy`, segmented input dd/mm/yyyy, nhảy nhanh tháng/năm, hỗ trợ min/max + dark mode). Helpers: `resources/js/utils/date.ts`. Spec: `docs/superpowers/specs/2026-07-31-date-picker-design.md`. Ứng dụng trong PromotionFormDrawer và trang kiểm tra dự báo 7 ngày (`ForecastChecks.tsx`, mode `single`).
+- **`resources/js/components/planning/PlanningDialog.tsx`**: Vỏ bọc `<dialog>` HTML native dùng chung cho các overlay phân hệ Planning (`ForecastDetailDrawer`, `RecommendationDetailDrawer`, `RecommendationReviewModal`, `ModelEvaluation` confirm modal). Tự động quản lý focus trap native, inert nền, khóa scroll body, hủy qua Escape có guard khi bận và phục hồi focus về trigger khi đóng. Spec: `docs/superpowers/specs/2026-10-14-planning-ui-interactions-design.md`.
+- **`resources/js/components/planning/PlanningTabs.tsx`**: Tab điều hướng kép (mobile <640px render native `<select>`, desktop >=640px render `role="tablist"` chuẩn roving tabIndex, phím mũi tên và focus sync). Dùng trong `ModelEvaluation.tsx`.
 
 ---
 
@@ -405,6 +426,14 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
   - Hỗ trợ các kích thước linh hoạt: `sm` (448px), `md` (512px), `lg` (640px), `xl` (768px), `'2xl'` (896px) phù hợp từng mật độ thông tin.
 - **Tổ chức Form Mạch Lạc Với `FormSection` & `FormField`**:
   - `FormSection`: Phân nhóm trực quan các trường nhập liệu theo khối chức năng, hỗ trợ header có icon, title, description và responsive grid (`gridCols={1 | 2 | 3}`).
+
+### Shared navigation repair contract (2026-10-15)
+
+`Sidebar` renders only server navigation, preserving flat/sub/mixed group order. A noninteractive max-content strip uses the same brand asset, complete group labels/chevrons/padding/gaps, and measured avatar button width. Required total plus 16px is compared with the full inner header width; below768 is always compact. ResizeObserver and image/font readiness remeasure without using hidden desktop navigation dimensions.
+
+Desktop panels stay in logical DOM order but use viewport-fixed coordinates, 8px edge/gap bounds and remaining-height scroll limits. Header deliberately has no backdrop filter/transform containing block, allowing fixed nested flyouts to escape the first-level scrollport. Avoid adding containment/filter/transform to this ancestry without retesting clipping. Inline fallback remains inside the parent scroller.
+
+Compact navigation is an in-flow disclosure. Escape closes subgroup, group, then outer disclosure with trigger focus restoration; avatar is independent. Mode switches restore navigation focus only when its previous control disappears. Outside pointerdown and route/link transitions reset navigation state and hover timer. Native controls retain normal Tab order; no menu-role keyboard contract is implied. Browser fixture evidence and remaining authenticated acceptance limits: `.superpowers/sdd/2026-10-14-responsive-navigation/completion-report.md`.
   - `FormField`: Chuẩn hóa label, dấu sao bắt buộc `*`, tooltip/hint text và thông báo lỗi validation nhất quán.
 - **Cơ Chế Phòng Vệ Dữ Liệu Dirty State & UX Nhắc Nhở**:
   - Modal chặn đóng khi click ra lớp phủ (backdrop) nếu form đang có dữ liệu (`isDirty = true`), ngăn ngừa việc người dùng vô tình làm mất dữ liệu đã nhập.
@@ -415,4 +444,3 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
 - **Deadcode Zero**:
   - Xóa bỏ 100% các file `*Drawer.tsx` cũ trong phân hệ quản lý: `CategoryFormDrawer`, `TableFormDrawer`, `CustomerFormDrawer`, `SupplierFormDrawer`, `IngredientFormDrawer`, `ProductFormDrawer`, `RecipeFormDrawer`, `PromotionFormDrawer`.
   - Thay thế tương ứng bằng: `CategoryFormModal`, `TableFormModal`, `CustomerFormModal`, `SupplierFormModal`, `IngredientFormModal`, `ProductFormModal`, `RecipeFormModal`, `PromotionFormModal`.
-

@@ -11,6 +11,7 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 import { formatQuantity } from './planningFormatters';
 
 export interface ActualForecastPoint {
@@ -30,6 +31,7 @@ interface ActualForecastChartProps {
     className?: string;
     title?: string;
     subtitle?: string;
+    embedded?: boolean;
 }
 
 interface CustomTooltipProps {
@@ -52,7 +54,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
     const point = payload[0]?.payload;
 
     return (
-        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-800 text-xs">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-800 text-sm tabular-nums">
             <p className="font-semibold text-slate-800 dark:text-slate-100 tabular-nums">
                 {point?.label || label || point?.date}
             </p>
@@ -60,7 +62,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
                 {point?.actual !== undefined && point.actual !== null && (
                     <div className="flex items-center justify-between gap-4 text-sky-700 dark:text-sky-300">
                         <span className="flex items-center gap-1.5 font-medium">
-                            <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
+                            <span className="inline-block h-2 w-2 rounded-full bg-sky-700 dark:bg-sky-400" />
                             Thực tế:
                         </span>
                         <span className="font-semibold tabular-nums">
@@ -71,7 +73,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
                 {point?.forecast !== undefined && point.forecast !== null && (
                     <div className="flex items-center justify-between gap-4 text-purple-700 dark:text-purple-300">
                         <span className="flex items-center gap-1.5 font-medium">
-                            <span className="inline-block h-2 w-2 rounded-full bg-purple-500" />
+                            <span className="inline-block h-2 w-2 rounded-full bg-purple-700 dark:bg-purple-400" />
                             Dự báo:
                         </span>
                         <span className="font-semibold tabular-nums">
@@ -83,8 +85,8 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
                     point.lowerBound !== null &&
                     point?.upperBound !== undefined &&
                     point.upperBound !== null && (
-                        <div className="mt-1 border-t border-slate-100 pt-1 text-[11px] text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                            <span>Khoảng ước tính: </span>
+                        <div className="mt-1 border-t border-slate-100 pt-1 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                            <span>Biên tham khảo: </span>
                             <span className="tabular-nums font-medium text-slate-700 dark:text-slate-300">
                                 {formatQuantity(point.lowerBound)} - {formatQuantity(point.upperBound)}
                             </span>
@@ -102,22 +104,25 @@ export default function ActualForecastChart({
     className = '',
     title,
     subtitle,
+    embedded = false,
 }: ActualForecastChartProps) {
+    const reduced = usePrefersReducedMotion();
     const safeData = Array.isArray(data) ? data : [];
+    const surface = embedded ? '' : 'rounded-2xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-700 dark:bg-slate-800/90';
 
     if (safeData.length === 0) {
         return (
             <div
-                className={`flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-800/80 ${className}`}
+                className={`planning-ui flex flex-col items-start justify-center text-left ${surface} ${className}`}
                 style={{ height }}
             >
-                <div className="rounded-xl bg-slate-100 p-3 text-slate-400 dark:bg-slate-700/50 dark:text-slate-500">
+                <div className="rounded-xl bg-slate-100 p-3 text-slate-600 dark:bg-slate-700/50 dark:text-slate-300">
                     <LineChartIcon className="h-6 w-6" />
                 </div>
                 <p className="mt-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                     Chưa có chuỗi dữ liệu dự báo
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-600 dark:text-slate-300">
                     Hãy kích hoạt chạy dự báo để xem biểu đồ so sánh thực tế và dự đoán.
                 </p>
             </div>
@@ -150,7 +155,7 @@ export default function ActualForecastChart({
 
     return (
         <div
-            className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-700 dark:bg-slate-800/90 ${className}`}
+            className={`planning-ui tabular-nums ${surface} ${className}`}
         >
             {(title || subtitle) && (
                 <div className="mb-4">
@@ -160,7 +165,7 @@ export default function ActualForecastChart({
                         </h3>
                     )}
                     {subtitle && (
-                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                        <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
                             {subtitle}
                         </p>
                     )}
@@ -175,20 +180,17 @@ export default function ActualForecastChart({
                     >
                         <CartesianGrid
                             strokeDasharray="3 3"
-                            stroke="#e2e8f0"
-                            className="stroke-slate-200 dark:stroke-slate-700/60"
+                            stroke="var(--planning-grid)"
                             vertical={false}
                         />
                         <XAxis
                             dataKey="label"
-                            tick={{ fontSize: 11 }}
-                            className="text-slate-500 dark:text-slate-400"
+                            tick={{ fontSize: 12, fill: 'var(--planning-axis)' }}
                             tickLine={false}
-                            axisLine={{ stroke: '#cbd5e1' }}
+                            axisLine={{ stroke: 'var(--planning-grid)' }}
                         />
                         <YAxis
-                            tick={{ fontSize: 11 }}
-                            className="text-slate-500 dark:text-slate-400"
+                            tick={{ fontSize: 12, fill: 'var(--planning-axis)' }}
                             tickFormatter={(v: number) => formatQuantity(v)}
                             tickLine={false}
                             axisLine={false}
@@ -211,7 +213,7 @@ export default function ActualForecastChart({
                                 dataKey="confidenceRange"
                                 name="Biên tham khảo (±20%)"
                                 stroke="transparent"
-                                fill="#c084fc"
+                                fill="var(--planning-predicted)"
                                 fillOpacity={0.22}
                                 isAnimationActive={false}
                             />
@@ -221,14 +223,14 @@ export default function ActualForecastChart({
                         {cutoffX && (
                             <ReferenceLine
                                 x={cutoffX}
-                                stroke="#64748b"
+                                stroke="var(--planning-axis)"
                                 strokeDasharray="3 3"
                                 strokeWidth={1.5}
                                 label={{
                                     value: 'Điểm cắt (Cutoff)',
                                     position: 'top',
-                                    fill: '#64748b',
-                                    fontSize: 10,
+                                    fill: 'var(--planning-axis)',
+                                    fontSize: 12,
                                     fontWeight: 600,
                                 }}
                             />
@@ -239,10 +241,11 @@ export default function ActualForecastChart({
                             type="monotone"
                             dataKey="actual"
                             name="Nhu cầu thực tế"
-                            stroke="#0284c7"
+                            stroke="var(--planning-observed)"
                             strokeWidth={2.5}
-                            dot={{ r: 3, fill: '#0284c7' }}
-                            activeDot={{ r: 5, fill: '#0284c7' }}
+                            dot={{ r: 3, fill: 'var(--planning-observed)' }}
+                            activeDot={{ r: 5, fill: 'var(--planning-observed)' }}
+                            isAnimationActive={!reduced}
                             connectNulls={false}
                         />
 
@@ -251,11 +254,12 @@ export default function ActualForecastChart({
                             type="monotone"
                             dataKey="forecast"
                             name="Dự báo tương lai"
-                            stroke="#9333ea"
+                            stroke="var(--planning-predicted)"
                             strokeWidth={2.5}
                             strokeDasharray="5 5"
-                            dot={{ r: 3, fill: '#9333ea' }}
-                            activeDot={{ r: 5, fill: '#9333ea' }}
+                            dot={{ r: 3, fill: 'var(--planning-predicted)' }}
+                            activeDot={{ r: 5, fill: 'var(--planning-predicted)' }}
+                            isAnimationActive={!reduced}
                             connectNulls={false}
                         />
                     </ComposedChart>

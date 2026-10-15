@@ -9,7 +9,7 @@ import {
     Shield,
     X,
 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import PlanningDialog from './PlanningDialog';
 import {
     formatCurrency,
     formatDateTime,
@@ -94,45 +94,6 @@ export default function RecommendationDetailDrawer({
     recommendation,
     onClose,
 }: RecommendationDetailDrawerProps) {
-    const closeBtnRef = useRef<HTMLButtonElement>(null);
-    const previousFocusRef = useRef<HTMLElement | null>(null);
-
-    useEffect(() => {
-        if (isOpen) {
-            previousFocusRef.current = document.activeElement as HTMLElement | null;
-            const timer = setTimeout(() => {
-                closeBtnRef.current?.focus();
-            }, 50);
-
-            return () => {
-                clearTimeout(timer);
-            };
-        }
-
-        if (previousFocusRef.current && typeof previousFocusRef.current.focus === 'function') {
-            previousFocusRef.current.focus();
-        }
-    }, [isOpen]);
-
-    useEffect(() => {
-        if (!isOpen) {
-            return;
-        }
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                onClose();
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [isOpen, onClose]);
-
     if (!isOpen || !recommendation) {
         return null;
     }
@@ -190,20 +151,8 @@ export default function RecommendationDetailDrawer({
     const isEoq = method === 'eoq';
 
     return (
-        <div
-            className="fixed inset-0 z-50 overflow-hidden"
-            aria-labelledby="recommendation-drawer-title"
-            role="dialog"
-            aria-modal="true"
-        >
-            <div
-                className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
-                onClick={onClose}
-                aria-hidden="true"
-            />
-
-            <div className="fixed inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10">
-                <div className="flex w-screen max-w-xl flex-col border-l border-slate-200 bg-white shadow-2xl transition-all dark:border-slate-800 dark:bg-slate-900">
+        <PlanningDialog open={isOpen} onClose={onClose} labelledBy="recommendation-drawer-title" variant="drawer">
+                <div className="flex h-full w-full flex-col border-l border-slate-200 bg-white shadow-2xl sm:max-w-xl dark:border-slate-800 dark:bg-slate-900">
                     {/* Header */}
                     <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5 dark:border-slate-800">
                         <div className="flex items-center gap-3">
@@ -213,6 +162,8 @@ export default function RecommendationDetailDrawer({
                             <div>
                                 <h2
                                     id="recommendation-drawer-title"
+                                    data-dialog-heading
+                                    tabIndex={-1}
                                     className="font-display text-lg font-bold text-slate-900 dark:text-white"
                                 >
                                     {ingredient?.name || `Nguyên liệu #${recommendation.ingredient_id}`}
@@ -224,7 +175,8 @@ export default function RecommendationDetailDrawer({
                         </div>
 
                         <button
-                            ref={closeBtnRef}
+                            data-dialog-close
+                            type="button"
                             onClick={onClose}
                             className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus:outline-hidden focus:ring-2 focus:ring-sky-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                             aria-label="Đóng bảng chi tiết"
@@ -234,7 +186,7 @@ export default function RecommendationDetailDrawer({
                     </div>
 
                     {/* Scrollable Content */}
-                    <div className="flex-1 space-y-6 overflow-y-auto p-6">
+                    <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
                         {/* Section 1: Stock Status (Snapshot) */}
                         <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
                             <div className="mb-3 flex items-center justify-between">
@@ -306,7 +258,7 @@ export default function RecommendationDetailDrawer({
                                 <div className="flex items-center justify-between border-b border-slate-100 py-2 dark:border-slate-800">
                                     <div>
                                         <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                                            Tồn kho an toàn (Safety Stock - SS)
+                                            Tồn kho an toàn
                                         </div>
                                         <div className="text-xs text-slate-400">
                                             Đệm dự phòng biến động nhu cầu
@@ -320,10 +272,10 @@ export default function RecommendationDetailDrawer({
                                 <div className="flex items-center justify-between py-2">
                                     <div>
                                         <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                                            Điểm đặt hàng lại (Reorder Point - ROP)
+                                            Điểm đặt hàng
                                         </div>
                                         <div className="text-xs text-slate-400">
-                                            ROP = Nhu cầu ({formatQuantity(demand_quantity, 1)}) + SS ({formatQuantity(safety_stock, 1)})
+                                            Điểm đặt hàng = Nhu cầu ({formatQuantity(demand_quantity, 1)}) + Tồn kho an toàn ({formatQuantity(safety_stock, 1)})
                                         </div>
                                     </div>
                                     <div className="font-display font-bold tabular-nums text-indigo-600 dark:text-indigo-400">
@@ -345,7 +297,7 @@ export default function RecommendationDetailDrawer({
                                 <div className="mt-1 font-display font-semibold text-slate-900 dark:text-white">
                                     {isEoq
                                         ? 'EOQ (Economic Order Quantity) — Tối ưu chi phí đặt hàng & lưu kho'
-                                        : 'Khoảng bù tồn kho (Reorder Gap) — Bù đắp lượng thiếu hụt theo điểm đặt hàng'}
+                                        : 'Bù thiếu hụt tồn kho — Bù đắp lượng thiếu hụt theo điểm đặt hàng'}
                                 </div>
                             </div>
 
@@ -359,7 +311,7 @@ export default function RecommendationDetailDrawer({
                                         {formatQuantity(raw_quantity, 2)} {purchaseUnit}
                                     </div>
                                     <div className="text-[11px] text-slate-400">
-                                        Tính trực tiếp từ mô hình {isEoq ? 'EOQ' : 'Reorder Gap'}
+                                        Tính trực tiếp từ mô hình {isEoq ? 'EOQ' : 'Bù thiếu hụt tồn kho'}
                                     </div>
                                 </div>
 
@@ -469,13 +421,13 @@ export default function RecommendationDetailDrawer({
                         <button
                             type="button"
                             onClick={onClose}
+                            aria-label="Đóng bảng chi tiết"
                             className="w-full rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                         >
                             Đóng
                         </button>
                     </div>
                 </div>
-            </div>
-        </div>
+        </PlanningDialog>
     );
 }

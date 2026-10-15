@@ -1,7 +1,7 @@
 # Spec 1 — Thông tin và bố cục Dự báo & kế hoạch
 
 - Ngày: 2026-10-14
-- Trạng thái: Đã duyệt phạm vi phân chia; chờ người dùng duyệt nội dung spec.
+- Trạng thái: Người dùng đã duyệt spec; chuyển sang lập kế hoạch triển khai.
 - Thứ tự: 1/3; thực hiện trước spec UI/tương tác và spec điều hướng responsive.
 
 ## 1. Mục tiêu và căn cứ

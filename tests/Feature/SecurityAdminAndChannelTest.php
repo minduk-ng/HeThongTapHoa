@@ -1,16 +1,39 @@
 <?php
 
 test('config admin khong co default password', function () {
-    // Bỏ env (test chạy không env ADMIN_*) → phải ra null, không phải '244466666'
+    $originalEnvironment = [];
     foreach (['ADMIN_EMAIL', 'ADMIN_DEFAULT_PASSWORD'] as $var) {
-        putenv($var);
-        unset($_ENV[$var], $_SERVER[$var]);
+        $originalEnvironment[$var] = [getenv($var), $_ENV[$var] ?? null, $_SERVER[$var] ?? null];
     }
-    config()->set('services.admin.email', env('ADMIN_EMAIL'));
-    config()->set('services.admin.default_password', env('ADMIN_DEFAULT_PASSWORD'));
+    $originalConfig = config('services.admin');
 
-    expect(config('services.admin.email'))->toBeNull();
-    expect(config('services.admin.default_password'))->toBeNull();
+    try {
+        // Bỏ env (test chạy không env ADMIN_*) → phải ra null, không phải '244466666'
+        foreach (array_keys($originalEnvironment) as $var) {
+            putenv($var);
+            unset($_ENV[$var], $_SERVER[$var]);
+        }
+        config()->set('services.admin.email', env('ADMIN_EMAIL'));
+        config()->set('services.admin.default_password', env('ADMIN_DEFAULT_PASSWORD'));
+
+        expect(config('services.admin.email'))->toBeNull();
+        expect(config('services.admin.default_password'))->toBeNull();
+    } finally {
+        foreach ($originalEnvironment as $var => [$process, $environment, $server]) {
+            putenv($process === false ? $var : $var.'='.$process);
+            if ($environment === null) {
+                unset($_ENV[$var]);
+            } else {
+                $_ENV[$var] = $environment;
+            }
+            if ($server === null) {
+                unset($_SERVER[$var]);
+            } else {
+                $_SERVER[$var] = $server;
+            }
+        }
+        config()->set('services.admin', $originalConfig);
+    }
 });
 
 test('broadcasting/auth tu choi an danh cho private pos-channel', function () {

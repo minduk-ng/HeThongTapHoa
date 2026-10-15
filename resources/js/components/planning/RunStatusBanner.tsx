@@ -37,6 +37,8 @@ export interface ForecastRunSummary {
 }
 
 interface RunStatusBannerProps {
+    sourceDatasetId?: number | null;
+    latestRunStatus?: string | null;
     run?: ForecastRunSummary | null;
     sourceDatasetName?: string | null;
     defaultHorizon?: number;
@@ -44,6 +46,8 @@ interface RunStatusBannerProps {
 }
 
 export default function RunStatusBanner({
+    sourceDatasetId,
+    latestRunStatus,
     run,
     sourceDatasetName,
     defaultHorizon = 7,
@@ -54,9 +58,10 @@ export default function RunStatusBanner({
     const { isSubmitting, guard } = useSubmitGuard();
     const [horizonDays, setHorizonDays] = useState<number>(run?.horizon_days || defaultHorizon);
 
-    const isRunning = run?.status === 'running';
-    const isQueued = run?.status === 'queued';
-    const isFailed = run?.status === 'failed';
+    const status = run?.status ?? latestRunStatus;
+    const isRunning = status === 'running';
+    const isQueued = status === 'queued';
+    const isFailed = status === 'failed';
     const isCompleted = run?.status === 'completed';
     const isEmpty = !run || !run.id;
     const isStaleRun = Boolean(
@@ -64,8 +69,9 @@ export default function RunStatusBanner({
             (run.status === 'stale' || (isCompleted && isRunStale(run.completed_at || run.data_cutoff, 24)))
     );
 
+    const datasetId = sourceDatasetId ?? run?.synthetic_dataset_id;
     const sourceLabel = formatSourceLabel(
-        sourceDatasetName || run?.syntheticDataset?.name || run?.synthetic_dataset?.name || (run?.synthetic_dataset_id ? { id: run.synthetic_dataset_id } : null)
+        sourceDatasetName || run?.syntheticDataset?.name || run?.synthetic_dataset?.name || (datasetId != null ? { id: datasetId } : null)
     );
 
     const handleTriggerRun = () => {
@@ -88,7 +94,7 @@ export default function RunStatusBanner({
                     '/planning/runs',
                     {
                         horizon_days: horizonDays,
-                        synthetic_dataset_id: run?.synthetic_dataset_id ?? null,
+                        synthetic_dataset_id: sourceDatasetId ?? run?.synthetic_dataset_id ?? null,
                     },
                     {
                         preserveScroll: true,
@@ -113,10 +119,10 @@ export default function RunStatusBanner({
     };
 
     // 1. EMPTY STATE
-    if (isEmpty) {
+    if (isEmpty && !isRunning && !isQueued && !isFailed) {
         return (
             <div
-                className={`rounded-2xl border border-dashed border-slate-300 bg-white p-5 shadow-xs dark:border-slate-700 dark:bg-slate-800/80 ${className}`}
+                className={`planning-ui rounded-2xl border border-dashed border-slate-300 bg-white p-5 shadow-xs dark:border-slate-700 dark:bg-slate-800/80 ${className}`}
             >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-start gap-3.5">
@@ -142,6 +148,7 @@ export default function RunStatusBanner({
                         <div className="flex items-center gap-2.5 sm:self-center">
                             <select
                                 value={horizonDays}
+                                aria-label="Kỳ dự báo"
                                 onChange={(e) => setHorizonDays(Number(e.target.value))}
                                 disabled={isSubmitting}
                                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-2xs focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
@@ -154,7 +161,7 @@ export default function RunStatusBanner({
                                 type="button"
                                 onClick={handleTriggerRun}
                                 disabled={isSubmitting}
-                                className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-sky-500 dark:hover:bg-sky-600"
+                                className="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {isSubmitting ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -174,7 +181,7 @@ export default function RunStatusBanner({
     if (isRunning || isQueued) {
         return (
             <div
-                className={`rounded-2xl border border-sky-200 bg-sky-50/70 p-5 shadow-xs dark:border-sky-800/70 dark:bg-sky-950/40 ${className}`}
+                className={`planning-ui rounded-2xl border border-sky-200 bg-sky-50/70 p-5 shadow-xs dark:border-sky-800/70 dark:bg-sky-950/40 ${className}`}
             >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-start gap-3.5">
@@ -189,10 +196,11 @@ export default function RunStatusBanner({
                             <div className="flex items-center gap-2">
                                 <span className="inline-flex items-center gap-1.5 rounded-md bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-900/80 dark:text-sky-200">
                                     <Activity className="h-3 w-3 animate-pulse" />
-                                    {formatRunStatusLabel(run.status)}
+                                    {formatRunStatusLabel(status)}
                                 </span>
                                 <span className="text-xs text-sky-700 dark:text-sky-300">
-                                    Lượt #{run.id} • Chân trời {run.horizon_days ?? horizonDays} ngày
+                                    {run?.id ? `Lượt #${run.id}` : 'Lượt mới nhất'}
+                                    {run?.horizon_days != null && ` • Kỳ dự báo ${run.horizon_days} ngày`}
                                 </span>
                             </div>
                             <p className="mt-1 text-sm text-sky-900 dark:text-sky-100">
@@ -216,7 +224,7 @@ export default function RunStatusBanner({
     if (isFailed) {
         return (
             <div
-                className={`rounded-2xl border border-rose-200 bg-rose-50/70 p-5 shadow-xs dark:border-rose-800/70 dark:bg-rose-950/40 ${className}`}
+                className={`planning-ui rounded-2xl border border-rose-200 bg-rose-50/70 p-5 shadow-xs dark:border-rose-800/70 dark:bg-rose-950/40 ${className}`}
             >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-start gap-3.5">
@@ -229,11 +237,11 @@ export default function RunStatusBanner({
                                     {formatRunStatusLabel('failed')}
                                 </span>
                                 <span className="text-xs text-rose-700 dark:text-rose-300">
-                                    Lượt #{run.id}
+                                    {run?.id ? `Lượt #${run.id}` : 'Lượt mới nhất'}
                                 </span>
                             </div>
                             <p className="mt-1 text-sm text-rose-900 dark:text-rose-100">
-                                {run.error_message || 'Có lỗi xảy ra trong quá trình tính toán lượt dự báo.'}
+                                {run?.error_message || 'Có lỗi xảy ra trong quá trình tính toán lượt dự báo.'}
                             </p>
                         </div>
                     </div>
@@ -243,7 +251,7 @@ export default function RunStatusBanner({
                             type="button"
                             onClick={handleTriggerRun}
                             disabled={isSubmitting}
-                            className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-rose-500 dark:hover:bg-rose-600 sm:self-center"
+                            className="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50 sm:self-center"
                         >
                             {isSubmitting ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -258,10 +266,14 @@ export default function RunStatusBanner({
         );
     }
 
+    if (!run) {
+        return null;
+    }
+
     // 4. COMPLETED OR STALE STATE
     return (
         <div
-            className={`rounded-2xl border bg-white p-5 shadow-xs transition-colors dark:bg-slate-800/90 ${
+            className={`planning-ui rounded-2xl border bg-white p-5 shadow-xs transition-colors dark:bg-slate-800/90 ${
                 isStaleRun
                     ? 'border-amber-200 bg-amber-50/30 dark:border-amber-800/70 dark:bg-amber-950/20'
                     : 'border-slate-200 dark:border-slate-700'
@@ -306,6 +318,9 @@ export default function RunStatusBanner({
                         </div>
 
                         <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
+                            {latestRunStatus && latestRunStatus !== run.status && (
+                                <span>Lượt mới nhất: {formatRunStatusLabel(latestRunStatus)}. Đang giữ kết quả của lượt #{run.id}.</span>
+                            )}
                             <span>
                                 Điểm cắt dữ liệu (Cutoff):{' '}
                                 <strong className="tabular-nums text-slate-800 dark:text-slate-200">
@@ -319,7 +334,7 @@ export default function RunStatusBanner({
                                 </strong>
                             </span>
                             <span>
-                                Chân trời:{' '}
+                                Kỳ dự báo:{' '}
                                 <strong className="tabular-nums text-slate-800 dark:text-slate-200">
                                     {run.horizon_days ?? 7} ngày
                                 </strong>
@@ -335,7 +350,7 @@ export default function RunStatusBanner({
                                 value={horizonDays}
                                 onChange={(e) => setHorizonDays(Number(e.target.value))}
                                 disabled={isSubmitting}
-                                aria-label="Chọn chân trời dự báo"
+                                aria-label="Chọn kỳ dự báo"
                                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-2xs focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                             >
                                 <option value={7}>7 ngày</option>
@@ -348,11 +363,7 @@ export default function RunStatusBanner({
                                 onClick={handleTriggerRun}
                                 disabled={isSubmitting}
                                 title="Chạy lại mô hình dự báo"
-                                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                                    isStaleRun
-                                        ? 'bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600'
-                                        : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-sky-600 dark:hover:bg-sky-500'
-                                }`}
+                                className="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {isSubmitting ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />

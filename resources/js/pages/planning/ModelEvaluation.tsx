@@ -3,13 +3,11 @@ import {
     Activity,
     AlertTriangle,
     ArrowUpRight,
-    BarChart2,
     CheckCircle2,
     Cpu,
     History,
     Info,
     Play,
-    Settings,
     ShieldCheck,
     SlidersHorizontal,
     Sparkles,
@@ -17,6 +15,8 @@ import {
 import { useState } from 'react';
 import ModelMetricChart from '../../components/planning/ModelMetricChart';
 import type { MetricType, ModelMetricPoint } from '../../components/planning/ModelMetricChart';
+import { recommendedModelKeys } from '../../components/planning/modelRecommendation';
+import PlanningDialog from '../../components/planning/PlanningDialog';
 import {
     formatDate,
     formatDateTime,
@@ -25,6 +25,7 @@ import {
     formatWape,
     MODEL_NAMES,
 } from '../../components/planning/planningFormatters';
+import PlanningTabs from '../../components/planning/PlanningTabs';
 import RunStatusBanner from '../../components/planning/RunStatusBanner';
 import type { ForecastRunSummary } from '../../components/planning/RunStatusBanner';
 import DashboardLayout from '../../layouts/DashboardLayout';
@@ -126,13 +127,14 @@ export default function ModelEvaluation({
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [isSubmittingApply, setIsSubmittingApply] = useState(false);
 
-    // Determine the best/winning candidate or currently selected model
-    const winningCandidate =
-        [...modelComparison].sort(
-            (a, b) =>
-                ((b.selected_count ?? 0) - (a.selected_count ?? 0)) ||
-                ((a.avg_wape ?? 999) - (b.avg_wape ?? 999))
-        )[0] || null;
+    const recommendedKeys = recommendedModelKeys(modelComparison);
+    const recommendedCandidates = modelComparison.filter((row) => recommendedKeys.includes(row.model_key));
+    const primaryCandidate = recommendedCandidates[0];
+    const contextQuery = new URLSearchParams({ horizon_days: String(activeRun?.horizon_days || horizon) });
+
+    if (filters.synthetic_dataset_id != null) {
+        contextQuery.set('synthetic_dataset_id', String(filters.synthetic_dataset_id));
+    }
 
     const handleHorizonChange = (newHorizon: number) => {
         setHorizon(newHorizon);
@@ -196,7 +198,7 @@ export default function ModelEvaluation({
         <DashboardLayout>
             <Head title="Đánh giá mô hình dự báo" />
 
-            <div className="space-y-6 pb-12">
+            <div className="planning-ui space-y-6 pb-12">
                 {/* 1. Page Header */}
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
@@ -213,14 +215,14 @@ export default function ModelEvaluation({
                         <div className="inline-flex items-center rounded-xl border border-slate-200 bg-white p-1 text-xs dark:border-slate-800 dark:bg-slate-900">
                             <span className="px-2 font-medium text-slate-500 dark:text-slate-400 inline-flex items-center gap-1">
                                 <SlidersHorizontal className="h-3.5 w-3.5" />
-                                <span>Horizon:</span>
+                                <span>Kỳ dự báo:</span>
                             </span>
                             <button
                                 type="button"
                                 onClick={() => handleHorizonChange(7)}
                                 className={`rounded-lg px-2.5 py-1 font-semibold transition ${
                                     horizon === 7
-                                        ? 'bg-purple-600 text-white shadow-2xs'
+                                        ? 'bg-sky-700 text-white shadow-2xs'
                                         : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                                 }`}
                             >
@@ -231,7 +233,7 @@ export default function ModelEvaluation({
                                 onClick={() => handleHorizonChange(30)}
                                 className={`rounded-lg px-2.5 py-1 font-semibold transition ${
                                     horizon === 30
-                                        ? 'bg-purple-600 text-white shadow-2xs'
+                                        ? 'bg-sky-700 text-white shadow-2xs'
                                         : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                                 }`}
                             >
@@ -240,13 +242,13 @@ export default function ModelEvaluation({
                         </div>
 
                         <Link
-                            href="/planning"
+                            href={`/planning?${contextQuery}`}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/60"
                         >
                             <span>Tổng quan</span>
                         </Link>
                         <Link
-                            href="/planning/products"
+                            href={`/planning/products?${contextQuery}`}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/60"
                         >
                             <span>Dự báo sản phẩm</span>
@@ -256,7 +258,7 @@ export default function ModelEvaluation({
                             type="button"
                             onClick={handleRunEvaluation}
                             disabled={isTriggeringRun}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-purple-700 transition disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-sky-700 px-3.5 py-2 text-sm font-semibold text-white shadow-2xs hover:bg-sky-800 transition-colors disabled:opacity-50"
                         >
                             <Play className="h-3.5 w-3.5" />
                             <span>{isTriggeringRun ? 'Đang kích hoạt...' : `Chạy đánh giá mới (${horizon} ngày)`}</span>
@@ -268,106 +270,87 @@ export default function ModelEvaluation({
                 <RunStatusBanner run={activeRun} />
 
                 {/* 3. Navigation Tabs - Only active tab is rendered */}
-                <div className="border-b border-slate-200 dark:border-slate-800">
-                    <nav className="flex space-x-6" aria-label="Tabs">
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('performance')}
-                            className={`flex items-center gap-2 border-b-2 py-3 px-1 text-xs font-semibold transition-colors ${
-                                activeTab === 'performance'
-                                    ? 'border-purple-600 text-purple-600 dark:border-purple-400 dark:text-purple-400'
-                                    : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                            }`}
-                        >
-                            <BarChart2 className="h-4 w-4" />
-                            <span>Hiệu năng mô hình (Performance)</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('history')}
-                            className={`flex items-center gap-2 border-b-2 py-3 px-1 text-xs font-semibold transition-colors ${
-                                activeTab === 'history'
-                                    ? 'border-purple-600 text-purple-600 dark:border-purple-400 dark:text-purple-400'
-                                    : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                            }`}
-                        >
-                            <History className="h-4 w-4" />
-                            <span>Lịch sử đánh giá (History)</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('config')}
-                            className={`flex items-center gap-2 border-b-2 py-3 px-1 text-xs font-semibold transition-colors ${
-                                activeTab === 'config'
-                                    ? 'border-purple-600 text-purple-600 dark:border-purple-400 dark:text-purple-400'
-                                    : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                            }`}
-                        >
-                            <Settings className="h-4 w-4" />
-                            <span>Cấu hình & Phương pháp luận (Config)</span>
-                        </button>
-                    </nav>
-                </div>
+                <PlanningTabs
+                    id="model-eval-tabs"
+                    label="Nội dung đánh giá"
+                    options={[
+                        { value: 'performance', label: 'Hiệu năng' },
+                        { value: 'history', label: 'Lịch sử' },
+                        { value: 'config', label: 'Phương pháp' },
+                    ]}
+                    value={activeTab}
+                    onChange={setActiveTab}
+                />
 
                 {/* TAB 1: PERFORMANCE (Only rendered when activeTab === 'performance') */}
                 {activeTab === 'performance' && (
-                    <div className="space-y-6">
+                    <div
+                        id="model-eval-tabs-panel-performance"
+                        role="tabpanel"
+                        aria-labelledby="model-eval-tabs-tab-performance"
+                        tabIndex={0}
+                        className="space-y-6 focus-visible:outline-none"
+                    >
                         {/* Evaluation Stage Selector */}
-                        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6">
-                            <button
-                                type="button"
-                                onClick={() => setEvaluationStage('validation')}
-                                className={`pb-3 px-1 text-xs font-semibold border-b-2 transition-colors flex items-center gap-2 ${
-                                    evaluationStage === 'validation'
-                                        ? 'border-purple-600 text-purple-600 dark:border-purple-400 dark:text-purple-400'
-                                        : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                                }`}
-                            >
-                                <Cpu className="h-4 w-4" />
-                                <span>Tập lựa chọn (Validation Rolling Origins)</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setEvaluationStage('holdout')}
-                                className={`pb-3 px-1 text-xs font-semibold border-b-2 transition-colors flex items-center gap-2 ${
-                                    evaluationStage === 'holdout'
-                                        ? 'border-purple-600 text-purple-600 dark:border-purple-400 dark:text-purple-400'
-                                        : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                                }`}
-                            >
-                                <ShieldCheck className="h-4 w-4" />
-                                <span>Tập kiểm tra cuối (Final Holdout Test)</span>
-                            </button>
-                        </div>
+                        <PlanningTabs
+                            id="model-eval-stage"
+                            label="Giai đoạn đánh giá"
+                            options={[
+                                { value: 'validation', label: 'Tập lựa chọn' },
+                                { value: 'holdout', label: 'Tập kiểm tra cuối' },
+                            ]}
+                            value={evaluationStage}
+                            onChange={setEvaluationStage}
+                        />
 
                         {evaluationStage === 'validation' ? (
-                            <>
+                            <div
+                                id="model-eval-stage-panel-validation"
+                                role="tabpanel"
+                                aria-labelledby="model-eval-stage-tab-validation"
+                                tabIndex={0}
+                                className="space-y-6 focus-visible:outline-none"
+                            >
                                 {/* Primary CTA Bar */}
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-purple-200 bg-purple-50/60 p-4 dark:border-purple-900/60 dark:bg-purple-950/30">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-sky-200 bg-sky-50/60 p-4 dark:border-sky-900/60 dark:bg-sky-950/30">
                                     <div className="flex items-center gap-3">
-                                        <div className="rounded-xl bg-purple-600/10 p-2.5 text-purple-600 dark:bg-purple-400/10 dark:text-purple-400">
+                                        <div className="rounded-xl bg-sky-700/10 p-2.5 text-sky-700 dark:bg-sky-400/10 dark:text-sky-300">
                                             <Sparkles className="h-5 w-5" />
                                         </div>
                                         <div>
                                             <h3 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">
-                                                Mô hình khuyến nghị tối ưu:{' '}
-                                                <span className="text-purple-600 dark:text-purple-400">
-                                                    {winningCandidate ? winningCandidate.name : 'Chưa xác định'}
+                                                {primaryCandidate ? 'Mô hình được chọn cho nhiều sản phẩm nhất' : 'Chưa có mô hình khuyến nghị'}{' '}
+                                                <span className="text-sky-700 dark:text-sky-300">
+                                                    {recommendedCandidates.map((row) => row.name).join(', ')}
                                                 </span>
                                             </h3>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                                Đạt WAPE thấp nhất qua kiểm thử Rolling Origin. Áp dụng mô hình này sẽ cập nhật chiến lược dự báo toàn cửa hàng.
+                                                Ưu tiên số sản phẩm được chọn, khi bằng nhau ưu tiên WAPE thấp hơn trong các giá trị xác định.
                                             </p>
+                                            {primaryCandidate ? (
+                                                <>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                                        Được chọn cho {primaryCandidate.selected_count} sản phẩm. WAPE tham khảo: {primaryCandidate.avg_wape !== null && Number.isFinite(primaryCandidate.avg_wape) ? formatWape(primaryCandidate.avg_wape) : '—'}.
+                                                    </p>
+                                                    {recommendedCandidates.length > 1 && (
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                                            Đồng hạng. Nút áp dụng chọn mô hình đầu tiên trong danh sách: {primaryCandidate.name}.
+                                                        </p>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                                    Chưa có sản phẩm được chọn hoặc chưa có kết quả đánh giá để khuyến nghị mô hình.
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
 
                                     <button
                                         type="button"
-                                        disabled={!can_apply_model || !winningCandidate}
-                                        onClick={() => winningCandidate && handleOpenConfirm(winningCandidate.model_key)}
-                                        className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                                        disabled={!can_apply_model || !primaryCandidate}
+                                        onClick={() => primaryCandidate && handleOpenConfirm(primaryCandidate.model_key)}
+                                        className="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-bold text-white shadow-md hover:bg-sky-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                                         title={
                                             !can_apply_model
                                                 ? 'Yêu cầu quyền planning.apply_model để thực hiện thao tác này'
@@ -375,7 +358,7 @@ export default function ModelEvaluation({
                                         }
                                     >
                                         <CheckCircle2 className="h-4 w-4" />
-                                        <span>Áp dụng mô hình được chọn</span>
+                                        <span>Áp dụng cho toàn cửa hàng</span>
                                     </button>
                                 </div>
 
@@ -384,7 +367,7 @@ export default function ModelEvaluation({
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                         <div>
                                             <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
-                                                So sánh sai số giữa 7 mô hình ứng viên (Validation)
+                                                So sánh sai số giữa 7 mô hình ứng viên (Tập lựa chọn)
                                             </h2>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                                                 Đánh giá qua các mốc thời gian rolling origins trên tập dữ liệu lịch sử.
@@ -395,10 +378,11 @@ export default function ModelEvaluation({
                                         <div className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
                                             <button
                                                 type="button"
+                                                aria-pressed={selectedMetric === 'wape'}
                                                 onClick={() => setSelectedMetric('wape')}
                                                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                                                     selectedMetric === 'wape'
-                                                        ? 'bg-white text-purple-700 shadow-2xs dark:bg-slate-700 dark:text-purple-300'
+                                                        ? 'bg-white text-sky-700 shadow-2xs dark:bg-slate-700 dark:text-sky-300'
                                                         : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                                                 }`}
                                             >
@@ -406,10 +390,11 @@ export default function ModelEvaluation({
                                             </button>
                                             <button
                                                 type="button"
+                                                aria-pressed={selectedMetric === 'mae'}
                                                 onClick={() => setSelectedMetric('mae')}
                                                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                                                     selectedMetric === 'mae'
-                                                        ? 'bg-white text-purple-700 shadow-2xs dark:bg-slate-700 dark:text-purple-300'
+                                                        ? 'bg-white text-sky-700 shadow-2xs dark:bg-slate-700 dark:text-sky-300'
                                                         : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                                                 }`}
                                             >
@@ -417,10 +402,11 @@ export default function ModelEvaluation({
                                             </button>
                                             <button
                                                 type="button"
+                                                aria-pressed={selectedMetric === 'rmse'}
                                                 onClick={() => setSelectedMetric('rmse')}
                                                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                                                     selectedMetric === 'rmse'
-                                                        ? 'bg-white text-purple-700 shadow-2xs dark:bg-slate-700 dark:text-purple-300'
+                                                        ? 'bg-white text-sky-700 shadow-2xs dark:bg-slate-700 dark:text-sky-300'
                                                         : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                                                 }`}
                                             >
@@ -444,14 +430,19 @@ export default function ModelEvaluation({
                                     <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between dark:border-slate-800">
                                         <h3 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                                             <Cpu className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                                            <span>Bảng so sánh 7 mô hình ứng viên (Validation)</span>
+                                            <span>Bảng so sánh 7 mô hình ứng viên (Tập lựa chọn)</span>
                                         </h3>
                                         <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-                                            {candidate_keys.length} mô hình đã kiểm thử
+                                            {candidate_keys.length} mô hình ứng viên
                                         </span>
                                     </div>
 
-                                    <div className="overflow-x-auto">
+                                    <div
+                                        role="region"
+                                        aria-label="Bảng so sánh 7 mô hình ứng viên (Tập lựa chọn)"
+                                        tabIndex={0}
+                                        className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-sky-600"
+                                    >
                                         <table className="w-full text-left text-xs">
                                             <thead className="border-b border-slate-200 bg-slate-50/75 text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
                                                 <tr>
@@ -468,13 +459,14 @@ export default function ModelEvaluation({
                                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                                                 {modelComparison.map((m) => {
                                                     const isCurrentSelected = m.is_selected;
+                                                    const selectedCount = m.selected_count ?? 0;
 
                                                     return (
                                                         <tr
                                                             key={m.model_key}
                                                             className={`transition-colors ${
                                                                 isCurrentSelected
-                                                                    ? 'bg-purple-50/50 dark:bg-purple-950/20'
+                                                                    ? 'bg-sky-50/50 dark:bg-sky-950/20'
                                                                     : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/40'
                                                             }`}
                                                         >
@@ -496,26 +488,26 @@ export default function ModelEvaluation({
                                                                 {m.model_key === 'holt_winters_multiplicative' && 'season: 7, mul'}
                                                             </td>
                                                             <td className="px-4 py-3.5 text-right font-medium text-slate-800 dark:text-slate-200 tabular-nums">
-                                                                {m.avg_mae !== null ? formatQuantity(m.avg_mae, 3) : <span className="text-slate-400 font-normal">Chưa đánh giá</span>}
+                                                                {m.avg_mae !== null ? formatQuantity(m.avg_mae, 3) : <span className="text-slate-400 font-normal">—</span>}
                                                             </td>
                                                             <td className="px-4 py-3.5 text-right font-medium text-slate-800 dark:text-slate-200 tabular-nums">
-                                                                {m.avg_rmse !== null ? formatQuantity(m.avg_rmse, 3) : <span className="text-slate-400 font-normal">Chưa đánh giá</span>}
+                                                                {m.avg_rmse !== null ? formatQuantity(m.avg_rmse, 3) : <span className="text-slate-400 font-normal">—</span>}
                                                             </td>
-                                                            <td className="px-4 py-3.5 text-right font-bold text-purple-700 dark:text-purple-300 tabular-nums">
+                                                            <td className="px-4 py-3.5 text-right font-bold text-slate-800 dark:text-slate-200 tabular-nums">
                                                                 {m.avg_wape !== null ? formatWape(m.avg_wape) : <span className="text-slate-400 font-normal">—</span>}
                                                             </td>
                                                             <td className="px-4 py-3.5 text-center text-slate-600 dark:text-slate-400 tabular-nums">
                                                                 {m.origins_count ?? 0} mốc
                                                             </td>
                                                             <td className="px-4 py-3.5 text-center">
-                                                                {isCurrentSelected ? (
-                                                                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-semibold text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
+                                                                {selectedCount > 0 ? (
+                                                                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-semibold text-sky-700 dark:bg-sky-900/50 dark:text-sky-300">
                                                                         <CheckCircle2 className="h-3 w-3" />
-                                                                        <span>Đang áp dụng</span>
+                                                                        <span>Được chọn cho {selectedCount} sản phẩm</span>
                                                                     </span>
                                                                 ) : (
                                                                     <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                                                                        Ứng viên
+                                                                        Chưa được chọn
                                                                     </span>
                                                                 )}
                                                             </td>
@@ -527,13 +519,13 @@ export default function ModelEvaluation({
                                                                     className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                                                                         isCurrentSelected
                                                                             ? 'opacity-40 cursor-not-allowed text-slate-400'
-                                                                            : 'border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950/50 dark:text-purple-300 dark:hover:bg-purple-900/60'
+                                                                            : 'border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-300 dark:hover:bg-sky-900/60'
                                                                     }`}
                                                                     title={
                                                                         !can_apply_model
                                                                             ? 'Yêu cầu quyền planning.apply_model'
                                                                             : isCurrentSelected
-                                                                            ? 'Mô hình này đang được áp dụng'
+                                                                            ? `Được chọn cho ${selectedCount} sản phẩm`
                                                                             : 'Áp dụng mô hình này'
                                                                     }
                                                                 >
@@ -547,9 +539,15 @@ export default function ModelEvaluation({
                                         </table>
                                     </div>
                                 </div>
-                            </>
+                            </div>
                         ) : (
-                            <>
+                            <div
+                                id="model-eval-stage-panel-holdout"
+                                role="tabpanel"
+                                aria-labelledby="model-eval-stage-tab-holdout"
+                                tabIndex={0}
+                                className="space-y-6 focus-visible:outline-none"
+                            >
                                 {/* Holdout Explanatory Banner */}
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-sky-200 bg-sky-50/60 p-4 dark:border-sky-900/60 dark:bg-sky-950/30">
                                     <div className="flex items-center gap-3">
@@ -558,10 +556,10 @@ export default function ModelEvaluation({
                                         </div>
                                         <div>
                                             <h3 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">
-                                                Tập kiểm tra cuối độc lập (Final Holdout — {horizon} ngày)
+                                                Tập kiểm tra cuối độc lập ({horizon} ngày)
                                             </h3>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                                Được giữ lại {horizon} ngày cuối của lịch sử dữ liệu. Mô hình sau khi lựa chọn trên tập validation được fit lại trên toàn bộ dữ liệu trước holdout để kiểm chứng độc lập. Tuyệt đối không dùng kết quả này để chọn lại mô hình.
+                                                Được giữ lại {horizon} ngày cuối của lịch sử dữ liệu. Mô hình sau khi lựa chọn trên tập lựa chọn được huấn luyện lại trên toàn bộ dữ liệu trước tập kiểm tra cuối để kiểm chứng độc lập. Tuyệt đối không dùng kết quả này để chọn lại mô hình.
                                             </p>
                                         </div>
                                     </div>
@@ -577,7 +575,7 @@ export default function ModelEvaluation({
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                         <div>
                                             <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
-                                                So sánh sai số trên tập kiểm tra cuối (Final Holdout)
+                                                So sánh sai số trên tập kiểm tra cuối
                                             </h2>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                                                 Đo lường năng lực khái quát hóa trên chu kỳ {horizon} ngày độc lập cuối cùng.
@@ -588,10 +586,11 @@ export default function ModelEvaluation({
                                         <div className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
                                             <button
                                                 type="button"
+                                                aria-pressed={selectedMetric === 'wape'}
                                                 onClick={() => setSelectedMetric('wape')}
                                                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                                                     selectedMetric === 'wape'
-                                                        ? 'bg-white text-purple-700 shadow-2xs dark:bg-slate-700 dark:text-purple-300'
+                                                        ? 'bg-white text-sky-700 shadow-2xs dark:bg-slate-700 dark:text-sky-300'
                                                         : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                                                 }`}
                                             >
@@ -599,10 +598,11 @@ export default function ModelEvaluation({
                                             </button>
                                             <button
                                                 type="button"
+                                                aria-pressed={selectedMetric === 'mae'}
                                                 onClick={() => setSelectedMetric('mae')}
                                                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                                                     selectedMetric === 'mae'
-                                                        ? 'bg-white text-purple-700 shadow-2xs dark:bg-slate-700 dark:text-purple-300'
+                                                        ? 'bg-white text-sky-700 shadow-2xs dark:bg-slate-700 dark:text-sky-300'
                                                         : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                                                 }`}
                                             >
@@ -610,10 +610,11 @@ export default function ModelEvaluation({
                                             </button>
                                             <button
                                                 type="button"
+                                                aria-pressed={selectedMetric === 'rmse'}
                                                 onClick={() => setSelectedMetric('rmse')}
                                                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                                                     selectedMetric === 'rmse'
-                                                        ? 'bg-white text-purple-700 shadow-2xs dark:bg-slate-700 dark:text-purple-300'
+                                                        ? 'bg-white text-sky-700 shadow-2xs dark:bg-slate-700 dark:text-sky-300'
                                                         : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                                                 }`}
                                             >
@@ -637,22 +638,27 @@ export default function ModelEvaluation({
                                     <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between dark:border-slate-800">
                                         <h3 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                                             <ShieldCheck className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-                                            <span>Bảng kết quả trên tập kiểm tra cuối (Final Holdout)</span>
+                                            <span>Bảng kết quả trên tập kiểm tra cuối</span>
                                         </h3>
                                         <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-                                            Tập holdout: {horizon} ngày độc lập
+                                            Tập kiểm tra cuối: {horizon} ngày độc lập
                                         </span>
                                     </div>
 
-                                    <div className="overflow-x-auto">
+                                    <div
+                                        role="region"
+                                        aria-label="Bảng kết quả trên tập kiểm tra cuối"
+                                        tabIndex={0}
+                                        className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-sky-600"
+                                    >
                                         <table className="w-full text-left text-xs">
                                             <thead className="border-b border-slate-200 bg-slate-50/75 text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
                                                 <tr>
                                                     <th className="px-6 py-3 font-semibold">Mô hình dự báo</th>
                                                     <th className="px-4 py-3 font-semibold">Tham số cấu hình</th>
-                                                    <th className="px-4 py-3 font-semibold text-right">MAE Holdout</th>
-                                                    <th className="px-4 py-3 font-semibold text-right">RMSE Holdout</th>
-                                                    <th className="px-4 py-3 font-semibold text-right">WAPE Holdout</th>
+                                                    <th className="px-4 py-3 font-semibold text-right">MAE</th>
+                                                    <th className="px-4 py-3 font-semibold text-right">RMSE</th>
+                                                    <th className="px-4 py-3 font-semibold text-right">WAPE</th>
                                                     <th className="px-4 py-3 font-semibold text-center">Phạm vi kiểm tra</th>
                                                     <th className="px-6 py-3 font-semibold text-center">Phân loại</th>
                                                 </tr>
@@ -681,12 +687,12 @@ export default function ModelEvaluation({
                                                             {m.model_key === 'holt_winters_multiplicative' && 'season: 7, mul'}
                                                         </td>
                                                         <td className="px-4 py-3.5 text-right font-medium text-slate-800 dark:text-slate-200 tabular-nums">
-                                                            {m.avg_mae !== null ? formatQuantity(m.avg_mae, 3) : <span className="text-slate-400 font-normal">Chưa đánh giá</span>}
+                                                            {m.avg_mae !== null ? formatQuantity(m.avg_mae, 3) : <span className="text-slate-400 font-normal">—</span>}
                                                         </td>
                                                         <td className="px-4 py-3.5 text-right font-medium text-slate-800 dark:text-slate-200 tabular-nums">
-                                                            {m.avg_rmse !== null ? formatQuantity(m.avg_rmse, 3) : <span className="text-slate-400 font-normal">Chưa đánh giá</span>}
+                                                            {m.avg_rmse !== null ? formatQuantity(m.avg_rmse, 3) : <span className="text-slate-400 font-normal">—</span>}
                                                         </td>
-                                                        <td className="px-4 py-3.5 text-right font-bold text-sky-700 dark:text-sky-300 tabular-nums">
+                                                        <td className="px-4 py-3.5 text-right font-bold text-slate-800 dark:text-slate-200 tabular-nums">
                                                             {m.avg_wape !== null ? formatWape(m.avg_wape) : <span className="text-slate-400 font-normal">—</span>}
                                                         </td>
                                                         <td className="px-4 py-3.5 text-center text-slate-600 dark:text-slate-400 tabular-nums">
@@ -703,14 +709,20 @@ export default function ModelEvaluation({
                                         </table>
                                     </div>
                                 </div>
-                            </>
+                            </div>
                         )}
                     </div>
                 )}
 
                 {/* TAB 2: HISTORY (Only rendered when activeTab === 'history') */}
                 {activeTab === 'history' && (
-                    <div className="space-y-6">
+                    <div
+                        id="model-eval-tabs-panel-history"
+                        role="tabpanel"
+                        aria-labelledby="model-eval-tabs-tab-history"
+                        tabIndex={0}
+                        className="space-y-6 focus-visible:outline-none"
+                    >
                         <div className="rounded-2xl border border-slate-200 bg-white shadow-2xs dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                             <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between dark:border-slate-800">
                                 <h3 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -727,13 +739,18 @@ export default function ModelEvaluation({
                                     Chưa có dữ liệu lịch sử đánh giá mô hình
                                 </div>
                             ) : (
-                                <div className="overflow-x-auto">
+                                <div
+                                    role="region"
+                                    aria-label="Lịch sử các đợt đánh giá mô hình"
+                                    tabIndex={0}
+                                    className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-sky-600"
+                                >
                                     <table className="w-full text-left text-xs">
                                         <thead className="border-b border-slate-200 bg-slate-50/75 text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
                                             <tr>
                                                 <th className="px-6 py-3 font-semibold">Mã lượt</th>
                                                 <th className="px-4 py-3 font-semibold">Trạng thái</th>
-                                                <th className="px-4 py-3 font-semibold">Chu kỳ dự báo</th>
+                                                <th className="px-4 py-3 font-semibold">Kỳ dự báo</th>
                                                 <th className="px-4 py-3 font-semibold">Ngày chốt dữ liệu</th>
                                                 <th className="px-4 py-3 font-semibold">Thời gian tạo</th>
                                             </tr>
@@ -780,7 +797,13 @@ export default function ModelEvaluation({
 
                 {/* TAB 3: CONFIG & METHODOLOGY (Only rendered when activeTab === 'config') */}
                 {activeTab === 'config' && (
-                    <div className="space-y-6">
+                    <div
+                        id="model-eval-tabs-panel-config"
+                        role="tabpanel"
+                        aria-labelledby="model-eval-tabs-tab-config"
+                        tabIndex={0}
+                        className="space-y-6 focus-visible:outline-none"
+                    >
                         {/* Rolling Origin CV Configuration */}
                         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
                             <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -798,11 +821,11 @@ export default function ModelEvaluation({
                                 </div>
 
                                 <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/50">
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">Chu kỳ dự báo kiểm thử:</span>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">Kỳ dự báo kiểm thử:</span>
                                     <div className="mt-1 font-display text-lg font-bold text-slate-900 dark:text-slate-100 tabular-nums">
                                         {methodology.horizon} ngày
                                     </div>
-                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">Evaluation horizon</span>
+                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">Kỳ dự báo dùng để đánh giá</span>
                                 </div>
 
                                 <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/50">
@@ -854,10 +877,10 @@ export default function ModelEvaluation({
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                                 <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-                                    <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">
+                                    <h4 className="font-display font-bold text-sm text-slate-900 dark:text-slate-100">
                                         WAPE (Độ lệch trọng số) - Chuẩn lựa chọn
                                     </h4>
-                                    <div className="mt-2 rounded-lg bg-white p-3 font-mono text-[11px] text-purple-700 dark:bg-slate-900 dark:text-purple-300 border border-slate-200 dark:border-slate-800">
+                                    <div className="mt-2 rounded-lg bg-white p-3 font-mono text-[11px] text-slate-800 dark:bg-slate-900 dark:text-slate-200 border border-slate-200 dark:border-slate-800">
                                         {methodology.formulas.wape}
                                     </div>
                                     <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -866,7 +889,7 @@ export default function ModelEvaluation({
                                 </div>
 
                                 <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-                                    <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">
+                                    <h4 className="font-display font-bold text-sm text-slate-900 dark:text-slate-100">
                                         MAE (Sai số tuyệt đối trung bình)
                                     </h4>
                                     <div className="mt-2 rounded-lg bg-white p-3 font-mono text-[11px] text-slate-800 dark:bg-slate-900 dark:text-slate-200 border border-slate-200 dark:border-slate-800">
@@ -878,7 +901,7 @@ export default function ModelEvaluation({
                                 </div>
 
                                 <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-                                    <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">
+                                    <h4 className="font-display font-bold text-sm text-slate-900 dark:text-slate-100">
                                         RMSE (Căn bậc hai sai số bình phương)
                                     </h4>
                                     <div className="mt-2 rounded-lg bg-white p-3 font-mono text-[11px] text-slate-800 dark:bg-slate-900 dark:text-slate-200 border border-slate-200 dark:border-slate-800">
@@ -911,20 +934,22 @@ export default function ModelEvaluation({
 
             {/* Confirmation Modal for Applying Selected Model */}
             {isConfirmOpen && targetModelKey && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="confirm-modal-title"
+                <PlanningDialog
+                    open={isConfirmOpen}
+                    onClose={() => setIsConfirmOpen(false)}
+                    busy={isSubmittingApply}
+                    labelledBy="confirm-modal-title"
                 >
-                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 space-y-4">
+                    <div className="max-h-full w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 space-y-4">
                         <div className="flex items-center gap-3">
-                            <div className="rounded-xl bg-purple-100 p-2.5 text-purple-600 dark:bg-purple-950 dark:text-purple-400">
+                            <div className="rounded-xl bg-sky-100 p-2.5 text-sky-700 dark:bg-sky-950 dark:text-sky-300">
                                 <ShieldCheck className="h-6 w-6" />
                             </div>
                             <div>
                                 <h3
                                     id="confirm-modal-title"
+                                    data-dialog-heading
+                                    tabIndex={-1}
                                     className="font-display text-base font-bold text-slate-900 dark:text-slate-100"
                                 >
                                     Xác nhận áp dụng mô hình
@@ -938,13 +963,13 @@ export default function ModelEvaluation({
                         <div className="rounded-xl bg-slate-50 p-3.5 text-xs text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 space-y-1">
                             <p>
                                 Bạn có chắc chắn muốn áp dụng mô hình{' '}
-                                <strong className="font-semibold text-purple-600 dark:text-purple-400">
+                                <strong className="font-semibold text-sky-700 dark:text-sky-300">
                                     {MODEL_NAMES[targetModelKey] || targetModelKey}
                                 </strong>{' '}
-                                cho toàn bộ hệ thống dự báo nhu cầu không?
+                                cho toàn cửa hàng không?
                             </p>
                             <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200 dark:border-slate-700">
-                                * Lượt chạy dự báo định kỳ tiếp theo sẽ sử dụng mô hình này để tính toán lượng dự báo cho các mặt hàng đủ điều kiện.
+                                Áp dụng cho các mặt hàng đủ điều kiện trong lượt dự báo tiếp theo; không sửa kết quả dự báo lịch sử.
                             </p>
                         </div>
 
@@ -952,6 +977,8 @@ export default function ModelEvaluation({
                             <button
                                 type="button"
                                 onClick={() => setIsConfirmOpen(false)}
+                                data-dialog-close
+                                aria-label="Hủy áp dụng mô hình"
                                 disabled={isSubmittingApply}
                                 className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition"
                             >
@@ -961,13 +988,13 @@ export default function ModelEvaluation({
                                 type="button"
                                 onClick={handleConfirmApply}
                                 disabled={isSubmittingApply}
-                                className="rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow-md hover:bg-purple-700 transition disabled:opacity-50"
+                                className="rounded-xl bg-sky-700 px-4 py-2 text-sm font-bold text-white shadow-md hover:bg-sky-800 transition-colors disabled:opacity-50"
                             >
                                 {isSubmittingApply ? 'Đang lưu...' : 'Xác nhận áp dụng'}
                             </button>
                         </div>
                     </div>
-                </div>
+                </PlanningDialog>
             )}
         </DashboardLayout>
     );

@@ -1,7 +1,7 @@
 # Spec 3 — Điều hướng responsive dùng chung
 
 - Ngày: 2026-10-14
-- Trạng thái: Đã duyệt phạm vi phân chia; chờ người dùng duyệt nội dung spec.
+- Trạng thái: Người dùng đã duyệt spec; chuyển sang lập kế hoạch triển khai.
 - Thứ tự: 3/3, sau hai spec hoàn thiện planning ngày 2026-10-14.
 
 ## 1. Mục tiêu

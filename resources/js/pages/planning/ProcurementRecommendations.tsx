@@ -4,16 +4,17 @@ import {
     Building2,
     Eye,
     Filter,
-    Package,
     RotateCcw,
     Search,
     Send,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     formatCurrency,
+    formatDateTime,
     formatQuantity,
 } from '../../components/planning/planningFormatters';
+import PlanningResultState from '../../components/planning/PlanningResultState';
 import RecommendationDetailDrawer from '../../components/planning/RecommendationDetailDrawer';
 import type { InventoryRecommendationItem } from '../../components/planning/RecommendationDetailDrawer';
 import RecommendationReviewModal from '../../components/planning/RecommendationReviewModal';
@@ -21,12 +22,15 @@ import type { ReviewItem } from '../../components/planning/RecommendationReviewM
 import RunStatusBanner from '../../components/planning/RunStatusBanner';
 import type { ForecastRunSummary } from '../../components/planning/RunStatusBanner';
 import DashboardLayout from '../../layouts/DashboardLayout';
+import type { PlanningResultSummary } from '../../types/planning';
 
 interface ProcurementRecommendationsProps {
+    resultSummary: PlanningResultSummary;
     activeRun?: ForecastRunSummary | null;
     recommendations?: InventoryRecommendationItem[];
     filters?: {
         synthetic_dataset_id?: number | null;
+        horizon_days?: number | null;
     };
 }
 
@@ -36,6 +40,7 @@ interface ItemEditState {
 }
 
 export default function ProcurementRecommendations({
+    resultSummary,
     activeRun,
     recommendations = [],
     filters = {},
@@ -72,6 +77,27 @@ export default function ProcurementRecommendations({
         useState<InventoryRecommendationItem | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+    const reviewBarRef = useRef<HTMLDivElement>(null);
+    const pageRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const bar = reviewBarRef.current;
+        const page = pageRef.current;
+
+        if (!bar || !page || typeof ResizeObserver === 'undefined') {
+            return;
+        }
+
+        const measure = () => {
+            page.style.paddingBottom = `${bar.getBoundingClientRect().height + 16}px`;
+        };
+        const observer = new ResizeObserver(measure);
+
+        measure();
+        observer.observe(bar);
+
+        return () => observer.disconnect();
+    }, []);
 
     // Filter suppliers for dropdown
     const supplierOptions = useMemo(() => {
@@ -233,6 +259,8 @@ export default function ProcurementRecommendations({
         invalidAdjustedItems.length === 0 &&
         reviewItems.every((item) => item.finalQuantity > 0);
 
+    const invalidQuantityCount = reviewItems.filter((item) => item.finalQuantity <= 0).length;
+
     // Review bar summary metrics
     const selectedMetrics = useMemo(() => {
         const suppliers = new Set<string>();
@@ -261,43 +289,61 @@ export default function ProcurementRecommendations({
         <DashboardLayout>
             <Head title="Đề xuất nhập hàng & Tối ưu tồn kho" />
 
-            <div className="space-y-6 pb-28">
+            <div ref={pageRef} className="planning-ui min-w-0 space-y-6 break-words pb-28">
                 {/* Header Banner */}
                 <div>
                     <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
                         Đề xuất mua hàng & Bù tồn kho
                     </h1>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        Tính toán tự động theo mô hình EOQ, ROP và chính sách MOQ từ nhà cung cấp
+                        Tính toán tự động theo mô hình EOQ, điểm đặt hàng và chính sách MOQ từ nhà cung cấp
                     </p>
+                    <details className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                        <summary className="cursor-pointer font-semibold">Giải thích EOQ</summary>
+                        <p className="mt-1">EOQ là lượng đặt hàng tính theo chi phí đặt hàng và lưu kho. Bù thiếu hụt tồn kho bổ sung phần thiếu so với điểm đặt hàng; số lượng cuối còn theo chính sách nhà cung cấp.</p>
+                    </details>
                 </div>
 
                 {/* Forecast Run Status */}
                 <RunStatusBanner
                     run={activeRun}
-                    defaultHorizon={7}
+                    defaultHorizon={filters.horizon_days ?? activeRun?.horizon_days ?? 7}
+                    sourceDatasetId={filters.synthetic_dataset_id}
+                    latestRunStatus={resultSummary.latest_run_status}
                 />
+                {recommendations.length > 0 && resultSummary.empty_reason && (
+                    <PlanningResultState reason={resultSummary.empty_reason} />
+                )}
+                {recommendations.length > 0 && (
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                        {resultSummary.empty_reason === null && resultSummary.positive_recommendation_count === 0 && 'Không có đề xuất nhập thêm trong lượt này. '}
+                        Lượt #{activeRun?.id} · {formatDateTime(activeRun?.completed_at || activeRun?.data_cutoff)}.
+                        {' '}Chỉ phản ánh {resultSummary.recommendation_count} bản ghi đề xuất đã tạo, không xác nhận đủ tồn kho cho mọi nguyên liệu.
+                    </p>
+                )}
 
                 {/* Filters & Search Toolbar */}
-                <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900">
-                    <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-                        <div className="relative min-w-[240px] flex-1">
+                <div className="flex flex-col flex-wrap gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs lg:flex-row lg:items-center lg:justify-between dark:border-slate-800 dark:bg-slate-900">
+                    <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                        <div className="relative w-full min-w-0 flex-1 sm:min-w-[240px]">
                             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <input
                                 type="text"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder="Tìm theo tên hoặc mã nguyên liệu..."
+                                aria-label="Tìm theo tên hoặc mã nguyên liệu"
                                 className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-hidden focus:ring-1 focus:ring-sky-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                             />
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
                             <Filter className="h-4 w-4 text-slate-400" />
                             <select
                                 value={supplierFilter}
+                                aria-label="Nhà cung cấp"
                                 onChange={(e) => setSupplierFilter(e.target.value)}
-                                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
+                                className="min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
                             >
                                 <option value="all">Tất cả nhà cung cấp</option>
                                 {supplierOptions.map(([id, name]) => (
@@ -327,27 +373,27 @@ export default function ProcurementRecommendations({
 
                 {/* Empty State */}
                 {filteredRecommendations.length === 0 && (
-                    <div className="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-800">
-                        <Package className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
-                        <h3 className="mt-4 font-display text-base font-semibold text-slate-900 dark:text-white">
-                            Không tìm thấy đề xuất nhập hàng nào
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                            Tất cả nguyên liệu đang đủ lượng tồn kho an toàn hoặc chưa có dữ liệu dự báo.
-                        </p>
-                    </div>
+                    recommendations.length > 0 ? (
+                        <PlanningResultState title="Không có kết quả phù hợp" description="Thử thay đổi điều kiện tìm kiếm hoặc nhà cung cấp.">
+                            <button type="button" onClick={() => {
+                                setSearch('');
+                                setSupplierFilter('all');
+                            }} className="mt-3 text-sm font-semibold underline">Xóa bộ lọc</button>
+                        </PlanningResultState>
+                    ) : <PlanningResultState reason={resultSummary.empty_reason} />
                 )}
 
                 {/* Desktop Table View */}
                 {filteredRecommendations.length > 0 && (
                     <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs md:block dark:border-slate-800 dark:bg-slate-900">
-                        <div className="overflow-x-auto">
+                        <div role="region" aria-label="Đề xuất nhập hàng" tabIndex={0} className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-sky-600">
                             <table className="w-full text-left text-sm">
                                 <thead className="border-b border-slate-200 bg-slate-50/75 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400">
                                     <tr>
                                         <th className="w-12 px-4 py-3.5 text-center">
                                             <input
                                                 type="checkbox"
+                                                aria-label="Chọn tất cả đề xuất đang hiển thị"
                                                 checked={
                                                     filteredRecommendations.length > 0 &&
                                                     filteredRecommendations.every((r) => selectedIds.has(r.id))
@@ -358,8 +404,8 @@ export default function ProcurementRecommendations({
                                         </th>
                                         <th className="px-4 py-3.5">Nguyên liệu</th>
                                         <th className="px-4 py-3.5">Nhà cung cấp</th>
-                                        <th className="px-4 py-3.5 text-right">Khả dụng / ROP</th>
-                                        <th className="px-4 py-3.5 text-right">Nhu cầu / SS</th>
+                                        <th className="px-4 py-3.5 text-right">Khả dụng / Điểm đặt hàng</th>
+                                        <th className="px-4 py-3.5 text-right">Nhu cầu / Tồn kho an toàn</th>
                                         <th className="px-4 py-3.5 text-center">Phương pháp</th>
                                         <th className="px-4 py-3.5 text-right">Đề xuất</th>
                                         <th className="w-48 px-4 py-3.5 text-center">Số lượng đặt</th>
@@ -400,6 +446,7 @@ export default function ProcurementRecommendations({
                                                     <input
                                                         type="checkbox"
                                                         checked={isSelected}
+                                                        aria-label={`Chọn ${ing?.name || `Nguyên liệu #${r.ingredient_id}`}`}
                                                         disabled={r.status !== 'pending'}
                                                         onChange={() => toggleSelect(r.id)}
                                                         className="rounded-sm border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900"
@@ -433,8 +480,8 @@ export default function ProcurementRecommendations({
                                                     <div className="font-medium text-slate-900 dark:text-slate-200">
                                                         {formatQuantity(available)} {r.unit}
                                                     </div>
-                                                    <div className="text-xs text-slate-400">
-                                                        ROP: {formatQuantity(r.reorder_point)}
+                                                    <div className="text-sm text-slate-400">
+                                                        Điểm đặt hàng: {formatQuantity(r.reorder_point)}
                                                     </div>
                                                 </td>
 
@@ -443,8 +490,8 @@ export default function ProcurementRecommendations({
                                                     <div className="font-medium text-slate-800 dark:text-slate-300">
                                                         {formatQuantity(r.demand_quantity, 1)} {r.unit}
                                                     </div>
-                                                    <div className="text-xs text-amber-600 dark:text-amber-400">
-                                                        SS: {formatQuantity(r.safety_stock, 1)}
+                                                    <div className="text-sm text-amber-600 dark:text-amber-400">
+                                                        Tồn kho an toàn: {formatQuantity(r.safety_stock, 1)}
                                                     </div>
                                                 </td>
 
@@ -453,11 +500,11 @@ export default function ProcurementRecommendations({
                                                     <span
                                                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                                                             r.method === 'eoq'
-                                                                ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300'
+                                                                ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                                                                 : 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
                                                         }`}
                                                     >
-                                                        {r.method === 'eoq' ? 'EOQ' : 'Reorder Gap'}
+                                                        {r.method === 'eoq' ? 'EOQ' : 'Bù thiếu hụt tồn kho'}
                                                     </span>
                                                 </td>
 
@@ -474,6 +521,7 @@ export default function ProcurementRecommendations({
                                                     <div className="flex items-center gap-1.5">
                                                         <input
                                                             type="number"
+                                                            aria-label={`Số lượng đặt ${ing?.name || `Nguyên liệu #${r.ingredient_id}`}`}
                                                             min="0"
                                                             step="1"
                                                             value={edit.finalQuantity}
@@ -493,6 +541,7 @@ export default function ProcurementRecommendations({
                                                                 type="button"
                                                                 onClick={() => handleResetItem(r.id, r.suggested_quantity)}
                                                                 title="Đặt lại số lượng đề xuất"
+                                                                aria-label={`Đặt lại số lượng đề xuất ${ing?.name || `Nguyên liệu #${r.ingredient_id}`}`}
                                                                 className="rounded-md p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                                                             >
                                                                 <RotateCcw className="h-3.5 w-3.5" />
@@ -506,6 +555,9 @@ export default function ProcurementRecommendations({
                                                             <input
                                                                 type="text"
                                                                 placeholder="Nhập lý do điều chỉnh..."
+                                                                aria-label={`Lý do điều chỉnh ${ing?.name || `Nguyên liệu #${r.ingredient_id}`}`}
+                                                                aria-invalid={isReasonMissing}
+                                                                aria-describedby={isReasonMissing ? `procurement-reason-error-${r.id}` : undefined}
                                                                 value={edit.reason}
                                                                 onChange={(e) => handleReasonChange(r.id, e.target.value)}
                                                                 className={`w-full rounded-md border px-2 py-1 text-[11px] focus:outline-hidden ${
@@ -515,7 +567,7 @@ export default function ProcurementRecommendations({
                                                                 }`}
                                                             />
                                                             {isReasonMissing && (
-                                                                <span className="text-[10px] text-rose-500">
+                                                                <span id={`procurement-reason-error-${r.id}`} className="text-[10px] text-rose-500">
                                                                     Cần lý do (≥ 3 ký tự)
                                                                 </span>
                                                             )}
@@ -585,16 +637,17 @@ export default function ProcurementRecommendations({
                                 >
                                     {/* Card Header */}
                                     <div className="flex items-start justify-between gap-3">
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex min-w-0 items-center gap-3">
                                             <input
                                                 type="checkbox"
                                                 checked={isSelected}
+                                                aria-label={`Chọn ${ing?.name || `Nguyên liệu #${r.ingredient_id}`}`}
                                                 disabled={r.status !== 'pending'}
                                                 onChange={() => toggleSelect(r.id)}
                                                 className="h-4 w-4 rounded-sm border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900"
                                             />
-                                            <div>
-                                                <h3 className="font-semibold text-slate-900 dark:text-white">
+                                            <div className="min-w-0 [overflow-wrap:anywhere]">
+                                                <h3 className="font-display font-semibold text-slate-900 dark:text-white">
                                                     {ing?.name || `Nguyên liệu #${r.ingredient_id}`}
                                                 </h3>
                                                 <div className="text-xs font-mono text-slate-400">
@@ -609,14 +662,15 @@ export default function ProcurementRecommendations({
                                                 setSelectedDetailItem(r);
                                                 setIsDrawerOpen(true);
                                             }}
-                                            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-sky-600 dark:hover:bg-slate-800"
+                                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-sky-600 focus-visible:outline-2 focus-visible:outline-sky-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                                            aria-label={`Xem giải trình ${ing?.name || `Nguyên liệu #${r.ingredient_id}`}`}
                                         >
                                             <Eye className="h-4 w-4" />
                                         </button>
                                     </div>
 
                                     {/* Supplier & Details grid */}
-                                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs border-y border-slate-100 py-2.5 dark:border-slate-800">
+                                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm border-y border-slate-100 py-2.5 dark:border-slate-800">
                                         <div>
                                             <span className="text-slate-400">Nhà cung cấp:</span>
                                             <div className="font-medium text-slate-800 dark:text-slate-200">
@@ -626,11 +680,11 @@ export default function ProcurementRecommendations({
                                         <div>
                                             <span className="text-slate-400">Phương pháp:</span>
                                             <div className="font-medium text-slate-800 dark:text-slate-200">
-                                                {r.method === 'eoq' ? 'EOQ' : 'Reorder Gap'}
+                                                {r.method === 'eoq' ? 'EOQ' : 'Bù thiếu hụt tồn kho'}
                                             </div>
                                         </div>
                                         <div>
-                                            <span className="text-slate-400">Nhu cầu / SS:</span>
+                                            <span className="text-slate-400">Nhu cầu / Tồn kho an toàn:</span>
                                             <div className="font-medium tabular-nums text-slate-800 dark:text-slate-200">
                                                 {formatQuantity(r.demand_quantity, 1)} / {formatQuantity(r.safety_stock, 1)}
                                             </div>
@@ -645,13 +699,14 @@ export default function ProcurementRecommendations({
 
                                     {/* Card Footer: Quantity Edit */}
                                     <div className="mt-3 space-y-2">
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
                                             <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                                                 Số lượng đặt:
                                             </span>
                                             <div className="flex items-center gap-1.5">
                                                 <input
                                                     type="number"
+                                                    aria-label={`Số lượng đặt ${ing?.name || `Nguyên liệu #${r.ingredient_id}`}`}
                                                     min="0"
                                                     step="1"
                                                     value={edit.finalQuantity}
@@ -669,6 +724,9 @@ export default function ProcurementRecommendations({
                                                 <input
                                                     type="text"
                                                     placeholder="Lý do điều chỉnh (≥ 3 ký tự)..."
+                                                    aria-label={`Lý do điều chỉnh ${ing?.name || `Nguyên liệu #${r.ingredient_id}`}`}
+                                                    aria-invalid={isReasonMissing}
+                                                    aria-describedby={isReasonMissing ? `procurement-mobile-reason-error-${r.id}` : undefined}
                                                     value={edit.reason}
                                                     onChange={(e) => handleReasonChange(r.id, e.target.value)}
                                                     className={`w-full rounded-md border px-2.5 py-1 text-xs focus:outline-hidden ${
@@ -678,14 +736,14 @@ export default function ProcurementRecommendations({
                                                     }`}
                                                 />
                                                 {isReasonMissing && (
-                                                    <span className="text-[10px] text-rose-500">
+                                                    <span id={`procurement-mobile-reason-error-${r.id}`} className="text-[10px] text-rose-500">
                                                         Vui lòng nhập lý do điều chỉnh
                                                     </span>
                                                 )}
                                             </div>
                                         )}
 
-                                        <div className="flex items-center justify-between pt-1 text-xs">
+                                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
                                             <span className="text-slate-400">Thành tiền ước tính:</span>
                                             <span className="font-display font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
                                                 {formatCurrency(totalRowCost)}
@@ -700,10 +758,10 @@ export default function ProcurementRecommendations({
             </div>
 
             {/* Fixed Bottom Selection & Review Bar */}
-            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95">
-                <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center justify-between sm:justify-start gap-6">
-                        <div>
+            <div ref={reviewBarRef} className="planning-ui fixed inset-x-0 bottom-0 z-40 max-h-[100dvh] overflow-y-auto border-t border-slate-200 bg-white/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-lg backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95">
+                <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 flex-1 flex-col gap-2">
+                        <div className="min-w-0 [overflow-wrap:anywhere]">
                             <div className="text-xs text-slate-500 dark:text-slate-400">
                                 Đã chọn: <strong className="text-slate-900 dark:text-white">{selectedMetrics.itemCount}</strong> mặt hàng
                                 {selectedMetrics.supplierCount > 0 && (
@@ -715,12 +773,20 @@ export default function ProcurementRecommendations({
                             </div>
                         </div>
 
+                        <div id="procurement-review-blockers" role="status" aria-atomic="true" className="space-y-1 text-xs text-amber-700 dark:text-amber-300">
                         {invalidAdjustedItems.length > 0 && (
-                            <div className="hidden lg:flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                            <div className="flex items-center gap-1.5">
                                 <AlertCircle className="h-4 w-4 shrink-0" />
                                 <span>{invalidAdjustedItems.length} mặt hàng thay đổi cần bổ sung lý do</span>
                             </div>
                         )}
+                        {invalidQuantityCount > 0 && (
+                            <div className="flex items-center gap-1.5">
+                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                <span>{invalidQuantityCount} mặt hàng đã chọn cần số lượng lớn hơn 0</span>
+                            </div>
+                        )}
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -728,10 +794,11 @@ export default function ProcurementRecommendations({
                             type="button"
                             onClick={() => setIsReviewModalOpen(true)}
                             disabled={!canSubmitReview}
-                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-describedby="procurement-review-blockers"
+                            className="min-h-11 w-full whitespace-nowrap sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-sky-700 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             <Send className="h-4 w-4" />
-                            Xem lại & Phê duyệt ({selectedMetrics.itemCount})
+                            Xem lại ({selectedMetrics.itemCount})
                         </button>
                     </div>
                 </div>

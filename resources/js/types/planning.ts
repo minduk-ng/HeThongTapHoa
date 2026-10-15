@@ -1,5 +1,16 @@
 export type ForecastMetric = number | null;
 
+export interface PlanningResultSummary {
+    latest_run_status: string | null;
+    matching_horizon: boolean;
+    unfiltered_product_count: number;
+    available_product_count: number;
+    recommendation_count: number;
+    positive_recommendation_count: number;
+    empty_reason: 'no_run' | 'running' | 'failed' | 'horizon_mismatch'
+        | 'missing_forecasts' | 'no_recommendation_evidence' | null;
+}
+
 export type ForecastStatus = 'available' | 'unavailable';
 
 export type EvaluationStage = 'validation' | 'holdout';

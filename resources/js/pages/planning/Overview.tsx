@@ -2,7 +2,6 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     AlertTriangle,
     ArrowUpRight,
-    Boxes,
     ChevronRight,
     Coins,
     Cpu,
@@ -18,13 +17,16 @@ import type {ActualForecastPoint} from '../../components/planning/ActualForecast
 import DataQualityBadge from '../../components/planning/DataQualityBadge';
 import {
     formatCurrency,
+    formatDateTime,
     formatQuantity,
     formatWape,
     MODEL_NAMES,
 } from '../../components/planning/planningFormatters';
+import PlanningResultState from '../../components/planning/PlanningResultState';
 import RunStatusBanner from '../../components/planning/RunStatusBanner';
 import type {ForecastRunSummary} from '../../components/planning/RunStatusBanner';
 import DashboardLayout from '../../layouts/DashboardLayout';
+import type { PlanningResultSummary } from '../../types/planning';
 
 interface KpiSummary {
     growth_items_count?: number;
@@ -77,6 +79,7 @@ interface OverviewFilters {
 }
 
 interface OverviewProps {
+    resultSummary: PlanningResultSummary;
     activeRun?: ForecastRunSummary | null;
     activeEvalRun?: ForecastRunSummary | null;
     recentRuns?: ForecastRunSummary[];
@@ -97,6 +100,7 @@ interface OverviewProps {
 }
 
 export default function Overview({
+    resultSummary,
     activeRun,
     recentRuns,
     kpis,
@@ -159,11 +163,19 @@ export default function Overview({
     const totalQualityCount = safeQualityDist.reduce((acc, q) => acc + q.count, 0);
     const totalModelCount = safeModelDist.reduce((acc, m) => acc + m.count, 0);
 
+    const productReason = resultSummary.empty_reason === 'no_recommendation_evidence' ? null : resultSummary.empty_reason;
+    const filteredProductsEmpty = Boolean(filters?.category_id) && resultSummary.unfiltered_product_count > 0 && safeTopGrowing.length === 0;
+    const contextQuery = new URLSearchParams({ horizon_days: String(activeRun?.horizon_days || selectedHorizon) });
+
+    if (filters?.synthetic_dataset_id != null) {
+        contextQuery.set('synthetic_dataset_id', String(filters.synthetic_dataset_id));
+    }
+
     return (
         <DashboardLayout>
             <Head title="Tổng quan Dự báo & Kế hoạch" />
 
-            <div className="space-y-6 pb-12">
+            <div className="planning-ui space-y-6 pb-12">
                 {/* 1. Page Header */}
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
@@ -177,21 +189,21 @@ export default function Overview({
 
                     <div className="flex flex-wrap items-center gap-2">
                         <Link
-                            href="/planning/products"
+                            href={`/planning/products?${contextQuery}`}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/60"
                         >
                             <span>Dự báo sản phẩm</span>
                             <ArrowUpRight className="h-3.5 w-3.5" />
                         </Link>
                         <Link
-                            href="/planning/procurement"
+                            href={`/planning/procurement?${contextQuery}`}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/60"
                         >
                             <span>Đề xuất nhập hàng</span>
                             <ArrowUpRight className="h-3.5 w-3.5" />
                         </Link>
                         <Link
-                            href="/planning/evaluation"
+                            href={`/planning/evaluation?${contextQuery}`}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/60"
                         >
                             <span>Đánh giá mô hình</span>
@@ -204,6 +216,8 @@ export default function Overview({
                 <RunStatusBanner
                     run={activeRun}
                     defaultHorizon={selectedHorizon}
+                    sourceDatasetId={filters?.synthetic_dataset_id}
+                    latestRunStatus={resultSummary.latest_run_status}
                 />
 
                 {/* 3. 4 KPI Cards */}
@@ -282,7 +296,7 @@ export default function Overview({
                         </div>
                         <div className="mt-3">
                             <span className="font-display tabular-nums text-2xl font-bold text-slate-900 dark:text-slate-100">
-                                {formatWape(kpis?.average_wape)}
+                                {kpis?.average_wape == null ? '—' : formatWape(kpis.average_wape)}
                             </span>
                         </div>
                         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -291,7 +305,56 @@ export default function Overview({
                     </div>
                 </div>
 
-                {/* 4. Actual Forecast Chart with Controls */}
+                {/* 4. Replenishment decisions before analysis */}
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-800/80">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Cần nhập hàng</h2>
+                        <Link
+                            href={`/planning/procurement?${contextQuery}`}
+                            className="inline-flex items-center gap-1 text-sm font-semibold text-sky-700 hover:text-sky-800 dark:text-sky-300 dark:hover:text-sky-200"
+                        >
+                            <span>Xem đề xuất nhập hàng</span>
+                            <ChevronRight className="h-3.5 w-3.5" />
+                        </Link>
+                    </div>
+                    {safeUrgentReorders.length === 0 ? (
+                        resultSummary.empty_reason ? <PlanningResultState reason={resultSummary.empty_reason} /> : (
+                            <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                                <p className="font-semibold">{resultSummary.recommendation_count > 0 && resultSummary.positive_recommendation_count === 0 ? 'Không có đề xuất nhập thêm trong lượt này' : 'Chưa có đề xuất trong danh sách này'}</p>
+                                <p className="mt-1 text-xs">Lượt #{activeRun?.id} · {formatDateTime(activeRun?.completed_at || activeRun?.data_cutoff)}. Chỉ phản ánh các bản ghi đã tạo, không xác nhận đủ tồn kho cho mọi nguyên liệu.</p>
+                            </div>
+                        )
+                    ) : (
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            {safeUrgentReorders.map((item) => (
+                                <div key={item.id} className="rounded-xl border border-amber-200/60 bg-amber-50/20 p-3 transition-colors dark:border-amber-900/40 dark:bg-amber-950/20">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200">{item.ingredient_name}</h3>
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400">NCC: {item.supplier_name || 'Mặc định'}</p>
+                                        </div>
+                                        <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
+                                            <AlertTriangle className="h-3 w-3" />
+                                            <span>Cần nhập</span>
+                                        </span>
+                                    </div>
+                                    <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-amber-200/40 pt-2 text-sm dark:border-amber-900/30">
+                                        <div>
+                                            <span className="text-slate-500 dark:text-slate-400">Hiện có: </span>
+                                            <strong className="tabular-nums text-slate-700 dark:text-slate-300">{formatQuantity(item.stock_quantity)} {item.unit}</strong>
+                                        </div>
+                                        <div>
+                                            <span className="text-slate-500 dark:text-slate-400">Đề xuất: </span>
+                                            <strong className="tabular-nums font-bold text-amber-700 dark:text-amber-300">+{formatQuantity(item.suggested_quantity)} {item.unit}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
+
+                {/* 5. Actual Forecast Chart with Controls */}
                 <div className="rounded-2xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-800/80">
                     <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700/60">
                         <div>
@@ -326,13 +389,13 @@ export default function Overview({
                             </div>
 
                             {/* Horizon 7 / 30 day Toggle */}
-                            <div className="inline-flex rounded-xl bg-slate-100 p-0.5 dark:bg-slate-700/60">
+                            <div role="group" aria-label="Kỳ dự báo" className="inline-flex rounded-xl bg-slate-100 p-0.5 dark:bg-slate-700/60">
                                 <button
                                     type="button"
                                     onClick={() => handleFilterChange(selectedCategory, 7)}
                                     className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
                                         selectedHorizon === 7
-                                            ? 'bg-white text-slate-900 shadow-2xs dark:bg-slate-800 dark:text-slate-100 font-semibold'
+                                             ? 'bg-sky-700 text-white shadow-2xs dark:bg-sky-700 font-semibold'
                                             : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                                     }`}
                                 >
@@ -343,7 +406,7 @@ export default function Overview({
                                     onClick={() => handleFilterChange(selectedCategory, 30)}
                                     className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
                                         selectedHorizon === 30
-                                            ? 'bg-white text-slate-900 shadow-2xs dark:bg-slate-800 dark:text-slate-100 font-semibold'
+                                             ? 'bg-sky-700 text-white shadow-2xs dark:bg-sky-700 font-semibold'
                                             : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                                     }`}
                                 >
@@ -354,15 +417,77 @@ export default function Overview({
                     </div>
 
                     <div className="p-5">
-                        <ActualForecastChart
-                            data={safeChartData}
-                            cutoffDate={cutoffDate}
-                            height={340}
-                        />
+                        {productReason && <PlanningResultState reason={productReason} />}
+                        {filteredProductsEmpty && (
+                            <PlanningResultState title="Không có kết quả phù hợp" description="Danh mục đang chọn không có sản phẩm dự báo.">
+                                <button type="button" onClick={() => handleFilterChange('all', selectedHorizon)} className="mt-3 text-sm font-semibold underline">Xóa bộ lọc</button>
+                            </PlanningResultState>
+                        )}
+                        {safeChartData.length > 0 && (
+                            <ActualForecastChart
+                                data={safeChartData}
+                                cutoffDate={cutoffDate}
+                                height={340}
+                                embedded
+                            />
+                        )}
                     </div>
                 </div>
 
-                {/* 5. Two Cards: Data Quality Card & Model Distribution Card */}
+                {/* 6. Top Growing Products */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-800/80">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-700/60">
+                        <div>
+                            <h3 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">Sản phẩm nhu cầu cao nhất</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Top 10 sản phẩm có tổng sản lượng dự báo lớn nhất</p>
+                        </div>
+                        <Link href={`/planning/products?${contextQuery}`} className="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300">
+                            <span>Xem tất cả</span>
+                            <ChevronRight className="h-3.5 w-3.5" />
+                        </Link>
+                    </div>
+                    <div
+                        role="region"
+                        aria-label="Sản phẩm nhu cầu cao nhất"
+                        tabIndex={0}
+                        className="mt-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-sky-600"
+                    >
+                        {safeTopGrowing.length === 0 ? (
+                            filteredProductsEmpty ? (
+                                <PlanningResultState title="Không có kết quả phù hợp" description="Danh mục đang chọn không có sản phẩm dự báo.">
+                                    <button type="button" onClick={() => handleFilterChange('all', selectedHorizon)} className="mt-3 text-sm font-semibold underline">Xóa bộ lọc</button>
+                                </PlanningResultState>
+                            ) : <PlanningResultState reason={productReason} />
+                        ) : (
+                            <table className="w-full text-left text-xs">
+                                <thead>
+                                    <tr className="border-b border-slate-100 text-slate-500 dark:border-slate-700/60 dark:text-slate-400">
+                                        <th className="pb-2 font-medium">Sản phẩm</th>
+                                        <th className="pb-2 font-medium">Danh mục</th>
+                                        <th className="pb-2 text-right font-medium">Dự báo (kỳ)</th>
+                                        <th className="pb-2 text-center font-medium">Mô hình</th>
+                                        <th className="pb-2 text-right font-medium">Chất lượng</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">
+                                    {safeTopGrowing.map((prod) => (
+                                        <tr key={prod.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/60">
+                                            <td className="py-2.5 font-medium text-slate-800 dark:text-slate-200">{prod.name}</td>
+                                            <td className="py-2.5 text-slate-500 dark:text-slate-400">{prod.category_name || '—'}</td>
+                                            <td className="py-2.5 text-right tabular-nums font-semibold text-slate-900 dark:text-slate-100">{formatQuantity(prod.forecast_quantity)}</td>
+                                            <td className="py-2.5 text-center">
+                                                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">{MODEL_NAMES[prod.model_key] || prod.model_key}</span>
+                                            </td>
+                                            <td className="py-2.5 text-right"><DataQualityBadge quality={prod.data_quality} /></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+
+                {/* 7. Data Quality & Model Distribution */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     {/* Card A: Data Quality Breakdown */}
                     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-800/80">
@@ -483,141 +608,7 @@ export default function Overview({
                     </div>
                 </div>
 
-                {/* 6. Bottom Section: Top Growing Products & Urgent Reorders */}
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    {/* Top Growing Products Table (2 cols on lg) */}
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-800/80 lg:col-span-2">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-700/60">
-                            <div>
-                                <h3 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">
-                                    Sản phẩm nhu cầu cao nhất
-                                </h3>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    Top 10 sản phẩm có tổng sản lượng dự báo lớn nhất
-                                </p>
-                            </div>
-                            <Link
-                                href="/planning/products"
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
-                            >
-                                <span>Xem tất cả</span>
-                                <ChevronRight className="h-3.5 w-3.5" />
-                            </Link>
-                        </div>
-
-                        <div className="mt-4 overflow-x-auto">
-                            {safeTopGrowing.length === 0 ? (
-                                <p className="py-8 text-center text-xs text-slate-500 dark:text-slate-400">
-                                    Chưa có dữ liệu sản phẩm trong lượt dự báo này.
-                                </p>
-                            ) : (
-                                <table className="w-full text-left text-xs">
-                                    <thead>
-                                        <tr className="border-b border-slate-100 text-slate-500 dark:border-slate-700/60 dark:text-slate-400">
-                                            <th className="pb-2 font-medium">Sản phẩm</th>
-                                            <th className="pb-2 font-medium">Danh mục</th>
-                                            <th className="pb-2 text-right font-medium">Dự báo (kỳ)</th>
-                                            <th className="pb-2 text-center font-medium">Mô hình</th>
-                                            <th className="pb-2 text-right font-medium">Chất lượng</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">
-                                        {safeTopGrowing.map((prod) => (
-                                            <tr key={prod.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/60">
-                                                <td className="py-2.5 font-medium text-slate-800 dark:text-slate-200">
-                                                    {prod.name}
-                                                </td>
-                                                <td className="py-2.5 text-slate-500 dark:text-slate-400">
-                                                    {prod.category_name || '-'}
-                                                </td>
-                                                <td className="py-2.5 text-right tabular-nums font-semibold text-slate-900 dark:text-slate-100">
-                                                    {formatQuantity(prod.forecast_quantity)}
-                                                </td>
-                                                <td className="py-2.5 text-center">
-                                                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                                                        {MODEL_NAMES[prod.model_key] || prod.model_key}
-                                                    </span>
-                                                </td>
-                                                <td className="py-2.5 text-right">
-                                                    <DataQualityBadge quality={prod.data_quality} />
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Urgent Reorder Summary Cards (1 col on lg) */}
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-800/80">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-700/60">
-                            <div>
-                                <h3 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">
-                                    Nguyên liệu cấp bách
-                                </h3>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    Tồn kho dưới điểm đặt hàng hoặc cần nhập thêm
-                                </p>
-                            </div>
-                            <Link
-                                href="/planning/procurement"
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
-                            >
-                                <span>Tạo đơn</span>
-                                <ChevronRight className="h-3.5 w-3.5" />
-                            </Link>
-                        </div>
-
-                        <div className="mt-4 space-y-3">
-                            {safeUrgentReorders.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-slate-500 dark:text-slate-400">
-                                    <Boxes className="h-6 w-6 text-slate-300 dark:text-slate-600" />
-                                    <span className="mt-2">Tồn kho hiện tại an toàn, chưa cần đặt hàng khẩn cấp.</span>
-                                </div>
-                            ) : (
-                                safeUrgentReorders.map((item) => (
-                                    <div
-                                        key={item.id}
-                                        className="rounded-xl border border-amber-200/60 bg-amber-50/20 p-3 transition-colors dark:border-amber-900/40 dark:bg-amber-950/20"
-                                    >
-                                        <div className="flex items-start justify-between">
-                                            <div>
-                                                <h4 className="font-semibold text-slate-800 dark:text-slate-200">
-                                                    {item.ingredient_name}
-                                                </h4>
-                                                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                                    NCC: {item.supplier_name || 'Mặc định'}
-                                                </p>
-                                            </div>
-                                            <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
-                                                <AlertTriangle className="h-3 w-3" />
-                                                <span>Cần nhập</span>
-                                            </span>
-                                        </div>
-
-                                        <div className="mt-2.5 flex items-center justify-between border-t border-amber-200/40 pt-2 text-xs dark:border-amber-900/30">
-                                            <div>
-                                                <span className="text-slate-500 dark:text-slate-400">Hiện có: </span>
-                                                <strong className="tabular-nums text-slate-700 dark:text-slate-300">
-                                                    {formatQuantity(item.stock_quantity)} {item.unit}
-                                                </strong>
-                                            </div>
-                                            <div>
-                                                <span className="text-slate-500 dark:text-slate-400">Đề xuất: </span>
-                                                <strong className="tabular-nums font-bold text-amber-700 dark:text-amber-300">
-                                                    +{formatQuantity(item.suggested_quantity)} {item.unit}
-                                                </strong>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* 7. Recent Runs Footnote / Quick history if any */}
+                {/* 8. Recent Runs Footnote / Quick history if any */}
                 {safeRecentRuns.length > 1 && (
                     <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
                         <span className="font-semibold text-slate-700 dark:text-slate-300">Lịch sử chạy gần đây: </span>

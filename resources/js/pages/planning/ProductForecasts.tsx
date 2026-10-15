@@ -17,9 +17,11 @@ import {
     formatWape,
     MODEL_NAMES,
 } from '../../components/planning/planningFormatters';
+import PlanningResultState from '../../components/planning/PlanningResultState';
 import RunStatusBanner from '../../components/planning/RunStatusBanner';
 import type {ForecastRunSummary} from '../../components/planning/RunStatusBanner';
 import DashboardLayout from '../../layouts/DashboardLayout';
+import type { PlanningResultSummary } from '../../types/planning';
 
 interface CategoryOption {
     id: number;
@@ -41,6 +43,7 @@ interface PaginationLink {
 }
 
 interface PaginatedData<T> {
+    first_page_url?: string;
     data: T[];
     current_page: number;
     last_page: number;
@@ -52,6 +55,7 @@ interface PaginatedData<T> {
 }
 
 interface ProductForecastsProps {
+    resultSummary: PlanningResultSummary;
     activeRun?: ForecastRunSummary | null;
     products?: PaginatedData<ProductForecastItem>;
     forecasts?: PaginatedData<ProductForecastItem>;
@@ -60,6 +64,7 @@ interface ProductForecastsProps {
 }
 
 export default function ProductForecasts({
+    resultSummary,
     activeRun,
     products,
     forecasts,
@@ -166,11 +171,21 @@ export default function ProductForecasts({
         });
     };
 
+    const filteredEmpty = productList.total === 0 && resultSummary.unfiltered_product_count > 0
+        && Boolean(filters.search || filters.category_id || filters.quality);
+    const outOfRange = productList.total > 0 && productList.data.length === 0;
+    const effectiveHorizon = activeRun?.horizon_days || selectedHorizon;
+    const contextQuery = new URLSearchParams({ horizon_days: String(effectiveHorizon) });
+
+    if (filters.synthetic_dataset_id != null) {
+        contextQuery.set('synthetic_dataset_id', String(filters.synthetic_dataset_id));
+    }
+
     return (
         <DashboardLayout>
             <Head title="Dự báo sản phẩm" />
 
-            <div className="space-y-6 pb-12">
+            <div className="planning-ui space-y-6 pb-12">
                 {/* 1. Page Header */}
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
@@ -184,20 +199,20 @@ export default function ProductForecasts({
 
                     <div className="flex flex-wrap items-center gap-2">
                         <Link
-                            href="/planning"
+                            href={`/planning?${contextQuery}`}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/60"
                         >
                             <span>Tổng quan</span>
                         </Link>
                         <Link
-                            href="/planning/procurement"
+                            href={`/planning/procurement?${contextQuery}`}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/60"
                         >
                             <span>Đề xuất nhập hàng</span>
                             <ArrowUpRight className="h-3.5 w-3.5" />
                         </Link>
                         <Link
-                            href="/planning/evaluation"
+                            href={`/planning/evaluation?${contextQuery}`}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/60"
                         >
                             <span>Đánh giá mô hình</span>
@@ -210,7 +225,12 @@ export default function ProductForecasts({
                 <RunStatusBanner
                     run={activeRun}
                     defaultHorizon={selectedHorizon}
+                    sourceDatasetId={filters.synthetic_dataset_id}
+                    latestRunStatus={resultSummary.latest_run_status}
                 />
+                {!resultSummary.matching_horizon && activeRun && (
+                    <PlanningResultState reason="horizon_mismatch" />
+                )}
 
                 {/* 3. Server Filters Bar */}
                 <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
@@ -229,7 +249,8 @@ export default function ProductForecasts({
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 placeholder="Tìm tên sản phẩm..."
-                                className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-purple-500 focus:outline-hidden focus:ring-1 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                                aria-label="Tìm tên sản phẩm"
+                                className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-sm text-slate-900 placeholder:text-slate-600 focus:border-sky-600 focus:outline-hidden focus:ring-1 focus:ring-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-300"
                             />
                         </div>
 
@@ -237,11 +258,12 @@ export default function ProductForecasts({
                         <div>
                             <select
                                 value={selectedCategory}
+                                aria-label="Danh mục sản phẩm"
                                 onChange={(e) => {
                                     setSelectedCategory(e.target.value);
                                     applyFilters({ category_id: e.target.value ? Number(e.target.value) : null });
                                 }}
-                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:border-purple-500 focus:outline-hidden focus:ring-1 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-600 focus:outline-hidden focus:ring-1 focus:ring-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                             >
                                 <option value="">Tất cả danh mục</option>
                                 {categories.map((c) => (
@@ -256,15 +278,16 @@ export default function ProductForecasts({
                         <div>
                             <select
                                 value={selectedHorizon}
+                                aria-label="Kỳ dự báo"
                                 onChange={(e) => {
                                     const val = Number(e.target.value);
                                     setSelectedHorizon(val);
                                     applyFilters({ horizon_days: val });
                                 }}
-                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:border-purple-500 focus:outline-hidden focus:ring-1 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-600 focus:outline-hidden focus:ring-1 focus:ring-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                             >
-                                <option value={7}>Chu kỳ 7 ngày</option>
-                                <option value={30}>Chu kỳ 30 ngày</option>
+                                <option value={7}>Kỳ dự báo 7 ngày</option>
+                                <option value={30}>Kỳ dự báo 30 ngày</option>
                             </select>
                         </div>
 
@@ -272,11 +295,12 @@ export default function ProductForecasts({
                         <div>
                             <select
                                 value={selectedQuality}
+                                aria-label="Chất lượng dữ liệu"
                                 onChange={(e) => {
                                     setSelectedQuality(e.target.value);
                                     applyFilters({ quality: e.target.value || null });
                                 }}
-                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:border-purple-500 focus:outline-hidden focus:ring-1 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-600 focus:outline-hidden focus:ring-1 focus:ring-sky-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                             >
                                 <option value="">Tất cả chất lượng DL</option>
                                 <option value="sufficient">Đầy đủ (Sufficient)</option>
@@ -289,7 +313,7 @@ export default function ProductForecasts({
                         <div className="flex items-center gap-2">
                             <button
                                 type="submit"
-                                className="flex-1 rounded-xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-purple-700 transition"
+                                className="flex-1 rounded-xl bg-sky-700 px-3 py-2 text-sm font-semibold text-white shadow-2xs hover:bg-sky-800 transition-colors"
                             >
                                 Lọc
                             </button>
@@ -299,6 +323,7 @@ export default function ProductForecasts({
                                     onClick={handleResetFilters}
                                     className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 transition"
                                     title="Xóa bộ lọc"
+                                    aria-label="Xóa bộ lọc"
                                 >
                                     <X className="h-4 w-4" />
                                 </button>
@@ -323,26 +348,31 @@ export default function ProductForecasts({
                     </div>
 
                     {productList.data.length === 0 ? (
-                        <div className="py-16 text-center">
-                            <Boxes className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
-                            <h3 className="mt-4 font-display text-base font-semibold text-slate-900 dark:text-slate-100">
-                                Không tìm thấy sản phẩm dự báo nào
-                            </h3>
-                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                                Vui lòng thử thay đổi điều kiện tìm kiếm hoặc chạy lượt dự báo mới từ trang Tổng quan.
-                            </p>
-                        </div>
+                        outOfRange ? (
+                            <PlanningResultState title="Trang này không có kết quả" description="Danh sách vẫn có sản phẩm. Quay về trang đầu để xem kết quả với bộ lọc hiện tại.">
+                                <Link href={productList.first_page_url ?? `/planning/products?${contextQuery}`} className="mt-3 inline-block text-sm font-semibold underline">Về trang đầu</Link>
+                            </PlanningResultState>
+                        ) : filteredEmpty ? (
+                            <PlanningResultState title="Không có kết quả phù hợp" description="Thử thay đổi điều kiện tìm kiếm.">
+                                <button type="button" onClick={handleResetFilters} className="mt-3 text-sm font-semibold underline">Xóa bộ lọc</button>
+                            </PlanningResultState>
+                        ) : <PlanningResultState reason={resultSummary.empty_reason} />
                     ) : (
                         <>
                             {/* Desktop Table (hidden on mobile) */}
-                            <div className="hidden md:block overflow-x-auto">
+                            <div
+                                role="region"
+                                aria-label="Danh sách dự báo sản phẩm"
+                                tabIndex={0}
+                                className="hidden md:block overflow-x-auto focus-visible:outline-2 focus-visible:outline-sky-600"
+                            >
                                 <table className="w-full text-left text-xs">
                                     <thead className="border-b border-slate-200 bg-slate-50/75 text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
                                         <tr>
                                             <th className="px-6 py-3 font-semibold">Sản phẩm</th>
                                             <th className="px-4 py-3 font-semibold">Mô hình áp dụng</th>
                                             <th className="px-4 py-3 font-semibold">Chất lượng DL</th>
-                                            <th className="px-4 py-3 font-semibold text-right">Tổng dự báo ({selectedHorizon}d)</th>
+                                            <th className="px-4 py-3 font-semibold text-right">Tổng dự báo ({effectiveHorizon}d)</th>
                                             <th className="px-4 py-3 font-semibold text-right">Biên tham khảo (±20%)</th>
                                             <th className="px-4 py-3 font-semibold text-right">Độ lệch WAPE</th>
                                             <th className="px-6 py-3 font-semibold text-center">Thao tác</th>
@@ -357,7 +387,7 @@ export default function ProductForecasts({
                                                 <tr
                                                     key={item.id}
                                                     onClick={() => handleOpenDrawer(item)}
-                                                    className="cursor-pointer transition-colors hover:bg-purple-50/40 dark:hover:bg-purple-950/20"
+                                                    className="cursor-pointer transition-colors hover:bg-sky-50/40 dark:hover:bg-sky-950/20"
                                                 >
                                                     <td className="px-6 py-3.5">
                                                         <div className="font-semibold text-slate-900 dark:text-slate-100">
@@ -424,7 +454,7 @@ export default function ProductForecasts({
                                         >
                                             <div className="flex items-start justify-between gap-2">
                                                 <div>
-                                                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
+                                                    <h3 className="font-display font-semibold text-slate-900 dark:text-slate-100 text-sm">
                                                         {item.name}
                                                     </h3>
                                                     {item.category_name && (
@@ -436,9 +466,9 @@ export default function ProductForecasts({
                                                 <DataQualityBadge quality={item.data_quality} />
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-2 text-xs rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60">
+                                            <div className="grid grid-cols-2 gap-2 text-sm rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60">
                                                 <div>
-                                                    <span className="text-slate-500 dark:text-slate-400">Tổng dự báo ({selectedHorizon}d):</span>
+                                                    <span className="text-slate-500 dark:text-slate-400">Tổng dự báo ({effectiveHorizon}d):</span>
                                                     <div className="font-bold text-slate-900 dark:text-slate-100 tabular-nums mt-0.5">
                                                         {formatQuantity(item.forecast_quantity)}
                                                     </div>
@@ -469,7 +499,7 @@ export default function ProductForecasts({
                                                         e.stopPropagation();
                                                         handleOpenDrawer(item);
                                                     }}
-                                                    className="inline-flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700 dark:border-purple-800 dark:bg-purple-950/50 dark:text-purple-300"
+                                                    className="inline-flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-700 dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-300"
                                                 >
                                                     <Eye className="h-3.5 w-3.5" />
                                                     <span>Xem chi tiết ngày</span>
@@ -513,7 +543,7 @@ export default function ProductForecasts({
                                                     preserveState
                                                     className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors tabular-nums ${
                                                         link.active
-                                                            ? 'bg-purple-600 text-white'
+                                                            ? 'bg-sky-700 text-white'
                                                             : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                                                     }`}
                                                 >
@@ -533,6 +563,7 @@ export default function ProductForecasts({
             <ForecastDetailDrawer
                 isOpen={isDrawerOpen}
                 product={selectedProduct}
+                procurementHref={`/planning/procurement?${contextQuery}`}
                 onClose={handleCloseDrawer}
             />
         </DashboardLayout>

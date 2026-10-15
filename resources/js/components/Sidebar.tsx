@@ -1,8 +1,33 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { ChevronDown, ChevronRight, Moon, Sun, Settings, LogOut } from 'lucide-react';
-import React, { useState, useRef, useEffect } from 'react';
-import type { NavigationItem, PageProps } from '../types/auth';
+import {
+    ChevronDown,
+    ChevronRight,
+    LogOut,
+    Menu,
+    Moon,
+    Settings,
+    Sun,
+    X,
+} from 'lucide-react';
+import React, {
+    useCallback,
+    useEffect,
+    useId,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
+import type { PageProps } from '../types/auth';
 import { cdnAsset, useCdnBaseUrl } from '../utils/cdn';
+import MobileNavigation from './navigation/MobileNavigation';
+import {
+    activeRoute,
+    dropdownPlacement,
+    flyoutSide,
+    needsCompact,
+    normalizeNavigation,
+} from './navigation/navigationUtils';
 import ThemeToggle from './ThemeToggle';
 
 export default function Sidebar() {
@@ -10,6 +35,80 @@ export default function Sidebar() {
     const currentUrl = usePage().url;
     const user = auth.user;
     const cdnUrl = useCdnBaseUrl();
+    const idPrefix = useId();
+
+    const navGroups = useMemo(() => normalizeNavigation(navigation), [navigation]);
+
+    const allPaths = useMemo(() => {
+        const paths: string[] = [];
+
+        for (const g of navGroups) {
+            for (const l of g.links) {
+                paths.push(l.route_path);
+            }
+
+            for (const s of g.subs) {
+                for (const l of s.links) {
+                    paths.push(l.route_path);
+                }
+            }
+        }
+
+        return paths;
+    }, [navGroups]);
+
+    const currentActivePath = useMemo(() => activeRoute(currentUrl, allPaths), [currentUrl, allPaths]);
+
+    // Responsive compact fit state
+    const [isCompact, setIsCompact] = useState<boolean>(true);
+    const [isMobileOpen, setIsMobileOpen] = useState(false);
+    const [mobileOpenGroup, setMobileOpenGroup] = useState<string | null>(null);
+    const [mobileOpenSub, setMobileOpenSub] = useState<string | null>(null);
+
+    // Desktop dropdown states
+    const [openGroup, setOpenGroup] = useState<string | null>(null);
+    const [pinnedGroup, setPinnedGroup] = useState<string | null>(null);
+    const [activeSubGroup, setActiveSubGroup] = useState<string | null>(null);
+    const [level2Side, setLevel2Side] = useState<'right' | 'left' | 'inline'>('right');
+
+    const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const headerRef = useRef<HTMLElement>(null);
+    const navRef = useRef<HTMLElement>(null);
+    const availableRef = useRef<HTMLDivElement>(null);
+    const measureRef = useRef<HTMLDivElement>(null);
+    const menuRef = useRef<HTMLButtonElement>(null);
+    const mobileRef = useRef<HTMLDivElement>(null);
+    const avatarButtonRef = useRef<HTMLButtonElement>(null);
+    const measuredBrandRef = useRef<HTMLImageElement>(null);
+    const measuredAvatarRef = useRef<HTMLDivElement>(null);
+    const modeRef = useRef(true);
+    const pendingFocusRef = useRef<string | null>(null);
+    const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({});
+    const [subStyle, setSubStyle] = useState<React.CSSProperties>({});
+
+    const clearHover = useCallback(() => {
+        if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current);
+        }
+
+        hoverTimeoutRef.current = null;
+    }, []);
+    const closeNavigation = useCallback(() => {
+        clearHover();
+        setIsMobileOpen(false);
+        setMobileOpenGroup(null);
+        setMobileOpenSub(null);
+        setOpenGroup(null);
+        setPinnedGroup(null);
+        setActiveSubGroup(null);
+    }, [clearHover]);
+    const focusTrigger = useCallback((kind: 'group' | 'sub', name: string | null, mobile = false) => {
+        const root = mobile ? mobileRef.current : navRef.current;
+        Array.from(root?.querySelectorAll<HTMLButtonElement>(`[data-nav-${kind}]`) ?? [])
+            .find((button) => button.getAttribute(`data-nav-${kind}`) === name)?.focus();
+    }, []);
+
+    useEffect(() => clearHover, [clearHover]);
 
     // Avatar Dropdown state
     const [isAvatarOpen, setIsAvatarOpen] = useState(false);
@@ -24,72 +123,317 @@ export default function Sidebar() {
         return false;
     });
 
-    // GitHub-style Nav Dropdown states
-    const [openGroup, setOpenGroup] = useState<string | null>(null);
-    const [pinnedGroup, setPinnedGroup] = useState<string | null>(null);
-    const [activeSubGroup, setActiveSubGroup] = useState<string | null>(null);
-    const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const navRef = useRef<HTMLElement>(null);
-
-    // Close dropdowns when clicking outside
+    // Close menus on page navigation
     useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (avatarRef.current && !avatarRef.current.contains(event.target as Node)) {
+        const removeListener = router.on('navigate', () => {
+            closeNavigation();
+            setIsAvatarOpen(false);
+        });
+
+        return () => {
+            removeListener();
+        };
+    }, [closeNavigation]);
+
+    // Measure required vs available width to toggle compact mode
+    const updateFit = useCallback(() => {
+        if (!availableRef.current || !measureRef.current) {
+            return;
+        }
+
+        const viewport = window.innerWidth;
+        const available = availableRef.current.getBoundingClientRect().width;
+
+        if (measuredAvatarRef.current && avatarButtonRef.current) {
+            measuredAvatarRef.current.style.width = `${avatarButtonRef.current.getBoundingClientRect().width}px`;
+        }
+
+        const required = measureRef.current.scrollWidth;
+
+        const compact = needsCompact(viewport, available, required);
+
+        if (compact !== modeRef.current) {
+            const focused = document.activeElement;
+
+            if (navRef.current?.contains(focused) || mobileRef.current?.contains(focused) || focused === menuRef.current) {
+                pendingFocusRef.current = focused instanceof Element
+                    ? focused.closest('[data-nav-group-container]')?.getAttribute('data-nav-group-container') ?? '' : '';
+            }
+
+            modeRef.current = compact;
+            closeNavigation();
+
+            if (avatarRef.current?.contains(focused) && focused !== avatarButtonRef.current) {
+                avatarButtonRef.current?.focus();
+            }
+
+            setIsAvatarOpen(false);
+            setIsCompact(compact);
+        }
+    }, [closeNavigation]);
+
+    useLayoutEffect(() => {
+        if (pendingFocusRef.current === null) {
+            return;
+        }
+
+        if (isCompact) {
+            menuRef.current?.focus();
+        } else {
+            const buttons = Array.from(navRef.current?.querySelectorAll<HTMLButtonElement>('[data-nav-group]') ?? []);
+            (buttons.find((button) => button.dataset.navGroup === pendingFocusRef.current) ?? buttons[0] ?? avatarButtonRef.current)?.focus();
+        }
+
+        pendingFocusRef.current = null;
+    }, [isCompact]);
+
+    useLayoutEffect(() => {
+        updateFit();
+    }, [updateFit]);
+
+    useEffect(() => {
+        const availableEl = availableRef.current;
+        const measureEl = measureRef.current;
+
+        if (!availableEl || !measureEl || typeof ResizeObserver === 'undefined') {
+            return;
+        }
+
+        const observer = new ResizeObserver(() => {
+            updateFit();
+        });
+
+        observer.observe(availableEl);
+        observer.observe(measureEl);
+
+        if (avatarButtonRef.current) {
+            observer.observe(avatarButtonRef.current);
+        }
+
+        let canceled = false;
+
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => {
+                if (!canceled) {
+                    updateFit();
+                }
+            });
+        }
+
+        window.addEventListener('resize', updateFit);
+
+        return () => {
+            canceled = true;
+            observer.disconnect();
+            window.removeEventListener('resize', updateFit);
+        };
+    }, [updateFit]);
+
+    // Close dropdowns on click outside
+    useEffect(() => {
+        function handleClickOutside(event: PointerEvent) {
+            const target = event.target as Node;
+
+            if (avatarRef.current && !avatarRef.current.contains(target)) {
                 setIsAvatarOpen(false);
             }
 
-            if (navRef.current && !navRef.current.contains(event.target as Node)) {
-                setOpenGroup(null);
-                setPinnedGroup(null);
+            if (!navRef.current?.contains(target) && !mobileRef.current?.contains(target) && !menuRef.current?.contains(target)) {
+                closeNavigation();
             }
         }
-        document.addEventListener('mousedown', handleClickOutside);
 
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+        document.addEventListener('pointerdown', handleClickOutside);
+
+        return () => document.removeEventListener('pointerdown', handleClickOutside);
+    }, [closeNavigation]);
+
+    // Hierarchical keyboard dismissal via Escape
+    useEffect(() => {
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key !== 'Escape') {
+                return;
+            }
+
+            if (event.defaultPrevented || !headerRef.current?.contains(event.target as Node)) {
+                return;
+            }
+
+            clearHover();
+
+            if (isAvatarOpen) {
+                event.preventDefault();
+                setIsAvatarOpen(false);
+                avatarButtonRef.current?.focus();
+
+                return;
+            }
+
+            if (isCompact && isMobileOpen) {
+                event.preventDefault();
+
+                if (mobileOpenSub !== null) {
+                    focusTrigger('sub', mobileOpenSub, true);
+                    setMobileOpenSub(null);
+                } else if (mobileOpenGroup !== null) {
+                    focusTrigger('group', mobileOpenGroup, true);
+                    setMobileOpenGroup(null);
+                } else {
+                    closeNavigation();
+                    menuRef.current?.focus();
+                }
+
+                return;
+            }
+
+            if (activeSubGroup !== null) {
+                event.preventDefault();
+                setActiveSubGroup(null);
+                focusTrigger('sub', activeSubGroup);
+
+                return;
+            }
+
+            if (openGroup !== null) {
+                event.preventDefault();
+                setOpenGroup(null);
+                setPinnedGroup(null);
+                focusTrigger('group', openGroup);
+
+                return;
+            }
+
+        }
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [activeSubGroup, openGroup, isMobileOpen, isAvatarOpen, isCompact, mobileOpenGroup, mobileOpenSub, clearHover, closeNavigation, focusTrigger]);
 
     const handleMouseEnter = (groupName: string) => {
-        if (hoverTimeoutRef.current) {
-            clearTimeout(hoverTimeoutRef.current);
+        clearHover();
+
+        if (openGroup !== groupName && navRef.current?.querySelector('[data-desktop-panel]')?.contains(document.activeElement)) {
+            return;
         }
+
+        setIsAvatarOpen(false);
 
         setOpenGroup(groupName);
 
-        // Reset activeSubGroup only on a genuinely fresh open (not on re-entry across the gap),
-        // so moving from a parent row into the level-2 panel doesn't wipe the hovered sub.
         if (openGroup !== groupName) {
-            const group = navigation[groupName];
+            const group = navGroups.find((g) => g.name === groupName);
 
-            if (group && !Array.isArray(group) && group.__subs) {
-                const keys = Object.keys(group.__subs);
-                const active = keys.find((key) => group.__subs[key].some((item) =>
-                    currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path))));
-                setActiveSubGroup(active ?? null);
+            if (group && group.subs.length > 0) {
+                const activeSub = group.subs.find((sub) =>
+                    sub.links.some((l) => l.route_path === currentActivePath),
+                );
+                setActiveSubGroup(activeSub ? activeSub.name : null);
+            } else {
+                setActiveSubGroup(null);
             }
         }
     };
 
     const handleMouseLeave = () => {
-        if (pinnedGroup) {
-            return; // Stay open if pinned
+        clearHover();
+
+        if (pinnedGroup || navRef.current?.contains(document.activeElement)) {
+            return;
         }
 
         hoverTimeoutRef.current = setTimeout(() => {
+            if (navRef.current?.contains(document.activeElement)) {
+                return;
+            }
+
             setOpenGroup(null);
+            setActiveSubGroup(null);
         }, 200);
     };
 
     const handleGroupClick = (groupName: string, e: React.MouseEvent) => {
         e.preventDefault();
+        clearHover();
+        setIsAvatarOpen(false);
 
         if (pinnedGroup === groupName) {
             setPinnedGroup(null);
             setOpenGroup(null);
+            setActiveSubGroup(null);
         } else {
             setPinnedGroup(groupName);
             setOpenGroup(groupName);
+
+            const group = navGroups.find((g) => g.name === groupName);
+
+            if (openGroup !== groupName) {
+                const activeSub = group?.subs.find((sub) =>
+                    sub.links.some((l) => l.route_path === currentActivePath),
+                );
+                setActiveSubGroup(activeSub?.name ?? group?.subs[0]?.name ?? null);
+            }
         }
     };
+
+    const handleSubMouseEnter = (subName: string) => {
+        clearHover();
+
+        if (navRef.current?.querySelector('[data-sub-panel]')?.contains(document.activeElement)) {
+            return;
+        }
+
+        setActiveSubGroup(subName);
+    };
+
+    useLayoutEffect(() => {
+        if (isCompact || !openGroup) {
+            return;
+        }
+
+        const update = () => {
+            const trigger = Array.from(navRef.current?.querySelectorAll<HTMLButtonElement>('[data-nav-group]') ?? []).find((el) => el.dataset.navGroup === openGroup);
+            const panel = navRef.current?.querySelector<HTMLElement>('[data-desktop-panel]');
+
+            if (!trigger || !panel) {
+                return;
+            }
+
+            const rect = trigger.getBoundingClientRect();
+            const placement = dropdownPlacement(rect.left, rect.bottom, panel.offsetWidth, window.innerWidth, window.innerHeight);
+            setPanelStyle(placement);
+            // Read subgroup geometry only after its parent's new viewport position applies.
+            panel.style.left = `${placement.left}px`;
+            panel.style.top = `${placement.top}px`;
+            panel.style.maxHeight = `${placement.maxHeight}px`;
+            const sub = Array.from(panel.querySelectorAll<HTMLButtonElement>('[data-nav-sub]')).find((el) => el.dataset.navSub === activeSubGroup);
+
+            if (!sub) {
+                return;
+            }
+
+            const side = flyoutSide(placement.left, placement.left + panel.offsetWidth, 240, window.innerWidth);
+            setLevel2Side(side);
+            const top = Math.max(8, Math.min(sub.getBoundingClientRect().top, window.innerHeight - 52));
+            setSubStyle(side === 'inline' ? {} : { position: 'fixed', left: side === 'right' ? placement.left + panel.offsetWidth + 8 : placement.left - 248, top, maxHeight: Math.max(0, window.innerHeight - top - 8), width: 240 });
+        };
+        update();
+
+        const observer = new ResizeObserver(update);
+
+        if (navRef.current) {
+            observer.observe(navRef.current);
+        }
+
+        window.addEventListener('resize', update);
+        window.addEventListener('scroll', update, true);
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', update);
+            window.removeEventListener('scroll', update, true);
+        };
+    }, [isCompact, openGroup, activeSubGroup]);
 
     const handleLogout = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -98,196 +442,323 @@ export default function Sidebar() {
     };
 
     return (
-        <header className="sticky top-0 z-30 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 shadow-xs transition-colors duration-150">
-            <div className="flex h-16 w-full items-center justify-between px-4 sm:px-6 md:px-8">
-                
+        <header
+            ref={headerRef}
+            className="sticky top-0 z-30 w-full shrink-0 border-b border-slate-200 bg-white/95 shadow-xs transition-colors duration-150 motion-reduce:transition-none dark:border-slate-800 dark:bg-slate-900/95"
+        >
+            {/* Hidden measuring strip for width fit detection */}
+            <div
+                ref={measureRef}
+                aria-hidden="true"
+                className="pointer-events-none invisible fixed left-0 top-0 flex w-max max-w-none items-center gap-6 whitespace-nowrap opacity-0"
+            >
+                <img ref={measuredBrandRef} src={cdnAsset('/banner/banner_v2.jpg', { h: 72, q: 80, format: 'webp' }, cdnUrl)} alt="" className="h-9 w-auto max-w-none shrink-0" onLoad={updateFit} />
+                <div className="flex items-center gap-1">
+                    {navGroups.map((g) => (
+                        <div key={g.name} className="flex min-h-11 items-center gap-1.5 px-3.5 py-2 text-sm font-semibold">
+                            {g.name}
+                            <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                        </div>
+                    ))}
+                </div>
+                <div ref={measuredAvatarRef} className="h-11 shrink-0" />
+            </div>
+
+            <div className="px-4 sm:px-6 md:px-8">
+            <div ref={availableRef} className="flex h-16 w-full items-center justify-between gap-6">
                 {/* ========== LEFT SECTION: BANNER & NAVIGATION ========== */}
-                <div className="flex items-center gap-4 sm:gap-6">
-                    {/* Far Left Banner (Light & Dark Mode) */}
-                    <Link href="/" className="flex items-center shrink-0">
-                        <img 
-                            src={cdnAsset('/banner/banner_v2.jpg', { h: 72, q: 80, format: 'webp' }, cdnUrl)} 
-                            alt="Coffee Shop Banner" 
-                            className="h-9 w-auto rounded-lg object-contain shadow-xs transition-opacity hover:opacity-90 dark:hidden"
+                <div className={`flex min-w-0 flex-1 items-center ${isCompact ? 'gap-3' : 'gap-6'}`}>
+                    {/* Compact Mode Hamburger Trigger */}
+                    {isCompact && (
+                        <button
+                            ref={menuRef}
+                            type="button"
+                            aria-expanded={isMobileOpen}
+                            aria-controls="mobile-navigation-panel"
+                            aria-label={isMobileOpen ? 'Đóng menu điều hướng' : 'Mở menu điều hướng'}
+                            onClick={() => {
+                                clearHover();
+                                setIsAvatarOpen(false);
+
+                                if (isMobileOpen) {
+                                    closeNavigation();
+
+                                    return;
+                                }
+
+                                setIsMobileOpen(!isMobileOpen);
+
+                                if (!isMobileOpen) {
+                                    // Pre-expand group containing current route
+                                    const activeGroup = navGroups.find((g) =>
+                                        g.links.some((l) => l.route_path === currentActivePath) ||
+                                        g.subs.some((s) => s.links.some((l) => l.route_path === currentActivePath)),
+                                    );
+
+                                    if (activeGroup) {
+                                        setMobileOpenGroup(activeGroup.name);
+                                        const sub = activeGroup.subs.find((s) =>
+                                            s.links.some((l) => l.route_path === currentActivePath),
+                                        );
+                                        setMobileOpenSub(sub ? sub.name : null);
+                                    }
+                                }
+                            }}
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-sky-600 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
+                        >
+                            {isMobileOpen ? (
+                                <X className="h-5 w-5" aria-hidden="true" />
+                            ) : (
+                                <Menu className="h-5 w-5" aria-hidden="true" />
+                            )}
+                        </button>
+                    )}
+
+                    {/* Branding Banner */}
+                    <Link href="/" className={`flex items-center focus-visible:outline-2 focus-visible:outline-sky-600 ${isCompact ? 'min-w-0' : 'shrink-0'}`}>
+                        <img
+                            src={cdnAsset('/banner/banner_v2.jpg', { h: 72, q: 80, format: 'webp' }, cdnUrl)}
+                            alt="Coffee Shop Banner"
+                            className={`h-9 rounded-lg object-contain shadow-xs dark:hidden ${isCompact ? 'max-w-full w-auto' : 'max-w-none'}`}
                         />
-                        <img 
-                            src={cdnAsset('/banner/banner_v2.jpg', { h: 72, q: 80, format: 'webp' }, cdnUrl)} //setting banner dark
-                            alt="Coffee Shop Banner Dark" 
-                            className="hidden h-9 w-auto rounded-lg object-contain shadow-xs transition-opacity hover:opacity-90 dark:block"
+                        <img
+                            src={cdnAsset('/banner/banner_v2.jpg', { h: 72, q: 80, format: 'webp' }, cdnUrl)}
+                            alt="Coffee Shop Banner Dark"
+                            className={`hidden h-9 rounded-lg object-contain shadow-xs dark:block ${isCompact ? 'max-w-full w-auto' : 'max-w-none'}`}
                         />
                     </Link>
 
-                    {/* Middle: Navigation Links (GitHub-style hover/pin dropdowns) */}
-                    <nav className="flex items-center gap-1" ref={navRef}>
-                        {Object.entries(navigation).map(([groupName, groupValue]) => {
-                            const isOpen = openGroup === groupName;
-                            const isPinned = pinnedGroup === groupName;
-                            const hasSubs = !Array.isArray(groupValue) && groupValue.__subs !== undefined;
-                            const subs = hasSubs ? (groupValue as { __subs: Record<string, NavigationItem[]> }).__subs : null;
-                            const subKeys = subs ? Object.keys(subs) : [];
-                            // Flat items of a group (the array part; a mixed group carries them alongside __subs)
-                            const flatItems: NavigationItem[] = Array.isArray(groupValue)
-                                ? groupValue
-                                : Object.keys(groupValue).filter((key) => key !== '__subs').map((key) => (groupValue as unknown as Record<string, NavigationItem>)[key]);
-                            const activeSubName = subs
-                                ? subKeys.find((key) => subs[key].some((item) =>
-                                    currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path))))
-                                : null;
-                            const activeSub = subs && activeSubGroup && subs[activeSubGroup] ? activeSubGroup : (activeSubName ?? null);
-                            const hasActiveChild = [...flatItems, ...(subs ? Object.values(subs).flat() : [])].some((item) =>
-                                currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path)));
+                    {/* Desktop Navigation Links */}
+                    {!isCompact && (
+                        <nav ref={navRef} aria-label="Điều hướng chính" className="flex items-center gap-1" onClick={(event) => {
+                            if ((event.target as Element).closest('a')) {
+                                closeNavigation();
+                            }
+                        }}>
+                            {navGroups.map((group, groupIdx) => {
+                                const isOpen = openGroup === group.name;
+                                const isPinned = pinnedGroup === group.name;
+                                const hasSubs = group.subs.length > 0;
+                                const groupButtonId = `${idPrefix}-desktop-btn-${groupIdx}`;
+                                const groupPanelId = `${idPrefix}-desktop-panel-${groupIdx}`;
 
-                            return (
-                                <div 
-                                    key={groupName} 
-                                    className="relative"
-                                    onMouseEnter={() => handleMouseEnter(groupName)}
-                                    onMouseLeave={handleMouseLeave}
-                                >
-                                    <button
-                                        onClick={(e) => handleGroupClick(groupName, e)}
-                                        className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold transition-colors ${
-                                            hasActiveChild || isOpen || isPinned
-                                                ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
-                                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
-                                        }`}
+                                const hasActiveChild =
+                                    group.links.some((l) => l.route_path === currentActivePath) ||
+                                    group.subs.some((s) => s.links.some((l) => l.route_path === currentActivePath));
+
+                                const activeSub = activeSubGroup;
+
+                                return (
+                                    <div
+                                        key={group.name}
+                                        data-nav-group-container={group.name}
+                                        className="relative"
+                                        onMouseEnter={() => handleMouseEnter(group.name)}
+                                        onMouseLeave={handleMouseLeave}
                                     >
-                                        <span>{groupName}</span>
-                                        <ChevronDown
-                                            className={`h-3.5 w-3.5 transform transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`}
-                                        />
-                                    </button>
-
-                                    {/* GitHub Style Dropdown Menu */}
-                                    {isOpen && !hasSubs && (
-                                        <div 
-                                            className="absolute left-0 mt-1.5 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 z-50 animate-fade-in"
-                                            onMouseEnter={() => handleMouseEnter(groupName)}
-                                            onMouseLeave={handleMouseLeave}
+                                        <button
+                                            data-nav-group={group.name}
+                                            id={groupButtonId}
+                                            type="button"
+                                            aria-expanded={isOpen}
+                                            aria-controls={groupPanelId}
+                                            onClick={(e) => handleGroupClick(group.name, e)}
+                                            className={`flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 ${
+                                                hasActiveChild || isOpen || isPinned
+                                                    ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
+                                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                                            }`}
                                         >
-                                            <div className="space-y-1">
-                                                {flatItems.map((item) => {
-                                                    const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
+                                            <span>{group.name}</span>
+                                            <ChevronDown
+                                                aria-hidden="true"
+                                                className={`h-3.5 w-3.5 shrink-0 transform transition-transform duration-150 motion-reduce:transition-none ${
+                                                    isOpen ? 'rotate-180' : ''
+                                                }`}
+                                            />
+                                        </button>
 
-                                                    return (
-                                                        <Link
-                                                            key={item.route_path}
-                                                            href={item.route_path}
-                                                            onClick={() => {
-                                                                setOpenGroup(null);
-                                                                setPinnedGroup(null);
-                                                            }}
-                                                            className={`flex items-center rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                                                                isActive
-                                                                    ? 'bg-sky-600 text-white font-semibold shadow-xs'
-                                                                    : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
-                                                            }`}
-                                                        >
-                                                            {item.name}
-                                                        </Link>
-                                                    );
-                                                })}
+                                        {/* Dropdown 1 cấp cho group phẳng */}
+                                        {isOpen && !hasSubs && (
+                                            <div
+                                                id={groupPanelId}
+                                                role="region"
+                                                aria-labelledby={groupButtonId}
+                                                data-desktop-panel
+                                                style={panelStyle}
+                                                className="fixed z-50 w-56 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800"
+                                                onMouseEnter={() => handleMouseEnter(group.name)}
+                                                onMouseLeave={handleMouseLeave}
+                                            >
+                                                <div className="space-y-1">
+                                                    {group.links.map((link) => {
+                                                        const isLinkActive = link.route_path === currentActivePath;
+
+                                                        return (
+                                                            <Link
+                                                                key={link.route_path}
+                                                                href={link.route_path}
+                                                                aria-current={isLinkActive ? 'page' : undefined}
+                                                                onClick={() => {
+                                                                    setOpenGroup(null);
+                                                                    setPinnedGroup(null);
+                                                                }}
+                                                                className={`flex min-h-11 items-center rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-sky-600 ${
+                                                                    isLinkActive
+                                                                        ? 'bg-sky-600 font-semibold text-white shadow-xs'
+                                                                        : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
+                                                                }`}
+                                                            >
+                                                                <span className="truncate">{link.name}</span>
+                                                            </Link>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
 
-                                    {/* Flyout 2 cấp cho group có sub_group (file-tree style) */}
-                                    {isOpen && subs && (
-                                        <div
-                                            className="absolute left-0 mt-1.5 w-48 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 z-50 animate-fade-in"
-                                            onMouseEnter={() => handleMouseEnter(groupName)}
-                                            onMouseLeave={handleMouseLeave}
-                                        >
-                                            <div className="space-y-0.5">
-                                                {/* Cấp 1: danh sách sub_group */}
-                                                {subKeys.map((key) => {
-                                                    const isActiveSub = activeSub === key;
+                                        {/* Flyout 2 cấp cho group có sub_group */}
+                                        {isOpen && hasSubs && (
+                                            <div
+                                                id={groupPanelId}
+                                                role="region"
+                                                aria-labelledby={groupButtonId}
+                                                data-desktop-panel
+                                                style={panelStyle}
+                                                className="fixed z-50 w-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800"
+                                                onMouseEnter={() => handleMouseEnter(group.name)}
+                                                onMouseLeave={handleMouseLeave}
+                                            >
+                                                <div className="space-y-0.5">
+                                                    {/* Cấp 1: danh sách sub_group */}
+                                                    {group.subs.map((sub, subIdx) => {
+                                                        const isActiveSub = activeSub === sub.name;
+                                                        const subButtonId = `${idPrefix}-sub-btn-${groupIdx}-${subIdx}`;
+                                                        const subPanelId = `${idPrefix}-sub-panel-${groupIdx}-${subIdx}`;
 
-                                                    return (
-                                                        <div key={key} className="relative">
-                                                            <button type="button"
-                                                                onMouseEnter={() => setActiveSubGroup(key)}
-                                                                onClick={() => setActiveSubGroup(key)}
-                                                                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-                                                                    isActiveSub
-                                                                        ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
-                                                                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
-                                                                }`}>
-                                                                <span>{key}</span>
-                                                                <ChevronRight className="h-3.5 w-3.5" />
-                                                            </button>
-
-                                                            {/* Cấp 2: items của sub_group — đẩy sang phải, ngang hàng dòng cha, cách 8px */}
-                                                            {activeSub === key && subs[key].length > 0 && (
-                                                                <div className="absolute left-full top-0 ml-2 w-60 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 animate-fade-in">
-                                                                    <div className="space-y-0.5">
-                                                                        {subs[key].map((item) => {
-                                                                            const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
-
-                                                                            return (
-                                                                                <Link key={item.route_path} href={item.route_path}
-                                                                                    onClick={() => {
-                                                                                        setOpenGroup(null);
-                                                                                        setPinnedGroup(null);
-                                                                                    }}
-                                                                                    className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                                                                                        isActive
-                                                                                            ? 'bg-sky-600 text-white font-semibold shadow-xs'
-                                                                                            : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
-                                                                                    }`}>
-                                                                                    {item.name}
-                                                                                </Link>
-                                                                            );
-                                                                        })}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                                {/* Flat items của mixed group */}
-                                                {flatItems.length > 0 && (
-                                                    <>
-                                                        <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
-                                                        {flatItems.map((item) => {
-                                                            const isActive = currentUrl === item.route_path || (item.route_path !== '/' && currentUrl.startsWith(item.route_path));
-
-                                                            return (
-                                                                <Link key={item.route_path} href={item.route_path}
+                                                        return (
+                                                            <div key={sub.name} className="relative">
+                                                                <button
+                                                                    data-nav-sub={sub.name}
+                                                                    id={subButtonId}
+                                                                    type="button"
+                                                                    aria-expanded={isActiveSub}
+                                                                    aria-controls={subPanelId}
+                                                                    onMouseEnter={() => handleSubMouseEnter(sub.name)}
                                                                     onClick={() => {
-                                                                        setOpenGroup(null);
-                                                                        setPinnedGroup(null);
+                                                                        clearHover();
+                                                                        setActiveSubGroup(isActiveSub ? null : sub.name);
                                                                     }}
-                                                                    className={`flex items-center rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                                                                        isActive
-                                                                            ? 'bg-sky-600 text-white font-semibold shadow-xs'
-                                                                            : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
-                                                                    }`}>
-                                                                    {item.name}
-                                                                </Link>
-                                                            );
-                                                        })}
-                                                    </>
-                                                )}
+                                                                    className={`flex min-h-11 w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-sky-600 ${
+                                                                        isActiveSub
+                                                                            ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
+                                                                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                                                                    }`}
+                                                                >
+                                                                    <span className="truncate">{sub.name}</span>
+                                                                    <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                                                </button>
+
+                                                                {/* Cấp 2: items của sub_group */}
+                                                                {isActiveSub && sub.links.length > 0 && (
+                                                                    <div
+                                                                        id={subPanelId}
+                                                                        role="region"
+                                                                        aria-labelledby={subButtonId}
+                                                                        data-sub-panel
+                                                                        style={subStyle}
+                                                                        className={`z-50 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 ${
+                                                                            level2Side === 'inline'
+                                                                                ? 'mt-1 w-full pl-2'
+                                                                                : 'fixed w-60'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="space-y-0.5">
+                                                                            {sub.links.map((link) => {
+                                                                                const isLinkActive = link.route_path === currentActivePath;
+
+                                                                                return (
+                                                                                    <Link
+                                                                                        key={link.route_path}
+                                                                                        href={link.route_path}
+                                                                                        aria-current={isLinkActive ? 'page' : undefined}
+                                                                                        onClick={() => {
+                                                                                            setOpenGroup(null);
+                                                                                            setPinnedGroup(null);
+                                                                                            setActiveSubGroup(null);
+                                                                                        }}
+                                                                                        className={`block min-h-11 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-sky-600 ${
+                                                                                            isLinkActive
+                                                                                                ? 'bg-sky-600 font-semibold text-white shadow-xs'
+                                                                                                : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
+                                                                                        }`}
+                                                                                    >
+                                                                                        <span className="block min-w-0 truncate">{link.name}</span>
+                                                                                    </Link>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+
+                                                    {/* Flat items của mixed group */}
+                                                    {group.links.length > 0 && (
+                                                        <>
+                                                            <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+                                                            {group.links.map((link) => {
+                                                                const isLinkActive = link.route_path === currentActivePath;
+
+                                                                return (
+                                                                    <Link
+                                                                        key={link.route_path}
+                                                                        href={link.route_path}
+                                                                        aria-current={isLinkActive ? 'page' : undefined}
+                                                                        onClick={() => {
+                                                                            setOpenGroup(null);
+                                                                            setPinnedGroup(null);
+                                                                            setActiveSubGroup(null);
+                                                                        }}
+                                                                        className={`flex min-h-11 items-center rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-sky-600 ${
+                                                                            isLinkActive
+                                                                                ? 'bg-sky-600 font-semibold text-white shadow-xs'
+                                                                                : 'text-slate-700 hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300'
+                                                                        }`}
+                                                                    >
+                                                                        <span className="truncate">{link.name}</span>
+                                                                    </Link>
+                                                                );
+                                                            })}
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </nav>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </nav>
+                    )}
                 </div>
 
                 {/* ========== FAR RIGHT: USER AVATAR & DROPDOWN (INCLUDES THEME TOGGLE) ========== */}
-                <div className="relative" ref={avatarRef}>
+                <div className="relative shrink-0" ref={avatarRef}>
                     <button
-                        onClick={() => setIsAvatarOpen(!isAvatarOpen)}
-                        className={`flex items-center gap-2 rounded-full p-0.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
-                            isAvatarOpen 
-                                ? 'ring-2 ring-sky-500 shadow-xs' 
+                        ref={avatarButtonRef}
+                        type="button"
+                        onClick={() => {
+                            closeNavigation();
+                            setIsAvatarOpen(!isAvatarOpen);
+                        }}
+                        aria-expanded={isAvatarOpen}
+                        aria-label="Menu tài khoản"
+                        className={`flex min-h-11 items-center gap-2 rounded-full p-0.5 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                            isAvatarOpen
+                                ? 'ring-2 ring-sky-500 shadow-xs'
                                 : 'ring-2 ring-transparent hover:ring-sky-400'
                         }`}
-                        aria-label="User Menu"
                     >
                         {user.avatar ? (
                             <img src={user.avatar} alt={user.name} className="h-9 w-9 rounded-full object-cover shadow-xs" />
@@ -300,7 +771,7 @@ export default function Sidebar() {
 
                     {/* Avatar Dropdown Popover */}
                     {isAvatarOpen && (
-                        <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-800 z-50 animate-fade-in">
+                        <div className="absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl animate-fade-in dark:border-slate-700 dark:bg-slate-800">
                             {/* User Profile Info */}
                             <div className="px-3 py-2">
                                 <p className="truncate text-sm font-bold text-slate-800 dark:text-slate-100">
@@ -314,12 +785,12 @@ export default function Sidebar() {
                             <div className="my-2 h-px bg-slate-100 dark:bg-slate-700" />
 
                             {/* Theme Toggle option inside Avatar Dropdown */}
-                            <div className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <div className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/50">
                                 <span className="flex items-center gap-2">
                                     {isDarkTheme ? (
-                                        <Moon className="h-4 w-4 text-sky-400 stroke-[1.5]" />
+                                        <Moon className="h-4 w-4 stroke-[1.5] text-sky-400" />
                                     ) : (
-                                        <Sun className="h-4 w-4 text-amber-500 stroke-[1.5]" />
+                                        <Sun className="h-4 w-4 stroke-[1.5] text-amber-500" />
                                     )}
                                     Giao diện
                                 </span>
@@ -333,25 +804,45 @@ export default function Sidebar() {
                                 <Link
                                     href="/settings"
                                     onClick={() => setIsAvatarOpen(false)}
-                                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-sky-50 hover:text-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300"
+                                    className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-sky-50 hover:text-sky-600 focus-visible:outline-2 focus-visible:outline-sky-600 dark:text-slate-200 dark:hover:bg-slate-700/60 dark:hover:text-sky-300"
                                 >
-                                    <Settings className="h-4 w-4 text-slate-500 dark:text-slate-400 stroke-[1.5]" />
+                                    <Settings className="h-4 w-4 stroke-[1.5] text-slate-500 dark:text-slate-400" />
                                     Cài đặt
                                 </Link>
 
                                 <button
+                                    type="button"
                                     onClick={handleLogout}
-                                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                                    className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-red-600 dark:text-red-400 dark:hover:bg-red-950/40"
                                 >
-                                    <LogOut className="h-4 w-4 text-red-500 dark:text-red-400 stroke-[1.5]" />
+                                    <LogOut className="h-4 w-4 stroke-[1.5] text-red-500 dark:text-red-400" />
                                     Đăng xuất
                                 </button>
                             </div>
                         </div>
                     )}
                 </div>
-
             </div>
+            </div>
+
+            {/* Mobile Navigation Panel */}
+            {isCompact && isMobileOpen && (
+                <div
+                    ref={mobileRef}
+                    id="mobile-navigation-panel"
+                    className="flex max-h-[calc(100dvh-4rem)] flex-col border-t border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900"
+                >
+                    <MobileNavigation
+                        groups={navGroups}
+                        activePath={currentActivePath}
+                        openGroup={mobileOpenGroup}
+                        openSub={mobileOpenSub}
+                        onGroupChange={setMobileOpenGroup}
+                        onSubChange={setMobileOpenSub}
+                        onNavigate={closeNavigation}
+                    />
+                </div>
+            )}
         </header>
     );
 }

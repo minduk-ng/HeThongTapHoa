@@ -9,8 +9,8 @@ import {
     Sparkles,
     X,
 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
 import DataQualityBadge from './DataQualityBadge';
+import PlanningDialog from './PlanningDialog';
 import {
     formatDate,
     formatQuantity,
@@ -52,83 +52,15 @@ interface ForecastDetailDrawerProps {
     isOpen: boolean;
     product: ProductForecastItem | null;
     onClose: () => void;
+    procurementHref: string;
 }
 
 export default function ForecastDetailDrawer({
     isOpen,
     product,
     onClose,
+    procurementHref,
 }: ForecastDetailDrawerProps) {
-    const drawerRef = useRef<HTMLDivElement>(null);
-    const closeBtnRef = useRef<HTMLButtonElement>(null);
-    const previousFocusRef = useRef<HTMLElement | null>(null);
-
-    // Save previous focus on open and restore on close
-    useEffect(() => {
-        if (isOpen) {
-            previousFocusRef.current = document.activeElement as HTMLElement | null;
-            // Delay focus to allow animation frame
-            const timer = setTimeout(() => {
-                closeBtnRef.current?.focus();
-            }, 50);
-
-            return () => clearTimeout(timer);
-        }
-
-        if (previousFocusRef.current && typeof previousFocusRef.current.focus === 'function') {
-            previousFocusRef.current.focus();
-        }
-    }, [isOpen]);
-
-    // Handle Escape and Focus Trap
-    useEffect(() => {
-        if (!isOpen) {
-            return;
-        }
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                onClose();
-
-                return;
-            }
-
-            if (e.key === 'Tab') {
-                if (!drawerRef.current) {
-                    return;
-                }
-
-                const focusableElements = drawerRef.current.querySelectorAll<HTMLElement>(
-                    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-                );
-
-                if (focusableElements.length === 0) {
-                    return;
-                }
-
-                const firstEl = focusableElements[0];
-                const lastEl = focusableElements[focusableElements.length - 1];
-
-                if (e.shiftKey) {
-                    if (document.activeElement === firstEl) {
-                        e.preventDefault();
-                        lastEl.focus();
-                    }
-                } else {
-                    if (document.activeElement === lastEl) {
-                        e.preventDefault();
-                        firstEl.focus();
-                    }
-                }
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
-
     if (!isOpen || !product) {
         return null;
     }
@@ -137,18 +69,9 @@ export default function ForecastDetailDrawer({
     const hasBounds = product.lower_bound != null && product.upper_bound != null;
 
     return (
-        <div
-            className="fixed inset-0 z-50 overflow-hidden bg-slate-900/50 backdrop-blur-xs transition-opacity duration-200"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="forecast-drawer-title"
-        >
-            <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
-
-            <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
+        <PlanningDialog open={isOpen} onClose={onClose} labelledBy="forecast-drawer-title" variant="drawer">
                 <div
-                    ref={drawerRef}
-                    className="w-screen max-w-xl border-l border-slate-200 bg-white shadow-2xl transition-all duration-200 dark:border-slate-800 dark:bg-slate-900 flex flex-col"
+                    className="flex h-full w-full flex-col border-l border-slate-200 bg-white shadow-2xl sm:max-w-xl dark:border-slate-800 dark:bg-slate-900"
                 >
                     {/* Header */}
                     <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5 dark:border-slate-800">
@@ -161,6 +84,8 @@ export default function ForecastDetailDrawer({
                             </div>
                             <h2
                                 id="forecast-drawer-title"
+                                data-dialog-heading
+                                tabIndex={-1}
                                 className="font-display text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
                             >
                                 {product.name}
@@ -173,7 +98,7 @@ export default function ForecastDetailDrawer({
                         </div>
 
                         <button
-                            ref={closeBtnRef}
+                            data-dialog-close
                             type="button"
                             onClick={onClose}
                             className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition dark:hover:bg-slate-800 dark:hover:text-slate-200"
@@ -184,16 +109,16 @@ export default function ForecastDetailDrawer({
                     </div>
 
                     {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+                    <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 space-y-6">
                         {/* Summary Metrics Grid */}
                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                             <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-800/50">
                                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                                     <Boxes className="h-3.5 w-3.5 text-purple-500" />
-                                    Tổng chu kỳ
+                                    Tổng kỳ dự báo
                                 </span>
                                 <div className="mt-1.5 font-display text-lg font-bold text-slate-900 dark:text-slate-100 tabular-nums">
-                                    {formatQuantity(product.forecast_quantity)}
+                                    {product.forecast_quantity == null ? '—' : formatQuantity(product.forecast_quantity)}
                                 </div>
                                 <span className="text-[11px] text-slate-400 dark:text-slate-500">
                                     {product.daily_forecasts.length} ngày
@@ -208,7 +133,7 @@ export default function ForecastDetailDrawer({
                                 <div className="mt-1.5 font-display text-sm font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
                                     {hasBounds
                                         ? `${formatQuantity(product.lower_bound)} - ${formatQuantity(product.upper_bound)}`
-                                        : 'Không có'}
+                                        : '—'}
                                 </div>
                                 <span className="text-[11px] text-slate-400 dark:text-slate-500">
                                     ±20% tham khảo
@@ -221,7 +146,7 @@ export default function ForecastDetailDrawer({
                                     Sai số WAPE
                                 </span>
                                 <div className="mt-1.5 font-display text-lg font-bold text-slate-900 dark:text-slate-100 tabular-nums">
-                                    {formatWape(product.wape)}
+                                    {product.wape == null ? '—' : formatWape(product.wape)}
                                 </div>
                                 <span className="text-[11px] text-slate-400 dark:text-slate-500">
                                     Càng thấp càng tốt
@@ -234,7 +159,7 @@ export default function ForecastDetailDrawer({
                                     Số mốc đánh giá
                                 </span>
                                 <div className="mt-1.5 font-display text-lg font-bold text-slate-900 dark:text-slate-100 tabular-nums">
-                                    {product.origins_count ?? 8}
+                                    {product.origins_count ?? '—'}
                                 </div>
                                 <span className="text-[11px] text-slate-400 dark:text-slate-500">
                                     Rolling origins
@@ -243,11 +168,15 @@ export default function ForecastDetailDrawer({
                         </div>
 
                         {/* Model & Metadata Details */}
+                        <details className="text-xs text-slate-600 dark:text-slate-400">
+                            <summary className="cursor-pointer font-semibold">Giải thích WAPE, MAE, RMSE</summary>
+                            <p className="mt-2">WAPE: tổng sai số tuyệt đối so với tổng nhu cầu thực tế (%). MAE: sai số tuyệt đối trung bình. RMSE: căn bậc hai sai số bình phương trung bình, nhạy hơn với sai lệch lớn. Giá trị thiếu hiển thị —.</p>
+                        </details>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50/40 p-4 dark:border-slate-800 dark:bg-slate-800/30 space-y-3">
-                            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                                 Thông số mô hình & Kiểm thử
                             </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                                 <div>
                                     <span className="text-slate-500 dark:text-slate-400">Mô hình đã chọn:</span>
                                     <div className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
@@ -258,7 +187,7 @@ export default function ForecastDetailDrawer({
                                 <div>
                                     <span className="text-slate-500 dark:text-slate-400">Ngày chốt dữ liệu (Cutoff):</span>
                                     <div className="font-medium text-slate-800 dark:text-slate-200 mt-0.5 tabular-nums">
-                                        {formatDate(product.data_cutoff) || '-'}
+                                        {product.data_cutoff ? formatDate(product.data_cutoff) : '—'}
                                     </div>
                                 </div>
 
@@ -267,7 +196,7 @@ export default function ForecastDetailDrawer({
                                     <div className="font-medium text-slate-800 dark:text-slate-200 mt-0.5 tabular-nums">
                                         {product.mae !== null && product.mae !== undefined
                                             ? formatQuantity(product.mae, 2)
-                                            : '-'}
+                                            : '—'}
                                     </div>
                                 </div>
 
@@ -276,7 +205,7 @@ export default function ForecastDetailDrawer({
                                     <div className="font-medium text-slate-800 dark:text-slate-200 mt-0.5 tabular-nums">
                                         {product.rmse !== null && product.rmse !== undefined
                                             ? formatQuantity(product.rmse, 2)
-                                            : '-'}
+                                            : '—'}
                                     </div>
                                 </div>
                             </div>
@@ -285,7 +214,7 @@ export default function ForecastDetailDrawer({
                         {/* Link to Procurement - Explicit requirement */}
                         <div>
                             <Link
-                                href="/planning/procurement"
+                                href={procurementHref}
                                 className="flex items-center justify-between rounded-xl border border-sky-200 bg-sky-50/70 px-4 py-3 text-xs font-semibold text-sky-800 transition hover:bg-sky-100 dark:border-sky-800/80 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/50"
                             >
                                 <span className="flex items-center gap-2">
@@ -330,12 +259,12 @@ export default function ForecastDetailDrawer({
                                                         {formatDate(d.forecast_date)}
                                                     </td>
                                                     <td className="px-4 py-2.5 text-right font-bold text-slate-900 dark:text-slate-100 tabular-nums">
-                                                        {formatQuantity(d.forecast_quantity, 1)}
+                                                        {d.forecast_quantity == null ? '—' : formatQuantity(d.forecast_quantity, 1)}
                                                     </td>
                                                     <td className="px-4 py-2.5 text-right text-slate-500 dark:text-slate-400 tabular-nums">
                                                         {hasDayBounds
                                                             ? `${formatQuantity(d.lower_bound, 1)} - ${formatQuantity(d.upper_bound, 1)}`
-                                                            : '-'}
+                                                            : '—'}
                                                     </td>
                                                 </tr>
                                             );
@@ -343,14 +272,14 @@ export default function ForecastDetailDrawer({
                                     </tbody>
                                     <tfoot className="border-t border-slate-200 bg-slate-50/60 font-semibold text-slate-900 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-100">
                                         <tr>
-                                            <td className="px-4 py-2.5">Tổng chu kỳ</td>
+                                            <td className="px-4 py-2.5">Tổng kỳ dự báo</td>
                                             <td className="px-4 py-2.5 text-right tabular-nums font-bold text-purple-600 dark:text-purple-400">
-                                                {formatQuantity(product.forecast_quantity)}
+                                                {product.forecast_quantity == null ? '—' : formatQuantity(product.forecast_quantity)}
                                             </td>
                                             <td className="px-4 py-2.5 text-right tabular-nums text-slate-600 dark:text-slate-400">
                                                 {hasBounds
                                                     ? `${formatQuantity(product.lower_bound)} - ${formatQuantity(product.upper_bound)}`
-                                                    : '-'}
+                                                    : '—'}
                                             </td>
                                         </tr>
                                     </tfoot>
@@ -364,13 +293,13 @@ export default function ForecastDetailDrawer({
                         <button
                             type="button"
                             onClick={onClose}
+                            aria-label="Đóng ngăn chi tiết"
                             className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition"
                         >
                             Đóng
                         </button>
                     </div>
                 </div>
-            </div>
-        </div>
+        </PlanningDialog>
     );
 }

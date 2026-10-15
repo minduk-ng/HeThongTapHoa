@@ -8,6 +8,7 @@ use App\Models\ForecastRun;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\ProductForecast;
+use App\Services\Forecasting\PlanningResultSummary;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ use Inertia\Response;
 
 class ProductForecastController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, PlanningResultSummary $resultSummary): Response
     {
         $datasetId = $request->query('synthetic_dataset_id') !== null && $request->query('synthetic_dataset_id') !== ''
             ? (int) $request->query('synthetic_dataset_id')
@@ -53,6 +54,11 @@ class ProductForecastController extends Controller
         }
 
         $categories = MenuCategory::select('id', 'name')->orderBy('name')->get();
+        $latestRun = ForecastRun::where('kind', 'forecast')
+            ->when($datasetId !== null, fn ($q) => $q->where('synthetic_dataset_id', $datasetId), fn ($q) => $q->whereNull('synthetic_dataset_id'))
+            ->when($horizonDays !== null, fn ($q) => $q->where('horizon_days', $horizonDays))
+            ->latest('id')->first();
+        $result = $resultSummary->forRun($activeRun, $latestRun, $horizonDays);
 
         if (! $activeRun) {
             $emptyPaginator = new LengthAwarePaginator([], 0, $perPage, 1, [
@@ -62,6 +68,7 @@ class ProductForecastController extends Controller
 
             return Inertia::render('planning/ProductForecasts', [
                 'activeRun' => null,
+                'resultSummary' => $result,
                 'products' => $emptyPaginator,
                 'forecasts' => $emptyPaginator,
                 'categories' => $categories,
@@ -173,6 +180,7 @@ class ProductForecastController extends Controller
 
         return Inertia::render('planning/ProductForecasts', [
             'activeRun' => $activeRun,
+            'resultSummary' => $result,
             'products' => $paginatedProducts,
             'forecasts' => $paginatedProducts,
             'categories' => $categories,

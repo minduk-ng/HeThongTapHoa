@@ -9,6 +9,7 @@ import {
     X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import PlanningDialog from './PlanningDialog';
 import {
     formatCurrency,
     formatQuantity,
@@ -63,26 +64,6 @@ export default function RecommendationReviewModal({
             }
         };
     }, []);
-
-    // Handle Escape key
-    useEffect(() => {
-        if (!isOpen) {
-            return;
-        }
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && !isSubmitting && !isRecalculating) {
-                e.preventDefault();
-                handleClose();
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [isOpen, isSubmitting, isRecalculating, handleClose]);
 
     // Group items by supplier
     const groupedSuppliers = useMemo(() => {
@@ -240,24 +221,13 @@ export default function RecommendationReviewModal({
     };
 
     return (
-        <div
-            className="fixed inset-0 z-50 overflow-y-auto"
-            aria-labelledby="modal-review-title"
-            role="dialog"
-            aria-modal="true"
+        <PlanningDialog
+            open={isOpen}
+            onClose={handleClose}
+            labelledBy="modal-review-title"
+            busy={isSubmitting || isRecalculating}
         >
-            <div className="flex min-h-screen items-center justify-center p-4 text-center sm:p-6">
-                <div
-                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
-                    onClick={() => {
-                        if (!isSubmitting && !isRecalculating) {
-                            handleClose();
-                        }
-                    }}
-                    aria-hidden="true"
-                />
-
-                <div className="relative w-full max-w-3xl transform overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-2xl transition-all dark:border-slate-800 dark:bg-slate-900">
+                <div className="relative max-h-full w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-2xl dark:border-slate-800 dark:bg-slate-900">
                     {/* Header */}
                     <div className="flex items-start justify-between border-b border-slate-200 pb-4 dark:border-slate-800">
                         <div className="flex items-center gap-3">
@@ -267,6 +237,8 @@ export default function RecommendationReviewModal({
                             <div>
                                 <h2
                                     id="modal-review-title"
+                                    data-dialog-heading
+                                    tabIndex={-1}
                                     className="font-display text-xl font-bold text-slate-900 dark:text-white"
                                 >
                                     Xem lại & Phê duyệt kế hoạch mua hàng
@@ -280,6 +252,8 @@ export default function RecommendationReviewModal({
                         <button
                             type="button"
                             onClick={handleClose}
+                            data-dialog-close
+                            aria-label="Đóng xem lại kế hoạch"
                             disabled={isSubmitting || isRecalculating}
                             className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                         >
@@ -289,7 +263,7 @@ export default function RecommendationReviewModal({
 
                     {/* Stale / Server Error Banner */}
                     {errorMessage && (
-                        <div className="mt-4 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200">
+                        <div role="alert" className="mt-4 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200">
                             <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
                             <div className="flex-1 text-sm">
                                 <div className="font-semibold">
@@ -305,7 +279,7 @@ export default function RecommendationReviewModal({
                                         type="button"
                                         onClick={handleRecalculate}
                                         disabled={isRecalculating}
-                                        className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-rose-700 disabled:opacity-50"
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-sky-700 px-3 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-sky-800 disabled:opacity-50"
                                     >
                                         {isRecalculating ? (
                                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -370,7 +344,7 @@ export default function RecommendationReviewModal({
                                         return (
                                             <div
                                                 key={itemIdx}
-                                                className="rounded-lg border border-slate-200/60 bg-white p-3 text-xs dark:border-slate-800 dark:bg-slate-900"
+                                                className="rounded-lg border border-slate-200/60 bg-white p-3 text-sm dark:border-slate-800 dark:bg-slate-900"
                                             >
                                                 <div className="flex items-center justify-between">
                                                     <div>
@@ -425,7 +399,7 @@ export default function RecommendationReviewModal({
                                     <span className="text-slate-600 dark:text-slate-400">
                                         Tổng tiền NCC ({group.supplierName}):
                                     </span>
-                                    <span className="font-display tabular-nums text-slate-900 dark:text-white">
+                                    <span className="font-display text-sm tabular-nums text-slate-900 dark:text-white">
                                         {formatCurrency(group.subtotal)}
                                     </span>
                                 </div>
@@ -467,6 +441,8 @@ export default function RecommendationReviewModal({
                             <button
                                 type="button"
                                 onClick={handleClose}
+                                data-dialog-close
+                                aria-label="Hủy xem lại kế hoạch"
                                 disabled={isSubmitting || isRecalculating}
                                 className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
                             >
@@ -477,7 +453,7 @@ export default function RecommendationReviewModal({
                                 type="button"
                                 onClick={handleSubmit}
                                 disabled={isSubmitting || isRecalculating || items.length === 0}
-                                className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-700 disabled:opacity-50"
+                                className="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-800 disabled:opacity-50"
                             >
                                 {isSubmitting ? (
                                     <>
@@ -494,7 +470,6 @@ export default function RecommendationReviewModal({
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+        </PlanningDialog>
     );
 }

@@ -1,7 +1,7 @@
 # Spec 2 — Nhất quán thị giác và tương tác planning
 
 - Ngày: 2026-10-14
-- Trạng thái: Đã duyệt phạm vi phân chia; chờ người dùng duyệt nội dung spec.
+- Trạng thái: Người dùng đã duyệt spec; chuyển sang lập kế hoạch triển khai.
 - Thứ tự: 2/3, sau `2026-10-14-planning-information-layout-design.md`.
 
 ## 1. Mục tiêu và độ bao phủ

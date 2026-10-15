@@ -14,6 +14,7 @@ import {
     RefreshCw,
 } from 'lucide-react';
 import { useMemo, useRef, useState, useEffect } from 'react';
+import DatePicker from '../../components/DatePicker';
 import { checkDateBounds, createCheckSubmission, pollForecastCheck } from '../../components/planning/forecastCheckRequests';
 import ForecastCheckResults from '../../components/planning/ForecastCheckResults';
 import {
@@ -275,18 +276,18 @@ return;
         <DashboardLayout>
             <Head title="Kiểm tra dự báo 7 ngày — Tạp Hóa POS" />
 
-            <div className="space-y-6">
+            <div className="planning-ui space-y-6">
                 {/* Header */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
                         <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <Link href="/admin/synthetic-datasets" className="hover:text-purple-600 transition">
+                            <Link href="/admin/synthetic-datasets" className="hover:text-sky-700 dark:hover:text-sky-300 transition-colors">
                                 Dữ liệu mô phỏng
                             </Link>
                             <span>/</span>
                             <span className="text-slate-700 dark:text-slate-300">Kiểm tra dự báo 7 ngày</span>
                         </div>
-                        <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">
+                        <h1 className="font-display mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">
                             Kiểm tra dự báo 7 ngày
                         </h1>
                         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -308,13 +309,14 @@ return;
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                <label htmlFor="forecast-dataset" className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                                     Tập dữ liệu mô phỏng
                                 </label>
                                 <select
+                                    id="forecast-dataset"
                                     value={selectedDatasetId}
                                     onChange={(e) => handleDatasetChange(e.target.value)}
-                                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 shadow-2xs outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200"
+                                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-2xs outline-none focus:border-sky-600 focus:ring-2 focus:ring-sky-600 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200"
                                 >
                                     {datasets.map((d) => (
                                         <option key={d.id} value={d.id}>
@@ -325,13 +327,14 @@ return;
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                <label htmlFor="forecast-item" className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                                     Mặt hàng kiểm tra
                                 </label>
                                 <select
+                                    id="forecast-item"
                                     value={selectedItemId}
                                     onChange={(e) => setSelectedItemId(e.target.value)}
-                                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 shadow-2xs outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200"
+                                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-2xs outline-none focus:border-sky-600 focus:ring-2 focus:ring-sky-600 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200"
                                 >
                                     {datasetMenuItems.map((item) => (
                                         <option key={item.id} value={item.id}>
@@ -342,35 +345,38 @@ return;
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                <span id="forecast-start-date-label" className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                                     Ngày bắt đầu (7 ngày kiểm tra)
-                                </label>
+                                </span>
                                 <div className="mt-1.5 flex items-center gap-1.5">
                                     <button
                                         type="button"
                                         title="Lùi 7 ngày"
-                                        disabled={!bounds || shiftCheckDate(startDate, -7) < bounds.min}
+                                        aria-label="Lùi 7 ngày"
+                                        disabled={!validDate || !bounds || shiftCheckDate(startDate, -7) < bounds.min}
                                         onClick={() => setStartDate((s) => shiftCheckDate(s, -7))}
-                                        className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                                     >
                                         <ChevronLeft className="h-3.5 w-3.5" />
                                     </button>
-                                    <input
-                                        type="date"
-                                        min={bounds?.min}
-                                        max={bounds?.max}
-                                        required
-                                        disabled={!bounds}
-                                        value={startDate}
-                                        onChange={(e) => setStartDate(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 shadow-2xs outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200"
-                                    />
+                                    <div role="group" aria-labelledby="forecast-start-date-label" aria-invalid={!validDate} aria-describedby={formError ? 'forecast-form-error' : undefined} className="min-w-0 flex-1 [&>div]:w-full">
+                                        <DatePicker
+                                            mode="single"
+                                            value={startDate || null}
+                                            onChange={(value) => setStartDate(value ?? '')}
+                                            minDate={bounds?.min}
+                                            maxDate={bounds?.max}
+                                            disabled={!bounds}
+                                            className="min-h-11 w-full min-w-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+                                        />
+                                    </div>
                                     <button
                                         type="button"
                                         title="Tiến 7 ngày"
-                                        disabled={!bounds || shiftCheckDate(startDate, 7) > bounds.max}
+                                        aria-label="Tiến 7 ngày"
+                                        disabled={!validDate || !bounds || shiftCheckDate(startDate, 7) > bounds.max}
                                         onClick={() => setStartDate((s) => shiftCheckDate(s, 7))}
-                                        className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                                     >
                                         <ChevronRight className="h-3.5 w-3.5" />
                                     </button>
@@ -381,7 +387,7 @@ return;
                                 <button
                                     type="submit"
                                     disabled={isSubmitting || !validDate || !selectedDatasetId || !datasetMenuItems.some((item) => item.id === Number(selectedItemId))}
-                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-purple-700 focus:ring-2 focus:ring-purple-500/30 disabled:opacity-50 transition"
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-800 disabled:opacity-50 transition-colors"
                                 >
                                     {isSubmitting ? (
                                         <>
@@ -414,7 +420,7 @@ return;
                         </div>
 
                         {formError && (
-                            <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400 flex items-center gap-2">
+                            <div id="forecast-form-error" role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400 flex items-center gap-2">
                                 <AlertCircle className="h-4 w-4 shrink-0" />
                                 <span>{formError}</span>
                             </div>
@@ -437,7 +443,7 @@ return;
                         {['queued', 'running'].includes(currentCheck.status) && (
                             <div className="rounded-2xl border border-purple-200 bg-purple-50/70 p-6 text-center dark:border-purple-900/50 dark:bg-purple-950/20">
                                 <Loader2 className="mx-auto h-8 w-8 animate-spin text-purple-600" />
-                                <h3 className="mt-3 text-sm font-bold text-purple-900 dark:text-purple-200">
+                                <h3 className="font-display mt-3 text-sm font-bold text-purple-900 dark:text-purple-200">
                                     {currentCheck.status === 'queued' ? 'Đang xếp hàng tính toán...' : 'Đang xử lý 7 mô hình ứng viên...'}
                                 </h3>
                                 <p className="mt-1 text-xs text-purple-700/80 dark:text-purple-300/80">
@@ -452,7 +458,7 @@ return;
                                     <div className="flex items-start gap-3">
                                         <AlertCircle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
                                         <div>
-                                            <h4 className="text-sm font-bold text-rose-900 dark:text-rose-200">
+                                            <h4 className="font-display text-sm font-bold text-rose-900 dark:text-rose-200">
                                                 Lượt kiểm tra không thành công
                                             </h4>
                                             <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">
@@ -464,7 +470,7 @@ return;
                                         type="button"
                                         onClick={handleRetry}
                                         disabled={isSubmitting}
-                                        className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-rose-700 transition"
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-sky-700 px-3 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-sky-800 disabled:opacity-50 transition-colors"
                                     >
                                         <RefreshCw className="h-3.5 w-3.5" />
                                         <span>Thử lại</span>
@@ -520,7 +526,7 @@ return;
                         <div className="border-b border-slate-100 bg-slate-50/75 px-5 py-3.5 dark:border-slate-800 dark:bg-slate-800/50 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <History className="h-4 w-4 text-purple-600" />
-                                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                                <h4 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">
                                     Lịch sử kiểm tra gần đây
                                 </h4>
                             </div>

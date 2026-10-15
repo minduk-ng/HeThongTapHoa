@@ -11,6 +11,7 @@ use App\Models\ProcurementPlan;
 use App\Models\ProcurementPlanItem;
 use App\Models\SecurityAuditLog;
 use App\Services\Forecasting\RecommendationFreshness;
+use App\Services\Forecasting\PlanningResultSummary;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,11 +21,14 @@ use Inertia\Response;
 
 class ProcurementRecommendationController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, PlanningResultSummary $resultSummary): Response
     {
         $datasetId = $request->query('synthetic_dataset_id') !== null
             ? (int) $request->query('synthetic_dataset_id')
             : null;
+
+        $horizonDays = $request->query('horizon_days') !== null && $request->query('horizon_days') !== ''
+            ? (int) $request->query('horizon_days') : null;
 
         $activeRun = ForecastRun::where('kind', 'forecast')
             ->where('is_active', true)
@@ -32,6 +36,11 @@ class ProcurementRecommendationController extends Controller
             ->with('syntheticDataset')
             ->latest('id')
             ->first();
+
+        $latestRun = ForecastRun::where('kind', 'forecast')
+            ->when($datasetId !== null, fn ($q) => $q->where('synthetic_dataset_id', $datasetId), fn ($q) => $q->whereNull('synthetic_dataset_id'))
+            ->when($horizonDays !== null, fn ($q) => $q->where('horizon_days', $horizonDays))
+            ->latest('id')->first();
 
         $recommendations = $activeRun
             ? InventoryRecommendation::with([
@@ -45,9 +54,11 @@ class ProcurementRecommendationController extends Controller
 
         return Inertia::render('planning/ProcurementRecommendations', [
             'activeRun' => $activeRun,
+            'resultSummary' => $resultSummary->forRun($activeRun, $latestRun, $horizonDays),
             'recommendations' => $recommendations,
             'filters' => [
                 'synthetic_dataset_id' => $datasetId,
+                'horizon_days' => $horizonDays ?? $activeRun->horizon_days ?? 7,
             ],
         ]);
     }

@@ -13,6 +13,7 @@ use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\ProductForecast;
 use App\Services\Forecasting\ForecastRunFactory;
+use App\Services\Forecasting\PlanningResultSummary;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -21,7 +22,7 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class PlanningOverviewController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, PlanningResultSummary $resultSummary): Response
     {
         $datasetId = $request->query('synthetic_dataset_id') !== null
             ? (int) $request->query('synthetic_dataset_id')
@@ -46,6 +47,11 @@ class PlanningOverviewController extends Controller
             ->when($datasetId !== null, fn ($q) => $q->where('synthetic_dataset_id', $datasetId), fn ($q) => $q->whereNull('synthetic_dataset_id'))
             ->latest('id')
             ->first();
+
+        $latestRun = ForecastRun::where('kind', 'forecast')
+            ->when($datasetId !== null, fn ($q) => $q->where('synthetic_dataset_id', $datasetId), fn ($q) => $q->whereNull('synthetic_dataset_id'))
+            ->when($horizonDays !== null, fn ($q) => $q->where('horizon_days', $horizonDays))
+            ->latest('id')->first();
 
         $recentRuns = ForecastRun::with('syntheticDataset')
             ->latest('id')
@@ -270,6 +276,7 @@ class PlanningOverviewController extends Controller
 
         return Inertia::render('planning/Overview', [
             'activeRun' => $activeForecastRun,
+            'resultSummary' => $resultSummary->forRun($activeForecastRun, $latestRun, $horizonDays),
             'activeEvalRun' => $activeEvalRun,
             'recentRuns' => $recentRuns,
             'summary' => $summary,

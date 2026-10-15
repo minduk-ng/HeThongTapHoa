@@ -11,6 +11,7 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 import type { ForecastCheckCandidate, ForecastCheckItem } from '../../types/forecast-check';
 import { formatCheckMetric, formatSignedError } from './forecastCheckView';
 import { formatDate, formatQuantity, formatWape, MODEL_NAMES } from './planningFormatters';
@@ -26,6 +27,7 @@ export default function ForecastCheckResults({
     selectedModelKey,
     onSelectModelKey,
 }: ForecastCheckResultsProps) {
+    const reduced = usePrefersReducedMotion();
     const result = check.result;
     const candidates = useMemo(() => result?.candidates || [], [result]);
 
@@ -68,13 +70,13 @@ export default function ForecastCheckResults({
     const isCurrentBest = activeCandidate && bestModelKeys.includes(activeCandidate.model_key);
 
     return (
-        <div className="space-y-6">
+        <div className="planning-ui min-w-0 space-y-6 break-words tabular-nums">
             {/* Header info */}
             <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-semibold text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center rounded-md bg-sky-50 px-2 py-0.5 text-sm font-semibold text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">
                                 {check.item_label}
                             </span>
                             <span className="text-slate-400">·</span>
@@ -88,7 +90,7 @@ export default function ForecastCheckResults({
                                 </span>
                             )}
                         </div>
-                        <h3 className="mt-1.5 text-lg font-bold text-slate-900 dark:text-slate-100">
+                        <h3 role="status" aria-atomic="true" className="font-display mt-1.5 text-lg font-bold text-slate-900 dark:text-slate-100">
                             Đang xem: {activeModelName}
                         </h3>
                     </div>
@@ -103,7 +105,7 @@ export default function ForecastCheckResults({
                 <div className="mt-6 h-72 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.6} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--planning-grid)" />
                             <XAxis
                                 dataKey="date"
                                 tickFormatter={(d: string) => {
@@ -111,9 +113,10 @@ export default function ForecastCheckResults({
 
                                     return parts.length === 3 ? `${parts[2]}/${parts[1]}` : d;
                                 }}
-                                tick={{ fontSize: 11, fill: '#64748b' }}
+                                tick={{ fontSize: 12, fill: 'var(--planning-axis)' }}
+                                stroke="var(--planning-axis)"
                             />
-                            <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+                            <YAxis stroke="var(--planning-axis)" tick={{ fontSize: 12, fill: 'var(--planning-axis)' }} />
                             <Tooltip
                                 content={({ active, payload, label }) => {
                                     if (!active || !payload || !payload.length) {
@@ -123,20 +126,20 @@ export default function ForecastCheckResults({
                                     const pData = payload[0]?.payload;
 
                                     return (
-                                        <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-md dark:border-slate-800 dark:bg-slate-900 text-xs space-y-1">
+                                        <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-md dark:border-slate-800 dark:bg-slate-900 text-sm tabular-nums space-y-1">
                                             <div className="font-semibold text-slate-900 dark:text-slate-100">{formatDate(label != null ? String(label) : '')}</div>
                                             {pData?.actual !== null && (
-                                                <div className="text-purple-600 dark:text-purple-400 font-medium">
+                                                <div className="text-sky-700 dark:text-sky-300 font-medium">
                                                     Quan sát: {formatQuantity(pData.actual)}
                                                 </div>
                                             )}
                                             {pData?.forecast !== null && (
-                                                <div className="text-amber-600 dark:text-amber-400 font-medium">
+                                                <div className="text-purple-700 dark:text-purple-300 font-medium">
                                                     Dự báo: {formatQuantity(pData.forecast)}
                                                 </div>
                                             )}
                                             {pData?.signed_error !== null && pData?.signed_error !== undefined && (
-                                                <div className="text-slate-500 pt-1 border-t border-slate-100 dark:border-slate-800">
+                                                <div className="text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-100 dark:border-slate-800">
                                                     Chênh lệch: {formatSignedError(pData.signed_error)}
                                                 </div>
                                             )}
@@ -147,32 +150,33 @@ export default function ForecastCheckResults({
                             <Legend
                                 verticalAlign="top"
                                 align="right"
-                                iconType="circle"
                                 wrapperStyle={{ paddingBottom: 10, fontSize: 12 }}
                             />
                             <ReferenceLine
                                 x={check.start_date}
-                                stroke="#94a3b8"
+                                stroke="var(--planning-axis)"
                                 strokeDasharray="3 3"
-                                label={{ value: 'Bắt đầu dự báo', position: 'top', fill: '#64748b', fontSize: 11 }}
+                                label={{ value: 'Bắt đầu dự báo', position: 'top', fill: 'var(--planning-axis)', fontSize: 12 }}
                             />
                             <Line
                                 type="monotone"
                                 dataKey="actual"
                                 name="Quan sát mô phỏng"
-                                stroke="#8b5cf6"
+                                stroke="var(--planning-observed)"
                                 strokeWidth={2.5}
-                                dot={{ r: 3, fill: '#8b5cf6' }}
+                                dot={{ r: 3, fill: 'var(--planning-observed)' }}
+                                isAnimationActive={!reduced}
                                 connectNulls={false}
                             />
                             <Line
                                 type="monotone"
                                 dataKey="forecast"
                                 name="Dự báo mô hình"
-                                stroke="#f59e0b"
+                                stroke="var(--planning-predicted)"
                                 strokeWidth={2.5}
                                 strokeDasharray="5 5"
-                                dot={{ r: 3.5, fill: '#f59e0b' }}
+                                dot={{ r: 3.5, fill: 'var(--planning-predicted)' }}
+                                isAnimationActive={!reduced}
                                 connectNulls={false}
                             />
                         </ComposedChart>
@@ -181,13 +185,13 @@ export default function ForecastCheckResults({
             </div>
 
             {/* Metric Cards Grid */}
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 min-[375px]:grid-cols-2 sm:grid-cols-4">
                 <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                     <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">MAE (Sai số TB)</span>
                     <div className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100 tabular-nums">
                         {formatCheckMetric(activeCandidate?.mae)}
                     </div>
-                    <span className="text-[11px] text-slate-400">món / ngày</span>
+                    <span className="text-xs text-slate-600 dark:text-slate-300">món / ngày</span>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
@@ -195,7 +199,7 @@ export default function ForecastCheckResults({
                     <div className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100 tabular-nums">
                         {formatCheckMetric(activeCandidate?.rmse)}
                     </div>
-                    <span className="text-[11px] text-slate-400">nhạy với sai lệch lớn</span>
+                    <span className="text-xs text-slate-600 dark:text-slate-300">nhạy với sai lệch lớn</span>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
@@ -203,7 +207,7 @@ export default function ForecastCheckResults({
                     <div className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100 tabular-nums">
                         {activeCandidate?.wape !== null && activeCandidate?.wape !== undefined ? formatWape(activeCandidate.wape) : 'Chưa tính được'}
                     </div>
-                    <span className="text-[11px] text-slate-400">tổng lỗi / tổng thực tế</span>
+                    <span className="text-xs text-slate-600 dark:text-slate-300">tổng lỗi / tổng thực tế</span>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
@@ -211,19 +215,19 @@ export default function ForecastCheckResults({
                     <div className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100 tabular-nums">
                         {activeCandidate?.observed_total !== null ? formatQuantity(activeCandidate.observed_total) : '-'} / {activeCandidate?.predicted_scored_total !== null ? formatQuantity(activeCandidate.predicted_scored_total) : '-'}
                     </div>
-                    <span className="text-[11px] text-slate-400">trên {activeCandidate?.scored_count ?? 0} ngày có số liệu</span>
+                    <span className="text-xs text-slate-600 dark:text-slate-300">trên {activeCandidate?.scored_count ?? 0} ngày có số liệu</span>
                 </div>
             </div>
 
             {/* Model Comparison Table */}
             <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
                 <div className="border-b border-slate-100 bg-slate-50/75 px-5 py-3.5 dark:border-slate-800 dark:bg-slate-800/50">
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                        Bảng so sánh 7 mô hình ứng viên (bấm dòng để đổi biểu đồ)
+                    <h4 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">
+                        Bảng so sánh 7 mô hình ứng viên (chọn tên để đổi biểu đồ)
                     </h4>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
+                <div role="region" aria-label="So sánh mô hình" tabIndex={0} className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-sky-600">
+                    <table className="w-full text-left text-sm">
                         <thead className="border-b border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
                             <tr>
                                 <th className="px-4 py-3 font-semibold">Mô hình</th>
@@ -236,7 +240,7 @@ export default function ForecastCheckResults({
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                             {candidates.map((cand) => {
-                                const isSelected = cand.model_key === selectedModelKey;
+                                const isSelected = cand.model_key === activeCandidate?.model_key;
                                 const isBest = bestModelKeys.includes(cand.model_key);
                                 const name = MODEL_NAMES[cand.model_key] || cand.model_key;
 
@@ -246,13 +250,21 @@ export default function ForecastCheckResults({
                                         onClick={() => onSelectModelKey(cand.model_key)}
                                         className={`cursor-pointer transition-colors ${
                                             isSelected
-                                                ? 'bg-purple-50/70 font-medium text-purple-900 dark:bg-purple-950/40 dark:text-purple-200'
+                                                ? 'bg-sky-50/70 font-medium text-sky-900 dark:bg-sky-950/40 dark:text-sky-200'
                                                 : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40'
                                         }`}
                                     >
                                         <td className="px-4 py-3.5">
-                                            <div className="font-semibold text-slate-900 dark:text-slate-100">{name}</div>
-                                            <span className="text-[10px] text-slate-400 font-mono">{cand.model_key}</span>
+                                            <button
+                                                type="button"
+                                                aria-pressed={isSelected}
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    onSelectModelKey(cand.model_key);
+                                                }}
+                                                className="block min-h-11 text-left font-semibold text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:text-slate-100 dark:focus-visible:outline-sky-400"
+                                            >{name}</button>
+                                            <span className="text-xs text-slate-600 dark:text-slate-300 font-mono">{cand.model_key}</span>
                                         </td>
                                         <td className="px-4 py-3.5 text-right tabular-nums">{formatCheckMetric(cand.mae)}</td>
                                         <td className="px-4 py-3.5 text-right tabular-nums">{formatCheckMetric(cand.rmse)}</td>
@@ -263,7 +275,7 @@ export default function ForecastCheckResults({
                                         <td className="px-4 py-3.5">
                                             {cand.status === 'evaluated' ? (
                                                 isBest ? (
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
                                                         <Award className="h-3 w-3" />
                                                         Sai số thấp nhất khoảng này
                                                     </span>
@@ -271,7 +283,7 @@ export default function ForecastCheckResults({
                                                     <span className="text-slate-500">Đã đối chiếu</span>
                                                 )
                                             ) : (
-                                                <span className="text-amber-600 dark:text-amber-400 text-[11px]">
+                                                <span className="text-amber-700 dark:text-amber-300 text-xs">
                                                     {cand.status === 'skipped' ? 'Bỏ qua: ' : 'Lỗi: '}
                                                     {cand.reason || 'Không đủ điều kiện chuỗi'}
                                                 </span>
@@ -288,15 +300,15 @@ export default function ForecastCheckResults({
             {/* Daily Errors Table */}
             <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
                 <div className="border-b border-slate-100 bg-slate-50/75 px-5 py-3.5 dark:border-slate-800 dark:bg-slate-800/50">
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    <h4 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">
                         Bảng sai lệch chi tiết từng ngày ({activeModelName})
                     </h4>
                     <p className="mt-0.5 text-xs text-slate-500">
                         Quy ước: Chênh lệch = Dự báo − Quan sát thực tế. Số dương là dự báo thừa, số âm là dự báo thiếu.
                     </p>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
+                <div role="region" aria-label="Sai lệch từng ngày" tabIndex={0} className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-sky-600">
+                    <table className="w-full text-left text-sm">
                         <thead className="border-b border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
                             <tr>
                                 <th className="px-4 py-3 font-semibold">Ngày</th>
@@ -317,7 +329,7 @@ export default function ForecastCheckResults({
                                         <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
                                             {p.actual !== null ? formatQuantity(p.actual) : <span className="text-slate-400 font-normal">Thiếu dữ liệu</span>}
                                         </td>
-                                        <td className="px-4 py-3 text-right font-semibold text-amber-600 dark:text-amber-400 tabular-nums">
+                                        <td className="px-4 py-3 text-right font-semibold text-purple-700 dark:text-purple-300 tabular-nums">
                                             {p.predicted !== null ? formatQuantity(p.predicted) : '-'}
                                         </td>
                                         <td className="px-4 py-3 text-left tabular-nums">
