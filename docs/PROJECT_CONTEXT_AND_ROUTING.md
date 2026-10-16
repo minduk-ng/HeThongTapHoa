@@ -57,6 +57,14 @@
 | `/mark-served` | POST | Đánh dấu đã phục vụ (`item_ids: number[]` → `served_at = now()`) |
 | `/cancel-order` | POST | Hủy toàn bộ đơn kèm lý do (quyền `pos.cancel_item\|kitchen.cancel_item`) |
 
+**Các API phụ trợ của Kitchen** (prefix `/staff/kitchen`, khai báo tại `routes/web.php`):
+| Endpoint | Method | Chức năng |
+| :--- | :--- | :--- |
+| `/complete/{order}` | POST | Hoàn thành toàn bộ đơn (yêu cầu quyền `kitchen.update`, từ chối đơn đã thanh toán hoặc đã hủy) |
+| `/complete-items` | POST | Hoàn thành danh sách món theo `item_ids` (yêu cầu quyền `kitchen.update`, áp dụng an toàn cho cả đơn `paid`) |
+| `/cancel-item` | POST | Hủy món kèm lý do và hoàn nguyên liệu (yêu cầu quyền `pos.cancel_item\|kitchen.cancel_item`) |
+| `/work-groups/{group}/deadline` | PATCH | Cập nhật thời hạn điều phối (`deadline_at`, `reason`, `expected_version`, yêu cầu quyền `kitchen.dispatch.manage`) |
+
 ### 2.3 Màn Hình Quản Lý (Manager Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
@@ -336,6 +344,25 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
   - 30 dòng nháp: Push ~0.0054ms | Pop + Restore ~0.0066ms
   - 60 dòng nháp: Push ~0.0140ms | Pop + Restore ~0.0067ms
   Chi phí thực thi hoàn toàn ở mức vi giây (microsecond), đảm bảo tính phản hồi tức thì và không giật lag UI trên thiết bị POS.
+
+### 8.13 Hàng Chờ Điều Phối Bếp & Khuyến Nghị Chế Biến (Kitchen Priority Dispatch Queue)
+- **Kiến trúc Dispatch Queue (`dispatchQueue.ts`)**: Khuyến nghị thứ tự chế biến không áp đặt (non-enforced recommendation) phân theo cặp Lô gửi × Trạm chế biến (`send_batch × station`). Backend chiếu các nhóm `kitchen_work_groups` còn việc chờ (`pending`/`processing`, `quantity > 0`, order chưa hủy) qua `KitchenDispatchService::projectPending()`. Frontend sử dụng thuật toán cấu trúc dữ liệu Min-Heap nhị phân đáy lên (Floyd bottom-up heapify O(n), trích xuất toàn bộ O(n log n)).
+- **Chế độ FIFO & Priority**:
+  - `FIFO`: Sắp xếp tăng dần theo `(sentAt, id)`.
+  - `Priority`: Phân vùng món chờ lâu (`isGroupLongWait`: `nowMs - sentAt >= longWaitMinutes * 60000`) lên đầu tiên sắp theo `(sentAt, id)`; các nhóm còn lại xếp theo `(deadlineAt, sentAt, id)` tăng dần. Thời gian đánh giá `nowMs` được cố định một giá trị đồng nhất xuyên suốt mỗi lượt dựng cây.
+  - Tự động dựng lại thứ tự khi thay đổi dữ liệu, chuyển chế độ/khu vực, phục hồi tab (`visibilitychange`), hoặc mỗi nhịp đồng hồ 15 giây (server-adjusted time: `Date.parse(serverNow) + (Date.now() - receivedAtMs)`).
+  - Tự động refetch `['workGroups', 'serverNow', 'orders', 'stats']` mỗi 30 giây khi tab hiển thị và ngay khi kết nối lại mạng (reconnect).
+- **Liên kết Lô gửi & Bàn/Đơn (`POSController::sendToKitchen`)**:
+  Mỗi lượt bấm "Gửi bếp" tạo một `kitchen_send_batches` trong transaction DB, phân rã món theo trạm chế biến (`menu_categories.kitchen_station_id`, mặc định `general`), tạo `kitchen_work_groups` với deadline ban đầu bằng `sent_at + target_minutes` snapshot. Thao tác giảm món đơn thuần không tạo lô mới. Đơn thanh toán trước (`paid`) bắt buộc hoàn thành ở cấp độ món (`completeItems`), không dùng `completeOrder`.
+- **Phân quyền & Chỉnh sửa Hạn (`kitchen.dispatch.manage`)**:
+  Quyền `kitchen.dispatch.manage` ('Quản lý hạn điều phối') cho phép điều chỉnh `deadline_at` của work group qua `PATCH /staff/kitchen/work-groups/{group}/deadline`. Yêu cầu lý do 1–255 ký tự và kiểm tra khóa lạc quan (`expected_version`). Khi có lỗi, giao diện giữ nguyên hạn cũ và thông báo lỗi từ server (không cập nhật lạc quan). Khi mất kết nối (reverb disconnected/offline), hệ thống hiển thị banner cảnh báo và khóa nút chỉnh sửa hạn.
+- **Đo kiểm Hiệu năng (Benchmark) & Mô phỏng (Simulation)**:
+  Benchmark với seed `20261016` (5 warmups, 30 runs đo đạc trên Node.js v24, AMD Ryzen 7 8845HS) tại `dispatchQueue.bench.ts`:
+  - n = 100: Build heap ~0.05ms | Trích xuất đầu ~0.007ms | Trích xuất hết ~0.43ms | Render ~0.04ms
+  - n = 1,000: Build heap ~0.49ms | Trích xuất đầu ~0.008ms | Trích xuất hết ~7.77ms | Render ~0.42ms
+  - n = 10,000: Build heap ~5.49ms | Trích xuất đầu ~0.013ms | Trích xuất hết ~118.16ms | Render ~4.39ms
+  - Oracle comparison: Đầu ra của Min-Heap khớp 100% với comparator sort (`Array.prototype.sort`) trên mọi kích thước n.
+  - Simulation (mô phỏng 1,000 nhóm, 3 trạm, công suất cân bằng nonpreemptive): Cả hai chính sách hoàn thành toàn bộ 1,000 nhóm khi xả cạn hàng đợi; Priority bảo vệ triệt để các nhóm có deadline gấp và món chờ lâu mà không làm suy giảm thông lượng chung.
 
 ---
 

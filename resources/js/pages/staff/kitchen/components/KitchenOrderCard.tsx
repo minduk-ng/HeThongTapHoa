@@ -1,11 +1,24 @@
-import { AlertTriangle, Check, Clock, Printer, XCircle } from 'lucide-react';
+import { router } from '@inertiajs/react';
+import {
+    AlertTriangle,
+    CalendarClock,
+    Check,
+    Clock,
+    Pencil,
+    Printer,
+    X,
+    XCircle,
+} from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import type { QueueCommand } from '../../../../lib/commandQueue';
+import type { QueueGroup } from '../utils/dispatchQueue';
+import { isGroupLongWait } from '../utils/dispatchQueue';
 
 export interface KitchenOrderData {
     id: number;
     order_code: string;
     created_at: string;
+    status?: string;
     note?: string | null;
     has_additional_items?: boolean;
     table?: {
@@ -33,6 +46,10 @@ export interface KitchenOrderData {
 
 interface KitchenOrderCardProps {
     order: KitchenOrderData;
+    group?: QueueGroup;
+    nowMs?: number;
+    canManageDeadline?: boolean;
+    isDisconnected?: boolean;
     queueCommands: QueueCommand[];
     onEnqueue: (
         type: 'kitchen.complete' | 'kitchen.complete-items',
@@ -46,41 +63,48 @@ interface KitchenOrderCardProps {
 
 export default function KitchenOrderCard({
     order,
+    group,
+    nowMs,
+    canManageDeadline = false,
+    isDisconnected = false,
     queueCommands,
     onEnqueue,
     onRetry,
     onDiscard,
     onPrint,
 }: KitchenOrderCardProps) {
-    const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>(
-        () => {
-            const initial: Record<number, boolean> = {};
-            order.items.forEach((item) => {
-                if (item.status === 'completed') {
-                    initial[item.id] = true;
-                }
-            });
+    const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>(() => {
+        const initial: Record<number, boolean> = {};
+        const items = group ? group.items : order.items;
 
-            return initial;
-        },
-    );
-    const [nowTime, setNowTime] = useState(() => Date.now());
+        items.forEach((item) => {
+            if (item.status === 'completed') {
+                initial[item.id] = true;
+            }
+        });
 
-    // Update elapsed timer periodically
+        return initial;
+    });
+
+    const [localNowTime, setLocalNowTime] = useState(() => Date.now());
+
+    // Update fallback elapsed timer periodically
     useEffect(() => {
         const interval = setInterval(() => {
-            setNowTime(Date.now());
-        }, 10000); // refresh every 10s
+            setLocalNowTime(Date.now());
+        }, 10000);
 
         return () => clearInterval(interval);
     }, []);
 
-    // Sync state when order items change (e.g. from real-time extra items calls)
+    // Sync state when order/group items change
     useEffect(() => {
         queueMicrotask(() => {
             setCheckedItems((prev) => {
                 const next = { ...prev };
-                order.items.forEach((item) => {
+                const items = group ? group.items : order.items;
+
+                items.forEach((item) => {
                     if (item.status === 'completed') {
                         next[item.id] = true;
                     }
@@ -89,30 +113,165 @@ export default function KitchenOrderCard({
                 return next;
             });
         });
-    }, [order.items]);
+    }, [order.items, group]);
 
-    // Calculate elapsed time in minutes based on the oldest pending item, fallback to order.created_at
-    const pendingItems = order.items.filter((item) => item.status === 'pending');
-    const referenceTime = pendingItems.length > 0
-        ? pendingItems.reduce((oldest, item) => {
-              if (!item.created_at) {
-return oldest;
-}
+    // Deadline edit modal state
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [deadlineInput, setDeadlineInput] = useState('');
+    const [reason, setReason] = useState('');
+    const [isSubmittingDeadline, setIsSubmittingDeadline] = useState(false);
+    const [deadlineError, setDeadlineError] = useState<string | null>(null);
 
-              return new Date(item.created_at).getTime() < new Date(oldest).getTime() ? item.created_at : oldest;
-          }, pendingItems[0].created_at || order.created_at)
-        : order.created_at;
+    const openEditDeadline = () => {
+        if (!group || isDisconnected) {
+            return;
+        }
 
-    const createdAtTime = new Date(referenceTime).getTime();
-    const elapsedMinutes = Math.max(
-        0,
-        Math.floor((nowTime - createdAtTime) / 60000),
-    );
+        const d = new Date(group.deadlineAt);
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-    const isOver10Mins = elapsedMinutes >= 10;
+        setDeadlineInput(formatted);
+        setReason('');
+        setDeadlineError(null);
+        setIsEditModalOpen(true);
+    };
+
+    const addMinutesToDeadline = (minutes: number) => {
+        const current = deadlineInput ? new Date(deadlineInput) : new Date(group?.deadlineAt || Date.now());
+        const updated = new Date(current.getTime() + minutes * 60000);
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        setDeadlineInput(
+            `${updated.getFullYear()}-${pad(updated.getMonth() + 1)}-${pad(updated.getDate())}T${pad(updated.getHours())}:${pad(updated.getMinutes())}`
+        );
+    };
+
+    const handleSubmitDeadline = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!group) {
+            return;
+        }
+
+        const trimmedReason = reason.trim();
+
+        if (!trimmedReason) {
+            setDeadlineError('Vui lòng nhập lý do thay đổi hạn (bắt buộc, tối đa 255 ký tự).');
+
+            return;
+        }
+
+        if (trimmedReason.length > 255) {
+            setDeadlineError('Lý do không được vượt quá 255 ký tự.');
+
+            return;
+        }
+
+        if (!deadlineInput) {
+            setDeadlineError('Vui lòng chọn thời hạn mới.');
+
+            return;
+        }
+
+        setIsSubmittingDeadline(true);
+        setDeadlineError(null);
+
+        try {
+            const deadlineIso = new Date(deadlineInput).toISOString();
+            const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+            const csrfToken = match ? decodeURIComponent(match[1]) : '';
+
+            const response = await fetch(`/staff/kitchen/work-groups/${group.id}/deadline`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-XSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
+                    deadline_at: deadlineIso,
+                    reason: trimmedReason,
+                    expected_version: group.version,
+                }),
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                setDeadlineError(data.message || data.error || `Lỗi cập nhật hạn (${response.status})`);
+                setIsSubmittingDeadline(false);
+
+                // On deadline failure: keep old value, show server message, no optimistic update
+                return;
+            }
+
+            setIsSubmittingDeadline(false);
+            setIsEditModalOpen(false);
+
+            router.reload({
+                only: ['workGroups', 'serverNow', 'orders', 'stats'],
+                onError: () => {},
+            });
+        } catch {
+            setIsSubmittingDeadline(false);
+            setDeadlineError('Lỗi kết nối khi cập nhật thời hạn điều phối.');
+        }
+    };
+
+    // Calculate wait and deadlines
+    const effectiveNowMs = nowMs ?? localNowTime;
+    let elapsedMinutes = 0;
+    let isLongWait = false;
+    let isOverdue = false;
+    let deadlineLabel = '';
+
+    if (group) {
+        const sentAtMs = Date.parse(group.sentAt);
+        const deadlineMs = Date.parse(group.deadlineAt);
+
+        elapsedMinutes = Math.max(0, Math.floor((effectiveNowMs - sentAtMs) / 60000));
+        isLongWait = isGroupLongWait(group, effectiveNowMs);
+        isOverdue = effectiveNowMs > deadlineMs;
+        deadlineLabel = new Date(group.deadlineAt).toLocaleTimeString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    } else {
+        const pendingItems = order.items.filter((item) => item.status === 'pending');
+        const referenceTime = pendingItems.length > 0
+            ? pendingItems.reduce((oldest, item) => {
+                  if (!item.created_at) {
+                      return oldest;
+                  }
+
+                  return new Date(item.created_at).getTime() < new Date(oldest).getTime() ? item.created_at : oldest;
+              }, pendingItems[0].created_at || order.created_at)
+            : order.created_at;
+
+        const createdAtTime = new Date(referenceTime).getTime();
+        elapsedMinutes = Math.max(0, Math.floor((effectiveNowMs - createdAtTime) / 60000));
+    }
+
+    const isOver10Mins = !group && elapsedMinutes >= 10;
     const hasAdditional = order.has_additional_items;
 
-    const completedItemsCount = Object.values(checkedItems).filter(Boolean).length;
+    const displayItems = group
+        ? group.items.map((gi) => ({
+              id: gi.id,
+              name: gi.name,
+              quantity: gi.quantity,
+              status: gi.status,
+              note: gi.note,
+          }))
+        : order.items.map((oi) => ({
+              id: oi.id,
+              name: oi.menu_item?.name || 'Món ăn',
+              quantity: oi.quantity,
+              status: oi.status,
+              note: oi.note,
+          }));
+
+    const completedItemsCount = displayItems.filter((i) => checkedItems[i.id] || i.status === 'completed').length;
 
     const toggleCheckItem = (itemId: number) => {
         setCheckedItems((prev) => ({
@@ -121,18 +280,18 @@ return oldest;
         }));
     };
 
-    const pendItems = order.items.filter((i) => i.status !== 'completed');
+    const pendItems = displayItems.filter((i) => i.status !== 'completed');
     const checkedItemIds = pendItems
         .filter((i) => checkedItems[i.id])
         .map((i) => i.id);
     const isPartial = checkedItemIds.length > 0;
 
-    // Commands queued for THIS order (payload.order_id matches)
+    // Commands queued for this order
     const cardCommands = queueCommands.filter(
-        (c) => (c.payload.order_id as number) === order.id,
+        (c) => (c.payload.order_id as number) === order.id
     );
     const hasSyncing = cardCommands.some(
-        (c) => c.status === 'pending' || c.status === 'flushing',
+        (c) => c.status === 'pending' || c.status === 'flushing'
     );
     const failed = cardCommands.find((c) => c.status === 'failed');
 
@@ -141,10 +300,14 @@ return oldest;
             ? checkedItemIds
             : pendItems.map((i) => i.id);
 
-        if (isPartial) {
+        const isPaidOrder = order.status === 'paid';
+
+        // Paid-order groups use item-level completion only.
+        // Group cards or partial checklists also always use item-level completion.
+        if (group || isPaidOrder || isPartial) {
             onEnqueue('kitchen.complete-items', '/staff/kitchen/complete-items', {
                 order_id: order.id,
-                item_ids: checkedItemIds,
+                item_ids: subjectIds,
             });
         } else {
             onEnqueue('kitchen.complete', `/staff/kitchen/complete/${order.id}`, {
@@ -152,7 +315,7 @@ return oldest;
             });
         }
 
-        // Optimistic: mark subject items completed locally (remove from pending)
+        // Optimistic: mark subject items completed locally
         setCheckedItems((prev) => {
             const next = { ...prev };
             subjectIds.forEach((id) => {
@@ -176,12 +339,9 @@ return oldest;
 
         onDiscard(failed.id);
 
-        // Rollback optimistic checks so the items reappear as pending
         const failedIds: number[] = Array.isArray(failed.payload.item_ids)
             ? (failed.payload.item_ids as number[])
-            : order.items
-                  .filter((i) => i.status !== 'completed')
-                  .map((i) => i.id);
+            : displayItems.filter((i) => i.status !== 'completed').map((i) => i.id);
 
         setCheckedItems((prev) => {
             const next = { ...prev };
@@ -193,11 +353,39 @@ return oldest;
         });
     };
 
-    // Premium gradients and borders
+    const handlePrintTicket = () => {
+        if (group) {
+            onPrint({
+                ...order,
+                items: group.items.map((gi) => ({
+                    id: gi.id,
+                    quantity: gi.quantity,
+                    unit_price: 0,
+                    status: gi.status as any,
+                    note: gi.note,
+                    created_at: group.sentAt,
+                    menu_item: {
+                        id: 0,
+                        name: gi.name,
+                    },
+                })),
+            });
+        } else {
+            onPrint(order);
+        }
+    };
+
+    // Header styling
     let headerBgClass = 'bg-gradient-to-r from-sky-600 to-sky-700 dark:from-sky-700/90 dark:to-sky-800/90 text-white';
     let cardBorderClass = 'border-zinc-200/80 dark:border-zinc-800';
 
-    if (isOver10Mins) {
+    if (isOverdue) {
+        headerBgClass = 'bg-gradient-to-r from-rose-600 to-rose-700 dark:from-rose-700/90 dark:to-rose-800/90 text-white animate-pulse';
+        cardBorderClass = 'border-rose-300 dark:border-rose-900/60';
+    } else if (isLongWait) {
+        headerBgClass = 'bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-600/90 dark:to-amber-700/90 text-white';
+        cardBorderClass = 'border-amber-300 dark:border-amber-900/60';
+    } else if (isOver10Mins) {
         headerBgClass = 'bg-gradient-to-r from-rose-600 to-rose-700 dark:from-rose-700/90 dark:to-rose-800/90 text-white animate-pulse';
         cardBorderClass = 'border-rose-300 dark:border-rose-900/60';
     } else if (hasAdditional) {
@@ -209,13 +397,35 @@ return oldest;
         <div
             className={`border bg-white dark:bg-zinc-900 ${cardBorderClass} flex h-full min-h-[300px] flex-col justify-between overflow-hidden rounded-2xl shadow-sm transition-shadow hover:shadow-md duration-200`}
         >
-            {/* Order Card Header */}
+            {/* Header */}
             <div className={`p-3 ${headerBgClass} space-y-1.5 shadow-xs`}>
                 <div className="flex items-start justify-between">
                     <div>
-                        <span className="block text-[11px] font-bold tracking-wider text-white/85 uppercase font-mono">
-                            {order.order_code}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="block text-[11px] font-bold tracking-wider text-white/85 uppercase font-mono">
+                                {order.order_code}
+                            </span>
+                            {group && (
+                                <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                    {group.stationName}
+                                </span>
+                            )}
+                            {isLongWait && (
+                                <span className="rounded-md bg-amber-400/30 border border-amber-300/40 px-1.5 py-0.5 text-[10px] font-bold text-amber-100">
+                                    Chờ lâu
+                                </span>
+                            )}
+                            {isOverdue && (
+                                <span className="rounded-md bg-rose-500/40 border border-rose-300/40 px-1.5 py-0.5 text-[10px] font-bold text-rose-100">
+                                    Quá hạn
+                                </span>
+                            )}
+                            {group?.origin === 'legacy_item' && (
+                                <span className="rounded-md bg-zinc-600/50 border border-zinc-400/30 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-200" title="Thời gian gửi ước lượng">
+                                    Ước lượng
+                                </span>
+                            )}
+                        </div>
                         <h3 className="font-display text-lg font-bold leading-tight text-white mt-1 flex flex-wrap items-center gap-1.5">
                             <span>{order.table?.table_number || 'Mang về'}</span>
                             {hasAdditional && (
@@ -233,18 +443,36 @@ return oldest;
                 </div>
 
                 <div className="flex items-center justify-between border-t border-white/10 pt-1.5 text-xs">
-                    <span className="font-medium opacity-80">
-                        Tiến độ pha chế
-                    </span>
+                    {group ? (
+                        <div className="flex items-center gap-1.5">
+                            <span className="opacity-80">Hạn:</span>
+                            <span className="font-mono font-bold">{deadlineLabel}</span>
+                            {canManageDeadline && (
+                                <button
+                                    type="button"
+                                    onClick={openEditDeadline}
+                                    disabled={isDisconnected}
+                                    className="rounded p-0.5 hover:bg-white/20 transition-colors disabled:opacity-40"
+                                    title={isDisconnected ? 'Không thể sửa hạn khi mất kết nối mạng' : 'Chỉnh sửa hạn điều phối'}
+                                >
+                                    <Pencil className="h-3 w-3 stroke-[2]" />
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <span className="font-medium opacity-80">
+                            Tiến độ pha chế
+                        </span>
+                    )}
                     <span className="rounded-md bg-white/15 px-2 py-0.5 font-bold tabular-nums">
-                        {completedItemsCount}/{order.items.length} món
+                        {completedItemsCount}/{displayItems.length} món
                     </span>
                 </div>
             </div>
 
-            {/* Items Checklist (Spacious layout without height truncation) */}
+            {/* Checklist */}
             <div className="min-h-[140px] flex-1 divide-y divide-zinc-100 dark:divide-zinc-800/60 overflow-y-auto px-4 py-2">
-                {order.items
+                {displayItems
                     .filter((item) => item.status !== 'completed')
                     .map((item) => {
                         const isChecked = !!checkedItems[item.id];
@@ -271,7 +499,7 @@ return oldest;
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <span className={`block whitespace-normal break-words text-base font-extrabold text-zinc-900 dark:text-zinc-100 ${isChecked ? 'text-zinc-400 dark:text-zinc-500' : ''}`}>
-                                            {item.menu_item?.name || 'Món ăn'}
+                                            {item.name}
                                         </span>
                                         {item.note && (
                                             <span className="mt-1 block text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 px-1.5 py-0.5 rounded border border-amber-100/60 dark:border-amber-900/40 w-fit max-w-full whitespace-normal break-words">
@@ -291,15 +519,14 @@ return oldest;
                     })}
             </div>
 
-            {/* Complete Order Footer */}
+            {/* Complete / Actions Footer */}
             <div className="space-y-2 border-t border-zinc-100 bg-zinc-50/80 p-3.5 dark:border-zinc-800/40 dark:bg-zinc-900/20">
                 {failed && (
                     <div className="flex items-center justify-between gap-1.5 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs font-medium text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-350">
                         <div className="flex min-w-0 flex-1 items-center gap-1.5">
                             <XCircle className="h-3.5 w-3.5 shrink-0 stroke-[1.5]" />
                             <span className="truncate">
-                                {failed.error ||
-                                    'Không thể đồng bộ. Kiểm tra mạng và thử lại.'}
+                                {failed.error || 'Không thể đồng bộ. Kiểm tra mạng và thử lại.'}
                             </span>
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
@@ -322,7 +549,7 @@ return oldest;
                 )}
                 <button
                     type="button"
-                    onClick={() => onPrint(order)}
+                    onClick={handlePrintTicket}
                     className="flex w-full items-center justify-center space-x-2 rounded-lg border border-zinc-200 bg-white py-2 text-xs font-bold text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                     <Printer className="h-4 w-4 stroke-[2]" />
@@ -340,10 +567,136 @@ return oldest;
                             ? 'Đang đồng bộ…'
                             : isPartial
                               ? `Hoàn thành ${checkedItemIds.length}/${pendItems.length} món`
-                              : 'Hoàn thành toàn bộ đơn'}
+                              : group
+                                ? 'Hoàn thành nhóm chế biến'
+                                : 'Hoàn thành toàn bộ đơn'}
                     </span>
                 </button>
             </div>
+
+            {/* Deadline Edit Modal */}
+            {isEditModalOpen && group && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+                        <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
+                            <div className="flex items-center space-x-2">
+                                <CalendarClock className="h-5 w-5 stroke-[1.5] text-sky-600 dark:text-sky-400" />
+                                <h3 className="font-display text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                                    Điều chỉnh hạn điều phối
+                                </h3>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsEditModalOpen(false)}
+                                className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                            >
+                                <X className="h-4 w-4 stroke-[2]" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmitDeadline} className="mt-4 space-y-4">
+                            <div className="rounded-lg bg-zinc-50 p-2.5 text-xs text-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-400 space-y-1">
+                                <div>
+                                    Đơn: <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">{order.order_code}</span> ({order.table?.table_number || 'Mang về'})
+                                </div>
+                                <div>
+                                    Khu vực: <span className="font-bold text-zinc-900 dark:text-zinc-100">{group.stationName}</span> | Hạn hiện tại: <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">{deadlineLabel}</span>
+                                </div>
+                            </div>
+
+                            {deadlineError && (
+                                <div className="flex items-start gap-2 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50">
+                                    <AlertTriangle className="h-4 w-4 shrink-0 stroke-[1.5] text-rose-600 dark:text-rose-400" />
+                                    <span>{deadlineError}</span>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                    Thời hạn mới <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                    type="datetime-local"
+                                    value={deadlineInput}
+                                    onChange={(e) => setDeadlineInput(e.target.value)}
+                                    required
+                                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-800 shadow-xs focus:border-sky-500 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                                />
+
+                                <div className="mt-2 flex items-center gap-1.5">
+                                    <span className="text-[11px] text-zinc-400">Gợi ý:</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => addMinutesToDeadline(5)}
+                                        className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                                    >
+                                        +5p
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => addMinutesToDeadline(10)}
+                                        className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                                    >
+                                        +10p
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => addMinutesToDeadline(15)}
+                                        className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                                    >
+                                        +15p
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => addMinutesToDeadline(30)}
+                                        className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                                    >
+                                        +30p
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="flex items-center justify-between">
+                                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                        Lý do thay đổi <span className="text-rose-500">*</span>
+                                    </label>
+                                    <span className="text-[11px] text-zinc-400 tabular-nums">
+                                        {reason.trim().length}/255
+                                    </span>
+                                </div>
+                                <input
+                                    type="text"
+                                    value={reason}
+                                    maxLength={255}
+                                    onChange={(e) => setReason(e.target.value)}
+                                    placeholder="Ví dụ: Khách VIP, Chờ thêm nguyên liệu..."
+                                    required
+                                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-800 shadow-xs focus:border-sky-500 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end space-x-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditModalOpen(false)}
+                                    disabled={isSubmittingDeadline}
+                                    className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs font-bold text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmittingDeadline || reason.trim().length === 0 || isDisconnected}
+                                    className="rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-sky-700 disabled:opacity-50"
+                                >
+                                    {isSubmittingDeadline ? 'Đang lưu…' : 'Lưu thay đổi'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

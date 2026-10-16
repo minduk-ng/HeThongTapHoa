@@ -1,19 +1,21 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import {
-    Sparkles,
-    Volume2,
-    VolumeX,
-    RefreshCw,
-    Coffee,
-    UtensilsCrossed,
-    Layers,
-    Maximize2,
-    Minimize2,
+    AlertTriangle,
     ChefHat,
     ClipboardList,
-    AlertTriangle,
+    Coffee,
+    Flame,
+    Layers,
+    ListOrdered,
+    Maximize2,
+    Minimize2,
+    RefreshCw,
+    Sparkles,
+    UtensilsCrossed,
+    Volume2,
+    VolumeX,
 } from 'lucide-react';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import AvatarDropdown from '../../../components/AvatarDropdown';
 import KitchenPrintTicket from '../../../components/KitchenPrintTicket';
 import { useCommandQueue } from '../../../hooks/useCommandQueue';
@@ -22,6 +24,8 @@ import type { PageProps } from '../../../types/auth';
 import { useReverbStatus } from '../pos/hooks/useReverbStatus';
 import type { KitchenOrderData } from './components/KitchenOrderCard';
 import KitchenOrderCard from './components/KitchenOrderCard';
+import type { DispatchMode, QueueGroup } from './utils/dispatchQueue';
+import { orderGroups } from './utils/dispatchQueue';
 import { playKitchenChime } from './utils/kitchenAudio';
 
 interface KitchenDisplayProps {
@@ -32,15 +36,70 @@ interface KitchenDisplayProps {
         completed_items: number;
         warning_orders: number;
     };
+    workGroups?: QueueGroup[];
+    serverNow?: string;
 }
 
-export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
+function matchesGroupStation(
+    group: QueueGroup,
+    activeStation: 'all' | 'bar' | 'kitchen'
+): boolean {
+    if (activeStation === 'all') {
+        return true;
+    }
+
+    const lower = group.stationName.toLowerCase();
+
+    if (
+        lower.includes('bar') ||
+        lower.includes('pha chế') ||
+        lower.includes('uống') ||
+        lower.includes('nước')
+    ) {
+        return activeStation === 'bar';
+    }
+
+    if (
+        lower.includes('bếp') ||
+        lower.includes('kitchen') ||
+        lower.includes('nóng')
+    ) {
+        return activeStation === 'kitchen';
+    }
+
+    // Default station fallback: inspect item names
+    const hasDrink = group.items.some((i) => {
+        const n = i.name.toLowerCase();
+
+        return (
+            n.includes('cà phê') ||
+            n.includes('trà') ||
+            n.includes('uống') ||
+            n.includes('nước') ||
+            n.includes('sinh tố')
+        );
+    });
+
+    return activeStation === 'bar' ? hasDrink : !hasDrink;
+}
+
+export default function KitchenDisplay({
+    orders,
+    stats,
+    workGroups,
+    serverNow,
+}: KitchenDisplayProps) {
     const [nowTime, setNowTime] = useState<number>(0);
     const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
     const [activeStation, setActiveStation] = useState<
         'all' | 'bar' | 'kitchen'
     >('all');
+    const [mode, setMode] = useState<DispatchMode>('fifo');
     const [printOrder, setPrintOrder] = useState<KitchenOrderData | null>(null);
+
+    const [tickTime, setTickTime] = useState<number>(0);
+    const receivedAtMsRef = useRef<number>(0);
+    const baseServerNowMsRef = useRef<number>(0);
 
     useEffect(() => {
         if (printOrder) {
@@ -54,14 +113,28 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
     }, [printOrder]);
 
     const { status: reverbStatus } = useReverbStatus();
+    const isDisconnected = reverbStatus !== 'connected';
+
     const { auth } = usePage<PageProps>().props;
     const user = auth.user;
+    const canManageDeadline = Boolean(
+        auth?.is_admin ||
+        (user as { is_admin?: boolean })?.is_admin ||
+        auth?.permissions?.includes('kitchen.dispatch.manage') ||
+        (user as { permissions?: string[] })?.permissions?.includes(
+            'kitchen.dispatch.manage'
+        )
+    );
 
     const { queue, enqueue, retry, discard } = useCommandQueue({
-        reconcile: () => router.reload({ only: ['orders', 'stats'], onError: () => {} }),
+        reconcile: () =>
+            router.reload({
+                only: ['workGroups', 'serverNow', 'orders', 'stats'],
+                onError: () => {},
+            }),
     });
     const hasQueued = queue.some(
-        (c) => c.status === 'pending' || c.status === 'flushing',
+        (c) => c.status === 'pending' || c.status === 'flushing'
     );
     const failedCommands = queue.filter((c) => c.status === 'failed');
 
@@ -75,9 +148,10 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
         return () =>
             document.removeEventListener(
                 'fullscreenchange',
-                handleFullscreenChange,
+                handleFullscreenChange
             );
     }, []);
+
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().catch(() => {});
@@ -125,7 +199,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
 
     const wsConfig = statusConfig[reverbStatus];
 
-    // Tick every 5 seconds to update real-time minute counters and warning counts locally
+    // Tick every 5 seconds to update real-time minute counters locally
     useEffect(() => {
         queueMicrotask(() => setNowTime(Date.now()));
         const timer = setInterval(() => {
@@ -133,6 +207,122 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
         }, 5000);
 
         return () => clearInterval(timer);
+    }, []);
+
+    // Track serverNow timestamps and local clock baseline
+    useEffect(() => {
+        receivedAtMsRef.current = Date.now();
+        baseServerNowMsRef.current = serverNow
+            ? Date.parse(serverNow)
+            : Date.now();
+        setTickTime(baseServerNowMsRef.current);
+    }, [serverNow]);
+
+    const computeNowMs = useCallback(() => {
+        if (baseServerNowMsRef.current === 0) {
+            return serverNow ? Date.parse(serverNow) : Date.now();
+        }
+
+        return (
+            baseServerNowMsRef.current +
+            (Date.now() - receivedAtMsRef.current)
+        );
+    }, [serverNow]);
+
+    // Rebuild ordering on each 15s clock tick
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setTickTime(computeNowMs());
+        }, 15000);
+
+        return () => clearInterval(timer);
+    }, [computeNowMs]);
+
+    // Rebuild ordering on tab visibility restore
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                setTickTime(computeNowMs());
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () =>
+            document.removeEventListener(
+                'visibilitychange',
+                handleVisibilityChange
+            );
+    }, [computeNowMs]);
+
+    const serverAdjustedNowMs =
+        tickTime > 0
+            ? tickTime
+            : serverNow
+              ? Date.parse(serverNow)
+              : 0;
+
+    // Derived orderedGroups: rebuilds on data changes, mode, station, or clock tick
+    const orderedGroups = useMemo(() => {
+        if (!workGroups || workGroups.length === 0) {
+            return [];
+        }
+
+        const currentNow =
+            serverAdjustedNowMs > 0
+                ? serverAdjustedNowMs
+                : serverNow
+                  ? Date.parse(serverNow)
+                  : 0;
+        const filtered = workGroups.filter((g) =>
+            matchesGroupStation(g, activeStation)
+        );
+
+        return orderGroups(filtered, mode, currentNow);
+    }, [workGroups, activeStation, mode, serverAdjustedNowMs, serverNow]);
+
+    // Refetch every 30s while visible
+    useEffect(() => {
+        const timer = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                router.reload({
+                    only: ['workGroups', 'serverNow', 'orders', 'stats'],
+                    onError: () => {},
+                });
+            }
+        }, 30000);
+
+        return () => clearInterval(timer);
+    }, []);
+
+    // Refetch on reconnect (transition to connected)
+    const prevReverbStatusRef = useRef(reverbStatus);
+    useEffect(() => {
+        if (
+            prevReverbStatusRef.current !== 'connected' &&
+            reverbStatus === 'connected'
+        ) {
+            router.reload({
+                only: ['workGroups', 'serverNow', 'orders', 'stats'],
+                onError: () => {},
+            });
+        }
+
+        prevReverbStatusRef.current = reverbStatus;
+    }, [reverbStatus]);
+
+    // Refetch on window online event
+    useEffect(() => {
+        const handleOnline = () => {
+            router.reload({
+                only: ['workGroups', 'serverNow', 'orders', 'stats'],
+                onError: () => {},
+            });
+        };
+
+        window.addEventListener('online', handleOnline);
+
+        return () => window.removeEventListener('online', handleOnline);
     }, []);
 
     const soundEnabledRef = useRef<boolean>(soundEnabled);
@@ -160,12 +350,15 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
         return false;
     }, []);
 
-    // Realtime WebSocket Listener via Reverb for instant new order tickets & completions & chime audio
+    // Realtime WebSocket Listener via Reverb for instant updates
     useEffect(() => {
         if (typeof window !== 'undefined' && window.Echo) {
             const channel = window.Echo.private('kitchen-channel');
 
-            const handleOrderSent = (payload?: any) => {
+            const handleOrderSent = (payload?: {
+                order_id?: number;
+                action_type?: string;
+            }) => {
                 const eventKey = `OrderSentToKitchen_${payload?.order_id || ''}_${payload?.action_type || ''}`;
 
                 if (isDuplicateEvent(eventKey)) {
@@ -182,14 +375,14 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                 }
 
                 router.reload({
-                    only: ['orders', 'stats'],
+                    only: ['workGroups', 'serverNow', 'orders', 'stats'],
                     onError: () => {},
                 });
             };
 
             const handleReload = () => {
                 router.reload({
-                    only: ['orders', 'stats'],
+                    only: ['workGroups', 'serverNow', 'orders', 'stats'],
                     onError: () => {},
                 });
             };
@@ -210,7 +403,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
         const createdAtTime = new Date(o.created_at).getTime();
         const elapsedMinutes = Math.max(
             0,
-            Math.floor((nowTime - createdAtTime) / 60000),
+            Math.floor((nowTime - createdAtTime) / 60000)
         );
 
         return elapsedMinutes >= 10 || !!o.has_additional_items;
@@ -221,12 +414,12 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
         total_orders: orders.length,
         waiting_items: orders.reduce(
             (sum, o) => sum + o.items.reduce((s, i) => s + i.quantity, 0),
-            0,
+            0
         ),
         warning_orders: liveWarningCount,
     };
 
-    // Station filtering logic (Bar = drinks/cà phê/trà; Kitchen = food/bánh/đồ ăn)
+    // Filter fallback orders when workGroups is absent
     const filteredOrders = orders
         .map((order) => {
             if (activeStation === 'all') {
@@ -261,18 +454,17 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
         })
         .filter(Boolean) as KitchenOrderData[];
 
-    useEffect(() => {
-        if (printOrder) {
-            window.print();
-        }
-    }, [printOrder]);
+    const hasWorkGroupsProp = Array.isArray(workGroups);
+    const displayCount = hasWorkGroupsProp
+        ? orderedGroups.length
+        : filteredOrders.length;
 
     return (
         <DashboardLayout fullWidth={true} hideNavbar={true}>
             <Head title="Màn hình Bếp & Chế biến món" />
 
             <div className="flex h-full w-full flex-col overflow-hidden">
-                {/* Top Toolbar — single row, 3 zones */}
+                {/* Top Toolbar */}
                 <div className="flex shrink-0 items-center gap-4 border-b border-zinc-200 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-900">
                     {/* Left: Title + WS */}
                     <div className="flex shrink-0 items-center space-x-2">
@@ -335,44 +527,76 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                         </div>
                     </div>
 
-                    {/* Center: Station Filter Pills */}
-                    <div className="flex items-center rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
-                        <button
-                            type="button"
-                            onClick={() => setActiveStation('all')}
-                            className={`flex items-center space-x-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
-                                activeStation === 'all'
-                                    ? 'bg-white text-sky-600 shadow-xs dark:bg-zinc-900 dark:text-sky-400'
-                                    : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
-                            }`}
-                        >
-                            <Layers className="h-4 w-4 stroke-[1.5]" />
-                            <span>Tất cả</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveStation('bar')}
-                            className={`flex items-center space-x-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
-                                activeStation === 'bar'
-                                    ? 'bg-white text-sky-600 shadow-xs dark:bg-zinc-900 dark:text-sky-400'
-                                    : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
-                            }`}
-                        >
-                            <Coffee className="h-4 w-4 stroke-[1.5]" />
-                            <span>Pha chế</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveStation('kitchen')}
-                            className={`flex items-center space-x-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
-                                activeStation === 'kitchen'
-                                    ? 'bg-white text-sky-600 shadow-xs dark:bg-zinc-900 dark:text-sky-400'
-                                    : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
-                            }`}
-                        >
-                            <UtensilsCrossed className="h-4 w-4 stroke-[1.5]" />
-                            <span>Bếp nóng</span>
-                        </button>
+                    {/* Center: Station Filter Pills + Dispatch Mode Toggle */}
+                    <div className="flex items-center space-x-3">
+                        <div className="flex items-center rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
+                            <button
+                                type="button"
+                                onClick={() => setActiveStation('all')}
+                                className={`flex items-center space-x-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
+                                    activeStation === 'all'
+                                        ? 'bg-white text-sky-600 shadow-xs dark:bg-zinc-900 dark:text-sky-400'
+                                        : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                }`}
+                            >
+                                <Layers className="h-4 w-4 stroke-[1.5]" />
+                                <span>Tất cả</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveStation('bar')}
+                                className={`flex items-center space-x-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
+                                    activeStation === 'bar'
+                                        ? 'bg-white text-sky-600 shadow-xs dark:bg-zinc-900 dark:text-sky-400'
+                                        : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                }`}
+                            >
+                                <Coffee className="h-4 w-4 stroke-[1.5]" />
+                                <span>Pha chế</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveStation('kitchen')}
+                                className={`flex items-center space-x-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
+                                    activeStation === 'kitchen'
+                                        ? 'bg-white text-sky-600 shadow-xs dark:bg-zinc-900 dark:text-sky-400'
+                                        : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                }`}
+                            >
+                                <UtensilsCrossed className="h-4 w-4 stroke-[1.5]" />
+                                <span>Bếp nóng</span>
+                            </button>
+                        </div>
+
+                        {/* Dispatch Mode Toggle: FIFO vs Priority */}
+                        <div className="flex items-center rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
+                            <button
+                                type="button"
+                                onClick={() => setMode('fifo')}
+                                className={`flex items-center space-x-1.5 rounded-md px-2.5 py-1.5 text-xs font-bold transition-colors ${
+                                    mode === 'fifo'
+                                        ? 'bg-white text-sky-600 shadow-xs dark:bg-zinc-900 dark:text-sky-400'
+                                        : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                }`}
+                                title="Thứ tự gửi (FIFO)"
+                            >
+                                <ListOrdered className="h-3.5 w-3.5 stroke-[1.5]" />
+                                <span>FIFO</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMode('priority')}
+                                className={`flex items-center space-x-1.5 rounded-md px-2.5 py-1.5 text-xs font-bold transition-colors ${
+                                    mode === 'priority'
+                                        ? 'bg-white text-amber-600 shadow-xs dark:bg-zinc-900 dark:text-amber-400'
+                                        : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                }`}
+                                title="Điều phối ưu tiên (Min-Heap theo hạn & chờ lâu)"
+                            >
+                                <Flame className="h-3.5 w-3.5 stroke-[1.5]" />
+                                <span>Ưu tiên</span>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Right: Stats + Actions */}
@@ -416,7 +640,14 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                         <button
                             type="button"
                             onClick={() =>
-                                router.reload({ only: ['orders', 'stats'] })
+                                router.reload({
+                                    only: [
+                                        'workGroups',
+                                        'serverNow',
+                                        'orders',
+                                        'stats',
+                                    ],
+                                })
                             }
                             className="rounded-lg p-2.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
                             title="Làm mới dữ liệu bếp"
@@ -445,6 +676,35 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                         <AvatarDropdown user={user} />
                     </div>
                 </div>
+
+                {/* Stale / Disconnected Banner */}
+                {isDisconnected && (
+                    <div className="flex shrink-0 items-center justify-between gap-3 border-b border-rose-300 bg-rose-50 px-5 py-2 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
+                        <div className="flex items-center gap-2 text-xs font-semibold">
+                            <AlertTriangle className="h-4 w-4 shrink-0 stroke-[2] text-rose-600 dark:text-rose-400" />
+                            <span>
+                                Mất kết nối mạng / Đang kết nối lại — Dữ liệu hiển thị có thể chưa mới nhất. Chỉnh sửa hạn điều phối tạm thời bị khóa.
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                router.reload({
+                                    only: [
+                                        'workGroups',
+                                        'serverNow',
+                                        'orders',
+                                        'stats',
+                                    ],
+                                    onError: () => {},
+                                })
+                            }
+                            className="shrink-0 rounded-lg bg-rose-600 px-2.5 py-1 text-[11px] font-bold text-white transition-colors hover:bg-rose-700"
+                        >
+                            Tải lại
+                        </button>
+                    </div>
+                )}
 
                 {/* Offline Command Queue status strip */}
                 {failedCommands.length > 0 && (
@@ -475,9 +735,9 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                     </div>
                 )}
 
-                {/* Full-width Order Cards Grid */}
+                {/* Cards Grid */}
                 <div className="flex-1 overflow-y-auto p-4">
-                    {filteredOrders.length === 0 ? (
+                    {displayCount === 0 ? (
                         <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200 bg-white p-8 text-center shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
                             <Sparkles className="mb-3 h-8 w-8 stroke-[1.5] text-sky-500" />
                             <h3 className="font-display text-base font-bold text-zinc-800 dark:text-zinc-200">
@@ -491,17 +751,48 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                            {filteredOrders.map((order) => (
-                                <KitchenOrderCard
-                                    key={order.id}
-                                    order={order}
-                                    queueCommands={queue}
-                                    onEnqueue={enqueue}
-                                    onRetry={retry}
-                                    onDiscard={discard}
-                                    onPrint={setPrintOrder}
-                                />
-                            ))}
+                            {hasWorkGroupsProp
+                                ? orderedGroups.map((group) => {
+                                      const order = orders.find(
+                                          (o) => o.id === group.orderId
+                                      ) || {
+                                          id: group.orderId,
+                                          order_code: `#${group.orderId}`,
+                                          created_at: group.sentAt,
+                                          status: 'pending',
+                                          table: null,
+                                          items: [],
+                                      };
+
+                                      return (
+                                          <KitchenOrderCard
+                                              key={group.id}
+                                              order={order}
+                                              group={group}
+                                              nowMs={serverAdjustedNowMs}
+                                              canManageDeadline={
+                                                  canManageDeadline
+                                              }
+                                              isDisconnected={isDisconnected}
+                                              queueCommands={queue}
+                                              onEnqueue={enqueue}
+                                              onRetry={retry}
+                                              onDiscard={discard}
+                                              onPrint={setPrintOrder}
+                                          />
+                                      );
+                                  })
+                                : filteredOrders.map((order) => (
+                                      <KitchenOrderCard
+                                          key={order.id}
+                                          order={order}
+                                          queueCommands={queue}
+                                          onEnqueue={enqueue}
+                                          onRetry={retry}
+                                          onDiscard={discard}
+                                          onPrint={setPrintOrder}
+                                      />
+                                  ))}
                         </div>
                     )}
                 </div>
@@ -515,7 +806,7 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                         .filter(
                             (item) =>
                                 item.status === 'pending' ||
-                                item.status === 'processing',
+                                item.status === 'processing'
                         )
                         .map((item) => ({
                             name: item.menu_item?.name || 'Món ăn',
@@ -523,7 +814,9 @@ export default function KitchenDisplay({ orders, stats }: KitchenDisplayProps) {
                             note: item.note ?? null,
                         }))}
                     note={printOrder.note ?? null}
-                    createdAtLabel={new Date(printOrder.created_at).toLocaleTimeString('vi-VN', {
+                    createdAtLabel={new Date(
+                        printOrder.created_at
+                    ).toLocaleTimeString('vi-VN', {
                         hour: '2-digit',
                         minute: '2-digit',
                     })}
