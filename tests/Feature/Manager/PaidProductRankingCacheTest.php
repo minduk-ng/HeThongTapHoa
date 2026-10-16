@@ -8,6 +8,8 @@ use App\Services\Manager\PaidProductRankingService;
 use Illuminate\Support\Facades\Cache;
 
 it('separates cache by date, source revision and K', function () {
+    // Honest revision: cache only when revision exists; establish rev before caching.
+    DashboardService::bumpSourceRevision();
     $item = posMenuItem();
     $invoice = Invoice::create([
         'invoice_code' => 'INV-'.uniqid(),
@@ -88,7 +90,7 @@ it('advances dashboard source revision on refund mutation path', function () {
     $invoice = $order->fresh()->invoice;
     $line = InvoiceLine::where('invoice_id', $invoice->id)->first();
 
-    $revBefore = (int) Cache::get('dashboard_source_revision', 1);
+    $revBefore = DashboardService::currentSourceRevision() ?? 0;
 
     $this->actingAs($admin)->postJson('/staff/pos/refund', [
         'invoice_id' => $invoice->id,
@@ -96,7 +98,7 @@ it('advances dashboard source revision on refund mutation path', function () {
         'reason' => 'Khach doi y',
     ])->assertOk();
 
-    $revAfter = (int) Cache::get('dashboard_source_revision', 1);
+    $revAfter = DashboardService::currentSourceRevision() ?? 0;
     expect($revAfter)->toBeGreaterThan($revBefore);
 });
 
@@ -106,10 +108,10 @@ it('advances dashboard source revision on checkout mutation path', function () {
     $table = posTable();
     $order = posOrder($table, [['item' => $item, 'qty' => 2, 'price' => 20000, 'status' => 'completed']], ['status' => 'pending']);
 
-    $revBefore = (int) Cache::get('dashboard_source_revision', 1);
+    $revBefore = DashboardService::currentSourceRevision() ?? 0;
 
     CheckoutService::run($order, [['method' => 'cash', 'amount' => 40000]], [], $admin->id);
 
-    $revAfter = (int) Cache::get('dashboard_source_revision', 1);
+    $revAfter = DashboardService::currentSourceRevision() ?? 0;
     expect($revAfter)->toBeGreaterThan($revBefore);
 });

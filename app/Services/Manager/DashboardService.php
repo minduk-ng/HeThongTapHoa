@@ -25,12 +25,19 @@ final class DashboardService
 
     /**
      * Advance dashboard source revision counter and flush tagged dashboard cache.
+     * Atomic init via Cache::add so concurrent first bumps cannot double-init.
      */
     public static function bumpSourceRevision(): int
     {
         try {
-            if (! Cache::has('dashboard_source_revision')) {
-                Cache::forever('dashboard_source_revision', 1);
+            // ponytail: Cache::add is atomic; winner sets rev 1, losers increment.
+            if (Cache::add('dashboard_source_revision', 1)) {
+                try {
+                    Cache::tags(['dashboard'])->flush();
+                } catch (\Throwable) {
+                }
+
+                return 1;
             }
             $revision = (int) Cache::increment('dashboard_source_revision');
             Cache::tags(['dashboard'])->flush();
@@ -40,6 +47,21 @@ final class DashboardService
             Log::warning('Dashboard source revision bump failed: '.$e->getMessage());
 
             return 1;
+        }
+    }
+
+    /**
+     * Read dashboard source revision honestly: int when available, null when
+     * cache is missing/unavailable (caller must bypass, never guess freshness).
+     */
+    public static function currentSourceRevision(): ?int
+    {
+        try {
+            $raw = Cache::get('dashboard_source_revision');
+
+            return $raw === null ? null : (int) $raw;
+        } catch (\Throwable) {
+            return null;
         }
     }
 
@@ -229,31 +251,48 @@ final class DashboardService
 
     /**
      * @return array{
-     *     items: array<int, array{product_id: int, name: string, sales_count: int}>,
+     *     items: array<int, array{product_id: int|string, name: string, sales_count: int}>,
      *     metadata: array{
      *         source: string,
      *         refund_basis: string,
      *         unidentified_line_count: int,
      *         unidentified_net_quantity: int,
      *         invalid_line_count: int,
-     *         generated_at: string
+     *         generated_at: string,
+     *         revision: int|null,
+     *         k: int
      *     }
      * }
      */
-    public function topProducts(Carbon $start, Carbon $end, int $k = 5): array
+    public function topProducts(Carbon $start, Carbon $end, int $k = 5, bool $forceRefresh = false): array
     {
-        $endExclusive = $end->copy()->addSecond();
+        // Half-open [startOfFirstDay, startOfDayAfterLastDay): never endOfDay+1s.
+        $endExclusive = $end->copy()->startOfDay()->addDay();
         $sourceVersion = PaidProductRankingService::SOURCE;
         $startTs = $start->getTimestamp();
         $endTs = $endExclusive->getTimestamp();
         $tz = $start->getTimezone()->getName();
-        $revision = (int) Cache::get('dashboard_source_revision', 1);
+        $revision = self::currentSourceRevision();
+
+        // Revision unavailable or explicit refresh: bypass cache, never guess freshness.
+        // ponytail: fresh rank each bypass; old-revision fills stay keyed under old rev.
+        if ($forceRefresh || $revision === null) {
+            $result = $this->rankingService->rank($start, $endExclusive, $k);
+            $result['metadata']['revision'] = $revision;
+            $result['metadata']['k'] = $k;
+
+            return $result;
+        }
 
         $cacheKey = "dashboard_top_products_{$sourceVersion}_{$startTs}_{$endTs}_{$tz}_k{$k}_rev{$revision}";
 
-        return $this->cached($cacheKey, 300, function () use ($start, $endExclusive, $k) {
+        $result = $this->cached($cacheKey, 300, function () use ($start, $endExclusive, $k) {
             return $this->rankingService->rank($start, $endExclusive, $k);
         });
+        $result['metadata']['revision'] = $revision;
+        $result['metadata']['k'] = $k;
+
+        return $result;
     }
 
     /**

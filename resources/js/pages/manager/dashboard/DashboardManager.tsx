@@ -29,7 +29,8 @@ interface ChartItem {
 }
 
 interface TopProductItem {
-    product_id: number;
+    // Decimal-string rule: backend sends string beyond Number.MAX_SAFE_INTEGER.
+    product_id: number | string;
     name: string;
     sales_count: number;
 }
@@ -41,6 +42,8 @@ interface TopProductsMeta {
     unidentified_net_quantity: number;
     invalid_line_count: number;
     generated_at: string;
+    revision?: number | null;
+    k?: number;
 }
 
 interface DashboardProps {
@@ -154,7 +157,8 @@ return;
         }
     }
 
-    const handleKChange = useCallback((k: number) => {
+    // ponytail: one sequence guards K + range + refresh; stale date/K responses never overwrite.
+    const requestTopK = useCallback((k: number, dateRange: string, refresh = false) => {
         const seq = ++topKSequenceRef.current;
 
         setSelectedK(k);
@@ -163,31 +167,38 @@ return;
 
         router.get(
             '/',
-            { date_range: filters.date_range, top_k: k },
+            { date_range: dateRange, top_k: k, ...(refresh ? { refresh: 1 } : {}) },
             {
                 preserveState: true,
                 preserveScroll: true,
                 only: ['analytics', 'filters'],
                 onSuccess: (page) => {
-                    if (seq === topKSequenceRef.current) {
-                        const newAnalytics = page.props.analytics as DashboardProps['analytics'] | undefined;
-                        const newFilters = page.props.filters as DashboardProps['filters'] | undefined;
-
-                        if (newAnalytics?.top_products) {
-                            setDisplayedProducts(newAnalytics.top_products);
-                        }
-
-                        if (newAnalytics?.top_products_meta) {
-                            setDisplayedMeta(newAnalytics.top_products_meta);
-                        }
-
-                        if (newFilters?.top_k) {
-                            setSelectedK(newFilters.top_k);
-                        }
-
-                        setTopKError(null);
-                        setIsLoadingTopK(false);
+                    if (seq !== topKSequenceRef.current) {
+                        return;
                     }
+
+                    const newAnalytics = page.props.analytics as DashboardProps['analytics'] | undefined;
+                    const newFilters = page.props.filters as DashboardProps['filters'] | undefined;
+
+                    // Stale guard: ignore responses whose date/K no longer match current selection.
+                    if (newFilters && (newFilters.date_range !== dateRange || newFilters.top_k !== k)) {
+                        return;
+                    }
+
+                    if (newAnalytics?.top_products) {
+                        setDisplayedProducts(newAnalytics.top_products);
+                    }
+
+                    if (newAnalytics?.top_products_meta) {
+                        setDisplayedMeta(newAnalytics.top_products_meta);
+                    }
+
+                    if (newFilters?.top_k) {
+                        setSelectedK(newFilters.top_k);
+                    }
+
+                    setTopKError(null);
+                    setIsLoadingTopK(false);
                 },
                 onError: () => {
                     if (seq === topKSequenceRef.current) {
@@ -202,17 +213,24 @@ return;
                 },
             }
         );
-    }, [filters.date_range]);
+    }, []);
+
+    const handleKChange = useCallback((k: number) => {
+        requestTopK(k, filters.date_range, false);
+    }, [filters.date_range, requestTopK]);
+
+    const handleRefreshTopK = useCallback(() => {
+        requestTopK(selectedK, filters.date_range, true);
+    }, [filters.date_range, requestTopK, selectedK]);
 
     const handleRetryTopK = useCallback(() => {
         handleKChange(selectedK);
     }, [handleKChange, selectedK]);
 
     const getProductRowKey = (prod: TopProductItem, index: number): string => {
-        if (prod.product_id != null) {
-            return Number.isSafeInteger(Number(prod.product_id))
-                ? String(prod.product_id)
-                : String(prod.product_id);
+        // Decimal-string rule: never coerce through Number (loses precision beyond safe integer).
+        if (prod.product_id !== null && prod.product_id !== undefined) {
+            return String(prod.product_id);
         }
 
         return `top-product-${index}`;
@@ -223,7 +241,7 @@ return;
     };
 
     const handleRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        router.get('/', { date_range: e.target.value, top_k: selectedK }, { preserveState: true });
+        requestTopK(selectedK, e.target.value, false);
     };
 
     const getTableColorClass = (status: string) => {
@@ -480,21 +498,32 @@ return;
                                     <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-600 dark:text-sky-400" />
                                 )}
                             </div>
-                            <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg">
-                                {[5, 10, 20].map((k) => (
-                                    <button
-                                        key={k}
-                                        type="button"
-                                        onClick={() => handleKChange(k)}
-                                        className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                                            selectedK === k
-                                                ? 'bg-white dark:bg-zinc-700 text-sky-600 dark:text-sky-400 shadow-xs'
-                                                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
-                                        }`}
-                                    >
-                                        {k}
-                                    </button>
-                                ))}
+                            <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg">
+                                    {[5, 10, 20].map((k) => (
+                                        <button
+                                            key={k}
+                                            type="button"
+                                            onClick={() => handleKChange(k)}
+                                            className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                                                selectedK === k
+                                                    ? 'bg-white dark:bg-zinc-700 text-sky-600 dark:text-sky-400 shadow-xs'
+                                                    : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                                            }`}
+                                        >
+                                            {k}
+                                        </button>
+                                    ))}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleRefreshTopK}
+                                    title="Làm mới (bỏ cache)"
+                                    aria-label="Làm mới top món bán chạy"
+                                    className="p-1.5 rounded-lg text-zinc-500 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                                >
+                                    <RotateCcw className={`w-3.5 h-3.5 ${isLoadingTopK ? 'animate-spin' : ''}`} />
+                                </button>
                             </div>
                         </div>
 

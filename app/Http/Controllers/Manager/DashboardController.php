@@ -29,7 +29,8 @@ class DashboardController extends Controller
         $range = $request->input('date_range', 'today');
         [$startDate, $endDate, $prevStartDate, $prevEndDate] = $this->service->getDateBounds($range);
 
-        $topProductsResult = $this->service->topProducts($startDate, $endDate, $topK);
+        $forceRefresh = $request->boolean('refresh');
+        $topProductsResult = $this->service->topProducts($startDate, $endDate, $topK, $forceRefresh);
 
         return Inertia::render('manager/dashboard/DashboardManager', [
             'filters' => [

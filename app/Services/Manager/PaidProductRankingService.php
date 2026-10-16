@@ -11,13 +11,13 @@ use Illuminate\Support\Facades\DB;
  * Bounded min-heap where root is the worst retained candidate:
  * smaller sales_count first, then larger numeric product_id first.
  *
- * @extends \SplHeap<array{product_id: int, name: string, sales_count: int}>
+ * @extends \SplHeap<array{product_id: int|string, name: string, sales_count: int}>
  */
 class PaidProductMinHeap extends \SplHeap
 {
     /**
-     * @param  array{product_id: int, name: string, sales_count: int}  $a
-     * @param  array{product_id: int, name: string, sales_count: int}  $b
+     * @param  array{product_id: int|string, name: string, sales_count: int}  $a
+     * @param  array{product_id: int|string, name: string, sales_count: int}  $b
      */
     protected function compare(mixed $a, mixed $b): int
     {
@@ -26,7 +26,8 @@ class PaidProductMinHeap extends \SplHeap
             return $b['sales_count'] <=> $a['sales_count'];
         }
 
-        return $a['product_id'] <=> $b['product_id'];
+        // Numeric ID order, never lexicographic decimal order.
+        return (int) $a['product_id'] <=> (int) $b['product_id'];
     }
 }
 
@@ -38,15 +39,36 @@ class PaidProductRankingService
 
     public const CHUNK_SIZE = 1000;
 
+    public const JS_SAFE_MAX = 9007199254740991;
+
+    /**
+     * Serialize product ID for JSON: exact int when JS-safe, decimal string beyond.
+     * Numeric tie ordering always uses backend ints; this only affects output encoding.
+     *
+     * @return int|string
+     */
+    public static function serializeProductId(int $id): int|string
+    {
+        return $id > self::JS_SAFE_MAX ? (string) $id : $id;
+    }
+
     /**
      * Rank paid invoice lines by durable product identity using chunk scan,
      * HashMap aggregation, and bounded min-heap selection.
+     *
+     * Consistent-read honesty: the chunk scan runs in one DB transaction on one
+     * connection with no explicit isolation/lock hints. SQLite (DEFERRED) serializes
+     * writers via locks, not MVCC snapshots; MySQL InnoDB defaults to REPEATABLE READ
+     * which snapshots the first SELECT, but READ-COMMITTED or other engines can mix
+     * source versions between chunks. Callers must not claim snapshot guarantees
+     * beyond what the runtime DB actually provides; post-commit invalidation via
+     * dashboard source revision is the correctness backstop, not the transaction alone.
      *
      * @param  CarbonInterface  $startInclusive
      * @param  CarbonInterface  $endExclusive
      * @param  int  $k
      * @return array{
-     *     items: array<int, array{product_id: int, name: string, sales_count: int}>,
+     *     items: array<int, array{product_id: int|string, name: string, sales_count: int}>,
      *     metadata: array{
      *         source: string,
      *         refund_basis: string,
@@ -67,6 +89,8 @@ class PaidProductRankingService
 
             /** @var array<int, array{product_id: int, name: string, sales_count: int, latest_time: int, latest_line_id: int}> $map */
             $map = [];
+            // ponytail: label tracks most recent eligible line even when its net<=0;
+            // sales_count still sums net, zero-total products omitted at heap stage.
 
             $query = DB::table('invoice_lines')
                 ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
@@ -110,21 +134,19 @@ class PaidProductRankingService
                         continue;
                     }
 
-                    // Skip lines with non-positive net sales
-                    if ($net <= 0) {
-                        continue;
-                    }
-
                     $productId = (int) $row->menu_item_id;
                     $lineId = (int) $row->line_id;
                     $rawIssued = (string) $row->issued_at;
-                    $issuedAtTime = (int) (strtotime($rawIssued) * 1000);
+                    $baseSec = (int) strtotime($rawIssued);
+                    $micros = 0;
                     if (str_contains($rawIssued, '.')) {
-                        $parts = explode('.', $rawIssued);
-                        if (isset($parts[1]) && is_numeric($parts[1])) {
-                            $issuedAtTime += (int) substr(str_pad($parts[1], 3, '0'), 0, 3);
+                        $frac = explode('.', $rawIssued, 2)[1] ?? '';
+                        $frac = (string) preg_replace('/[^0-9].*$/', '', $frac);
+                        if ($frac !== '') {
+                            $micros = (int) substr(str_pad($frac, 6, '0'), 0, 6);
                         }
                     }
+                    $issuedAtTime = $baseSec * 1000000 + $micros;
                     $rawName = is_string($row->name_snapshot) ? trim($row->name_snapshot) : '';
                     $name = $rawName !== '' ? $rawName : 'Món #'.$productId;
 
@@ -186,14 +208,20 @@ class PaidProductRankingService
                     $items[] = $heap->extract();
                 }
 
-                // Final sort: sales_count descending, product_id ascending
+                // Final sort: sales_count descending, product_id ascending (numeric, never lexicographic)
                 usort($items, function (array $a, array $b): int {
                     if ($a['sales_count'] !== $b['sales_count']) {
                         return $b['sales_count'] <=> $a['sales_count'];
                     }
 
-                    return $a['product_id'] <=> $b['product_id'];
+                    return (int) $a['product_id'] <=> (int) $b['product_id'];
                 });
+
+                // Decimal-string rule: exact ints when JS-safe, strings beyond.
+                foreach ($items as &$row) {
+                    $row['product_id'] = self::serializeProductId((int) $row['product_id']);
+                }
+                unset($row);
             }
 
             return [
