@@ -482,4 +482,19 @@ describe('extractServerOrderViews', () => {
         assert.equal(views[0].invoiceKey, 'draft_102');
         assert.equal(views[0].items[0].isConfirmed, false);
     });
+
+    it('isolates local unconfirmed drafts from server unconfirmed items', () => {
+        // Simulates the baseline reconciliation filter:
+        // Local drafts lack orderItemId; server draft items have orderItemId
+        const cartItems: Array<{ isConfirmed: boolean; orderItemId?: number; name: string }> = [
+            { isConfirmed: false, orderItemId: 101, name: 'Server draft item' },
+            { isConfirmed: false, name: 'Local draft item' },
+            { isConfirmed: true, orderItemId: 102, name: 'Confirmed item' },
+        ];
+
+        const localDraftsOnly = cartItems.filter((i) => !i.isConfirmed && !i.orderItemId);
+
+        assert.equal(localDraftsOnly.length, 1);
+        assert.equal(localDraftsOnly[0].name, 'Local draft item');
+    });
 });
