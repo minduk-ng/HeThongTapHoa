@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Table;
+use App\Services\KitchenDispatchService;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -22,6 +23,10 @@ use Inertia\Response;
 
 class KitchenController extends Controller
 {
+    public function __construct(
+        protected KitchenDispatchService $dispatchService
+    ) {}
+
     public function index(Request $request): Response
     {
         // Load active orders excluding cancelled items
@@ -72,6 +77,8 @@ class KitchenController extends Controller
                 'completed_items' => $completedTodayCount,
                 'warning_orders' => $warningOrdersCount,
             ],
+            'workGroups' => $this->dispatchService->projectPending(),
+            'serverNow' => now()->toIso8601String(),
         ]);
     }
 
@@ -316,5 +323,30 @@ class KitchenController extends Controller
 
             return back()->withErrors(['error' => 'Hủy món thất bại: '.$e->getMessage()]);
         }
+    }
+
+    public function updateGroupDeadline(Request $request, int $group): JsonResponse
+    {
+        $validated = $request->validate([
+            'deadline_at' => 'required|string',
+            'reason' => 'required|string|max:255',
+            'expected_version' => 'required|integer|min:1',
+        ]);
+
+        $userId = (int) $request->user()?->id;
+
+        $updatedGroup = $this->dispatchService->updateDeadline(
+            $group,
+            $validated['deadline_at'],
+            $validated['reason'],
+            (int) $validated['expected_version'],
+            $userId
+        );
+
+        return response()->json([
+            'group' => $updatedGroup,
+            'serverNow' => now()->toIso8601String(),
+            ...$updatedGroup,
+        ]);
     }
 }

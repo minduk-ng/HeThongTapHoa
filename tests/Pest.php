@@ -114,6 +114,8 @@ function posStaff(array $permissions = ['pos.view', 'pos.create'], array $pagePa
         $page->roles()->syncWithoutDetaching([$role->id]);
     }
 
+    Cache::forget('system_page_roles');
+
     return $user->fresh();
 }
 

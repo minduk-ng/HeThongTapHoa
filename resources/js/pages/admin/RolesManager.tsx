@@ -46,6 +46,7 @@ const PERMISSION_LABEL_DICTIONARY: Record<string, string> = {
     'planning.apply_model': 'Áp dụng mô hình dự báo',
     'planning.procurement_review': 'Duyệt kế hoạch nhập hàng',
     'planning.experiments': 'Quản lý dữ liệu thử nghiệm',
+    'kitchen.dispatch.manage': 'Quản lý hạn điều phối',
 };
 
 function formatPermissionLabel(permName: string): string {

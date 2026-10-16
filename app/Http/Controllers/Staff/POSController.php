@@ -14,6 +14,7 @@ use App\Models\OrderItem;
 use App\Models\Promotion;
 use App\Models\Table;
 use App\Services\IdempotencyGuard;
+use App\Services\KitchenDispatchService;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,6 +29,10 @@ use Inertia\Response;
 class POSController extends Controller
 {
     use GeneratesOrderCode;
+
+    public function __construct(
+        protected KitchenDispatchService $dispatchService
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -347,8 +352,9 @@ class POSController extends Controller
                         $table->update(['status' => 'occupied']);
                     }
 
+                    $createdItems = [];
                     foreach ($validated['items'] as $item) {
-                        OrderItem::create([
+                        $createdItems[] = OrderItem::create([
                             'order_id' => $createdOrder->id,
                             'menu_item_id' => $item['menu_item_id'],
                             'quantity' => $item['quantity'],
@@ -357,6 +363,8 @@ class POSController extends Controller
                             'note' => $item['note'] ?? null,
                         ]);
                     }
+
+                    $this->dispatchService->createBatchForOrderItems($createdOrder, $createdItems);
 
                     // Audit log
                     $userId = $request->user()?->id;
