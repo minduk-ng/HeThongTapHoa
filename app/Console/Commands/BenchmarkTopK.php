@@ -411,7 +411,7 @@ class BenchmarkTopK extends Command
                         continue;
                     }
                     $net = $qty - $ref;
-                    if ($row->menu_item_id === null || !is_numeric($row->menu_item_id)) {
+                    if ($row->menu_item_id === null || ! is_numeric($row->menu_item_id)) {
                         continue;
                     }
                     if ($net <= 0) {
@@ -430,7 +430,7 @@ class BenchmarkTopK extends Command
                     }
                     $name = trim((string) $row->name_snapshot);
 
-                    if (!isset($map[$pid])) {
+                    if (! isset($map[$pid])) {
                         $map[$pid] = [
                             'product_id' => $pid,
                             'name' => $name,
@@ -458,7 +458,7 @@ class BenchmarkTopK extends Command
 
             // Heap selection from aggregated map
             $tHeap0 = hrtime(true);
-            $heap = new PaidProductMinHeap();
+            $heap = new PaidProductMinHeap;
             foreach ($map as $candidate) {
                 if ($candidate['sales_count'] <= 0) {
                     continue;
@@ -485,7 +485,7 @@ class BenchmarkTopK extends Command
             // Final K ordering from heap
             $tHeapSort0 = hrtime(true);
             $heapItems = [];
-            while (!$heap->isEmpty()) {
+            while (! $heap->isEmpty()) {
                 $heapItems[] = $heap->extract();
             }
             usort($heapItems, function (array $a, array $b): int {

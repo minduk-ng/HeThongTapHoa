@@ -6,6 +6,7 @@ use App\Services\Manager\DashboardService;
 use App\Services\Manager\PaidProductRankingService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 it('uses latest eligible label even when newest line is fully refunded', function () {
     $item = posMenuItem();
@@ -94,8 +95,8 @@ it('preserves microsecond precision when choosing latest label', function () {
     ]);
 
     // Force raw microsecond timestamps (bypass Eloquent second truncation)
-    Illuminate\Support\Facades\DB::table('invoices')->where('id', $invNewer->id)->update(['issued_at' => '2026-10-16 12:00:00.123456']);
-    Illuminate\Support\Facades\DB::table('invoices')->where('id', $invOlder->id)->update(['issued_at' => '2026-10-16 12:00:00.123400']);
+    DB::table('invoices')->where('id', $invNewer->id)->update(['issued_at' => '2026-10-16 12:00:00.123456']);
+    DB::table('invoices')->where('id', $invOlder->id)->update(['issued_at' => '2026-10-16 12:00:00.123400']);
 
     expect($lineNewer->id)->toBeLessThan($lineOlder->id);
 

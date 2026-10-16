@@ -4,7 +4,6 @@ use App\Models\KitchenSendBatch;
 use App\Models\KitchenStation;
 use App\Models\KitchenWorkGroup;
 use App\Models\MenuCategory;
-use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderActivity;
 use App\Models\OrderItem;
@@ -445,4 +444,3 @@ it('filters projectPending by stationId and includes paid orders with pending it
     expect($refreshedBar[0]['deadlineAt'])->toBe($initialDeadline);
     expect($refreshedBar[0]['items'][0]['quantity'])->toBe(3);
 });
-

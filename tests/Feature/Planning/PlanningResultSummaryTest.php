@@ -1,11 +1,16 @@
 <?php
 
 use App\Models\ForecastRun;
+use App\Models\Ingredient;
+use App\Models\InventoryRecommendation;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\ProductForecast;
+use App\Models\SyntheticDataset;
+use App\Services\Forecasting\PlanningResultSummary;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -68,7 +73,7 @@ it('reports missing and attempted runs without making attempts active', function
     ->with([[null, 'no_run'], ['queued', 'running'], ['running', 'running'], ['failed', 'failed']]);
 
 it('isolates source kind and requested horizon while preserving completed results', function ($path) {
-    $dataset = \App\Models\SyntheticDataset::create([
+    $dataset = SyntheticDataset::create([
         'name' => 'Summary fixture', 'seed' => 1, 'configuration' => [],
         'configuration_hash' => 'fixture', 'generator_version' => 'test', 'dataset_hash' => 'fixture',
     ]);
@@ -125,16 +130,18 @@ it('counts distinct available products and persisted recommendations without wri
             'model_key' => 'sma_7', 'data_quality' => 'limited', 'data_cutoff' => now(),
         ]);
     }
-    $ingredient = \App\Models\Ingredient::create(['name' => 'Beans', 'code' => 'SUMMARY-BEANS', 'unit' => 'kg']);
-    \App\Models\InventoryRecommendation::create([
+    $ingredient = Ingredient::create(['name' => 'Beans', 'code' => 'SUMMARY-BEANS', 'unit' => 'kg']);
+    InventoryRecommendation::create([
         'forecast_run_id' => $run->id, 'ingredient_id' => $ingredient->id,
         'demand_quantity' => 1, 'stock_quantity' => 10, 'safety_stock' => 1,
         'reorder_point' => 2, 'final_quantity' => 0, 'suggested_quantity' => 0,
         'unit' => 'kg', 'purchase_unit' => 'kg', 'bom_hash' => 'fixture',
     ]);
     $queries = [];
-    \Illuminate\Support\Facades\DB::listen(function ($query) use (&$queries) { $queries[] = $query->sql; });
-    $summary = app(\App\Services\Forecasting\PlanningResultSummary::class)->forRun($run, $run, 7);
+    DB::listen(function ($query) use (&$queries) {
+        $queries[] = $query->sql;
+    });
+    $summary = app(PlanningResultSummary::class)->forRun($run, $run, 7);
     expect($summary)->toMatchArray([
         'unfiltered_product_count' => 1, 'available_product_count' => 1,
         'recommendation_count' => 1, 'positive_recommendation_count' => 0, 'empty_reason' => null,

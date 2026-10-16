@@ -2,7 +2,6 @@
 
 namespace App\Services\Manager;
 
-use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -44,8 +43,6 @@ class PaidProductRankingService
     /**
      * Serialize product ID for JSON: exact int when JS-safe, decimal string beyond.
      * Numeric tie ordering always uses backend ints; this only affects output encoding.
-     *
-     * @return int|string
      */
     public static function serializeProductId(int $id): int|string
     {
@@ -64,9 +61,6 @@ class PaidProductRankingService
      * beyond what the runtime DB actually provides; post-commit invalidation via
      * dashboard source revision is the correctness backstop, not the transaction alone.
      *
-     * @param  CarbonInterface  $startInclusive
-     * @param  CarbonInterface  $endExclusive
-     * @param  int  $k
      * @return array{
      *     items: array<int, array{product_id: int|string, name: string, sales_count: int}>,
      *     metadata: array{
@@ -122,15 +116,17 @@ class PaidProductRankingService
                     // Skip invalid lines: negative quantity, negative refund, or refund > quantity
                     if ($quantity < 0 || $refundedQty < 0 || $refundedQty > $quantity) {
                         $invalidLineCount++;
+
                         continue;
                     }
 
                     $net = $quantity - $refundedQty;
 
                     // Skip lines without valid numeric product ID and track coverage
-                    if ($row->menu_item_id === null || !is_numeric($row->menu_item_id)) {
+                    if ($row->menu_item_id === null || ! is_numeric($row->menu_item_id)) {
                         $unidentifiedLineCount++;
                         $unidentifiedNetQuantity += $net;
+
                         continue;
                     }
 
@@ -150,7 +146,7 @@ class PaidProductRankingService
                     $rawName = is_string($row->name_snapshot) ? trim($row->name_snapshot) : '';
                     $name = $rawName !== '' ? $rawName : 'Món #'.$productId;
 
-                    if (!isset($map[$productId])) {
+                    if (! isset($map[$productId])) {
                         $map[$productId] = [
                             'product_id' => $productId,
                             'name' => $name,
@@ -176,7 +172,7 @@ class PaidProductRankingService
             // Select Top-K using size-K min-heap
             $items = [];
             if ($k > 0) {
-                $heap = new PaidProductMinHeap();
+                $heap = new PaidProductMinHeap;
 
                 foreach ($map as $candidate) {
                     if ($candidate['sales_count'] <= 0) {
@@ -204,7 +200,7 @@ class PaidProductRankingService
                     }
                 }
 
-                while (!$heap->isEmpty()) {
+                while (! $heap->isEmpty()) {
                     $items[] = $heap->extract();
                 }
 

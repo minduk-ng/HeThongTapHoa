@@ -221,9 +221,9 @@ it('broadcasts deadline updates only after commit, never on rollback', function 
             $group->version,
             $manager->id
         );
-        throw new \RuntimeException('outer rollback probe');
+        throw new RuntimeException('outer rollback probe');
         DB::commit();
-    } catch (\RuntimeException) {
+    } catch (RuntimeException) {
         DB::rollBack();
     }
 

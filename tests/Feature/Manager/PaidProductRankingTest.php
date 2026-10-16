@@ -2,6 +2,7 @@
 
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
+use App\Models\SyntheticDataset;
 use App\Services\Manager\PaidProductRankingService;
 use Carbon\Carbon;
 
@@ -99,7 +100,7 @@ it('tracks unidentified lines in metadata without polluting rankings', function 
 it('excludes synthetic invoices', function () {
     $item = posMenuItem(['name' => 'Mon Synthetic']);
 
-    $dataset = \App\Models\SyntheticDataset::create([
+    $dataset = SyntheticDataset::create([
         'name' => 'Test Dataset',
         'seed' => 42,
         'configuration' => [],
@@ -442,6 +443,7 @@ it('matches full-sort oracle exactly for top-k selection with tie-breakers and c
         if ($a['sales_count'] !== $b['sales_count']) {
             return $b['sales_count'] <=> $a['sales_count'];
         }
+
         return $a['product_id'] <=> $b['product_id'];
     })->values();
 
@@ -501,4 +503,3 @@ it('handles bounded K edge cases including zero K and fewer than K products', fu
     expect($resFive['items'][0]['product_id'])->toBe($item->id);
     expect($resFive['metadata']['generated_at'])->not->toBeEmpty();
 });
-

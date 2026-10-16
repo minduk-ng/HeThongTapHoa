@@ -6,6 +6,7 @@ use App\Events\OrderSentToKitchen;
 use App\Models\KitchenSendBatch;
 use App\Models\KitchenStation;
 use App\Models\KitchenWorkGroup;
+use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -387,7 +388,7 @@ class KitchenDispatchService
     public function listCategoryStations(): array
     {
         $result = [];
-        foreach (\App\Models\MenuCategory::query()->orderBy('id', 'asc')->get() as $c) {
+        foreach (MenuCategory::query()->orderBy('id', 'asc')->get() as $c) {
             $result[] = [
                 'id' => (int) $c->id,
                 'name' => (string) $c->name,
@@ -407,8 +408,8 @@ class KitchenDispatchService
     public function updateCategoryStation(int $categoryId, ?int $stationId, int $userId): array
     {
         $payload = DB::transaction(function () use ($categoryId, $stationId, $userId) {
-            /** @var \App\Models\MenuCategory|null $category */
-            $category = \App\Models\MenuCategory::query()->where('id', $categoryId)->lockForUpdate()->first();
+            /** @var MenuCategory|null $category */
+            $category = MenuCategory::query()->where('id', $categoryId)->lockForUpdate()->first();
 
             if (! $category) {
                 abort(404, 'Menu category not found.');
