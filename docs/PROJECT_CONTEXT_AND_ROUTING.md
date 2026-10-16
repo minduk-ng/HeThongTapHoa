@@ -325,6 +325,9 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
   ```
   Cách bọc này ngăn chặn hoàn toàn lỗi runtime `TypeError: tables.reduce/forEach/filter is not a function` gây sập trắng màn hình (White Screen crash) khi cập nhật dữ liệu qua WebSocket/Inertia reload.
 
+### 8.11 Thuật Toán & Chỉ Mục Thực Đơn POS (`menuAlgorithms.ts` & `usePOSMenuIndex.ts`)
+- Bộ tìm kiếm và lọc thực đơn thuần túy phía frontend tại `resources/js/pages/staff/pos/utils/menuAlgorithms.ts` và hook chỉ mục `resources/js/pages/staff/pos/hooks/usePOSMenuIndex.ts` cung cấp chuẩn hóa tên tiếng Việt không dấu (Unicode NFD), lọc khoảng giá nhị phân hai đầu trên chỉ mục MergeSort ổn định, và tổng hợp số lượng giỏ hàng qua Map ID. Các hợp đồng ràng buộc cốt lõi gồm: `price` luôn đại diện cho giá niêm yết hiển thị (`POSProductData.price`, quy đổi minor unit integer tránh sai số), thứ tự hiển thị mặc định bảo toàn đúng thứ tự gốc (`original`), và khi khoảng giá không hợp lệ (`min > max` hoặc sai định dạng) hệ thống giữ nguyên kết quả hợp lệ gần nhất kèm thông báo lỗi tiếng Việt tại ô nhập mà không tự động đổi chỗ hay kẹp giá trị. Chi tiết xem thiết kế tại `docs/superpowers/specs/2026-10-16-pos-menu-algorithms-design.md` và kế hoạch tại `docs/superpowers/plans/2026-10-16-pos-menu-algorithms.md`.
+
 ---
 
 ## 9. 📅 Đặt Bàn & Đặt Cọc (Reservation & Deposit Flow)
