@@ -60,9 +60,10 @@ export default function POSMenuTab({
     const effectiveQuery = localQuery !== null ? localQuery : searchQuery;
 
     // Call queryMenu only when index is available and range is valid
-    const filteredProducts = useMemo(() => {
-        if (!index || !priceRangeResult.ok) {
-            return [];
+    const [lastValidProducts, setLastValidProducts] = useState<POSProductData[]>([]);
+    const queryProducts = useMemo(() => {
+        if (!index || indexError || !priceRangeResult.ok) {
+            return null;
         }
 
         return queryMenu(index, {
@@ -72,7 +73,14 @@ export default function POSMenuTab({
             maxMinor: priceRangeResult.maxMinor,
             sort: sortMode,
         });
-    }, [index, priceRangeResult, effectiveQuery, selectedCategoryId, sortMode]);
+    }, [index, indexError, priceRangeResult, effectiveQuery, selectedCategoryId, sortMode]);
+
+    if (queryProducts && queryProducts !== lastValidProducts) {
+        setLastValidProducts(queryProducts);
+    }
+
+    const filteredProducts = queryProducts ?? lastValidProducts;
+    const stale = !!indexError || !priceRangeResult.ok;
 
     const handleReset = () => {
         setSelectedCategoryId('all');
@@ -137,6 +145,7 @@ export default function POSMenuTab({
                             type="text"
                             inputMode="decimal"
                             placeholder="Từ..."
+                            aria-label="Giá tối thiểu (số thập phân, dấu chấm, tối đa 2 chữ số lẻ)"
                             value={minPrice}
                             onChange={(e) => setMinPrice(e.target.value)}
                             className={`w-20 rounded-lg border px-2 py-1 text-xs text-zinc-900 transition-colors focus:outline-none dark:text-zinc-100 ${
@@ -152,6 +161,7 @@ export default function POSMenuTab({
                             type="text"
                             inputMode="decimal"
                             placeholder="Đến..."
+                            aria-label="Giá tối đa (số thập phân, dấu chấm, tối đa 2 chữ số lẻ)"
                             value={maxPrice}
                             onChange={(e) => setMaxPrice(e.target.value)}
                             className={`w-20 rounded-lg border px-2 py-1 text-xs text-zinc-900 transition-colors focus:outline-none dark:text-zinc-100 ${
@@ -170,6 +180,7 @@ export default function POSMenuTab({
                             Sắp xếp:
                         </span>
                         <select
+                            aria-label="Sắp xếp món"
                             value={sortMode}
                             onChange={(e) =>
                                 setSortMode(e.target.value as SortMode)
@@ -204,6 +215,11 @@ export default function POSMenuTab({
                 </div>
 
                 {/* Index error banner if payload refresh fails */}
+                {stale && (
+                    <p role="status" className="text-xs text-amber-700">
+                        Đang hiển thị kết quả hợp lệ gần nhất. Tạm khóa chọn món đến khi dữ liệu và bộ lọc hợp lệ.
+                    </p>
+                )}
                 {indexError && (
                     <div className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300">
                         {indexError}
@@ -242,7 +258,7 @@ export default function POSMenuTab({
                                     : 999;
                             const isOutOfStock = maxServings <= 0;
                             const isActionDisabled =
-                                isOutOfStock || !!indexError;
+                                isOutOfStock || !product.is_available || stale;
                             const isLowStock =
                                 maxServings > 0 && maxServings <= 5;
 
@@ -250,6 +266,7 @@ export default function POSMenuTab({
                                 <div
                                     key={product.id}
                                     role="button"
+                                    aria-disabled={isActionDisabled}
                                     tabIndex={isActionDisabled ? -1 : 0}
                                     onClick={() =>
                                         !isActionDisabled &&

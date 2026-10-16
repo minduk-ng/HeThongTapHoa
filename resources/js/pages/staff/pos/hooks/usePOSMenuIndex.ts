@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { POSProductData } from '../types/pos.types';
 import type { MenuIndex } from '../utils/menuAlgorithms';
 import { buildMenuIndex } from '../utils/menuAlgorithms';
@@ -7,7 +7,8 @@ export function usePOSMenuIndex(products: readonly POSProductData[]): {
     index: MenuIndex | null;
     indexError: string | null;
 } {
-    return useMemo(() => {
+    const [lastValidIndex, setLastValidIndex] = useState<MenuIndex | null>(null);
+    const result = useMemo(() => {
         try {
             return { index: buildMenuIndex(products), indexError: null };
         } catch (e) {
@@ -20,4 +21,10 @@ export function usePOSMenuIndex(products: readonly POSProductData[]): {
             };
         }
     }, [products]);
+
+    if (result.index && result.index !== lastValidIndex) {
+        setLastValidIndex(result.index);
+    }
+
+    return { index: result.index ?? lastValidIndex, indexError: result.indexError };
 }

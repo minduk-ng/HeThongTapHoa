@@ -17,12 +17,13 @@
 
 - Giá lọc là giá niêm yết, so theo đơn vị phần trăm nguyên; không phải giá sau khuyến mãi.
 - Undo chỉ lưu món chưa xác nhận trong phiên; không hoàn tác thanh toán hay gửi bếp.
+- Snapshot Undo clone sâu trước freeze; thiếu capacity chặn restore. Menu giữ kết quả/index hợp lệ gần nhất khi dữ liệu hoặc khoảng giá lỗi, hiển thị stale và khóa chọn món; Reset đồng bộ ô tìm kiếm cha.
 - Bếp lấy trạng thái/số lượng từ `order_items`; legacy backfill tạo nhóm riêng từng dòng, không dựng lại batch lịch sử chính xác.
 - Top-K dùng hóa đơn thật có phương thức thanh toán, trừ `invoice_lines.refunded_qty`; không suy số món hoàn từ tiền hoàn. Dòng thiếu ID bị loại và có bộ đếm độ phủ.
 - Cache, SQL `orderBy`, collection sort và framework không được coi là bằng chứng tự cài MergeSort/heap.
 
 ## Trạng thái nghiệm thu
 
-PHP: 915 tests, 7.265 assertions đạt. Node: 109 tests đạt. TypeScript, ESLint phạm vi mã ứng dụng thay đổi, PHPStan ba service và production build đạt. Tuy nhiên còn lỗi tích hợp menu/Undo, thiếu quản trị và readiness bếp, cùng khoảng trống độ chính xác/cache của Top-K. **Chưa chấp nhận merge `main`.** Chi tiết: `.superpowers/final-restaurant-algorithms-acceptance.md`.
+Baseline PHP: 915 tests, 7.265 assertions đạt; PHPStan ba service đạt. Sau sửa menu và snapshot/capacity Undo: Node 110 tests, TypeScript, scoped ESLint và production build đạt. Menu chưa kiểm thử tương tác trình duyệt; còn lỗi tích hợp lifecycle Undo, thiếu quản trị/readiness bếp và độ chính xác/cache Top-K. **Chưa chấp nhận merge `main`.** Chi tiết: `.superpowers/final-restaurant-algorithms-acceptance.md`.
 
 Chưa migrate/backfill DB vận hành. Test SQLite bộ nhớ không chứng minh schema đã triển khai hoặc nghiệp vụ trình duyệt đăng nhập đã đạt.

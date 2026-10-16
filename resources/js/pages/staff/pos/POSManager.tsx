@@ -397,6 +397,7 @@ return [];
                                     cartItems={currentCart}
                                     onToggleProduct={handleToggleProduct}
                                     searchQuery={searchQuery}
+                                    onSearchChange={setSearchQuery}
                                 />
                             ) : (
                                 <POSLogTab

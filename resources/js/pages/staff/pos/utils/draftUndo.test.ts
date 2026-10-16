@@ -60,6 +60,17 @@ describe('pushDraftSnapshot', () => {
         assert.equal(nextHistory[0].rows[0].quantity, 2);
     });
 
+    it('deep copies metadata without freezing live cart metadata', () => {
+        const metadata = { options: ['hot'] };
+        const history = pushDraftSnapshot([], { rows: [{
+            draftLineId: 'nested', menu_item_id: 1, quantity: 1,
+            unit_price: 1000, vat_rate: 0, metadata,
+        }] });
+        metadata.options.push('milk');
+        assert.deepEqual(history[0].rows[0].metadata, { options: ['hot'] });
+        assert.ok(Object.isFrozen((history[0].rows[0].metadata as typeof metadata).options));
+    });
+
     it('supports custom capacity limit', () => {
         let h: DraftSnapshot[] = [];
 
@@ -212,13 +223,13 @@ describe('validateRestore', () => {
         assert.deepEqual(resultExact, { ok: true });
     });
 
-    it('uses default max_servings of 999 when unspecified', () => {
+    it('rejects missing capacity even for one serving', () => {
         const snap: DraftSnapshot = {
             rows: [
                 {
                     draftLineId: 'l1',
                     menu_item_id: 101,
-                    quantity: 1000,
+                    quantity: 1,
                     unit_price: 25000,
                     vat_rate: 8,
                 },
@@ -230,7 +241,7 @@ describe('validateRestore', () => {
 
         assert.deepEqual(result, {
             ok: false,
-            message: 'Số lượng vượt quá suất phục vụ hiện tại.',
+            message: 'Chưa có dữ liệu suất phục vụ hiện tại.',
         });
     });
 

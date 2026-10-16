@@ -44,7 +44,7 @@ function freeze<T>(v: T): T {
 }
 
 function cloneRows(rows: readonly DraftLine[]): DraftLine[] {
-    return rows.map((r) => ({ ...r }));
+    return structuredClone([...rows]);
 }
 
 export function pushDraftSnapshot(
@@ -104,7 +104,11 @@ export function validateRestore(
             return { ok: false, message: 'Món hiện đã hết hàng.' };
         }
 
-        const cap = p.max_servings ?? 999;
+        const cap = p.max_servings;
+
+        if (cap == null || !Number.isFinite(cap) || cap < 0) {
+            return { ok: false, message: 'Chưa có dữ liệu suất phục vụ hiện tại.' };
+        }
 
         if (qty > cap) {
             return {

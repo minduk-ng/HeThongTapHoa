@@ -1,5 +1,16 @@
 # Nghiệm thu cuối restaurant algorithms — chưa đạt
 
+## Tiến độ sửa tiếp từ c5df1d9 (16/10/2026)
+
+- Đã sửa `draftUndo.ts`: snapshot clone sâu bằng `structuredClone`, không freeze metadata đang dùng trong giỏ; restore từ chối capacity thiếu/không hữu hạn/âm. Hai regression đã chạy đỏ trước sửa, sau sửa 20/20 tests đạt.
+- Đã sửa menu: giữ index và kết quả hợp lệ gần nhất khi refresh/range lỗi, đánh dấu stale và khóa chọn món; thêm accessible labels và `aria-disabled`; Reset nối `setSearchQuery` ở `POSManager`. Chưa có kiểm thử tương tác component/browser cho phần này.
+- Gate sau sửa: toàn bộ Node 110/110, TypeScript đạt, scoped ESLint bốn file ứng dụng đạt, `git diff --check` đạt, production build đạt (cảnh báo chunk >500 kB/plugin timing).
+- Impact trước sửa: `validateRestore` LOW, 2 callers; `cloneRows` HIGH, caller trực tiếp `pushDraftSnapshot`, ảnh hưởng add/remove/quantity; đã cảnh báo trước sửa. Menu hook/component/manager LOW theo graph; JSX được đối chiếu trực tiếp.
+- Chưa sửa PHP; 915 tests bên dưới vẫn là bằng chứng baseline, chưa chạy lại trong lượt sửa này. Chưa chạy browser fixture, chưa dùng DB vận hành.
+- Còn phải làm: nối Undo lifecycle/captured generation và invalidation mọi caller send/payment/table; kiểm tra confirmed isolation; kitchen station-ID filter, quản trị có permission/audit/version, readiness và after-commit; toàn bộ lỗi Top-K liệt kê bên dưới; regression tích hợp/browser; full PHP với SQLite bộ nhớ, PHPStan và final independent review. Chưa đạt điều kiện merge.
+
+Các phát hiện bên dưới là audit nền; mục menu và clone/capacity đã có sửa mã như trên, chưa coi là nghiệm thu UI.
+
 ## Mốc kiểm tra
 
 - Root: `D:\Projects\TapHoa`; feature HEAD trước kiểm tra: `c0051786a2504bef45559c7d0a83166546bcd27e`.
