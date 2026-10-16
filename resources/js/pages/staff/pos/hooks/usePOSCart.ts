@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { POSTableData, POSProductData, CartItem } from '../types/pos.types';
 
 export function usePOSCart(
@@ -6,6 +6,12 @@ export function usePOSCart(
     tables: POSTableData[],
     products: POSProductData[],
 ) {
+    // ponytail: O(1) product lookup map memoized per products array revision
+    const productById = useMemo(
+        () => new Map(products.map((p) => [p.id, p])),
+        [products],
+    );
+
     const [tableCarts, setTableCarts] = useState<
         Record<number, Record<string, CartItem[]>>
     >({});
@@ -264,7 +270,7 @@ return;
         const tableId = selectedTable.id;
         const activeId = activeInvoiceId[tableId] || 'draft_default';
         const existingCart = (tableCarts[tableId] || {})[activeId] || [];
-        const product = products.find((p) => p.id === menuItemId);
+        const product = productById.get(menuItemId);
         const maxServings =
             product?.max_servings !== undefined ? product.max_servings : 999;
 
