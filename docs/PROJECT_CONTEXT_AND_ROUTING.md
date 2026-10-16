@@ -328,6 +328,15 @@ Hệ thống sử dụng **Laravel Reverb** kết hợp **Laravel Echo** để t
 ### 8.11 Thuật Toán & Chỉ Mục Thực Đơn POS (`menuAlgorithms.ts` & `usePOSMenuIndex.ts`)
 - Bộ tìm kiếm và lọc thực đơn thuần túy phía frontend tại `resources/js/pages/staff/pos/utils/menuAlgorithms.ts` và hook chỉ mục `resources/js/pages/staff/pos/hooks/usePOSMenuIndex.ts` cung cấp chuẩn hóa tên tiếng Việt không dấu (Unicode NFD), lọc khoảng giá nhị phân hai đầu trên chỉ mục MergeSort ổn định, và tổng hợp số lượng giỏ hàng qua Map ID. Các hợp đồng ràng buộc cốt lõi gồm: `price` luôn đại diện cho giá niêm yết hiển thị (`POSProductData.price`, quy đổi minor unit integer tránh sai số), thứ tự hiển thị mặc định bảo toàn đúng thứ tự gốc (`original`), và khi khoảng giá không hợp lệ (`min > max` hoặc sai định dạng) hệ thống giữ nguyên kết quả hợp lệ gần nhất kèm thông báo lỗi tiếng Việt tại ô nhập mà không tự động đổi chỗ hay kẹp giá trị. Chi tiết xem thiết kế tại `docs/superpowers/specs/2026-10-16-pos-menu-algorithms-design.md` và kế hoạch tại `docs/superpowers/plans/2026-10-16-pos-menu-algorithms.md`.
 
+### 8.12 Hoàn Tác Giỏ Hàng Nháp POS (Draft Undo & Snapshot History)
+- Module thuần túy `resources/js/pages/staff/pos/utils/draftUndo.ts` và hook `usePOSCart.ts` cung cấp tính năng Hoàn tác (Undo) giỏ hàng nháp cục bộ theo từng bàn/hóa đơn (`ContextKey`), hỗ trợ tối đa 50 bước lịch sử trong bộ nhớ phiên làm việc (in-memory session, mất khi reload/đăng xuất).
+- **Vòng đời & Vô hiệu hóa**: Chỉ ghi nhận các thao tác thêm món, xóa món và đổi số lượng dòng nháp hợp lệ (không ghi nhận thay đổi món đã gửi bếp hay đã xác nhận). Lịch sử bị xóa khi: gửi bếp thành công (hoặc qua realtime event trước khi HTTP phản hồi), hủy/xóa hóa đơn, thanh toán hoàn tất, chuyển/gộp bàn làm đổi quyền sở hữu, hoặc khi phát hiện thay đổi cấu trúc cơ sở (`fingerprintBaseline`) từ máy khác. Trạng thái gửi bếp hoặc khóa thanh toán sẽ tạm khóa tính năng Hoàn tác.
+- **Chi phí Snapshot & Benchmark**: Thao tác Hoàn tác không phải O(1) toàn trình: stack push/pop đạt O(1) nhưng nhân bản (deep clone) và phục hồi (restore/validate) snapshot có độ phức tạp O(rows). Đo kiểm thực tế (5 lần warmup, trung vị 30 lần chạy trên Node.js v24, AMD Ryzen 7 8845HS) tại `draftUndo.bench.ts` cho thấy:
+  - 10 dòng nháp: Push ~0.0040ms | Pop + Restore ~0.0025ms
+  - 30 dòng nháp: Push ~0.0054ms | Pop + Restore ~0.0066ms
+  - 60 dòng nháp: Push ~0.0140ms | Pop + Restore ~0.0067ms
+  Chi phí thực thi hoàn toàn ở mức vi giây (microsecond), đảm bảo tính phản hồi tức thì và không giật lag UI trên thiết bị POS.
+
 ---
 
 ## 9. 📅 Đặt Bàn & Đặt Cọc (Reservation & Deposit Flow)

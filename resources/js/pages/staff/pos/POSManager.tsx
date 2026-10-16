@@ -99,6 +99,10 @@ export default function POSManager({ tables, categories, products, promotions }:
         handleUpdateNote,
         clearTableCart,
         clearUnconfirmedDraft,
+        canUndo,
+        undoDraft,
+        undoError,
+        sending,
     } = usePOSCart(selectedTable, safeTables, safeProducts);
 
     const lastEventRef = useRef<{ key: string; time: number }>({ key: '', time: 0 });
@@ -411,6 +415,10 @@ return [];
                             cartItems={currentCart}
                             activeInvoiceId={selectedTable ? (activeInvoiceId[selectedTable.id] || 'draft_default') : 'draft_default'}
                             tableCarts={selectedTable ? (tableCarts[selectedTable.id] || {}) : {}}
+                            canUndo={canUndo}
+                            undoDraft={undoDraft}
+                            undoError={undoError}
+                            sending={sending}
                             onSelectInvoice={(invId) => selectedTable && setActiveInvoiceId(prev => ({ ...prev, [selectedTable.id]: invId }))}
                             onAddInvoice={() => selectedTable && addNewDraftInvoice(selectedTable.id)}
                             onRemoveInvoice={(invId) => selectedTable && removeDraftInvoice(selectedTable.id, invId)}

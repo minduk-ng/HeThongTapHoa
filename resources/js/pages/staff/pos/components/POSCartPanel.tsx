@@ -14,6 +14,7 @@ import {
     CalendarClock,
     Banknote,
     LogIn,
+    RotateCcw,
 } from 'lucide-react';
 import React, { useState } from 'react';
 import VoidItemModal from '@/pages/staff/kitchen/components/VoidItemModal';
@@ -46,6 +47,10 @@ interface POSCartPanelProps {
     onOpenPayment: () => void;
     onOpenSinglePayment?: () => void;
     submitting: boolean;
+    canUndo?: boolean;
+    undoDraft?: () => void;
+    undoError?: string | null;
+    sending?: boolean;
     isCheckoutLocked?: boolean;
     checkoutLockedBy?: string;
     reservationDraft?: ReservationDraft | null;
@@ -73,6 +78,10 @@ export default function POSCartPanel({
     onOpenPayment,
     onOpenSinglePayment,
     submitting,
+    canUndo = false,
+    undoDraft,
+    undoError = null,
+    sending = false,
     isCheckoutLocked = false,
     checkoutLockedBy = '',
     reservationDraft,
@@ -181,6 +190,26 @@ export default function POSCartPanel({
     const isPaymentBlocked =
         hasUnconfirmedChanges ||
         activeInvoiceId.startsWith('draft_');
+
+    const isUndoDisabled = Boolean(
+        !selectedTable ||
+        !canUndo ||
+        sending ||
+        submitting ||
+        isCheckoutLocked,
+    );
+
+    const undoDisabledReason = !selectedTable
+        ? 'Chưa chọn bàn phục vụ'
+        : isCheckoutLocked
+          ? checkoutLockedBy
+              ? `Bàn này đang được thanh toán bởi ${checkoutLockedBy}`
+              : 'Bàn đang khóa thanh toán'
+          : sending || submitting
+            ? 'Đang gửi đơn hoặc đồng bộ dữ liệu'
+            : !canUndo
+              ? 'Không có thao tác nào để hoàn tác'
+              : 'Hoàn tác thao tác vừa thực hiện';
 
     // Virtual "Mang đi" table (id = 0): orders belong to independent customers,
     // so the main button pays only the active order and bulk drop-up is hidden.
@@ -790,6 +819,35 @@ prevSentTime = t;
                         <span className="text-base font-bold text-emerald-600 tabular-nums dark:text-emerald-400">
                             {netAmount.toLocaleString('vi-VN')} đ
                         </span>
+                    </div>
+                </div>
+
+                {/* Draft Actions: Hoàn tác */}
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <button
+                            type="button"
+                            disabled={isUndoDisabled}
+                            onClick={() => undoDraft?.()}
+                            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors duration-150 ${
+                                isUndoDisabled
+                                    ? 'border-zinc-200 bg-zinc-100 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-500 cursor-not-allowed'
+                                    : 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
+                            }`}
+                            title={undoDisabledReason}
+                            aria-label={isUndoDisabled ? undoDisabledReason : 'Hoàn tác'}
+                        >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            <span>Hoàn tác</span>
+                        </button>
+                        {undoError && (
+                            <span
+                                className="text-xs text-rose-600 dark:text-rose-400 font-medium truncate"
+                                role="alert"
+                            >
+                                {undoError}
+                            </span>
+                        )}
                     </div>
                 </div>
 
