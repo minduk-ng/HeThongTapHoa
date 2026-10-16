@@ -22,9 +22,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $cancelled_by_user_id
  * @property Carbon|null $served_at
  * @property Carbon|null $cancelled_at
+ * @property int|null $kitchen_work_group_id
  * @property-read Order $order
  * @property-read MenuItem|null $menuItem
  * @property-read User|null $cancelledBy
+ * @property-read KitchenWorkGroup|null $workGroup
  */
 class OrderItem extends Model
 {
@@ -45,6 +47,7 @@ class OrderItem extends Model
         'cancellation_reason',
         'cancelled_by_user_id',
         'cancelled_at',
+        'kitchen_work_group_id',
     ];
 
     protected $casts = [
@@ -72,5 +75,11 @@ class OrderItem extends Model
     public function cancelledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by_user_id');
+    }
+
+    /** @return BelongsTo<KitchenWorkGroup, $this> */
+    public function workGroup(): BelongsTo
+    {
+        return $this->belongsTo(KitchenWorkGroup::class, 'kitchen_work_group_id');
     }
 }
