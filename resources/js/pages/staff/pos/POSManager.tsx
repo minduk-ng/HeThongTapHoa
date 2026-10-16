@@ -97,8 +97,13 @@ export default function POSManager({ tables, categories, products, promotions }:
         handleStageReduction,
         handleRemoveItem,
         handleUpdateNote,
-        clearTableCart,
         clearUnconfirmedDraft,
+        captureContexts,
+        invalidateContexts,
+        onSendBegin,
+        onSendSuccess,
+        onSendFailure,
+        onSendAmbiguous,
         canUndo,
         undoDraft,
         undoError,
@@ -161,10 +166,6 @@ return;
 return;
 }
 
-                if (selectedTable) {
-                    clearUnconfirmedDraft(selectedTable.id);
-                }
-
                 if (payload?.action_type === 'cancel_order') {
                     const tableStr = payload?.table_number ? `Bàn #${payload.table_number}` : 'đơn hàng';
                     addLogEntry('received', `Đã hủy toàn bộ đơn hàng tại ${tableStr}`, payload?.log_message || 'Giải phóng bàn');
@@ -207,7 +208,7 @@ return;
                 window.Echo.leave('pos-channel');
             };
         }
-    }, [selectedTable, clearUnconfirmedDraft, addLogEntry, isDuplicateEvent]);
+    }, [addLogEntry, isDuplicateEvent]);
 
     const {
         submitting: checkoutSubmitting,
@@ -232,7 +233,7 @@ return;
         setCustomer,
         searchCustomers,
         createCustomer,
-    } = usePOSCheckout(selectedTable, safeTables, safePromotions);
+    } = usePOSCheckout(selectedTable, safeTables, safePromotions, { onSendBegin, onSendSuccess, onSendFailure, onSendAmbiguous });
 
     useEffect(() => {
         handleLockBroadcastRef.current = handleLockBroadcast;
@@ -398,6 +399,8 @@ return [];
                                     onToggleProduct={handleToggleProduct}
                                     searchQuery={searchQuery}
                                     onSearchChange={setSearchQuery}
+                                    disabled={sending || submitting}
+                                    disabledReason={sending || submitting ? 'Đang gửi đơn hoặc đồng bộ dữ liệu' : undefined}
                                 />
                             ) : (
                                 <POSLogTab
@@ -420,6 +423,13 @@ return [];
                             undoDraft={undoDraft}
                             undoError={undoError}
                             sending={sending}
+                            captureInvalidation={(tableIds, invoiceKeys) => {
+                                const groups = safeTables.filter(t => tableIds.includes(t.id)).map(t => t.merged_into_table_id ?? t.id);
+                                const ids = safeTables.filter(t => groups.includes(t.merged_into_table_id ?? t.id)).map(t => t.id);
+                                const keys = captureContexts(ids, invoiceKeys);
+
+                                return () => invalidateContexts(keys, 'table mutation');
+                            }}
                             onSelectInvoice={(invId) => selectedTable && setActiveInvoiceId(prev => ({ ...prev, [selectedTable.id]: invId }))}
                             onAddInvoice={() => selectedTable && addNewDraftInvoice(selectedTable.id)}
                             onRemoveInvoice={(invId) => selectedTable && removeDraftInvoice(selectedTable.id, invId)}
@@ -429,9 +439,7 @@ return [];
                             onUpdateNote={handleUpdateNote}
                             onSendToKitchen={() => {
                                 if (selectedTable) {
-                                    handleSendToKitchen(selectedTable, currentCart, activeInvoiceIdForTable, () => {
-                                        clearUnconfirmedDraft(selectedTable.id, activeInvoiceIdForTable);
-                                    });
+                                    handleSendToKitchen(selectedTable, currentCart, activeInvoiceIdForTable);
                                 }
                             }}
                             onOpenPayment={() => {
@@ -455,7 +463,9 @@ return [];
                                 });
                             }}
                             onCancelReservation={(orderId, resolution, note) => {
+                                const keys = captureContexts(safeTables.map(t => t.id), safeTables.flatMap(t => t.active_orders || (t.active_order ? [t.active_order] : [])).filter(o => o.id === orderId).map(o => o.order_code || `draft_${o.id}`));
                                 cancelReservation(orderId, resolution, note, () => {
+                                    invalidateContexts(keys, 'reservation cancelled');
                                     router.reload({ only: ['tables'] });
                                 });
                             }}
@@ -496,6 +506,10 @@ return [];
                 onCreateCustomer={createCustomer}
                 onConfirmPayment={(paymentMethod, amountReceived, changeAmount, shouldPrint) => {
                     if (selectedTable) {
+                        const groupId = selectedTable.merged_into_table_id ?? selectedTable.id;
+                        const groupIds = safeTables.filter(t => t.id === groupId || t.merged_into_table_id === groupId).map(t => t.id);
+                        const keys = captureContexts(groupIds, paymentMode === 'bulk' ? bulkConfirmedOrders.map(o => o.order_code || `draft_${o.id}`) : [activeInvoiceIdForTable]);
+
                         if (paymentMode === 'bulk') {
                             handleBulkCheckout(
                                 selectedTable,
@@ -508,7 +522,7 @@ return [];
                                 selectedTable,
                                 bulkDepositTotal,
                                 customer?.id ?? null,
-                                () => clearTableCart(selectedTable.id),
+                                () => invalidateContexts(keys, 'payment'),
                             );
                         } else {
                             handleConfirmPayment(
@@ -520,7 +534,7 @@ return [];
                                 changeAmount,
                                 shouldPrint,
                                 customer?.id ?? null,
-                                () => clearTableCart(selectedTable.id, activeInvoiceIdForTable),
+                                () => invalidateContexts(keys, 'payment'),
                                 addLogEntry
                             );
                         }

@@ -8,6 +8,7 @@ interface TransferMergeModalProps {
     onClose: () => void;
     selectedTable: POSTableData | null;
     tables: POSTableData[];
+    captureInvalidation?: (tableIds: number[]) => () => void;
 }
 
 export default function TransferMergeModal({
@@ -15,6 +16,7 @@ export default function TransferMergeModal({
     onClose,
     selectedTable,
     tables,
+    captureInvalidation,
 }: TransferMergeModalProps) {
     const safeTables = (Array.isArray(tables) ? tables : Object.values(tables || {})) as POSTableData[];
     const isMerged = !!(selectedTable && (selectedTable.merged_into_table_id || safeTables.some((t) => t.merged_into_table_id === selectedTable.id)));
@@ -80,6 +82,7 @@ return null;
         setSubmitting(true);
         setErrorMsg(null);
 
+        const invalidate = captureInvalidation?.([selectedTable.id, targetTransferTableId]);
         router.post(
             '/staff/pos/transfer-table',
             {
@@ -89,6 +92,7 @@ return null;
             },
             {
                 onSuccess: () => {
+                    invalidate?.();
                     setSubmitting(false);
                     onClose();
                 },
@@ -112,6 +116,7 @@ return null;
         setSubmitting(true);
         setErrorMsg(null);
 
+        const invalidate = captureInvalidation?.([selectedTable.id, targetMergeTableId]);
         router.post(
             '/staff/pos/merge-tables',
             {
@@ -121,6 +126,7 @@ return null;
             },
             {
                 onSuccess: () => {
+                    invalidate?.();
                     setSubmitting(false);
                     onClose();
                 },
@@ -144,6 +150,7 @@ return null;
         setSubmitting(true);
         setErrorMsg(null);
 
+        const invalidate = captureInvalidation?.([selectedTable.id, keepTableId]);
         router.post(
             '/staff/pos/unmerge-table',
             {
@@ -153,6 +160,7 @@ return null;
             },
             {
                 onSuccess: () => {
+                    invalidate?.();
                     setSubmitting(false);
                     onClose();
                 },

@@ -1,6 +1,7 @@
 import { router, usePage } from '@inertiajs/react';
 import { useState, useRef, useEffect } from 'react';
 import type { POSTableData, CartItem, PosCustomer, ReceiptModalState, PromotionCandidate } from '../types/pos.types';
+import type { usePOSCart } from './usePOSCart';
 import { usePOSCheckoutLock } from './usePOSCheckoutLock';
 
 function getCsrfTokenFromCookie(): string {
@@ -30,7 +31,8 @@ return '';
 export function usePOSCheckout(
     selectedTable: POSTableData | null = null,
     tables: POSTableData[] = [],
-    promotions: PromotionCandidate[] = []
+    promotions: PromotionCandidate[] = [],
+    cartLifecycle?: Pick<ReturnType<typeof usePOSCart>, 'onSendBegin' | 'onSendSuccess' | 'onSendFailure' | 'onSendAmbiguous'>,
 ) {
     const { auth } = usePage<any>().props;
     const [processingOrders, setProcessingOrders] = useState<Record<number, boolean>>({});
@@ -203,6 +205,22 @@ return;
 return;
 }
 
+        const captured = cartLifecycle?.onSendBegin(selectedTable.id, activeInvoiceId || 'draft_default');
+
+        if (cartLifecycle && !captured) {
+            return;
+        }
+
+        let settled = false;
+        const ambiguous = () => {
+            if (settled || !captured) {
+                return;
+            }
+
+            cartLifecycle?.onSendAmbiguous(captured);
+            router.reload({ only: ['tables'] });
+        };
+
         setKitchenSubmitting(true);
 
         // Safety timeout (8s) if DB/Server hangs indefinitely
@@ -211,7 +229,7 @@ clearTimeout(timeoutRef.current);
 }
 
         timeoutRef.current = setTimeout(() => {
-            setKitchenSubmitting(false);
+            ambiguous();
         }, 8000);
 
         const subtotal = newDeltaItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
@@ -237,11 +255,19 @@ clearTimeout(timeoutRef.current);
 
         router.post('/staff/pos/send-to-kitchen', payload, {
             onSuccess: () => {
+                settled = true;
+
+                if (captured) {
+                    cartLifecycle?.onSendSuccess(captured);
+                }
+
                 if (selectedTable && onSuccessCallback) {
                     onSuccessCallback();
                 }
             },
             onFinish: () => {
+                ambiguous();
+
                 if (timeoutRef.current) {
 clearTimeout(timeoutRef.current);
 }
@@ -249,6 +275,12 @@ clearTimeout(timeoutRef.current);
                 setKitchenSubmitting(false);
             },
             onError: (errors) => {
+                settled = true;
+
+                if (captured) {
+                    cartLifecycle?.onSendFailure(captured);
+                }
+
                 if (timeoutRef.current) {
 clearTimeout(timeoutRef.current);
 }
@@ -261,6 +293,7 @@ clearTimeout(timeoutRef.current);
                         : 'Gửi đơn xuống bếp thất bại. Vui lòng thử lại!',
                 );
             },
+            onCancel: ambiguous,
         });
     };
 

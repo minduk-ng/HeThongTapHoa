@@ -37,12 +37,16 @@ export function usePOSCart(
         [products],
     );
 
-    const [contexts, setContexts] = useState<Record<string, ContextState>>({});
+    const [contexts, renderContexts] = useState<Record<string, ContextState>>({});
     const contextsRef = useRef(contexts);
-
-    useEffect(() => {
-        contextsRef.current = contexts;
-    }, [contexts]);
+    const nextGeneration = useRef(0);
+    const tableBaselines = useRef(new Map<number, string>());
+    // Event callbacks must see earlier changes in the same React batch.
+    const setContexts = useCallback((update: (prev: Record<string, ContextState>) => Record<string, ContextState>) => {
+        const next = update(contextsRef.current);
+        contextsRef.current = next;
+        renderContexts(next);
+    }, []);
 
     const [activeInvoiceId, setActiveInvoiceId] = useState<
         Record<number, string>
@@ -348,7 +352,7 @@ export function usePOSCart(
             whisperDraftCart(key.tableId, newCart);
             setUndoError(null);
         },
-        [setUndoError],
+        [setUndoError, setContexts],
     );
 
     const undoDraft = useCallback(
@@ -460,7 +464,7 @@ export function usePOSCart(
 
             whisperDraftCart(targetTableId, nextCart);
         },
-        [selectedTable, activeInvoiceId, productById, setUndoError],
+        [selectedTable, activeInvoiceId, productById, setUndoError, setContexts],
     );
 
     const invalidateContexts = useCallback(
@@ -473,10 +477,10 @@ export function usePOSCart(
                     const ctxKey = `${k.tableId}::${k.invoiceKey}`;
                     const existing = next[ctxKey];
 
-                    if (existing) {
+                    if (existing && existing.generation === k.generation) {
                         next[ctxKey] = {
                             ...existing,
-                            generation: existing.generation + 1,
+                            generation: ++nextGeneration.current,
                             history: [],
                             cart: existing.cart.filter((i) => i.isConfirmed),
                             sending: false,
@@ -487,7 +491,7 @@ export function usePOSCart(
                 return next;
             });
         },
-        [],
+        [setContexts],
     );
 
     const reconcileBaseline = useCallback((serverTables: POSTableData[]) => {
@@ -498,6 +502,23 @@ export function usePOSCart(
         ) as POSTableData[];
 
         const allServerOrderViews = extractServerOrderViews(safeTables);
+        const changedTables = new Set<number>();
+        const nextTableBaselines = new Map<number, string>();
+
+        for (const table of safeTables) {
+            const groupId = table.merged_into_table_id ?? table.id;
+            const ownership = safeTables.filter(t => t.id === groupId || t.merged_into_table_id === groupId).map(t => t.id).sort((a, b) => a - b);
+            const baseline = JSON.stringify([groupId, ownership, fingerprintBaseline(allServerOrderViews.filter(v => v.tableId === table.id))]);
+            const previous = tableBaselines.current.get(table.id);
+
+            if (previous !== undefined && previous !== baseline) {
+                changedTables.add(table.id);
+            }
+
+            nextTableBaselines.set(table.id, baseline);
+        }
+
+        tableBaselines.current = nextTableBaselines;
         const serverOrdersByContext = new Map<string, ServerOrderView[]>();
 
         for (const view of allServerOrderViews) {
@@ -515,7 +536,9 @@ export function usePOSCart(
                     (table.active_order ? [table.active_order] : []);
                 const currentActive = nextActive[table.id];
 
-                if (currentActive && currentActive.startsWith('draft_')) {
+                if (currentActive && currentActive.startsWith('draft_') && !changedTables.has(table.id)) {
+                    return;
+                } else if (currentActive && currentActive.startsWith('draft_')) {
                     if (allOrders.length > 0) {
                         const latestOrder = allOrders[allOrders.length - 1];
                         nextActive[table.id] =
@@ -565,7 +588,9 @@ export function usePOSCart(
 
                     const serverOrders =
                         serverOrdersByContext.get(ctxKey) || [];
-                    const newFingerprint = fingerprintBaseline(serverOrders);
+                    const groupId = table.merged_into_table_id ?? table.id;
+                    const ownership = safeTables.filter(t => t.id === groupId || t.merged_into_table_id === groupId).map(t => t.id).sort((a, b) => a - b);
+                    const newFingerprint = JSON.stringify([groupId, ownership, fingerprintBaseline(serverOrders)]);
                     const existingCtx = prevContexts[ctxKey];
 
                     const confirmedCartItems: CartItem[] = [];
@@ -586,6 +611,7 @@ export function usePOSCart(
                                 }
 
                                 confirmedCartItems.push({
+                                    draftLineId: isDraft ? `server_${item.id}` : undefined,
                                     menu_item_id: item.menu_item_id,
                                     name: item.menu_item?.name || 'Món',
                                     quantity: item.quantity,
@@ -613,7 +639,7 @@ export function usePOSCart(
                         nextContexts[ctxKey] = {
                             tableId: table.id,
                             invoiceKey: key,
-                            generation: 0,
+                            generation: ++nextGeneration.current,
                             cart: confirmedCartItems,
                             history: [],
                             baselineFingerprint: newFingerprint,
@@ -624,21 +650,11 @@ export function usePOSCart(
                             existingCtx.baselineFingerprint === newFingerprint;
 
                         if (isFingerprintEqual) {
-                            // ponytail: only preserve local drafts lacking server order item identity
-                            const unconfirmedItems = existingCtx.cart.filter(
-                                (i) => !i.isConfirmed && !i.orderItemId,
-                            );
-
-                            nextContexts[ctxKey] = {
-                                ...existingCtx,
-                                cart: [
-                                    ...confirmedCartItems,
-                                    ...unconfirmedItems,
-                                ],
-                            };
+                            nextContexts[ctxKey] = existingCtx;
                         } else {
                             nextContexts[ctxKey] = {
                                 ...existingCtx,
+                                generation: ++nextGeneration.current,
                                 cart: confirmedCartItems,
                                 history: [],
                                 baselineFingerprint: newFingerprint,
@@ -659,7 +675,7 @@ export function usePOSCart(
                         (t) => t.id === ctx.tableId,
                     );
 
-                    if (tableExists && ctx.cart.some((i) => !i.isConfirmed)) {
+                    if (tableExists && !changedTables.has(ctx.tableId) && ctx.baselineFingerprint === '[]') {
                         nextContexts[ctxKey] = ctx;
                     }
                 }
@@ -667,7 +683,7 @@ export function usePOSCart(
 
             return nextContexts;
         });
-    }, []);
+    }, [setContexts]);
 
     useEffect(() => {
         queueMicrotask(() => {
@@ -680,14 +696,14 @@ export function usePOSCart(
             const ctxKey = `${tableId}::${invoiceKey}`;
             const existing = contextsRef.current[ctxKey];
 
-            if (!existing) {
+            if (!existing || existing.sending) {
                 return null;
             }
 
             const capturedKey: ContextKey = {
                 tableId,
                 invoiceKey,
-                generation: existing.generation,
+                generation: ++nextGeneration.current,
             };
 
             setContexts((prev) => {
@@ -701,6 +717,7 @@ export function usePOSCart(
                     ...prev,
                     [ctxKey]: {
                         ...ctx,
+                        generation: capturedKey.generation,
                         sending: true,
                     },
                 };
@@ -708,12 +725,17 @@ export function usePOSCart(
 
             return capturedKey;
         },
-        [],
+        [setContexts],
     );
 
     const onSendSuccess = useCallback(
         (key: ContextKey, serverTables?: POSTableData[]) => {
             const ctxKey = `${key.tableId}::${key.invoiceKey}`;
+            const current = contextsRef.current[ctxKey];
+
+            if (!current || current.generation !== key.generation) {
+                return;
+            }
 
             setContexts((prev) => {
                 const existing = prev[ctxKey];
@@ -726,6 +748,7 @@ export function usePOSCart(
                     ...prev,
                     [ctxKey]: {
                         ...existing,
+                        generation: ++nextGeneration.current,
                         sending: false,
                         history: [],
                         cart: existing.cart.filter((i) => i.isConfirmed),
@@ -737,7 +760,7 @@ export function usePOSCart(
                 reconcileBaseline(serverTables);
             }
         },
-        [reconcileBaseline],
+        [reconcileBaseline, setContexts],
     );
 
     const onSendFailure = useCallback((key: ContextKey) => {
@@ -758,7 +781,7 @@ export function usePOSCart(
                 },
             };
         });
-    }, []);
+    }, [setContexts]);
 
     const onSendAmbiguous = useCallback((key: ContextKey) => {
         const ctxKey = `${key.tableId}::${key.invoiceKey}`;
@@ -778,10 +801,10 @@ export function usePOSCart(
                 },
             };
         });
-    }, []);
+    }, [setContexts]);
 
     const addNewDraftInvoice = (tableId: number) => {
-        const nextTempId = `draft_${Date.now()}`;
+        const nextTempId = `draft_${generateDraftLineId()}`;
         const ctxKey = `${tableId}::${nextTempId}`;
 
         setContexts((prev) => ({
@@ -789,7 +812,7 @@ export function usePOSCart(
             [ctxKey]: {
                 tableId,
                 invoiceKey: nextTempId,
-                generation: 0,
+                generation: ++nextGeneration.current,
                 cart: [],
                 history: [],
                 baselineFingerprint: '[]',
@@ -805,6 +828,10 @@ export function usePOSCart(
 
     const removeDraftInvoice = (tableId: number, tempId: string) => {
         const ctxKey = `${tableId}::${tempId}`;
+
+        if (contextsRef.current[ctxKey]?.sending) {
+            return;
+        }
 
         setContexts((prev) => {
             const next = { ...prev };
@@ -921,7 +948,7 @@ export function usePOSCart(
         const ctxKey = `${tableId}::${activeId}`;
         const ctx = contextsRef.current[ctxKey];
 
-        if (!ctx) {
+        if (!ctx || ctx.sending) {
             return;
         }
 
@@ -997,12 +1024,12 @@ export function usePOSCart(
         setContexts((prev) => {
             const ctx = prev[ctxKey];
 
-            if (!ctx) {
+            if (!ctx || ctx.sending) {
                 return prev;
             }
 
             const updated = ctx.cart.map((item) =>
-                item.menu_item_id === menuItemId ? { ...item, note } : item,
+                !item.isConfirmed && item.menu_item_id === menuItemId ? { ...item, note } : item,
             );
 
             return {
@@ -1132,7 +1159,13 @@ export function usePOSCart(
         whisperDraftCart(tableId, []);
     };
 
+    const captureContexts = (tableIds: number[], invoiceKeys?: string[]): ContextKey[] =>
+        Object.values(contextsRef.current)
+            .filter(ctx => tableIds.includes(ctx.tableId) && (!invoiceKeys || invoiceKeys.includes(ctx.invoiceKey)))
+            .map(({ tableId, invoiceKey, generation }) => ({ tableId, invoiceKey, generation }));
+
     return {
+        captureContexts,
         tableCarts,
         currentCart,
         activeInvoiceId,

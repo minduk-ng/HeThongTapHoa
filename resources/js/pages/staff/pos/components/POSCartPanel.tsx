@@ -51,6 +51,7 @@ interface POSCartPanelProps {
     undoDraft?: () => void;
     undoError?: string | null;
     sending?: boolean;
+    captureInvalidation?: (tableIds: number[], invoiceKeys?: string[]) => () => void;
     isCheckoutLocked?: boolean;
     checkoutLockedBy?: string;
     reservationDraft?: ReservationDraft | null;
@@ -82,6 +83,7 @@ export default function POSCartPanel({
     undoDraft,
     undoError = null,
     sending = false,
+    captureInvalidation,
     isCheckoutLocked = false,
     checkoutLockedBy = '',
     reservationDraft,
@@ -277,6 +279,10 @@ export default function POSCartPanel({
                 orderItemId={cancelModalState.orderItemId}
                 tableId={cancelModalState.tableId}
                 menuItemName={cancelModalState.menuItemName}
+                captureSuccess={() => captureInvalidation?.(
+                    [cancelModalState.tableId ?? selectedTable.id],
+                    cancelModalState.mode === 'item' ? Object.entries(tableCarts).filter(([, items]) => items.some(i => i.orderItemId === cancelModalState.orderItemId)).map(([key]) => key) : undefined,
+                )}
             />
 
             <ReduceItemModal
@@ -298,6 +304,7 @@ export default function POSCartPanel({
             />
 
             <TransferMergeModal
+                captureInvalidation={captureInvalidation}
                 isOpen={isTransferModalOpen}
                 onClose={() => setIsTransferModalOpen(false)}
                 selectedTable={selectedTable}
@@ -578,9 +585,9 @@ prevSentTime = t;
                             const isMinusDisabled = !!(
                                 item.isConfirmed &&
                                 (item.isKitchenCompleted || item.quantity <= 0)
-                            ) || selectedTable.status === 'reserved';
-                            const isDeleteDisabled = !!item.isConfirmed || selectedTable.status === 'reserved';
-                            const isPlusDisabled = selectedTable.status === 'reserved';
+                            ) || selectedTable.status === 'reserved' || sending || submitting;
+                            const isDeleteDisabled = !!item.isConfirmed || selectedTable.status === 'reserved' || sending || submitting;
+                            const isPlusDisabled = selectedTable.status === 'reserved' || sending || submitting;
                             const itemKey = `${item.menu_item_id}_${item.isConfirmed ? (item.isKitchenCompleted ? (item.isServed ? 'served' : 'completed') : 'pending') : 'draft'}_${item.orderItemId || ''}`;
             
                             return (
@@ -622,12 +629,16 @@ prevSentTime = t;
                                             )}
                                         </div>
                                         <div
-                                            onClick={() =>
+                                            onClick={() => {
+                                                if (sending || submitting) {
+                                                    return;
+                                                }
+
                                                 setNoteModalState({
                                                     isOpen: true,
                                                     item,
-                                                })
-                                            }
+                                                });
+                                            }}
                                             className="mt-0.5 cursor-pointer text-[11px] text-zinc-500 dark:text-zinc-400 transition-colors hover:text-zinc-700 dark:hover:text-zinc-200"
                                         >
                                             {item.note ? (
@@ -896,6 +907,7 @@ prevSentTime = t;
                                 type="button"
                                 disabled={
                                     submitting ||
+                                    sending ||
                                     cartItems.length === 0 ||
                                     !hasUnconfirmedChanges ||
                                     isCheckoutLocked
@@ -914,7 +926,7 @@ prevSentTime = t;
                             >
                                 <Send className="h-3.5 w-3.5" />
                                 <span>
-                                    {submitting ? 'Đang gửi...' : 'Gửi bếp chế biến'}
+                                    {(submitting || sending) ? 'Đang gửi...' : 'Gửi bếp chế biến'}
                                 </span>
                             </button>
                         

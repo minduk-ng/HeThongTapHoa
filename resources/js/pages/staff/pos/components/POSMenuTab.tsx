@@ -17,6 +17,8 @@ interface POSMenuTabProps {
     onToggleProduct: (product: POSProductData) => void;
     searchQuery: string;
     onSearchChange?: (query: string) => void;
+    disabled?: boolean;
+    disabledReason?: string;
 }
 
 export default function POSMenuTab({
@@ -26,6 +28,8 @@ export default function POSMenuTab({
     onToggleProduct,
     searchQuery,
     onSearchChange,
+    disabled = false,
+    disabledReason,
 }: POSMenuTabProps) {
     const cdnUrl = useCdnBaseUrl();
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
@@ -220,6 +224,11 @@ export default function POSMenuTab({
                         Đang hiển thị kết quả hợp lệ gần nhất. Tạm khóa chọn món đến khi dữ liệu và bộ lọc hợp lệ.
                     </p>
                 )}
+                {disabled && (
+                    <p role="status" className="text-xs text-amber-700">
+                        {disabledReason || 'Đang gửi đơn, tạm khóa chọn món.'}
+                    </p>
+                )}
                 {indexError && (
                     <div className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300">
                         {indexError}
@@ -258,7 +267,7 @@ export default function POSMenuTab({
                                     : 999;
                             const isOutOfStock = maxServings <= 0;
                             const isActionDisabled =
-                                isOutOfStock || !product.is_available || stale;
+                                isOutOfStock || !product.is_available || stale || disabled;
                             const isLowStock =
                                 maxServings > 0 && maxServings <= 5;
 

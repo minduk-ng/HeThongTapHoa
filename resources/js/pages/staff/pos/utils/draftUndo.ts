@@ -137,6 +137,7 @@ export interface ServerOrderView {
     invoiceKey: string;
     status: string;
     tableId: number;
+    groupId?: number;
     items: ServerItemView[];
 }
 
@@ -147,7 +148,9 @@ export function fingerprintBaseline(orders: readonly ServerOrderView[]): string 
 
     const canon = [...orders]
         .map((o) => ({
+            id: o.id,
             t: o.tableId,
+            g: o.groupId ?? o.tableId,
             k: o.invoiceKey,
             s: o.status,
             items: [...(o.items || [])]
@@ -206,6 +209,7 @@ export function extractServerOrderViews(
                 invoiceKey,
                 status: order.status,
                 tableId: table.id,
+                groupId: table.merged_into_table_id ?? table.id,
                 items,
             });
         }

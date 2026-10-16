@@ -9,6 +9,7 @@ interface VoidItemModalProps {
     orderItemId?: number | null;
     tableId?: number | null;
     menuItemName: string;
+    captureSuccess?: () => (() => void) | undefined;
     onLogEvent?: (
         type: 'sent' | 'received' | 'error',
         message: string,
@@ -31,6 +32,7 @@ export default function VoidItemModal({
     tableId,
     menuItemName,
     onLogEvent,
+    captureSuccess,
 }: VoidItemModalProps) {
     const [reason, setReason] = useState<string>(CANCEL_REASONS[0]);
     const [note, setNote] = useState<string>('');
@@ -76,8 +78,10 @@ export default function VoidItemModal({
                       note: note.trim(),
                   };
 
+        const onCommitted = captureSuccess?.();
         router.post(endpoint, payload, {
             onSuccess: () => {
+                onCommitted?.();
                 setSubmitting(false);
                 onClose();
 
