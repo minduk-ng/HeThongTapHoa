@@ -15,6 +15,34 @@ use Illuminate\Support\Facades\Log;
 
 final class DashboardService
 {
+    private PaidProductRankingService $rankingService;
+
+    public function __construct(
+        ?PaidProductRankingService $rankingService = null
+    ) {
+        $this->rankingService = $rankingService ?? app(PaidProductRankingService::class);
+    }
+
+    /**
+     * Advance dashboard source revision counter and flush tagged dashboard cache.
+     */
+    public static function bumpSourceRevision(): int
+    {
+        try {
+            if (! Cache::has('dashboard_source_revision')) {
+                Cache::forever('dashboard_source_revision', 1);
+            }
+            $revision = (int) Cache::increment('dashboard_source_revision');
+            Cache::tags(['dashboard'])->flush();
+
+            return $revision;
+        } catch (\Throwable $e) {
+            Log::warning('Dashboard source revision bump failed: '.$e->getMessage());
+
+            return 1;
+        }
+    }
+
     /**
      * @template T
      *
@@ -25,7 +53,7 @@ final class DashboardService
     {
         try {
             return Cache::tags(['dashboard'])->remember($key, $ttl, $loader);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::warning("Redis failed in dashboard {$key}: ".$e->getMessage());
 
             return $loader();
@@ -200,25 +228,31 @@ final class DashboardService
     }
 
     /**
-     * @return array<int, array{name: mixed, sales_count: int}>
+     * @return array{
+     *     items: array<int, array{product_id: int, name: string, sales_count: int}>,
+     *     metadata: array{
+     *         source: string,
+     *         refund_basis: string,
+     *         unidentified_line_count: int,
+     *         unidentified_net_quantity: int,
+     *         invalid_line_count: int,
+     *         generated_at: string
+     *     }
+     * }
      */
-    public function topProducts(Carbon $start, Carbon $end): array
+    public function topProducts(Carbon $start, Carbon $end, int $k = 5): array
     {
-        return $this->cached('dashboard_top_products_'.$start->toDateString().'_'.$end->toDateString(), 300, function () use ($start, $end) {
-            return DB::table('invoice_lines')
-                ->join('invoices', 'invoices.id', '=', 'invoice_lines.invoice_id')
-                ->whereNull('invoices.synthetic_dataset_id')
-                ->whereBetween('invoices.issued_at', [$start, $end])
-                ->selectRaw('invoice_lines.name_snapshot as name, SUM(invoice_lines.quantity) as sales_count')
-                ->groupBy('invoice_lines.name_snapshot')
-                ->orderByDesc('sales_count')
-                ->limit(5)
-                ->get()
-                ->map(fn (\stdClass $r) => [
-                    'name' => $r->name,
-                    'sales_count' => (int) $r->sales_count,
-                ])
-                ->all();
+        $endExclusive = $end->copy()->addSecond();
+        $sourceVersion = PaidProductRankingService::SOURCE;
+        $startTs = $start->getTimestamp();
+        $endTs = $endExclusive->getTimestamp();
+        $tz = $start->getTimezone()->getName();
+        $revision = (int) Cache::get('dashboard_source_revision', 1);
+
+        $cacheKey = "dashboard_top_products_{$sourceVersion}_{$startTs}_{$endTs}_{$tz}_k{$k}_rev{$revision}";
+
+        return $this->cached($cacheKey, 300, function () use ($start, $endExclusive, $k) {
+            return $this->rankingService->rank($start, $endExclusive, $k);
         });
     }
 

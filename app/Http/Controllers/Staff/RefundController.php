@@ -12,6 +12,7 @@ use App\Models\ProductRecipe;
 use App\Models\StockVoucher;
 use App\Services\IdempotencyGuard;
 use App\Services\Inventory\LotService;
+use App\Services\Manager\DashboardService;
 use App\Services\MoneyLedgerService;
 use App\Services\OrderActivityLogger;
 use Illuminate\Http\JsonResponse;
@@ -142,7 +143,7 @@ class RefundController extends Controller
                 IdempotencyGuard::recordSuccessInTransaction($request, 'refund', $refundPayment, ['success' => true, 'message' => 'Hoàn trả thành công!']);
             });
 
-            Cache::tags(['dashboard'])->flush();
+            DashboardService::bumpSourceRevision();
             IngredientStockUpdated::dispatch(['source' => 'refund']);
 
             $response = response()->json(['success' => true, 'message' => 'Hoàn trả thành công!']);

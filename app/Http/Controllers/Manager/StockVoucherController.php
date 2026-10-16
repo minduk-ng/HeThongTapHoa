@@ -14,6 +14,7 @@ use App\Models\ProcurementPlanItem;
 use App\Models\ProductRecipe;
 use App\Models\StockVoucher;
 use App\Models\Supplier;
+use App\Services\Manager\DashboardService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -211,7 +212,7 @@ class StockVoucherController extends Controller
             }
         });
 
-        Cache::tags(['dashboard'])->flush();
+        DashboardService::bumpSourceRevision();
         IngredientStockUpdated::dispatch(['source' => 'voucher_import']);
 
         return back()->with('success', 'Tạo phiếu nhập kho thành công!');

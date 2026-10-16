@@ -18,6 +18,7 @@ use App\Models\StockVoucher;
 use App\Models\Table;
 use App\Models\User;
 use App\Services\Inventory\LotService;
+use App\Services\Manager\DashboardService;
 use App\Services\MoneyLedgerService;
 use App\Services\OrderActivityLogger;
 use App\Services\Promotions\PromotionEngine;
@@ -485,8 +486,8 @@ class CheckoutService
             return $invoice;
         });
 
-        // Dashboard KPI tiền thay đổi sau mỗi checkout → flush cache dashboard
-        Cache::tags(['dashboard'])->flush();
+        // Dashboard KPI tiền thay đổi sau mỗi checkout → flush cache dashboard & bump source revision
+        DashboardService::bumpSourceRevision();
 
         // used_count thay đổi sau checkout → flush cache promotions hiển thị POS
         try {

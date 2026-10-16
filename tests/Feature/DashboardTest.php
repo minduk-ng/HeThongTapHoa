@@ -86,7 +86,7 @@ class DashboardTest extends TestCase
         ]);
         $invoice->forceFill(['issued_at' => now()])->save();
         InvoiceLine::create([
-            'invoice_id' => $invoice->id, 'menu_item_id' => null, 'name_snapshot' => 'Cà phê đen',
+            'invoice_id' => $invoice->id, 'menu_item_id' => 1, 'name_snapshot' => 'Cà phê đen',
             'quantity' => 3, 'unit_price' => 20000, 'subtotal' => 60000,
             'vat_rate' => 0, 'vat_amount' => 0, 'discount_amount' => 0,
         ]);
