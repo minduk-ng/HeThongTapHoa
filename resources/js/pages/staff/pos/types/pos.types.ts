@@ -69,6 +69,7 @@ export interface StagedReduction {
 }
 
 export interface CartItem {
+    draftLineId?: string;
     menu_item_id: number;
     name: string;
     quantity: number;

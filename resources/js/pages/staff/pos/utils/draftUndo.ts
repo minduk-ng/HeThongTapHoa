@@ -1,6 +1,6 @@
-import type { CartItem, POSProductData } from '../types/pos.types';
+import type { CartItem, POSProductData, POSTableData } from '../types/pos.types';
 
-export type { CartItem, POSProductData };
+export type { CartItem, POSProductData, POSTableData };
 
 export interface DraftLine {
     draftLineId: string;
@@ -18,6 +18,14 @@ export interface DraftSnapshot {
 }
 
 export type UndoEntry = DraftSnapshot;
+
+export function generateDraftLineId(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+
+    return `draft_line_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
 
 function freeze<T>(v: T): T {
     if (Array.isArray(v)) {
@@ -109,10 +117,95 @@ export function validateRestore(
     return { ok: true };
 }
 
-export interface BaselinePayload {
-    tables: unknown;
+export interface ServerItemView {
+    id: number;
+    quantity: number;
+    unit_price: number;
+    note?: string | null;
+    status?: string;
+    isConfirmed?: boolean;
+    isKitchenCompleted?: boolean;
+    isServed?: boolean;
 }
 
-export function fingerprintBaseline(payload: BaselinePayload): string {
-    return JSON.stringify(payload.tables ?? null);
+export interface ServerOrderView {
+    id: number;
+    invoiceKey: string;
+    status: string;
+    tableId: number;
+    items: ServerItemView[];
+}
+
+export function fingerprintBaseline(orders: readonly ServerOrderView[]): string {
+    if (!orders || !Array.isArray(orders)) {
+        return '[]';
+    }
+
+    const canon = [...orders]
+        .map((o) => ({
+            t: o.tableId,
+            k: o.invoiceKey,
+            s: o.status,
+            items: [...(o.items || [])]
+                .map((i) => [
+                    i.id,
+                    i.quantity,
+                    i.unit_price,
+                    i.note ?? '',
+                    i.status ?? '',
+                    !!i.isConfirmed,
+                    !!i.isKitchenCompleted,
+                    !!i.isServed,
+                ] as const)
+                .sort((a, b) => (a[0] as number) - (b[0] as number)),
+        }))
+        .sort((a, b) => a.t - b.t || (a.k < b.k ? -1 : a.k > b.k ? 1 : 0));
+
+    return JSON.stringify(canon);
+}
+
+export function extractServerOrderViews(
+    tables: readonly POSTableData[],
+): ServerOrderView[] {
+    const views: ServerOrderView[] = [];
+    const safeTables = (
+        Array.isArray(tables) ? tables : Object.values(tables || {})
+    ) as readonly POSTableData[];
+
+    for (const table of safeTables) {
+        const allOrders =
+            table.active_orders ||
+            (table.active_order ? [table.active_order] : []);
+
+        for (const order of allOrders) {
+            const isOrderCompleted = order.status === 'completed';
+            const isDraft =
+                order.status === 'draft' || order.status === 'reserved';
+            const invoiceKey = order.order_code || `draft_${order.id}`;
+
+            const items: ServerItemView[] = (order.items || [])
+                .filter((item) => item.status !== 'cancelled')
+                .map((item) => ({
+                    id: item.id,
+                    quantity: item.quantity,
+                    unit_price: Number(item.unit_price),
+                    note: item.note ?? null,
+                    status: item.status,
+                    isConfirmed: !isDraft,
+                    isKitchenCompleted:
+                        item.status === 'completed' || isOrderCompleted,
+                    isServed: !!item.served_at,
+                }));
+
+            views.push({
+                id: order.id,
+                invoiceKey,
+                status: order.status,
+                tableId: table.id,
+                items,
+            });
+        }
+    }
+
+    return views;
 }

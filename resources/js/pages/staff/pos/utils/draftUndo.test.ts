@@ -1,11 +1,13 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
-import type { DraftLine, DraftSnapshot } from './draftUndo.ts';
+import type { DraftLine, DraftSnapshot, ServerOrderView } from './draftUndo.ts';
 import {
     pushDraftSnapshot,
     popDraftSnapshot,
     validateRestore,
     fingerprintBaseline,
+    extractServerOrderViews,
+    generateDraftLineId,
 } from './draftUndo.ts';
 
 describe('pushDraftSnapshot', () => {
@@ -279,16 +281,205 @@ describe('validateRestore', () => {
     });
 });
 
-describe('fingerprintBaseline', () => {
-    it('serializes tables payload', () => {
-        const payload = { tables: [{ id: 1, name: 'Table 1' }] };
-        const fp = fingerprintBaseline(payload);
+describe('generateDraftLineId', () => {
+    it('generates non-empty unique string IDs', () => {
+        const id1 = generateDraftLineId();
+        const id2 = generateDraftLineId();
 
-        assert.equal(fp, JSON.stringify(payload.tables));
+        assert.equal(typeof id1, 'string');
+        assert.ok(id1.length > 0);
+        assert.notEqual(id1, id2);
+    });
+});
+
+describe('fingerprintBaseline', () => {
+    it('returns empty array string for empty or missing orders', () => {
+        assert.equal(fingerprintBaseline([]), '[]');
+        assert.equal(fingerprintBaseline(null as unknown as ServerOrderView[]), '[]');
+        assert.equal(fingerprintBaseline(undefined as unknown as ServerOrderView[]), '[]');
     });
 
-    it('handles null or missing tables safely', () => {
-        assert.equal(fingerprintBaseline({ tables: null }), 'null');
-        assert.equal(fingerprintBaseline({ tables: undefined }), 'null');
+    it('produces identical fingerprints regardless of order insertion order', () => {
+        const orderA: ServerOrderView = {
+            id: 1,
+            invoiceKey: 'INV-1',
+            status: 'pending',
+            tableId: 1,
+            items: [
+                { id: 10, quantity: 2, unit_price: 15000, note: 'ít cay', status: 'pending', isConfirmed: true, isKitchenCompleted: false, isServed: false },
+            ],
+        };
+        const orderB: ServerOrderView = {
+            id: 2,
+            invoiceKey: 'INV-2',
+            status: 'processing',
+            tableId: 2,
+            items: [
+                { id: 20, quantity: 1, unit_price: 30000, note: null, status: 'processing', isConfirmed: true, isKitchenCompleted: false, isServed: false },
+            ],
+        };
+
+        const fp1 = fingerprintBaseline([orderA, orderB]);
+        const fp2 = fingerprintBaseline([orderB, orderA]);
+
+        assert.equal(fp1, fp2);
+    });
+
+    it('produces identical fingerprints regardless of item insertion order within an order', () => {
+        const item1 = { id: 10, quantity: 1, unit_price: 20000, note: 'nóng', status: 'pending', isConfirmed: true, isKitchenCompleted: false, isServed: false };
+        const item2 = { id: 20, quantity: 2, unit_price: 40000, note: 'lạnh', status: 'pending', isConfirmed: true, isKitchenCompleted: false, isServed: false };
+
+        const order1: ServerOrderView = {
+            id: 1,
+            invoiceKey: 'INV-1',
+            status: 'pending',
+            tableId: 1,
+            items: [item1, item2],
+        };
+        const order2: ServerOrderView = {
+            id: 1,
+            invoiceKey: 'INV-1',
+            status: 'pending',
+            tableId: 1,
+            items: [item2, item1],
+        };
+
+        assert.equal(fingerprintBaseline([order1]), fingerprintBaseline([order2]));
+    });
+
+    it('detects changes in item quantities, prices, notes, and statuses', () => {
+        const baseOrder: ServerOrderView = {
+            id: 1,
+            invoiceKey: 'INV-1',
+            status: 'pending',
+            tableId: 1,
+            items: [
+                { id: 10, quantity: 2, unit_price: 25000, note: 'ghi chú', status: 'pending', isConfirmed: true, isKitchenCompleted: false, isServed: false },
+            ],
+        };
+
+        const baseFp = fingerprintBaseline([baseOrder]);
+
+        const qtyChanged: ServerOrderView = {
+            ...baseOrder,
+            items: [{ ...baseOrder.items[0], quantity: 3 }],
+        };
+        assert.notEqual(baseFp, fingerprintBaseline([qtyChanged]));
+
+        const priceChanged: ServerOrderView = {
+            ...baseOrder,
+            items: [{ ...baseOrder.items[0], unit_price: 26000 }],
+        };
+        assert.notEqual(baseFp, fingerprintBaseline([priceChanged]));
+
+        const noteChanged: ServerOrderView = {
+            ...baseOrder,
+            items: [{ ...baseOrder.items[0], note: 'đổi ghi chú' }],
+        };
+        assert.notEqual(baseFp, fingerprintBaseline([noteChanged]));
+
+        const kitchenCompletedChanged: ServerOrderView = {
+            ...baseOrder,
+            items: [{ ...baseOrder.items[0], isKitchenCompleted: true }],
+        };
+        assert.notEqual(baseFp, fingerprintBaseline([kitchenCompletedChanged]));
+
+        const servedChanged: ServerOrderView = {
+            ...baseOrder,
+            items: [{ ...baseOrder.items[0], isServed: true }],
+        };
+        assert.notEqual(baseFp, fingerprintBaseline([servedChanged]));
+
+        const confirmedChanged: ServerOrderView = {
+            ...baseOrder,
+            items: [{ ...baseOrder.items[0], isConfirmed: false }],
+        };
+        assert.notEqual(baseFp, fingerprintBaseline([confirmedChanged]));
+
+        const orderStatusChanged: ServerOrderView = {
+            ...baseOrder,
+            status: 'completed',
+        };
+        assert.notEqual(baseFp, fingerprintBaseline([orderStatusChanged]));
+    });
+});
+
+describe('extractServerOrderViews', () => {
+    it('maps POSTableData into ServerOrderView filtering cancelled items', () => {
+        const tables = [
+            {
+                id: 1,
+                table_number: 'B01',
+                capacity: 4,
+                status: 'occupied' as const,
+                active_orders: [
+                    {
+                        id: 101,
+                        order_code: 'ORD-101',
+                        status: 'pending' as const,
+                        items: [
+                            {
+                                id: 501,
+                                menu_item_id: 1,
+                                quantity: 2,
+                                unit_price: 35000,
+                                status: 'pending' as const,
+                                note: 'ít đường',
+                            },
+                            {
+                                id: 502,
+                                menu_item_id: 2,
+                                quantity: 1,
+                                unit_price: 45000,
+                                status: 'cancelled' as const,
+                            },
+                        ],
+                    },
+                ],
+            },
+        ];
+
+        const views = extractServerOrderViews(tables);
+
+        assert.equal(views.length, 1);
+        assert.equal(views[0].tableId, 1);
+        assert.equal(views[0].invoiceKey, 'ORD-101');
+        assert.equal(views[0].status, 'pending');
+        assert.equal(views[0].items.length, 1);
+        assert.equal(views[0].items[0].id, 501);
+        assert.equal(views[0].items[0].quantity, 2);
+        assert.equal(views[0].items[0].unit_price, 35000);
+        assert.equal(views[0].items[0].note, 'ít đường');
+        assert.equal(views[0].items[0].isConfirmed, true);
+        assert.equal(views[0].items[0].isKitchenCompleted, false);
+    });
+
+    it('marks draft or reserved orders as unconfirmed', () => {
+        const tables = [
+            {
+                id: 2,
+                table_number: 'B02',
+                capacity: 2,
+                status: 'occupied' as const,
+                active_order: {
+                    id: 102,
+                    status: 'draft' as const,
+                    items: [
+                        {
+                            id: 503,
+                            menu_item_id: 3,
+                            quantity: 1,
+                            unit_price: 20000,
+                        },
+                    ],
+                },
+            },
+        ];
+
+        const views = extractServerOrderViews(tables);
+
+        assert.equal(views.length, 1);
+        assert.equal(views[0].invoiceKey, 'draft_102');
+        assert.equal(views[0].items[0].isConfirmed, false);
     });
 });

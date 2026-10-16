@@ -1,5 +1,30 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { POSTableData, POSProductData, CartItem } from '../types/pos.types';
+import type { DraftLine, DraftSnapshot, ServerOrderView } from '../utils/draftUndo';
+import {
+    pushDraftSnapshot,
+    popDraftSnapshot,
+    validateRestore,
+    fingerprintBaseline,
+    extractServerOrderViews,
+    generateDraftLineId,
+} from '../utils/draftUndo';
+
+export interface ContextKey {
+    tableId: number;
+    invoiceKey: string;
+    generation: number;
+}
+
+export interface ContextState {
+    tableId: number;
+    invoiceKey: string;
+    generation: number;
+    cart: CartItem[];
+    history: DraftSnapshot[];
+    baselineFingerprint: string;
+    sending: boolean;
+}
 
 export function usePOSCart(
     selectedTable: POSTableData | null,
@@ -12,18 +37,429 @@ export function usePOSCart(
         [products],
     );
 
-    const [tableCarts, setTableCarts] = useState<
-        Record<number, Record<string, CartItem[]>>
-    >({});
+    const [contexts, setContexts] = useState<Record<string, ContextState>>({});
     const [activeInvoiceId, setActiveInvoiceId] = useState<
         Record<number, string>
     >({});
+    const [undoError, setUndoError] = useState<string | null>(null);
 
-    useEffect(() => {
-        queueMicrotask(() => {
-            const safeTables = (
-                Array.isArray(tables) ? tables : Object.values(tables || {})
-            ) as POSTableData[];
+    const tableCarts = useMemo(() => {
+        const result: Record<number, Record<string, CartItem[]>> = {};
+
+        for (const ctx of Object.values(contexts)) {
+            if (!result[ctx.tableId]) {
+                result[ctx.tableId] = {};
+            }
+
+            result[ctx.tableId][ctx.invoiceKey] = ctx.cart;
+        }
+
+        return result;
+    }, [contexts]);
+
+    const activeInvId = selectedTable
+        ? activeInvoiceId[selectedTable.id] || 'draft_default'
+        : 'draft_default';
+
+    const currentContext = selectedTable
+        ? contexts[`${selectedTable.id}::${activeInvId}`]
+        : undefined;
+
+    const currentCart = currentContext ? currentContext.cart : [];
+
+    const canUndo = Boolean(
+        selectedTable &&
+            currentContext &&
+            !currentContext.sending &&
+            currentContext.history.length > 0,
+    );
+
+    const sending = Boolean(currentContext?.sending);
+
+    const whisperDraftCart = (tableId: number, items: CartItem[]) => {
+        if (typeof window !== 'undefined' && window.Echo) {
+            const unconfirmedCount = items
+                .filter((i) => !i.isConfirmed)
+                .reduce((s, i) => s + i.quantity, 0);
+
+            window.Echo.join('pos-room').whisper('table-draft-cart-updated', {
+                tableId,
+                unconfirmedCount,
+            });
+        }
+    };
+
+    const commitDraftChange = useCallback(
+        (
+            key: ContextKey,
+            action: 'add' | 'remove' | 'setQty',
+            lineId: string,
+            qty: number,
+            latestProducts: ReadonlyMap<number, POSProductData>,
+        ): void => {
+            const ctxKey = `${key.tableId}::${key.invoiceKey}`;
+
+            setContexts((prev) => {
+                const ctx = prev[ctxKey] || {
+                    tableId: key.tableId,
+                    invoiceKey: key.invoiceKey,
+                    generation: key.generation,
+                    cart: [],
+                    history: [],
+                    baselineFingerprint: '[]',
+                    sending: false,
+                };
+
+                if (ctx.generation !== key.generation) {
+                    return prev;
+                }
+
+                if (ctx.sending) {
+                    return prev;
+                }
+
+                const prevCart = ctx.cart;
+
+                const draftIndex = prevCart.findIndex(
+                    (i) =>
+                        !i.isConfirmed &&
+                        (i.draftLineId === lineId ||
+                            String(i.menu_item_id) === lineId),
+                );
+                const existingDraft =
+                    draftIndex > -1 ? prevCart[draftIndex] : null;
+
+                let newCart: CartItem[] | null = null;
+
+                if (action === 'add') {
+                    if (!Number.isInteger(qty) || qty <= 0) {
+                        return prev;
+                    }
+
+                    if (existingDraft) {
+                        const product = latestProducts.get(
+                            existingDraft.menu_item_id,
+                        );
+
+                        if (!product || !product.is_available) {
+                            return prev;
+                        }
+
+                        const maxServings =
+                            product.max_servings !== undefined
+                                ? product.max_servings
+                                : 999;
+
+                        const otherDemand = prevCart
+                            .filter(
+                                (i, idx) =>
+                                    !i.isConfirmed &&
+                                    idx !== draftIndex &&
+                                    i.menu_item_id === product.id,
+                            )
+                            .reduce((sum, i) => sum + i.quantity, 0);
+
+                        const nextQty = existingDraft.quantity + qty;
+
+                        if (otherDemand + nextQty > maxServings) {
+                            return prev;
+                        }
+
+                        newCart = [...prevCart];
+                        newCart[draftIndex] = {
+                            ...existingDraft,
+                            quantity: nextQty,
+                        };
+                    } else {
+                        const menuItemId = Number(lineId);
+
+                        if (isNaN(menuItemId)) {
+                            return prev;
+                        }
+
+                        const product = latestProducts.get(menuItemId);
+
+                        if (!product || !product.is_available) {
+                            return prev;
+                        }
+
+                        const maxServings =
+                            product.max_servings !== undefined
+                                ? product.max_servings
+                                : 999;
+
+                        const otherDemand = prevCart
+                            .filter(
+                                (i) =>
+                                    !i.isConfirmed &&
+                                    i.menu_item_id === product.id,
+                            )
+                            .reduce((sum, i) => sum + i.quantity, 0);
+
+                        if (otherDemand + qty > maxServings) {
+                            return prev;
+                        }
+
+                        const newItem: CartItem = {
+                            draftLineId: generateDraftLineId(),
+                            menu_item_id: product.id,
+                            name: product.name,
+                            quantity: qty,
+                            initialQuantity: 0,
+                            unit_price: Number(product.price),
+                            vat_rate: Number(product.vat_rate || 0),
+                            note: '',
+                            isConfirmed: false,
+                        };
+                        newCart = [...prevCart, newItem];
+                    }
+                } else if (action === 'remove') {
+                    if (!existingDraft) {
+                        return prev;
+                    }
+
+                    newCart = prevCart.filter(
+                        (i) =>
+                            i.isConfirmed ||
+                            (i.draftLineId !== lineId &&
+                                String(i.menu_item_id) !== lineId),
+                    );
+                } else if (action === 'setQty') {
+                    if (!Number.isInteger(qty)) {
+                        return prev;
+                    }
+
+                    if (!existingDraft) {
+                        return prev;
+                    }
+
+                    if (qty === existingDraft.quantity) {
+                        return prev;
+                    }
+
+                    if (qty <= 0) {
+                        newCart = prevCart.filter(
+                            (i, idx) => i.isConfirmed || idx !== draftIndex,
+                        );
+                    } else {
+                        const product = latestProducts.get(
+                            existingDraft.menu_item_id,
+                        );
+
+                        if (!product || !product.is_available) {
+                            return prev;
+                        }
+
+                        const maxServings =
+                            product.max_servings !== undefined
+                                ? product.max_servings
+                                : 999;
+
+                        const otherDemand = prevCart
+                            .filter(
+                                (i, idx) =>
+                                    !i.isConfirmed &&
+                                    idx !== draftIndex &&
+                                    i.menu_item_id === product.id,
+                            )
+                            .reduce((sum, i) => sum + i.quantity, 0);
+
+                        if (otherDemand + qty > maxServings) {
+                            return prev;
+                        }
+
+                        newCart = [...prevCart];
+                        newCart[draftIndex] = {
+                            ...existingDraft,
+                            quantity: qty,
+                        };
+                    }
+                }
+
+                if (!newCart) {
+                    return prev;
+                }
+
+                const unconfirmedRows: DraftLine[] = prevCart
+                    .filter((i) => !i.isConfirmed)
+                    .map((i) => ({
+                        draftLineId: i.draftLineId || generateDraftLineId(),
+                        menu_item_id: i.menu_item_id,
+                        quantity: i.quantity,
+                        note: i.note || '',
+                        unit_price: i.unit_price,
+                        vat_rate: i.vat_rate,
+                        orderItemId: i.orderItemId,
+                        name: i.name,
+                    }));
+
+                // ponytail: in-memory capped snapshot history per context
+                const nextHistory = pushDraftSnapshot(
+                    ctx.history,
+                    { rows: unconfirmedRows },
+                    50,
+                );
+
+                whisperDraftCart(key.tableId, newCart);
+                setUndoError(null);
+
+                return {
+                    ...prev,
+                    [ctxKey]: {
+                        ...ctx,
+                        cart: newCart,
+                        history: nextHistory,
+                    },
+                };
+            });
+        },
+        [],
+    );
+
+    const undoDraft = useCallback(
+        (
+            key?: ContextKey,
+            latestProducts?: ReadonlyMap<number, POSProductData>,
+        ): void => {
+            const productsMap = latestProducts || productById;
+
+            setContexts((prev) => {
+                let targetTableId: number;
+                let targetInvoiceKey: string;
+                let targetGen: number;
+
+                if (key) {
+                    targetTableId = key.tableId;
+                    targetInvoiceKey = key.invoiceKey;
+                    targetGen = key.generation;
+                } else {
+                    if (!selectedTable) {
+                        return prev;
+                    }
+
+                    targetTableId = selectedTable.id;
+                    targetInvoiceKey =
+                        activeInvoiceId[targetTableId] || 'draft_default';
+                    const existing =
+                        prev[`${targetTableId}::${targetInvoiceKey}`];
+
+                    if (!existing) {
+                        return prev;
+                    }
+
+                    targetGen = existing.generation;
+                }
+
+                const ctxKey = `${targetTableId}::${targetInvoiceKey}`;
+                const ctx = prev[ctxKey];
+
+                if (!ctx) {
+                    return prev;
+                }
+
+                if (ctx.generation !== targetGen) {
+                    return prev;
+                }
+
+                if (ctx.sending) {
+                    setUndoError('Đang gửi bếp, không thể hoàn tác');
+
+                    return prev;
+                }
+
+                if (ctx.history.length === 0) {
+                    return prev;
+                }
+
+                const snap = ctx.history[ctx.history.length - 1];
+                const valResult = validateRestore(snap, productsMap);
+
+                if (!valResult.ok) {
+                    setUndoError(valResult.message);
+
+                    return prev;
+                }
+
+                setUndoError(null);
+                const confirmedRows = ctx.cart.filter((i) => i.isConfirmed);
+
+                const restoredUnconfirmed: CartItem[] = snap.rows.map((r) => {
+                    const product = productsMap.get(r.menu_item_id);
+
+                    return {
+                        draftLineId: r.draftLineId,
+                        menu_item_id: r.menu_item_id,
+                        name: (r.name as string) || product?.name || 'Món',
+                        quantity: r.quantity,
+                        initialQuantity: 0,
+                        unit_price: r.unit_price,
+                        vat_rate: r.vat_rate,
+                        note: r.note || '',
+                        isConfirmed: false,
+                    };
+                });
+
+                const nextCart = [...confirmedRows, ...restoredUnconfirmed];
+                const { nextHistory } = popDraftSnapshot(ctx.history);
+
+                whisperDraftCart(targetTableId, nextCart);
+
+                return {
+                    ...prev,
+                    [ctxKey]: {
+                        ...ctx,
+                        cart: nextCart,
+                        history: nextHistory,
+                    },
+                };
+            });
+        },
+        [selectedTable, activeInvoiceId, productById],
+    );
+
+    const invalidateContexts = useCallback(
+        (keys: ContextKey[], reason?: string) => {
+            void reason;
+            setContexts((prev) => {
+                const next = { ...prev };
+
+                for (const k of keys) {
+                    const ctxKey = `${k.tableId}::${k.invoiceKey}`;
+                    const existing = next[ctxKey];
+
+                    if (existing) {
+                        next[ctxKey] = {
+                            ...existing,
+                            generation: existing.generation + 1,
+                            history: [],
+                            cart: existing.cart.filter((i) => i.isConfirmed),
+                            sending: false,
+                        };
+                    }
+                }
+
+                return next;
+            });
+        },
+        [],
+    );
+
+    const reconcileBaseline = useCallback((serverTables: POSTableData[]) => {
+        const safeTables = (
+            Array.isArray(serverTables)
+                ? serverTables
+                : Object.values(serverTables || {})
+        ) as POSTableData[];
+
+        const allServerOrderViews = extractServerOrderViews(safeTables);
+        const serverOrdersByContext = new Map<string, ServerOrderView[]>();
+
+        for (const view of allServerOrderViews) {
+            const ctxKey = `${view.tableId}::${view.invoiceKey}`;
+            const list = serverOrdersByContext.get(ctxKey) || [];
+            list.push(view);
+            serverOrdersByContext.set(ctxKey, list);
+        }
 
         setActiveInvoiceId((prevActive) => {
             const nextActive = { ...prevActive };
@@ -60,111 +496,256 @@ export function usePOSCart(
             return nextActive;
         });
 
-        setTableCarts((prevCarts) => {
-            const nextCarts: Record<number, Record<string, CartItem[]>> = {};
+        setContexts((prevContexts) => {
+            const nextContexts: Record<string, ContextState> = {};
+            const activeKeysSet = new Set<string>();
+
             safeTables.forEach((table) => {
-                const tableInvoices: Record<string, CartItem[]> = {};
                 const allOrders =
                     table.active_orders ||
                     (table.active_order ? [table.active_order] : []);
 
-                allOrders.forEach((order) => {
-                    const isOrderCompleted = order.status === 'completed';
-                    const isDraft = order.status === 'draft' || order.status === 'reserved';
-                    const key = order.order_code || `draft_${order.id}`;
+                const invoiceKeys = allOrders.map(
+                    (o) => o.order_code || `draft_${o.id}`,
+                );
 
-                    if (!tableInvoices[key]) {
-tableInvoices[key] = [];
-}
+                if (invoiceKeys.length === 0) {
+                    invoiceKeys.push('draft_default');
+                }
 
-                    if (order.items) {
-                        order.items.forEach((item) => {
-                            if (item.status === 'cancelled') {
-return;
-}
+                invoiceKeys.forEach((key) => {
+                    const ctxKey = `${table.id}::${key}`;
+                    activeKeysSet.add(ctxKey);
 
-                            tableInvoices[key].push({
-                                menu_item_id: item.menu_item_id,
-                                name: item.menu_item?.name || 'Món',
-                                quantity: item.quantity,
-                                initialQuantity: item.quantity,
-                                unit_price: Number(item.unit_price),
-                                vat_rate: Number(item.menu_item?.vat_rate || 0),
-                                note: item.note || '',
-                                isConfirmed: !isDraft,
-                                isKitchenCompleted:
-                                    item.status === 'completed' ||
-                                    isOrderCompleted,
-                                isServed: !!item.served_at,
-                                orderItemId: item.id,
-                                orderCode: order.order_code || `draft_${order.id}`,
-                                sentAt: item.created_at,
+                    const serverOrders =
+                        serverOrdersByContext.get(ctxKey) || [];
+                    const newFingerprint = fingerprintBaseline(serverOrders);
+                    const existingCtx = prevContexts[ctxKey];
+
+                    const confirmedCartItems: CartItem[] = [];
+                    const matchingOrders = allOrders.filter(
+                        (o) => (o.order_code || `draft_${o.id}`) === key,
+                    );
+
+                    matchingOrders.forEach((order) => {
+                        const isOrderCompleted = order.status === 'completed';
+                        const isDraft =
+                            order.status === 'draft' ||
+                            order.status === 'reserved';
+
+                        if (order.items) {
+                            order.items.forEach((item) => {
+                                if (item.status === 'cancelled') {
+                                    return;
+                                }
+
+                                confirmedCartItems.push({
+                                    menu_item_id: item.menu_item_id,
+                                    name: item.menu_item?.name || 'Món',
+                                    quantity: item.quantity,
+                                    initialQuantity: item.quantity,
+                                    unit_price: Number(item.unit_price),
+                                    vat_rate: Number(
+                                        item.menu_item?.vat_rate || 0,
+                                    ),
+                                    note: item.note || '',
+                                    isConfirmed: !isDraft,
+                                    isKitchenCompleted:
+                                        item.status === 'completed' ||
+                                        isOrderCompleted,
+                                    isServed: !!item.served_at,
+                                    orderItemId: item.id,
+                                    orderCode:
+                                        order.order_code || `draft_${order.id}`,
+                                    sentAt: item.created_at,
+                                });
                             });
-                        });
-                    }
-                });
+                        }
+                    });
 
-                // Keep local unconfirmed drafts
-                const prevTableCarts = prevCarts[table.id] || {};
-                Object.keys(prevTableCarts).forEach((key) => {
-                    if (key.startsWith('draft_')) {
-                        const draftItems = prevTableCarts[key];
+                    if (!existingCtx) {
+                        nextContexts[ctxKey] = {
+                            tableId: table.id,
+                            invoiceKey: key,
+                            generation: 0,
+                            cart: confirmedCartItems,
+                            history: [],
+                            baselineFingerprint: newFingerprint,
+                            sending: false,
+                        };
+                    } else {
+                        const isFingerprintEqual =
+                            existingCtx.baselineFingerprint === newFingerprint;
 
-                        if (
-                            draftItems &&
-                            draftItems.length > 0 &&
-                            draftItems.some((i) => !i.isConfirmed)
-                        ) {
-                            tableInvoices[key] = draftItems;
+                        if (isFingerprintEqual) {
+                            const unconfirmedItems = existingCtx.cart.filter(
+                                (i) => !i.isConfirmed,
+                            );
+
+                            nextContexts[ctxKey] = {
+                                ...existingCtx,
+                                cart: [
+                                    ...confirmedCartItems,
+                                    ...unconfirmedItems,
+                                ],
+                            };
+                        } else {
+                            nextContexts[ctxKey] = {
+                                ...existingCtx,
+                                cart: confirmedCartItems,
+                                history: [],
+                                baselineFingerprint: newFingerprint,
+                                sending: false,
+                            };
                         }
                     }
                 });
+            });
 
-                if (Object.keys(tableInvoices).length === 0) {
-                    tableInvoices['draft_default'] = [];
+            // Retain unconfirmed draft invoices not present on server
+            Object.entries(prevContexts).forEach(([ctxKey, ctx]) => {
+                if (
+                    !activeKeysSet.has(ctxKey) &&
+                    ctx.invoiceKey.startsWith('draft_')
+                ) {
+                    const tableExists = safeTables.some(
+                        (t) => t.id === ctx.tableId,
+                    );
+
+                    if (tableExists && ctx.cart.some((i) => !i.isConfirmed)) {
+                        nextContexts[ctxKey] = ctx;
+                    }
+                }
+            });
+
+            return nextContexts;
+        });
+    }, []);
+
+    useEffect(() => {
+        queueMicrotask(() => {
+            reconcileBaseline(tables);
+        });
+    }, [tables, reconcileBaseline]);
+
+    const onSendBegin = useCallback(
+        (tableId: number, invoiceKey: string): ContextKey | null => {
+            const ctxKey = `${tableId}::${invoiceKey}`;
+            let capturedKey: ContextKey | null = null;
+
+            setContexts((prev) => {
+                const existing = prev[ctxKey];
+
+                if (!existing) {
+                    return prev;
                 }
 
-                nextCarts[table.id] = tableInvoices;
+                capturedKey = {
+                    tableId,
+                    invoiceKey,
+                    generation: existing.generation,
+                };
+
+                return {
+                    ...prev,
+                    [ctxKey]: {
+                        ...existing,
+                        sending: true,
+                    },
+                };
             });
 
-            return nextCarts;
-        });
-        });
-    }, [tables]);
+            return capturedKey;
+        },
+        [],
+    );
 
-    const activeInvId = selectedTable
-        ? activeInvoiceId[selectedTable.id] || 'draft_default'
-        : 'draft_default';
-    const currentCart =
-        selectedTable && tableCarts[selectedTable.id]
-            ? tableCarts[selectedTable.id][activeInvId] || []
-            : [];
+    const onSendSuccess = useCallback(
+        (key: ContextKey, serverTables?: POSTableData[]) => {
+            const ctxKey = `${key.tableId}::${key.invoiceKey}`;
 
-    const whisperDraftCart = (tableId: number, items: CartItem[]) => {
-        if (typeof window !== 'undefined' && window.Echo) {
-            const unconfirmedCount = items
-                .filter((i) => !i.isConfirmed)
-                .reduce((s, i) => s + i.quantity, 0);
-            window.Echo.join('pos-room').whisper('table-draft-cart-updated', {
-                tableId,
-                unconfirmedCount,
+            setContexts((prev) => {
+                const existing = prev[ctxKey];
+
+                if (!existing || existing.generation !== key.generation) {
+                    return prev;
+                }
+
+                return {
+                    ...prev,
+                    [ctxKey]: {
+                        ...existing,
+                        sending: false,
+                        history: [],
+                        cart: existing.cart.filter((i) => i.isConfirmed),
+                    },
+                };
             });
-        }
-    };
 
-    const addNewDraftInvoice = (tableId: number) => {
-        const nextTempId = `draft_${Date.now()}`;
-        setTableCarts((prev) => {
-            const prevTableCarts = prev[tableId] || {};
+            if (serverTables) {
+                reconcileBaseline(serverTables);
+            }
+        },
+        [reconcileBaseline],
+    );
+
+    const onSendFailure = useCallback((key: ContextKey) => {
+        const ctxKey = `${key.tableId}::${key.invoiceKey}`;
+
+        setContexts((prev) => {
+            const existing = prev[ctxKey];
+
+            if (!existing || existing.generation !== key.generation) {
+                return prev;
+            }
 
             return {
                 ...prev,
-                [tableId]: {
-                    ...prevTableCarts,
-                    [nextTempId]: [],
+                [ctxKey]: {
+                    ...existing,
+                    sending: false,
                 },
             };
         });
+    }, []);
+
+    const onSendAmbiguous = useCallback((key: ContextKey) => {
+        const ctxKey = `${key.tableId}::${key.invoiceKey}`;
+
+        setContexts((prev) => {
+            const existing = prev[ctxKey];
+
+            if (!existing || existing.generation !== key.generation) {
+                return prev;
+            }
+
+            return {
+                ...prev,
+                [ctxKey]: {
+                    ...existing,
+                    sending: true,
+                },
+            };
+        });
+    }, []);
+
+    const addNewDraftInvoice = (tableId: number) => {
+        const nextTempId = `draft_${Date.now()}`;
+        const ctxKey = `${tableId}::${nextTempId}`;
+
+        setContexts((prev) => ({
+            ...prev,
+            [ctxKey]: {
+                tableId,
+                invoiceKey: nextTempId,
+                generation: 0,
+                cart: [],
+                history: [],
+                baselineFingerprint: '[]',
+                sending: false,
+            },
+        }));
+
         setActiveInvoiceId((prev) => ({
             ...prev,
             [tableId]: nextTempId,
@@ -172,32 +753,36 @@ return;
     };
 
     const removeDraftInvoice = (tableId: number, tempId: string) => {
-        setTableCarts((prev) => {
-            const nextTableCarts = { ...(prev[tableId] || {}) };
-            delete nextTableCarts[tempId];
+        const ctxKey = `${tableId}::${tempId}`;
 
-            if (Object.keys(nextTableCarts).length === 0) {
-                nextTableCarts['draft_default'] = [];
+        setContexts((prev) => {
+            const next = { ...prev };
+            delete next[ctxKey];
+
+            const remaining = Object.values(next).filter(
+                (c) => c.tableId === tableId,
+            );
+
+            if (remaining.length === 0) {
+                next[`${tableId}::draft_default`] = {
+                    tableId,
+                    invoiceKey: 'draft_default',
+                    generation: 0,
+                    cart: [],
+                    history: [],
+                    baselineFingerprint: '[]',
+                    sending: false,
+                };
             }
 
-            return {
-                ...prev,
-                [tableId]: nextTableCarts,
-            };
+            return next;
         });
+
         setActiveInvoiceId((prev) => {
-            const currentActive = prev[tableId];
-
-            if (currentActive === tempId) {
-                const nextTableCarts = tableCarts[tableId] || {};
-                const keys = Object.keys(nextTableCarts).filter(
-                    (k) => k !== tempId,
-                );
-                const nextActive = keys.length > 0 ? keys[0] : 'draft_default';
-
+            if (prev[tableId] === tempId) {
                 return {
                     ...prev,
-                    [tableId]: nextActive,
+                    [tableId]: 'draft_default',
                 };
             }
 
@@ -207,143 +792,60 @@ return;
 
     const handleToggleProduct = (product: POSProductData) => {
         if (!selectedTable) {
-return;
-}
+            return;
+        }
 
         const tableId = selectedTable.id;
         const activeId = activeInvoiceId[tableId] || 'draft_default';
-        const existingCart = (tableCarts[tableId] || {})[activeId] || [];
-        const maxServings =
-            product.max_servings !== undefined ? product.max_servings : 999;
+        const ctx = contexts[`${tableId}::${activeId}`];
+        const generation = ctx?.generation ?? 0;
 
-        const draftIndex = existingCart.findIndex(
-            (i) => i.menu_item_id === product.id && !i.isConfirmed,
+        commitDraftChange(
+            { tableId, invoiceKey: activeId, generation },
+            'add',
+            String(product.id),
+            1,
+            productById,
         );
-
-        let updated: CartItem[];
-
-        if (draftIndex > -1) {
-            const existingDraft = existingCart[draftIndex];
-
-            if (existingDraft.quantity + 1 > maxServings) {
-return;
-}
-
-            updated = [...existingCart];
-            updated[draftIndex] = {
-                ...existingDraft,
-                quantity: existingDraft.quantity + 1,
-            };
-        } else {
-            if (1 > maxServings) {
-return;
-}
-
-            const newItem: CartItem = {
-                menu_item_id: product.id,
-                name: product.name,
-                quantity: 1,
-                initialQuantity: 0,
-                unit_price: Number(product.price),
-                vat_rate: Number(product.vat_rate || 0),
-                note: '',
-                isConfirmed: false,
-            };
-            updated = [...existingCart, newItem];
-        }
-
-        setTableCarts((prev) => ({
-            ...prev,
-            [tableId]: {
-                ...(prev[tableId] || {}),
-                [activeId]: updated,
-            },
-        }));
-        whisperDraftCart(tableId, updated);
     };
 
     const handleUpdateQuantity = (menuItemId: number, delta: number) => {
         if (!selectedTable) {
-return;
-}
+            return;
+        }
 
         const tableId = selectedTable.id;
         const activeId = activeInvoiceId[tableId] || 'draft_default';
-        const existingCart = (tableCarts[tableId] || {})[activeId] || [];
-        const product = productById.get(menuItemId);
-        const maxServings =
-            product?.max_servings !== undefined ? product.max_servings : 999;
+        const ctxKey = `${tableId}::${activeId}`;
+        const ctx = contexts[ctxKey];
+        const generation = ctx?.generation ?? 0;
+        const existingCart = ctx?.cart || [];
 
-        let draftAlreadyHandled = false;
-        const updated = existingCart
-            .map((item) => {
-                if (item.menu_item_id === menuItemId && !item.isConfirmed) {
-                    const newQty = item.quantity + delta;
+        const draftItem = existingCart.find(
+            (i) => i.menu_item_id === menuItemId && !i.isConfirmed,
+        );
 
-                    if (delta > 0 && newQty > maxServings) {
-return item;
-}
+        if (draftItem) {
+            const lineId =
+                draftItem.draftLineId || String(draftItem.menu_item_id);
+            const newQty = draftItem.quantity + delta;
 
-                    if (newQty <= 0) {
-                        draftAlreadyHandled = true;
-
-                        return null;
-                    }
-
-                    draftAlreadyHandled = true;
-
-                    return { ...item, quantity: newQty };
-                }
-
-                return item;
-            })
-            .filter(Boolean) as CartItem[];
-
-        if (delta > 0) {
-            const confirmedItem = existingCart.find(
-                (i) => i.menu_item_id === menuItemId && i.isConfirmed,
+            commitDraftChange(
+                { tableId, invoiceKey: activeId, generation },
+                'setQty',
+                lineId,
+                newQty,
+                productById,
             );
-
-            if (confirmedItem && product && !draftAlreadyHandled) {
-                const draftIndex = updated.findIndex(
-                    (i) => i.menu_item_id === menuItemId && !i.isConfirmed,
-                );
-
-                if (draftIndex > -1) {
-                    const existingDraft = updated[draftIndex];
-
-                    if (existingDraft.quantity + 1 <= maxServings) {
-                        updated[draftIndex] = {
-                            ...existingDraft,
-                            quantity: existingDraft.quantity + 1,
-                        };
-                    }
-                } else {
-                    if (1 <= maxServings) {
-                        const newDraftItem: CartItem = {
-                            menu_item_id: product.id,
-                            name: product.name,
-                            quantity: 1,
-                            initialQuantity: 0,
-                            unit_price: Number(product.price),
-                            vat_rate: Number(product.vat_rate || 0),
-                            note: '',
-                            isConfirmed: false,
-                        };
-                        updated.push(newDraftItem);
-                    }
-                }
-            }
+        } else if (delta > 0) {
+            commitDraftChange(
+                { tableId, invoiceKey: activeId, generation },
+                'add',
+                String(menuItemId),
+                delta,
+                productById,
+            );
         }
-
-        setTableCarts((prev) => ({
-            ...prev,
-            [tableId]: {
-                ...(prev[tableId] || {}),
-                [activeId]: updated,
-            },
-        }));
-        whisperDraftCart(tableId, updated);
     };
 
     const handleStageReduction = (
@@ -353,132 +855,180 @@ return item;
         note?: string,
     ) => {
         if (!selectedTable) {
-return;
-}
+            return;
+        }
 
         const tableId = selectedTable.id;
         const activeId = activeInvoiceId[tableId] || 'draft_default';
-        const existingCart = (tableCarts[tableId] || {})[activeId] || [];
+        const ctxKey = `${tableId}::${activeId}`;
 
-        const updated = existingCart.map((item) => {
-            if (item.orderItemId === orderItemId && item.isConfirmed) {
-                const newStagedQty = (item.stagedReduceQty || 0) + reduceQty;
-                const currentEffectiveQty = Math.max(
-                    0,
-                    item.quantity - reduceQty,
-                );
+        setContexts((prev) => {
+            const ctx = prev[ctxKey];
 
-                return {
-                    ...item,
-                    quantity: currentEffectiveQty,
-                    stagedReduceQty: newStagedQty,
-                    stagedReason: reason,
-                    stagedNote: note,
-                };
+            if (!ctx) {
+                return prev;
             }
 
-            return item;
-        });
+            const updated = ctx.cart.map((item) => {
+                if (item.orderItemId === orderItemId && item.isConfirmed) {
+                    const newStagedQty =
+                        (item.stagedReduceQty || 0) + reduceQty;
+                    const currentEffectiveQty = Math.max(
+                        0,
+                        item.quantity - reduceQty,
+                    );
 
-        setTableCarts((prev) => ({
-            ...prev,
-            [tableId]: {
-                ...(prev[tableId] || {}),
-                [activeId]: updated,
-            },
-        }));
-        whisperDraftCart(tableId, updated);
+                    return {
+                        ...item,
+                        quantity: currentEffectiveQty,
+                        stagedReduceQty: newStagedQty,
+                        stagedReason: reason,
+                        stagedNote: note,
+                    };
+                }
+
+                return item;
+            });
+
+            whisperDraftCart(tableId, updated);
+
+            return {
+                ...prev,
+                [ctxKey]: {
+                    ...ctx,
+                    cart: updated,
+                },
+            };
+        });
     };
 
     const handleRemoveItem = (menuItemId: number) => {
         if (!selectedTable) {
-return;
-}
+            return;
+        }
 
         const tableId = selectedTable.id;
         const activeId = activeInvoiceId[tableId] || 'draft_default';
-        const existingCart = (tableCarts[tableId] || {})[activeId] || [];
-        const updated = existingCart.filter(
-            (item) => item.menu_item_id !== menuItemId || item.isConfirmed,
+        const ctxKey = `${tableId}::${activeId}`;
+        const ctx = contexts[ctxKey];
+        const generation = ctx?.generation ?? 0;
+
+        commitDraftChange(
+            { tableId, invoiceKey: activeId, generation },
+            'remove',
+            String(menuItemId),
+            0,
+            productById,
         );
-        setTableCarts((prev) => ({
-            ...prev,
-            [tableId]: {
-                ...(prev[tableId] || {}),
-                [activeId]: updated,
-            },
-        }));
-        whisperDraftCart(tableId, updated);
     };
 
     const handleUpdateNote = (menuItemId: number, note: string) => {
         if (!selectedTable) {
-return;
-}
+            return;
+        }
 
         const tableId = selectedTable.id;
         const activeId = activeInvoiceId[tableId] || 'draft_default';
-        const existingCart = (tableCarts[tableId] || {})[activeId] || [];
-        const updated = existingCart.map((item) =>
-            item.menu_item_id === menuItemId ? { ...item, note } : item,
-        );
-        setTableCarts((prev) => ({
-            ...prev,
-            [tableId]: {
-                ...(prev[tableId] || {}),
-                [activeId]: updated,
-            },
-        }));
-    };
+        const ctxKey = `${tableId}::${activeId}`;
 
-    const clearTableCart = (tableId?: number, invoiceId?: string) => {
-        // Note: virtual "Mang đi" table has id = 0, so a falsy check would skip it
-        if (tableId === undefined || tableId === null) {
-return;
-}
+        setContexts((prev) => {
+            const ctx = prev[ctxKey];
 
-        const activeId =
-            invoiceId || activeInvoiceId[tableId] || 'draft_default';
-        setTableCarts((prev) => {
-            const nextTableCarts = { ...(prev[tableId] || {}) };
-            delete nextTableCarts[activeId];
-
-            if (Object.keys(nextTableCarts).length === 0) {
-                nextTableCarts['draft_default'] = [];
+            if (!ctx) {
+                return prev;
             }
 
-            setActiveInvoiceId((prevActive) => {
-                if (prevActive[tableId] === activeId) {
-                    const keys = Object.keys(nextTableCarts);
-
-                    return {
-                        ...prevActive,
-                        [tableId]: keys.length > 0 ? keys[0] : 'draft_default',
-                    };
-                }
-
-                return prevActive;
-            });
+            const updated = ctx.cart.map((item) =>
+                item.menu_item_id === menuItemId ? { ...item, note } : item,
+            );
 
             return {
                 ...prev,
-                [tableId]: nextTableCarts,
+                [ctxKey]: {
+                    ...ctx,
+                    cart: updated,
+                    history: [], // ponytail: clear history on unrecorded note edit
+                },
             };
         });
+    };
+
+    const clearTableCart = (tableId?: number, invoiceId?: string) => {
+        if (tableId === undefined || tableId === null) {
+            return;
+        }
+
+        const activeId =
+            invoiceId || activeInvoiceId[tableId] || 'draft_default';
+        const ctxKey = `${tableId}::${activeId}`;
+
+        setContexts((prev) => {
+            const next = { ...prev };
+            const existing = next[ctxKey];
+            const nextGen = (existing?.generation ?? 0) + 1;
+
+            if (activeId.startsWith('draft_')) {
+                delete next[ctxKey];
+            } else if (existing) {
+                next[ctxKey] = {
+                    ...existing,
+                    generation: nextGen,
+                    history: [],
+                    cart: existing.cart.filter((i) => i.isConfirmed),
+                    sending: false,
+                };
+            }
+
+            const remainingForTable = Object.values(next).filter(
+                (c) => c.tableId === tableId,
+            );
+
+            if (remainingForTable.length === 0) {
+                next[`${tableId}::draft_default`] = {
+                    tableId,
+                    invoiceKey: 'draft_default',
+                    generation: 0,
+                    cart: [],
+                    history: [],
+                    baselineFingerprint: '[]',
+                    sending: false,
+                };
+            }
+
+            return next;
+        });
+
+        setActiveInvoiceId((prevActive) => {
+            if (prevActive[tableId] === activeId) {
+                return {
+                    ...prevActive,
+                    [tableId]: 'draft_default',
+                };
+            }
+
+            return prevActive;
+        });
+
         whisperDraftCart(tableId, []);
     };
 
     const clearUnconfirmedDraft = (tableId?: number, invoiceId?: string) => {
-        // Note: virtual "Mang đi" table has id = 0, so a falsy check would skip it
         if (tableId === undefined || tableId === null) {
-return;
-}
+            return;
+        }
 
         const activeId =
             invoiceId || activeInvoiceId[tableId] || 'draft_default';
-        setTableCarts((prev) => {
-            const existing = (prev[tableId] || {})[activeId] || [];
-            const confirmedOnly = existing
+        const ctxKey = `${tableId}::${activeId}`;
+
+        setContexts((prev) => {
+            const existing = prev[ctxKey];
+
+            if (!existing) {
+                return prev;
+            }
+
+            const confirmedOnly = existing.cart
                 .filter((item) => item.isConfirmed)
                 .map((item) => {
                     const {
@@ -491,19 +1041,25 @@ return;
                     return rest;
                 });
 
-            const nextTableCarts = { ...(prev[tableId] || {}) };
+            const next = { ...prev };
 
-            if (confirmedOnly.length === 0 && activeId.startsWith('draft_')) {
-                delete nextTableCarts[activeId];
+            if (
+                confirmedOnly.length === 0 &&
+                activeId.startsWith('draft_') &&
+                activeId !== 'draft_default'
+            ) {
+                delete next[ctxKey];
             } else {
-                nextTableCarts[activeId] = confirmedOnly;
+                next[ctxKey] = {
+                    ...existing,
+                    cart: confirmedOnly,
+                    history: [],
+                };
             }
 
-            return {
-                ...prev,
-                [tableId]: nextTableCarts,
-            };
+            return next;
         });
+
         whisperDraftCart(tableId, []);
     };
 
@@ -521,5 +1077,17 @@ return;
         handleUpdateNote,
         clearTableCart,
         clearUnconfirmedDraft,
+        // Draft Undo & History additions:
+        commitDraftChange,
+        undoDraft,
+        canUndo,
+        undoError,
+        sending,
+        invalidateContexts,
+        reconcileBaseline,
+        onSendBegin,
+        onSendSuccess,
+        onSendFailure,
+        onSendAmbiguous,
     };
 }
