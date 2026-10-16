@@ -117,7 +117,14 @@ class PaidProductRankingService
 
                     $productId = (int) $row->menu_item_id;
                     $lineId = (int) $row->line_id;
-                    $issuedAtTime = Carbon::parse((string) $row->issued_at)->getTimestampMs();
+                    $rawIssued = (string) $row->issued_at;
+                    $issuedAtTime = (int) (strtotime($rawIssued) * 1000);
+                    if (str_contains($rawIssued, '.')) {
+                        $parts = explode('.', $rawIssued);
+                        if (isset($parts[1]) && is_numeric($parts[1])) {
+                            $issuedAtTime += (int) substr(str_pad($parts[1], 3, '0'), 0, 3);
+                        }
+                    }
                     $rawName = is_string($row->name_snapshot) ? trim($row->name_snapshot) : '';
                     $name = $rawName !== '' ? $rawName : 'Món #'.$productId;
 

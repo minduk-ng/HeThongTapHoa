@@ -1,9 +1,10 @@
 import { Head, router } from '@inertiajs/react';
 import { 
     TrendingUp, TrendingDown, 
-    ChefHat, ConciergeBell, CheckCircle2 
+    ChefHat, ConciergeBell, CheckCircle2,
+    AlertCircle, RotateCcw, Loader2, Info, HelpCircle
 } from 'lucide-react';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 
@@ -28,14 +29,25 @@ interface ChartItem {
 }
 
 interface TopProductItem {
+    product_id: number;
     name: string;
-    sales_count: string | number;
+    sales_count: number;
+}
+
+interface TopProductsMeta {
+    source: string;
+    refund_basis: string;
+    unidentified_line_count: number;
+    unidentified_net_quantity: number;
+    invalid_line_count: number;
+    generated_at: string;
 }
 
 interface DashboardProps {
     filters: {
         date_range: string;
         available_ranges: string[];
+        top_k?: number;
     };
     kpis: {
         revenue: { value: number; comparison_percentage: number; trend: 'up' | 'down' };
@@ -55,6 +67,7 @@ interface DashboardProps {
     analytics: {
         chart_data: ChartItem[];
         top_products: TopProductItem[];
+        top_products_meta?: TopProductsMeta;
     };
     inventory_warnings: WarningItem[];
 }
@@ -101,16 +114,116 @@ return;
     // Defensiveness checks
     const safeWarnings = Array.isArray(inventory_warnings) ? inventory_warnings : [];
     const safeChartData = Array.isArray(analytics?.chart_data) ? analytics.chart_data : [];
-    const safeTopProducts = Array.isArray(analytics?.top_products) ? analytics.top_products : [];
     const safeTablesMap = Array.isArray(live_operations?.tables_map) ? live_operations.tables_map : [];
     const safeRecentKds = Array.isArray(live_operations?.kds?.recent_items) ? live_operations.kds.recent_items : [];
+
+    const initialK = filters.top_k ?? 5;
+    const [selectedK, setSelectedK] = useState<number>(initialK);
+    const [isLoadingTopK, setIsLoadingTopK] = useState(false);
+    const [topKError, setTopKError] = useState<string | null>(null);
+    const [displayedProducts, setDisplayedProducts] = useState<TopProductItem[]>(
+        Array.isArray(analytics?.top_products) ? analytics.top_products : []
+    );
+    const [displayedMeta, setDisplayedMeta] = useState<TopProductsMeta | null>(
+        analytics?.top_products_meta ?? null
+    );
+    const [prevProps, setPrevProps] = useState({
+        analytics,
+        dateRange: filters.date_range,
+        topK: filters.top_k,
+    });
+    const topKSequenceRef = useRef<number>(0);
+
+    // Adjust state when parent props change and no request is pending
+    if (
+        !isLoadingTopK &&
+        (prevProps.analytics !== analytics ||
+            prevProps.dateRange !== filters.date_range ||
+            prevProps.topK !== filters.top_k)
+    ) {
+        setPrevProps({
+            analytics,
+            dateRange: filters.date_range,
+            topK: filters.top_k,
+        });
+        setDisplayedProducts(Array.isArray(analytics?.top_products) ? analytics.top_products : []);
+        setDisplayedMeta(analytics?.top_products_meta ?? null);
+
+        if (filters.top_k) {
+            setSelectedK(filters.top_k);
+        }
+    }
+
+    const handleKChange = useCallback((k: number) => {
+        const seq = ++topKSequenceRef.current;
+
+        setSelectedK(k);
+        setIsLoadingTopK(true);
+        setTopKError(null);
+
+        router.get(
+            '/',
+            { date_range: filters.date_range, top_k: k },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                only: ['analytics', 'filters'],
+                onSuccess: (page) => {
+                    if (seq === topKSequenceRef.current) {
+                        const newAnalytics = page.props.analytics as DashboardProps['analytics'] | undefined;
+                        const newFilters = page.props.filters as DashboardProps['filters'] | undefined;
+
+                        if (newAnalytics?.top_products) {
+                            setDisplayedProducts(newAnalytics.top_products);
+                        }
+
+                        if (newAnalytics?.top_products_meta) {
+                            setDisplayedMeta(newAnalytics.top_products_meta);
+                        }
+
+                        if (newFilters?.top_k) {
+                            setSelectedK(newFilters.top_k);
+                        }
+
+                        setTopKError(null);
+                        setIsLoadingTopK(false);
+                    }
+                },
+                onError: () => {
+                    if (seq === topKSequenceRef.current) {
+                        setTopKError('Không thể tải danh sách món bán chạy.');
+                        setIsLoadingTopK(false);
+                    }
+                },
+                onFinish: () => {
+                    if (seq === topKSequenceRef.current) {
+                        setIsLoadingTopK(false);
+                    }
+                },
+            }
+        );
+    }, [filters.date_range]);
+
+    const handleRetryTopK = useCallback(() => {
+        handleKChange(selectedK);
+    }, [handleKChange, selectedK]);
+
+    const getProductRowKey = (prod: TopProductItem, index: number): string => {
+        if (prod.product_id != null) {
+            return Number.isSafeInteger(Number(prod.product_id))
+                ? String(prod.product_id)
+                : String(prod.product_id);
+        }
+
+        return `top-product-${index}`;
+    };
 
     const formatCurrency = (val: number) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
     };
 
     const handleRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        router.get('/', { date_range: e.target.value }, { preserveState: true });
+        router.get('/', { date_range: e.target.value, top_k: selectedK }, { preserveState: true });
     };
 
     const getTableColorClass = (status: string) => {
@@ -357,27 +470,98 @@ return;
                 {/* Sidebar stats list: Top Products & Stock warnings */}
                 <div className="lg:col-span-4 flex flex-col gap-6">
                     {/* Top Products */}
-                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs flex-1">
-                        <h5 className="font-display text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-4">Top 5 món bán chạy</h5>
-                        <div className="space-y-2">
-                            {safeTopProducts.map((prod, index) => (
-                                <div key={index} className="flex items-center gap-3 p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-colors">
-                                    <span className={`w-5.5 h-5.5 rounded-lg text-[11px] flex items-center justify-center font-bold shrink-0 ${
-                                        index === 0 ? 'bg-sky-600 text-white' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
-                                    }`}>
-                                        {index + 1}
-                                    </span>
-                                    <span className="flex-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200 truncate">
-                                        {prod.name}
-                                    </span>
-                                    <span className="text-sky-600 dark:text-sky-400 font-black text-xs tabular-nums">
-                                        {prod.sales_count} món
-                                    </span>
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-xs flex-1 flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <h5 className="font-display text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                                    Top {selectedK} món bán chạy
+                                </h5>
+                                {isLoadingTopK && (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-600 dark:text-sky-400" />
+                                )}
+                            </div>
+                            <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg">
+                                {[5, 10, 20].map((k) => (
+                                    <button
+                                        key={k}
+                                        type="button"
+                                        onClick={() => handleKChange(k)}
+                                        className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                                            selectedK === k
+                                                ? 'bg-white dark:bg-zinc-700 text-sky-600 dark:text-sky-400 shadow-xs'
+                                                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                                        }`}
+                                    >
+                                        {k}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {topKError ? (
+                            <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 text-center my-auto">
+                                <AlertCircle className="w-5 h-5 text-rose-500 mx-auto mb-1.5" />
+                                <p className="text-xs text-rose-600 dark:text-rose-400 font-medium mb-2.5">{topKError}</p>
+                                <button
+                                    type="button"
+                                    onClick={handleRetryTopK}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                                >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    Thử lại
+                                </button>
+                            </div>
+                        ) : (
+                            <div className={`space-y-2 flex-1 relative transition-opacity duration-150 ${isLoadingTopK ? 'opacity-50 pointer-events-none' : ''}`}>
+                                <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                                    {displayedProducts.map((prod, index) => (
+                                        <div 
+                                            key={getProductRowKey(prod, index)} 
+                                            className="flex items-center gap-3 p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-colors"
+                                        >
+                                            <span className={`w-5.5 h-5.5 rounded-lg text-[11px] flex items-center justify-center font-bold shrink-0 ${
+                                                index === 0 ? 'bg-sky-600 text-white' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+                                            }`}>
+                                                {index + 1}
+                                            </span>
+                                            <span className="flex-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200 truncate" title={prod.name}>
+                                                {prod.name}
+                                            </span>
+                                            <span className="text-sky-600 dark:text-sky-400 font-black text-xs tabular-nums">
+                                                {prod.sales_count} món
+                                            </span>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                            {safeTopProducts.length === 0 && (
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 italic text-center py-6">Chưa có dữ liệu đơn hàng trong kỳ</p>
-                            )}
+                                {displayedProducts.length === 0 && (
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 italic text-center py-6">
+                                        Chưa có dữ liệu đơn hàng trong kỳ
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {displayedMeta && (displayedMeta.unidentified_line_count > 0 || displayedMeta.invalid_line_count > 0) && (
+                            <div className="mt-3 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                                <Info className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                                <div className="space-y-0.5">
+                                    {displayedMeta.unidentified_line_count > 0 && (
+                                        <p>
+                                            Bỏ qua {displayedMeta.unidentified_line_count} dòng chưa xác định món ({displayedMeta.unidentified_net_quantity} sản phẩm).
+                                        </p>
+                                    )}
+                                    {displayedMeta.invalid_line_count > 0 && (
+                                        <p>
+                                            Bỏ qua {displayedMeta.invalid_line_count} dòng dữ liệu không hợp lệ.
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mt-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center gap-1.5 text-[11px] text-zinc-400 dark:text-zinc-500" title="Hoàn tiền theo giá trị tiền (không kèm số lượng món) không được khấu trừ vào số lượng bán.">
+                            <HelpCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>Hoàn tiền theo giá trị tiền (amount-only) không suy diễn số lượng hoàn.</span>
                         </div>
                     </div>
 

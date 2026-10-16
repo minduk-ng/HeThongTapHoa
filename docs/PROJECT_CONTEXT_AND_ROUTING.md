@@ -84,6 +84,16 @@
 
 > **Kiến trúc Layout Phân hệ Quản lý (`ManagerPageLayout.tsx`)**: Toàn bộ các trang `/manager/*` áp dụng chuẩn layout Top-Down Flow: Top Control Header (Icon, Title, Badge, Action buttons, Toggle thu gọn/mở rộng bộ lọc `defaultFiltersOpen = false`) kết hợp thanh Horizontal Filter Bar và khung bảng dữ liệu `DataTable` tràn viền full-width 100%.
 
+**Kiến Trúc Top-K Món Bán Chạy Trên Dashboard (`Paid Products Top-K`)**:
+- **Durable Product Identity & Settled Source**: Nguồn dữ liệu từ các hóa đơn thực tế đã phát hành (`invoices` có `payment_method` hợp lệ, loại trừ `synthetic_dataset_id`, trong khoảng thời gian `[startInclusive, endExclusive)` theo `invoices.issued_at`). Sản phẩm được định danh duy nhất theo numeric `invoice_lines.menu_item_id` (không gom nhóm theo tên). Nhãn hiển thị lấy từ `name_snapshot` của dòng hóa đơn mới nhất theo `(issued_at, invoice_line_id)` giảm dần, fallback `Món #<id>`.
+- **HashMap Aggregation & Bounded Min-Heap Selection**: Quét dữ liệu theo khối ID tăng dần (chunk 1,000 dòng) trong transaction read snapshot nhất quán. Gom số lượng bán thực thu (`net = quantity - refunded_qty`) vào HashMap $O(P)$ theo numeric ID. Sau khi gom, đưa ứng viên vào Min-Heap kích thước $K \in \{5, 10, 20\}$. Gốc Heap lưu phần tử yếu nhất (`sales_count` nhỏ hơn, hoặc bằng nhau thì `product_id` lớn hơn). Xuất Top-K cuối cùng theo thứ tự `sales_count` giảm dần, `product_id` tăng dần.
+- **Cache Invalidation & Revision Guard**: `DashboardService::topProducts` bọc qua tag `dashboard`, TTL 300s. Cache key gồm `{source_version, start, end, tz, k, revision}`. Mọi thao tác checkout, refund hoặc import kho chạm đến hóa đơn sau khi commit đều tăng source revision (`dashboard_source_revisions`) và flush cache tag `dashboard`, ngăn chặn cache fill cũ ghi đè dữ liệu mới.
+- **Tham Số K & Xử Lý Coverage**: Tham số `top_k` được validate nghiêm ngặt ($5, 10, 20$, mặc định $5$). Các dòng `menu_item_id` NULL hoặc số lượng không hợp lệ (`refunded_qty > quantity` hoặc âm) được loại khỏi ranking và thống kê riêng qua `unidentified_line_count`, `unidentified_net_quantity`, `invalid_line_count`. Ghi chú rõ hoàn tiền theo giá trị tiền (amount-only) không suy diễn số lượng hoàn.
+- **Tóm Tắt Benchmark (Artisan `analytics:benchmark-top-k`, Seed `20261016`)**:
+  - Ma trận đo kiểm từ $L=10,000$ đến $1,000,000$ dòng hóa đơn ($P=100$ đến $10,000$ món, $K=5/10/20$, phân bổ đều và lệch/skewed, 3 warmups + median/p95 của 10 lần chạy).
+  - So khớp Oracle: Bounded Min-Heap cho kết quả trùng khớp 100% (`EXACT`) với Full-Sort Oracle trên tập map tổng hợp qua mọi kịch bản.
+  - Phân tích hiệu năng: Tại $P=10,000$, $K=20$, Bounded Min-Heap nhanh hơn Full-Sort Oracle ~5x trong khâu chọn lọc ($2.79\text{ms}$ vs $14.65\text{ms}$). Tuy nhiên trong toàn bộ yêu cầu Cold Request, khâu quét DB ($~900\text{ms}$) và gom HashMap ($~1,100\text{ms}$) chiếm >95% thời gian, do đó không có tuyên bố tăng tốc toàn diện (no universal speedup claim). Warm cache lookup qua tag `dashboard` luôn đạt tốc độ sub-millisecond (<$1.5\text{ms}$). Bộ nhớ đỉnh duy trì ở mức $O(P + \text{chunk})$.
+
 **API bổ trợ của Promotion** (prefix `/manager/promotions`, khai báo tại `routes/web.php`):
 | Route Path | Method | Chức Năng |
 | :--- | :--- | :--- |
