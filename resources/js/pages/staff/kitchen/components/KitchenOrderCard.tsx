@@ -209,7 +209,16 @@ export default function KitchenOrderCard({
             setIsEditModalOpen(false);
 
             router.reload({
-                only: ['workGroups', 'serverNow', 'orders', 'stats'],
+                only: [
+                    'workGroups',
+                    'serverNow',
+                    'orders',
+                    'stats',
+                    'stations',
+                    'dispatchSettings',
+                    'categoryStations',
+                    'kitchenReadiness',
+                ],
                 onError: () => {},
             });
         } catch {

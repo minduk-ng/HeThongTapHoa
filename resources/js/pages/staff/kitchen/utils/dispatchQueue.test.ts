@@ -1,7 +1,12 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 import type { QueueGroup } from './dispatchQueue.ts';
-import { MinHeap, isGroupLongWait, orderGroups } from './dispatchQueue.ts';
+import {
+    MinHeap,
+    filterGroupsByStation,
+    isGroupLongWait,
+    orderGroups,
+} from './dispatchQueue.ts';
 
 const createGroup = (
     id: number,
@@ -232,6 +237,67 @@ describe('MinHeap data structure', () => {
         assert.equal(heap.pop(), 10);
         assert.equal(heap.pop(), 20);
         assert.equal(heap.size, 2);
+    });
+});
+
+describe('filterGroupsByStation - durable station-ID filtering', () => {
+    it('returns an equal copy for "all"', () => {
+        const groups = [
+            createGroup(1, '2026-10-16T10:00:00Z', '2026-10-16T10:15:00Z', {
+                stationId: 2,
+            }),
+            createGroup(3, '2026-10-16T10:01:00Z', '2026-10-16T10:16:00Z', {
+                stationId: 5,
+            }),
+        ];
+        const out = filterGroupsByStation(groups, 'all');
+        assert.deepEqual(out, groups);
+        assert.notEqual(out, groups);
+    });
+
+    it('filters strictly by numeric stationId, never by station/category/item names', () => {
+        const barNamedKitchen: QueueGroup = {
+            ...createGroup(
+                1,
+                '2026-10-16T10:00:00Z',
+                '2026-10-16T10:15:00Z',
+                { stationId: 7 }
+            ),
+            stationName: 'Bếp nóng',
+            items: [
+                {
+                    id: 11,
+                    name: 'Cà phê sữa',
+                    quantity: 1,
+                    status: 'pending',
+                    note: null,
+                },
+            ],
+        };
+        const general: QueueGroup = {
+            ...createGroup(
+                2,
+                '2026-10-16T10:00:00Z',
+                '2026-10-16T10:15:00Z',
+                { stationId: 9 }
+            ),
+            stationName: 'Bar Pha Chế',
+            items: [],
+        };
+
+        assert.deepEqual(
+            filterGroupsByStation([barNamedKitchen, general], 7).map(
+                (x) => x.id
+            ),
+            [1]
+        );
+        assert.deepEqual(
+            filterGroupsByStation([barNamedKitchen, general], 9).map(
+                (x) => x.id
+            ),
+            [2]
+        );
+        assert.deepEqual(filterGroupsByStation([barNamedKitchen, general], 42), []);
     });
 });
 

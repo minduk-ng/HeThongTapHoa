@@ -310,6 +310,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/kitchen/complete/{order}', [KitchenController::class, 'completeOrder'])->middleware('permission:kitchen.update');
         Route::post('/kitchen/cancel-item', [KitchenController::class, 'cancelItem'])->middleware('permission:orders.cancel');
         Route::patch('/kitchen/work-groups/{group}/deadline', [KitchenController::class, 'updateGroupDeadline'])->middleware('permission:kitchen.dispatch.manage');
+        Route::patch('/kitchen/settings', [KitchenController::class, 'updateSettings'])->middleware('permission:kitchen.dispatch.manage');
+        Route::patch('/kitchen/categories/{category}/station', [KitchenController::class, 'updateCategoryStation'])->middleware('permission:kitchen.dispatch.manage');
 
         // Serving Display
         Route::get('/serving', [ServingController::class, 'index'])->middleware('permission:serving.view');

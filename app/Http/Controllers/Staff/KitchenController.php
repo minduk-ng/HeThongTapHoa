@@ -69,6 +69,9 @@ class KitchenController extends Controller
             return $isOver10Mins || $order->has_additional_items;
         })->count();
 
+        // Durable station-ID filtering: never infer station from category/item names.
+        $stationId = $request->filled('station_id') ? (int) $request->input('station_id') : null;
+
         return Inertia::render('staff/kitchen/KitchenDisplay', [
             'orders' => $activeOrders,
             'stats' => [
@@ -77,8 +80,12 @@ class KitchenController extends Controller
                 'completed_items' => $completedTodayCount,
                 'warning_orders' => $warningOrdersCount,
             ],
-            'workGroups' => $this->dispatchService->projectPending(),
+            'workGroups' => $this->dispatchService->projectPending($stationId),
             'serverNow' => now()->toIso8601String(),
+            'stations' => $this->dispatchService->listStations(),
+            'dispatchSettings' => $this->dispatchService->getSettings(),
+            'categoryStations' => $this->dispatchService->listCategoryStations(),
+            'kitchenReadiness' => $this->dispatchService->queueReadiness(),
         ]);
     }
 
@@ -347,6 +354,49 @@ class KitchenController extends Controller
             'group' => $updatedGroup,
             'serverNow' => now()->toIso8601String(),
             ...$updatedGroup,
+        ]);
+    }
+
+    public function updateSettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'target_minutes' => 'required|integer|min:1',
+            'long_wait_minutes' => 'required|integer|min:1',
+            'expected_version' => 'required|integer|min:1',
+        ]);
+
+        $userId = (int) $request->user()?->id;
+
+        $settings = $this->dispatchService->updateSettings(
+            (int) $validated['target_minutes'],
+            (int) $validated['long_wait_minutes'],
+            (int) $validated['expected_version'],
+            $userId
+        );
+
+        return response()->json([
+            'settings' => $settings,
+            'serverNow' => now()->toIso8601String(),
+        ]);
+    }
+
+    public function updateCategoryStation(Request $request, int $category): JsonResponse
+    {
+        $validated = $request->validate([
+            'kitchen_station_id' => 'nullable|integer|min:1',
+        ]);
+
+        $userId = (int) $request->user()?->id;
+
+        $mapping = $this->dispatchService->updateCategoryStation(
+            $category,
+            array_key_exists('kitchen_station_id', $validated) ? ($validated['kitchen_station_id'] !== null ? (int) $validated['kitchen_station_id'] : null) : null,
+            $userId
+        );
+
+        return response()->json([
+            'category' => $mapping,
+            'serverNow' => now()->toIso8601String(),
         ]);
     }
 }

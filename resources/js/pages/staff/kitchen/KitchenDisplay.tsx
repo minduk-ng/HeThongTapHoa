@@ -24,8 +24,12 @@ import type { PageProps } from '../../../types/auth';
 import { useReverbStatus } from '../pos/hooks/useReverbStatus';
 import type { KitchenOrderData } from './components/KitchenOrderCard';
 import KitchenOrderCard from './components/KitchenOrderCard';
-import type { DispatchMode, QueueGroup } from './utils/dispatchQueue';
-import { orderGroups } from './utils/dispatchQueue';
+import type {
+    DispatchMode,
+    KitchenStationOption,
+    QueueGroup,
+} from './utils/dispatchQueue';
+import { filterGroupsByStation, orderGroups } from './utils/dispatchQueue';
 import { playKitchenChime } from './utils/kitchenAudio';
 
 interface KitchenDisplayProps {
@@ -38,64 +42,147 @@ interface KitchenDisplayProps {
     };
     workGroups?: QueueGroup[];
     serverNow?: string;
+    stations?: KitchenStationOption[];
+    dispatchSettings?: {
+        target_minutes: number;
+        long_wait_minutes: number;
+        version: number;
+    };
+    categoryStations?: Array<{
+        id: number;
+        name: string;
+        kitchen_station_id: number | null;
+    }>;
+    kitchenReadiness?: {
+        ready: boolean;
+        unlinkedCount: number;
+    };
 }
 
-function matchesGroupStation(
-    group: QueueGroup,
-    activeStation: 'all' | 'bar' | 'kitchen'
-): boolean {
-    if (activeStation === 'all') {
-        return true;
-    }
-
-    const lower = group.stationName.toLowerCase();
-
-    if (
-        lower.includes('bar') ||
-        lower.includes('pha chế') ||
-        lower.includes('uống') ||
-        lower.includes('nước')
-    ) {
-        return activeStation === 'bar';
-    }
-
-    if (
-        lower.includes('bếp') ||
-        lower.includes('kitchen') ||
-        lower.includes('nóng')
-    ) {
-        return activeStation === 'kitchen';
-    }
-
-    // Default station fallback: inspect item names
-    const hasDrink = group.items.some((i) => {
-        const n = i.name.toLowerCase();
-
-        return (
-            n.includes('cà phê') ||
-            n.includes('trà') ||
-            n.includes('uống') ||
-            n.includes('nước') ||
-            n.includes('sinh tố')
-        );
-    });
-
-    return activeStation === 'bar' ? hasDrink : !hasDrink;
-}
+const RELOAD_ONLY = [
+    'workGroups',
+    'serverNow',
+    'orders',
+    'stats',
+    'stations',
+    'dispatchSettings',
+    'categoryStations',
+    'kitchenReadiness',
+] as const;
 
 export default function KitchenDisplay({
     orders,
     stats,
     workGroups,
     serverNow,
+    stations,
+    dispatchSettings,
+    categoryStations,
+    kitchenReadiness,
 }: KitchenDisplayProps) {
     const [nowTime, setNowTime] = useState<number>(0);
     const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
-    const [activeStation, setActiveStation] = useState<
-        'all' | 'bar' | 'kitchen'
-    >('all');
+    // Durable station-ID filter; never match by station/category/item names.
+    const [activeStationId, setActiveStationId] = useState<number | 'all'>(
+        'all'
+    );
     const [mode, setMode] = useState<DispatchMode>('fifo');
     const [printOrder, setPrintOrder] = useState<KitchenOrderData | null>(null);
+    const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
+    const [settingsTarget, setSettingsTarget] = useState<string>('');
+    const [settingsLongWait, setSettingsLongWait] = useState<string>('');
+    const [adminError, setAdminError] = useState<string | null>(null);
+    const [isSavingSettings, setIsSavingSettings] = useState<boolean>(false);
+
+    const csrfToken = (): string => {
+        const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+
+        return match ? decodeURIComponent(match[1]) : '';
+    };
+
+    const handleSaveSettings = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!dispatchSettings) {
+            return;
+        }
+
+        setIsSavingSettings(true);
+        setAdminError(null);
+
+        try {
+            const response = await fetch('/staff/kitchen/settings', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-XSRF-TOKEN': csrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
+                    target_minutes: Number(settingsTarget || dispatchSettings.target_minutes),
+                    long_wait_minutes: Number(
+                        settingsLongWait || dispatchSettings.long_wait_minutes
+                    ),
+                    expected_version: dispatchSettings.version,
+                }),
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                setAdminError(
+                    data.message || data.error || `Lỗi lưu cài đặt (${response.status})`
+                );
+                setIsSavingSettings(false);
+
+                return;
+            }
+
+            setIsSavingSettings(false);
+            router.reload({ only: [...RELOAD_ONLY], onError: () => {} });
+        } catch {
+            setIsSavingSettings(false);
+            setAdminError('Lỗi kết nối khi lưu cài đặt điều phối.');
+        }
+    };
+
+    const handleCategoryStationChange = async (
+        categoryId: number,
+        stationId: number | null
+    ) => {
+        setAdminError(null);
+
+        try {
+            const response = await fetch(
+                `/staff/kitchen/categories/${categoryId}/station`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-XSRF-TOKEN': csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ kitchen_station_id: stationId }),
+                }
+            );
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                setAdminError(
+                    data.message ||
+                        data.error ||
+                        `Lỗi cập nhật trạm (${response.status})`
+                );
+
+                return;
+            }
+
+            router.reload({ only: [...RELOAD_ONLY], onError: () => {} });
+        } catch {
+            setAdminError('Lỗi kết nối khi cập nhật trạm danh mục.');
+        }
+    };
 
     const [tickTime, setTickTime] = useState<number>(0);
     const receivedAtMsRef = useRef<number>(0);
@@ -129,7 +216,7 @@ export default function KitchenDisplay({
     const { queue, enqueue, retry, discard } = useCommandQueue({
         reconcile: () =>
             router.reload({
-                only: ['workGroups', 'serverNow', 'orders', 'stats'],
+                only: [...RELOAD_ONLY],
                 onError: () => {},
             }),
     });
@@ -274,19 +361,17 @@ export default function KitchenDisplay({
                 : serverNow
                   ? Date.parse(serverNow)
                   : 0;
-        const filtered = workGroups.filter((g) =>
-            matchesGroupStation(g, activeStation)
-        );
+        const filtered = filterGroupsByStation(workGroups, activeStationId);
 
         return orderGroups(filtered, mode, currentNow);
-    }, [workGroups, activeStation, mode, serverAdjustedNowMs, serverNow]);
+    }, [workGroups, activeStationId, mode, serverAdjustedNowMs, serverNow]);
 
     // Refetch every 30s while visible
     useEffect(() => {
         const timer = setInterval(() => {
             if (document.visibilityState === 'visible') {
                 router.reload({
-                    only: ['workGroups', 'serverNow', 'orders', 'stats'],
+                    only: [...RELOAD_ONLY],
                     onError: () => {},
                 });
             }
@@ -303,7 +388,7 @@ export default function KitchenDisplay({
             reverbStatus === 'connected'
         ) {
             router.reload({
-                only: ['workGroups', 'serverNow', 'orders', 'stats'],
+                only: [...RELOAD_ONLY],
                 onError: () => {},
             });
         }
@@ -315,7 +400,7 @@ export default function KitchenDisplay({
     useEffect(() => {
         const handleOnline = () => {
             router.reload({
-                only: ['workGroups', 'serverNow', 'orders', 'stats'],
+                only: [...RELOAD_ONLY],
                 onError: () => {},
             });
         };
@@ -375,14 +460,14 @@ export default function KitchenDisplay({
                 }
 
                 router.reload({
-                    only: ['workGroups', 'serverNow', 'orders', 'stats'],
+                    only: [...RELOAD_ONLY],
                     onError: () => {},
                 });
             };
 
             const handleReload = () => {
                 router.reload({
-                    only: ['workGroups', 'serverNow', 'orders', 'stats'],
+                    only: [...RELOAD_ONLY],
                     onError: () => {},
                 });
             };
@@ -419,45 +504,19 @@ export default function KitchenDisplay({
         warning_orders: liveWarningCount,
     };
 
-    // Filter fallback orders when workGroups is absent
-    const filteredOrders = orders
-        .map((order) => {
-            if (activeStation === 'all') {
-                return order;
-            }
-
-            const filteredItems = order.items.filter((item) => {
-                const catName = (
-                    item.menu_item?.category?.name || ''
-                ).toLowerCase();
-                const itemName = (item.menu_item?.name || '').toLowerCase();
-                const isDrink =
-                    catName.includes('uống') ||
-                    catName.includes('cà phê') ||
-                    catName.includes('trà') ||
-                    catName.includes('nước') ||
-                    catName.includes('bar') ||
-                    itemName.includes('cà phê') ||
-                    itemName.includes('trà');
-
-                return activeStation === 'bar' ? isDrink : !isDrink;
-            });
-
-            if (filteredItems.length === 0) {
-                return null;
-            }
-
-            return {
-                ...order,
-                items: filteredItems,
-            };
-        })
-        .filter(Boolean) as KitchenOrderData[];
+    // Fallback when workGroups is absent (e.g. pre-backfill legacy read):
+    // show orders unfiltered — never guess station from category/item names.
+    const filteredOrders = orders;
 
     const hasWorkGroupsProp = Array.isArray(workGroups);
     const displayCount = hasWorkGroupsProp
         ? orderedGroups.length
         : filteredOrders.length;
+
+    const activeStationName =
+        activeStationId === 'all'
+            ? null
+            : stations?.find((s) => s.id === activeStationId)?.name ?? null;
 
     return (
         <DashboardLayout fullWidth={true} hideNavbar={true}>
@@ -527,14 +586,14 @@ export default function KitchenDisplay({
                         </div>
                     </div>
 
-                    {/* Center: Station Filter Pills + Dispatch Mode Toggle */}
+                    {/* Center: Station Filter Pills (durable station IDs) + Dispatch Mode Toggle */}
                     <div className="flex items-center space-x-3">
                         <div className="flex items-center rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
                             <button
                                 type="button"
-                                onClick={() => setActiveStation('all')}
+                                onClick={() => setActiveStationId('all')}
                                 className={`flex items-center space-x-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
-                                    activeStation === 'all'
+                                    activeStationId === 'all'
                                         ? 'bg-white text-sky-600 shadow-xs dark:bg-zinc-900 dark:text-sky-400'
                                         : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
                                 }`}
@@ -542,30 +601,35 @@ export default function KitchenDisplay({
                                 <Layers className="h-4 w-4 stroke-[1.5]" />
                                 <span>Tất cả</span>
                             </button>
-                            <button
-                                type="button"
-                                onClick={() => setActiveStation('bar')}
-                                className={`flex items-center space-x-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
-                                    activeStation === 'bar'
-                                        ? 'bg-white text-sky-600 shadow-xs dark:bg-zinc-900 dark:text-sky-400'
-                                        : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
-                                }`}
-                            >
-                                <Coffee className="h-4 w-4 stroke-[1.5]" />
-                                <span>Pha chế</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setActiveStation('kitchen')}
-                                className={`flex items-center space-x-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
-                                    activeStation === 'kitchen'
-                                        ? 'bg-white text-sky-600 shadow-xs dark:bg-zinc-900 dark:text-sky-400'
-                                        : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
-                                }`}
-                            >
-                                <UtensilsCrossed className="h-4 w-4 stroke-[1.5]" />
-                                <span>Bếp nóng</span>
-                            </button>
+                            {(stations ?? []).map((station) => {
+                                const isActive = activeStationId === station.id;
+
+                                return (
+                                    <button
+                                        key={station.id}
+                                        type="button"
+                                        onClick={() => setActiveStationId(station.id)}
+                                        disabled={!station.is_active}
+                                        title={
+                                            station.is_active
+                                                ? `Lọc theo trạm #${station.id}`
+                                                : 'Trạm đã tắt — chỉ giữ lịch sử'
+                                        }
+                                        className={`flex items-center space-x-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-40 ${
+                                            isActive
+                                                ? 'bg-white text-sky-600 shadow-xs dark:bg-zinc-900 dark:text-sky-400'
+                                                : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                        }`}
+                                    >
+                                        {station.code === 'general' ? (
+                                            <UtensilsCrossed className="h-4 w-4 stroke-[1.5]" />
+                                        ) : (
+                                            <Coffee className="h-4 w-4 stroke-[1.5]" />
+                                        )}
+                                        <span>{station.name}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
 
                         {/* Dispatch Mode Toggle: FIFO vs Priority */}
@@ -641,12 +705,7 @@ export default function KitchenDisplay({
                             type="button"
                             onClick={() =>
                                 router.reload({
-                                    only: [
-                                        'workGroups',
-                                        'serverNow',
-                                        'orders',
-                                        'stats',
-                                    ],
+                                    only: [...RELOAD_ONLY],
                                 })
                             }
                             className="rounded-lg p-2.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
@@ -690,16 +749,41 @@ export default function KitchenDisplay({
                             type="button"
                             onClick={() =>
                                 router.reload({
-                                    only: [
-                                        'workGroups',
-                                        'serverNow',
-                                        'orders',
-                                        'stats',
-                                    ],
+                                    only: [...RELOAD_ONLY],
                                     onError: () => {},
                                 })
                             }
                             className="shrink-0 rounded-lg bg-rose-600 px-2.5 py-1 text-[11px] font-bold text-white transition-colors hover:bg-rose-700"
+                        >
+                            Tải lại
+                        </button>
+                    </div>
+                )}
+
+                {/* Migration-unavailable: queue read incomplete until legacy backfill links all pending work */}
+                {kitchenReadiness && !kitchenReadiness.ready && (
+                    <div className="flex shrink-0 items-center justify-between gap-3 border-b border-amber-300 bg-amber-50 px-5 py-2 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+                        <div className="flex items-center gap-2 text-xs font-semibold">
+                            <AlertTriangle className="h-4 w-4 shrink-0 stroke-[2] text-amber-600 dark:text-amber-400" />
+                            <span>
+                                Hàng đợi bếp chưa đầy đủ — có{' '}
+                                {kitchenReadiness.unlinkedCount} món chờ chưa
+                                liên kết sau backfill. Chạy{' '}
+                                <span className="font-mono">
+                                    kitchen:backfill-dispatch
+                                </span>{' '}
+                                trước khi tin toàn bộ danh sách.
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                router.reload({
+                                    only: [...RELOAD_ONLY],
+                                    onError: () => {},
+                                })
+                            }
+                            className="shrink-0 rounded-lg bg-amber-600 px-2.5 py-1 text-[11px] font-bold text-white transition-colors hover:bg-amber-700"
                         >
                             Tải lại
                         </button>
@@ -735,6 +819,168 @@ export default function KitchenDisplay({
                     </div>
                 )}
 
+                {/* Dispatch admin (kitchen.dispatch.manage only): settings + station mapping, future batches only */}
+                {canManageDeadline && (
+                    <div className="shrink-0 border-b border-zinc-200 bg-zinc-50 px-5 py-2 dark:border-zinc-800 dark:bg-zinc-900/50">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!isAdminOpen && dispatchSettings) {
+                                    setSettingsTarget(
+                                        String(dispatchSettings.target_minutes)
+                                    );
+                                    setSettingsLongWait(
+                                        String(dispatchSettings.long_wait_minutes)
+                                    );
+                                }
+
+                                setIsAdminOpen(!isAdminOpen);
+                            }}
+                            className="flex items-center gap-2 text-xs font-bold text-zinc-600 hover:text-sky-600 dark:text-zinc-300"
+                        >
+                            <span>
+                                {isAdminOpen
+                                    ? '▾ Ẩn quản trị điều phối'
+                                    : '▸ Quản trị điều phối (chỉ batch mới)'}
+                            </span>
+                            {dispatchSettings && (
+                                <span className="font-mono font-medium text-zinc-400 tabular-nums">
+                                    target {dispatchSettings.target_minutes}p /
+                                    chờ lâu {dispatchSettings.long_wait_minutes}
+                                    p / v{dispatchSettings.version}
+                                </span>
+                            )}
+                        </button>
+
+                        {isAdminOpen && (
+                            <div className="mt-2 flex flex-col gap-3 pb-2">
+                                {adminError && (
+                                    <div className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300">
+                                        {adminError}
+                                    </div>
+                                )}
+
+                                {dispatchSettings && (
+                                    <form
+                                        onSubmit={handleSaveSettings}
+                                        className="flex flex-wrap items-end gap-2"
+                                    >
+                                        <label className="flex flex-col gap-1 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
+                                            Target (phút)
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                value={settingsTarget}
+                                                onChange={(e) =>
+                                                    setSettingsTarget(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                disabled={isDisconnected}
+                                                className="w-24 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs tabular-nums dark:border-zinc-700 dark:bg-zinc-800"
+                                            />
+                                        </label>
+                                        <label className="flex flex-col gap-1 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
+                                            Chờ lâu (phút)
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                value={settingsLongWait}
+                                                onChange={(e) =>
+                                                    setSettingsLongWait(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                disabled={isDisconnected}
+                                                className="w-24 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs tabular-nums dark:border-zinc-700 dark:bg-zinc-800"
+                                            />
+                                        </label>
+                                        <button
+                                            type="submit"
+                                            disabled={
+                                                isSavingSettings ||
+                                                isDisconnected
+                                            }
+                                            className="rounded-lg bg-sky-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-sky-700 disabled:opacity-50"
+                                        >
+                                            {isSavingSettings
+                                                ? 'Đang lưu…'
+                                                : 'Lưu (batch mới)'}
+                                        </button>
+                                        <span className="text-[11px] text-zinc-400">
+                                            Thay đổi chỉ áp dụng cho batch gửi
+                                            mới, không tính lại hạn cũ.
+                                        </span>
+                                    </form>
+                                )}
+
+                                {categoryStations &&
+                                    categoryStations.length > 0 && (
+                                        <div className="flex flex-col gap-1.5">
+                                            {categoryStations.map((cat) => (
+                                                <div
+                                                    key={cat.id}
+                                                    className="flex items-center gap-2 text-xs"
+                                                >
+                                                    <span className="min-w-0 flex-1 truncate font-medium text-zinc-700 dark:text-zinc-200">
+                                                        {cat.name}
+                                                    </span>
+                                                    <select
+                                                        value={
+                                                            cat.kitchen_station_id ??
+                                                            ''
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleCategoryStationChange(
+                                                                cat.id,
+                                                                e.target.value ===
+                                                                    ''
+                                                                    ? null
+                                                                    : Number(
+                                                                          e.target
+                                                                              .value
+                                                                      )
+                                                            )
+                                                        }
+                                                        disabled={isDisconnected}
+                                                        className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-800"
+                                                    >
+                                                        <option value="">
+                                                            General (mặc định)
+                                                        </option>
+                                                        {(stations ?? []).map(
+                                                            (s) => (
+                                                                <option
+                                                                    key={s.id}
+                                                                    value={
+                                                                        s.id
+                                                                    }
+                                                                    disabled={
+                                                                        !s.is_active
+                                                                    }
+                                                                >
+                                                                    {s.name}
+                                                                    {!s.is_active
+                                                                        ? ' (tắt)'
+                                                                        : ''}
+                                                                </option>
+                                                            )
+                                                        )}
+                                                    </select>
+                                                </div>
+                                            ))}
+                                            <span className="text-[11px] text-zinc-400">
+                                                Đổi trạm chỉ áp dụng cho món gửi
+                                                mới; nhóm đang làm giữ trạm đã
+                                                chốt lúc gửi.
+                                            </span>
+                                        </div>
+                                    )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Cards Grid */}
                 <div className="flex-1 overflow-y-auto p-4">
                     {displayCount === 0 ? (
@@ -744,9 +990,9 @@ export default function KitchenDisplay({
                                 Hiện không có món nào chờ chế biến
                             </h3>
                             <p className="mt-1 max-w-sm text-xs text-zinc-400">
-                                {activeStation === 'all'
+                                {activeStationId === 'all' || !activeStationName
                                     ? 'Tất cả các món order từ POS đã được hoàn thành xuất sắc!'
-                                    : `Không có món nào thuộc khu vực ${activeStation === 'bar' ? 'Quầy Pha Chế' : 'Bếp Nóng'} đang chờ.`}
+                                    : `Không có món nào thuộc trạm ${activeStationName} đang chờ.`}
                             </p>
                         </div>
                     ) : (

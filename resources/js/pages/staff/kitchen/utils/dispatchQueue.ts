@@ -23,6 +23,25 @@ export interface QueueGroup {
 
 export type DispatchMode = 'fifo' | 'priority';
 
+export interface KitchenStationOption {
+    id: number;
+    code: string;
+    name: string;
+    is_active: boolean;
+}
+
+// ponytail: durable station-ID filter; never infer station from category/item names
+export function filterGroupsByStation(
+    groups: readonly QueueGroup[],
+    stationId: number | 'all'
+): QueueGroup[] {
+    if (stationId === 'all') {
+        return groups.slice();
+    }
+
+    return groups.filter((g) => g.stationId === stationId);
+}
+
 export type Comparator<T> = (a: T, b: T) => number;
 
 export function isGroupLongWait(group: QueueGroup, nowMs: number): boolean {

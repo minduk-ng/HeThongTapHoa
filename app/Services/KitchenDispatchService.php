@@ -12,6 +12,7 @@ use App\Models\OrderItem;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class KitchenDispatchService
 {
@@ -182,7 +183,14 @@ class KitchenDispatchService
                 'changed_at' => $nowUtcIso,
             ]);
 
-            rescue(fn () => OrderSentToKitchen::dispatch($order, 'deadline_updated'));
+            // ponytail: broadcast only after commit so clients never refetch mid-transaction or on rollback
+            $orderId = (int) $order->id;
+            DB::afterCommit(function () use ($orderId) {
+                $freshOrder = Order::find($orderId);
+                if ($freshOrder) {
+                    rescue(fn () => OrderSentToKitchen::dispatch($freshOrder, 'deadline_updated'));
+                }
+            });
 
             /** @var KitchenWorkGroup $freshGroup */
             $freshGroup = $group->fresh(['batch.order', 'items.menuItem']);
@@ -265,6 +273,217 @@ class KitchenDispatchService
         }
 
         return $batch;
+    }
+
+    /**
+     * Current dispatch settings snapshot (defaults 15/20 when no row).
+     *
+     * @return array{target_minutes: int, long_wait_minutes: int, version: int}
+     */
+    public function getSettings(): array
+    {
+        /** @var object{target_minutes?: int, long_wait_minutes?: int, version?: int}|null $row */
+        $row = DB::table('kitchen_dispatch_settings')->orderBy('id', 'desc')->first();
+
+        return [
+            'target_minutes' => (int) ($row->target_minutes ?? 15),
+            'long_wait_minutes' => (int) ($row->long_wait_minutes ?? 20),
+            'version' => (int) ($row->version ?? 1),
+        ];
+    }
+
+    /**
+     * Updates dispatch settings for future batches only (existing snapshots untouched).
+     *
+     * @return array{target_minutes: int, long_wait_minutes: int, version: int}
+     */
+    public function updateSettings(int $targetMinutes, int $longWaitMinutes, int $expectedVersion, int $userId): array
+    {
+        if ($targetMinutes < 1 || $longWaitMinutes < 1) {
+            abort(422, 'target_minutes and long_wait_minutes must be positive integers.');
+        }
+
+        if ($expectedVersion < 1) {
+            abort(422, 'expected_version must be a positive integer.');
+        }
+
+        $updated = DB::transaction(function () use ($targetMinutes, $longWaitMinutes, $expectedVersion, $userId) {
+            /** @var object{id: int, target_minutes: int, long_wait_minutes: int, version: int}|null $row */
+            $row = DB::table('kitchen_dispatch_settings')->orderBy('id', 'desc')->lockForUpdate()->first();
+
+            if (! $row) {
+                abort(404, 'Kitchen dispatch settings not found.');
+            }
+
+            if ((int) $row->version !== $expectedVersion) {
+                abort(409, 'Conflict: stale settings version.');
+            }
+
+            // No-op: same values return unchanged state without version bump or audit
+            if ((int) $row->target_minutes === $targetMinutes && (int) $row->long_wait_minutes === $longWaitMinutes) {
+                return [
+                    'target_minutes' => (int) $row->target_minutes,
+                    'long_wait_minutes' => (int) $row->long_wait_minutes,
+                    'version' => (int) $row->version,
+                ];
+            }
+
+            $old = [
+                'target_minutes' => (int) $row->target_minutes,
+                'long_wait_minutes' => (int) $row->long_wait_minutes,
+                'version' => (int) $row->version,
+            ];
+
+            DB::table('kitchen_dispatch_settings')->where('id', $row->id)->update([
+                'target_minutes' => $targetMinutes,
+                'long_wait_minutes' => $longWaitMinutes,
+                'version' => $old['version'] + 1,
+                'updated_by' => $userId,
+                'updated_at' => now(),
+            ]);
+
+            $new = [
+                'target_minutes' => $targetMinutes,
+                'long_wait_minutes' => $longWaitMinutes,
+                'version' => $old['version'] + 1,
+            ];
+
+            DB::afterCommit(function () use ($old, $new, $userId) {
+                Log::info('kitchen_settings_changed', [
+                    'actor_id' => $userId,
+                    'old' => $old,
+                    'new' => $new,
+                    'changed_at' => now()->utc()->toIso8601String(),
+                ]);
+            });
+
+            return $new;
+        });
+
+        return $updated;
+    }
+
+    /**
+     * @return list<array{id: int, code: string, name: string, is_active: bool}>
+     */
+    public function listStations(): array
+    {
+        $result = [];
+        foreach (KitchenStation::query()->orderBy('id', 'asc')->get() as $s) {
+            $result[] = [
+                'id' => (int) $s->id,
+                'code' => (string) $s->code,
+                'name' => (string) $s->name,
+                'is_active' => (bool) $s->is_active,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return list<array{id: int, name: string, kitchen_station_id: int|null}>
+     */
+    public function listCategoryStations(): array
+    {
+        $result = [];
+        foreach (\App\Models\MenuCategory::query()->orderBy('id', 'asc')->get() as $c) {
+            $result[] = [
+                'id' => (int) $c->id,
+                'name' => (string) $c->name,
+                'kitchen_station_id' => $c->kitchen_station_id !== null ? (int) $c->kitchen_station_id : null,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Remaps a category to a station (null = general). Affects future batches only;
+     * existing groups keep their frozen station_id/station_name.
+     *
+     * @return array{id: int, name: string, kitchen_station_id: int|null}
+     */
+    public function updateCategoryStation(int $categoryId, ?int $stationId, int $userId): array
+    {
+        $payload = DB::transaction(function () use ($categoryId, $stationId, $userId) {
+            /** @var \App\Models\MenuCategory|null $category */
+            $category = \App\Models\MenuCategory::query()->where('id', $categoryId)->lockForUpdate()->first();
+
+            if (! $category) {
+                abort(404, 'Menu category not found.');
+            }
+
+            if ($stationId !== null) {
+                /** @var KitchenStation|null $station */
+                $station = KitchenStation::query()->where('id', $stationId)->first();
+
+                if (! $station) {
+                    abort(422, 'Unknown kitchen station.');
+                }
+
+                if (! $station->is_active) {
+                    abort(422, 'Cannot assign to a disabled station; historical groups keep their identity.');
+                }
+            }
+
+            $oldStationId = $category->kitchen_station_id !== null ? (int) $category->kitchen_station_id : null;
+
+            // No-op: same mapping returns unchanged state without audit
+            if ($oldStationId === $stationId) {
+                return [
+                    'id' => (int) $category->id,
+                    'name' => (string) $category->name,
+                    'kitchen_station_id' => $oldStationId,
+                ];
+            }
+
+            $category->kitchen_station_id = $stationId;
+            $category->save();
+
+            DB::afterCommit(function () use ($categoryId, $oldStationId, $stationId, $userId) {
+                Log::info('kitchen_station_mapping_changed', [
+                    'actor_id' => $userId,
+                    'category_id' => $categoryId,
+                    'old_station_id' => $oldStationId,
+                    'new_station_id' => $stationId,
+                    'changed_at' => now()->utc()->toIso8601String(),
+                ]);
+            });
+
+            return [
+                'id' => (int) $category->id,
+                'name' => (string) $category->name,
+                'kitchen_station_id' => $stationId,
+            ];
+        });
+
+        return $payload;
+    }
+
+    /**
+     * Readiness gate for legacy backfill: counts pending/processing items that are
+     * still unlinked (no work group) on queue-eligible orders. When unlinkedCount > 0
+     * the queue projection is incomplete and the UI must show migration-unavailable
+     * instead of silently omitting work.
+     *
+     * @return array{ready: bool, unlinkedCount: int}
+     */
+    public function queueReadiness(): array
+    {
+        $unlinkedCount = OrderItem::query()
+            ->whereNull('kitchen_work_group_id')
+            ->whereIn('status', ['pending', 'processing'])
+            ->where('quantity', '>', 0)
+            ->whereHas('order', function ($query) {
+                $query->whereNotIn('status', ['draft', 'reserved', 'cancelled']);
+            })
+            ->count();
+
+        return [
+            'ready' => $unlinkedCount === 0,
+            'unlinkedCount' => (int) $unlinkedCount,
+        ];
     }
 
     /**
