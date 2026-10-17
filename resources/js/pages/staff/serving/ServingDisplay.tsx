@@ -12,10 +12,13 @@ import {
     Square,
     CheckCheck,
     XCircle,
+    SlidersHorizontal,
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AvatarDropdown from '../../../components/AvatarDropdown';
+import DisplaySettingsDrawer from '../../../components/DisplaySettingsDrawer';
 import { useCommandQueue } from '../../../hooks/useCommandQueue';
+import { useDisplaySettings } from '../../../hooks/useDisplaySettings';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import type { QueueCommand } from '../../../lib/commandQueue';
 import type { PageProps } from '../../../types/auth';
@@ -78,6 +81,8 @@ function cardIdsInCommand(c: QueueCommand): string[] {
 }
 
 export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
+    const displaySettings = useDisplaySettings('serving');
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const { auth } = usePage<PageProps>().props;
     const user = auth.user;
     const { status: reverbStatus } = useReverbStatus();
@@ -398,13 +403,30 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
     };
     const wsConfig = statusConfig[reverbStatus];
 
+    const getGridColsClass = (cols?: 'auto' | 2 | 3 | 4 | 5 | 6) => {
+        switch (cols) {
+            case 2:
+                return 'grid-cols-1 sm:grid-cols-2';
+            case 3:
+                return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
+            case 4:
+                return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+            case 5:
+                return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5';
+            case 6:
+                return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6';
+            default:
+                return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5';
+        }
+    };
+
     return (
         <DashboardLayout fullWidth={true} hideNavbar={true}>
             <Head title="Màn hình Phục vụ" />
 
             <div className="flex h-full w-full flex-col overflow-hidden">
                 {/* Toolbar */}
-                <div className="flex shrink-0 items-center gap-4 border-b border-zinc-200 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="flex h-14 shrink-0 items-center gap-4 border-b border-zinc-200 bg-white px-5 dark:border-zinc-800 dark:bg-zinc-900">
                     {/* Left: Title + WS */}
                     <div className="flex shrink-0 items-center space-x-2">
                         <ConciergeBell className="h-6 w-6 stroke-[1.5] text-sky-600 dark:text-sky-400" />
@@ -500,7 +522,7 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                                     <CheckCheck className="h-4 w-4 stroke-[1.5]" />
                                     <span>
                                         {batchSyncing
-                                            ? 'Đang đồng bộ…'
+                                             ? 'Đang đồng bộ…'
                                             : `Phục vụ đã chọn (${selectedIds.size})`}
                                     </span>
                                 </button>
@@ -567,13 +589,22 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
 
                         <button
                             type="button"
+                            onClick={() => setIsSettingsOpen(true)}
+                            className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
+                            title="Cài đặt hiển thị phục vụ"
+                        >
+                            <SlidersHorizontal className="h-5 w-5 stroke-[1.5]" />
+                        </button>
+
+                        <button
+                            type="button"
                             onClick={() =>
                                 router.reload({
                                     only: ['servingQueue'],
                                     onError: () => {},
                                 })
                             }
-                            className="rounded-lg p-2.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
+                            className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
                             title="Làm mới dữ liệu"
                         >
                             <RefreshCw className="h-5 w-5 stroke-[1.5]" />
@@ -582,7 +613,7 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                         <button
                             type="button"
                             onClick={toggleFullscreen}
-                            className="rounded-lg p-2.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
+                            className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
                             title={
                                 isFullscreen
                                     ? 'Thoát toàn màn hình'
@@ -603,7 +634,15 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                 </div>
 
                 {/* Serving Cards Grid */}
-                <div className="flex-1 overflow-y-auto p-4">
+                <div
+                    className="flex-1 overflow-y-auto p-4"
+                    style={{
+                        zoom:
+                            displaySettings.previewSettings.scale === 100
+                                ? undefined
+                                : `${displaySettings.previewSettings.scale}%`,
+                    }}
+                >
                     {filteredQueue.length === 0 ? (
                         <div className="flex items-start justify-start pt-12 pl-8">
                             <div className="flex flex-col items-start space-y-3">
@@ -620,7 +659,9 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                             </div>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                        <div
+                            className={`grid ${getGridColsClass(displaySettings.previewSettings.gridColumns)} items-start gap-3`}
+                        >
                             {filteredQueue.map((card) => {
                                 const isSelected = selectedIds.has(card.id);
                                 const isSyncing = syncIds.has(card.id);
@@ -756,6 +797,24 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                     )}
                 </div>
             </div>
+
+            <DisplaySettingsDrawer
+                isOpen={isSettingsOpen}
+                onClose={() => {
+                    displaySettings.revertPreview();
+                    setIsSettingsOpen(false);
+                }}
+                screenId="serving"
+                settings={displaySettings.settings}
+                previewSettings={displaySettings.previewSettings}
+                onUpdatePreview={displaySettings.updatePreview}
+                onSave={() => {
+                    displaySettings.saveSettings();
+                    setIsSettingsOpen(false);
+                }}
+                onReset={displaySettings.resetSettings}
+                hasUnsavedChanges={displaySettings.hasUnsavedChanges}
+            />
         </DashboardLayout>
     );
 }
