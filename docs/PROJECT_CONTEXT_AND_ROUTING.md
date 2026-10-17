@@ -35,10 +35,16 @@
 ### 2.2 Màn Hình Nhân Viên (Staff Routes)
 | Route Path | Controller | React Page Component | Chức Năng Chính |
 | :--- | :--- | :--- | :--- |
-| `/staff/pos` | `Staff\POSController` | `resources/js/pages/staff/pos/POSManager.tsx` | Bán hàng POS. Gồm 4 tab: Chọn bàn, Chọn món, Phục vụ, Nhật ký Event. |
-| `/staff/kitchen` | `Staff\KitchenController` | `resources/js/pages/staff/kitchen/KitchenDisplay.tsx` | Màn hình Bếp (chế độ tràn màn hình, thanh công cụ compact 1 dòng: filter khu vực + thống kê + actions, grid cards full-width, in ticket 58mm) |
-| `/staff/serving` | `Staff\ServingController` | `resources/js/pages/staff/serving/ServingDisplay.tsx` | Màn hình Phục vụ độc lập: danh sách món Bếp đã xong chờ bưng ra bàn (`POST /staff/serving/mark-served`) |
+| `/staff/pos` | `Staff\POSController` | `resources/js/pages/staff/pos/POSManager.tsx` | Bán hàng POS: Chọn bàn, Chọn món, Phục vụ, Nhật ký Event. Thanh công cụ chuẩn hóa `h-14` (56px) tích hợp Drawer cài đặt tỉ lệ thu phóng (Zoom Scale). |
+| `/staff/kitchen` | `Staff\KitchenController` | `resources/js/pages/staff/kitchen/KitchenDisplay.tsx` | Màn hình Bếp KDS: thanh công cụ `h-14` (56px), thẻ đơn tự co giãn (auto-height) không làm lệch hàng xóm, đổi màu thông minh khi có cảnh báo/chờ lâu, tùy biến số cột 2-6/auto, mật độ và chuông báo qua `DisplaySettingsDrawer`. |
+| `/staff/serving` | `Staff\ServingController` | `resources/js/pages/staff/serving/ServingDisplay.tsx` | Màn hình Phục vụ độc lập: thanh công cụ `h-14` (56px), responsive 1 cột mobile đến đa cột desktop, hỗ trợ Zoom Scale và tùy biến cột qua `DisplaySettingsDrawer`. |
 | `/staff/shifts` | `Staff\ShiftController` | `resources/js/pages/staff/shifts/ShiftsPage.tsx` | Mở/đóng ca làm việc, theo dõi tiền mặt kỳ vọng, ghi nhận chi tiêu & thu ngoài trong ca |
+
+> **Kiến Trúc Tùy Biến Hiển Thị Toàn Diện (`DisplaySettingsDrawer` & `useDisplaySettings`)**:
+> - Hook dùng chung `useDisplaySettings(screenId: 'kitchen' | 'pos' | 'serving')` quản lý cấu hình độc lập cho từng màn hình và lưu trữ bền vững tại `localStorage` (`taphoa_settings_{screenId}_v1`).
+> - Hỗ trợ xem trước trực tiếp (Live Preview), hoàn tác khi đóng và nút "Đặt lại mặc định" (`resetSettings`).
+> - Tính năng: Tỉ lệ thu phóng (Zoom Scale: 85%, 100%, 110%, 125%), Mật độ dòng (Density: Compact, Normal, Comfortable), Cột lưới hiển thị (Grid Columns: 2–6 hoặc Tự động cho Kitchen & Serving), Chế độ Card Bếp (Auto-height / Compact), Chuông báo âm thanh Bếp.
+> - Chuẩn hóa chiều cao toàn bộ thanh công cụ trên cùng (Top Toolbars) về chuẩn `h-14` (56px) trên cả POS, Kitchen và Serving, kèm nút Settings (`SlidersHorizontal`) đồng bộ phong cách.
 
 **Các API phụ trợ của POS** (prefix `/staff/pos`, khai báo tại `routes/web.php`):
 | Endpoint | Method | Chức năng |

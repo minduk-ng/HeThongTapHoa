@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 export interface DisplaySettings {
     scale: 85 | 100 | 110 | 125;
@@ -8,24 +8,25 @@ export interface DisplaySettings {
     audioAlert?: boolean;
 }
 
-const DEFAULT_SETTINGS: Record<'kitchen' | 'pos' | 'serving', DisplaySettings> = {
-    kitchen: {
-        scale: 100,
-        density: 'normal',
-        gridColumns: 'auto',
-        cardMode: 'auto',
-        audioAlert: true,
-    },
-    pos: {
-        scale: 100,
-        density: 'normal',
-    },
-    serving: {
-        scale: 100,
-        density: 'normal',
-        gridColumns: 'auto',
-    },
-};
+const DEFAULT_SETTINGS: Record<'kitchen' | 'pos' | 'serving', DisplaySettings> =
+    {
+        kitchen: {
+            scale: 100,
+            density: 'normal',
+            gridColumns: 'auto',
+            cardMode: 'auto',
+            audioAlert: true,
+        },
+        pos: {
+            scale: 100,
+            density: 'normal',
+        },
+        serving: {
+            scale: 100,
+            density: 'normal',
+            gridColumns: 'auto',
+        },
+    };
 
 export function getStorageKey(screenId: string): string {
     return `taphoa_settings_${screenId}_v1`;
@@ -39,24 +40,24 @@ export function useDisplaySettings(screenId: 'kitchen' | 'pos' | 'serving') {
         if (typeof window === 'undefined') {
             return defaultVal;
         }
+
         try {
             const raw = localStorage.getItem(key);
+
             if (!raw) {
                 return defaultVal;
             }
+
             const parsed = JSON.parse(raw);
+
             return { ...defaultVal, ...parsed };
         } catch {
             return defaultVal;
         }
     });
 
-    const [previewSettings, setPreviewSettings] = useState<DisplaySettings>(settings);
-
-    // Synchronize preview when persisted settings update
-    useEffect(() => {
-        setPreviewSettings(settings);
-    }, [settings]);
+    const [previewSettings, setPreviewSettings] =
+        useState<DisplaySettings>(settings);
 
     const updatePreview = useCallback((updates: Partial<DisplaySettings>) => {
         setPreviewSettings((prev) => ({ ...prev, ...updates }));
@@ -64,6 +65,7 @@ export function useDisplaySettings(screenId: 'kitchen' | 'pos' | 'serving') {
 
     const saveSettings = useCallback(() => {
         setSettings(previewSettings);
+
         try {
             localStorage.setItem(key, JSON.stringify(previewSettings));
         } catch {
@@ -74,6 +76,7 @@ export function useDisplaySettings(screenId: 'kitchen' | 'pos' | 'serving') {
     const resetSettings = useCallback(() => {
         setPreviewSettings(defaultVal);
         setSettings(defaultVal);
+
         try {
             localStorage.removeItem(key);
         } catch {

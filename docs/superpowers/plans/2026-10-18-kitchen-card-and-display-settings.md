@@ -1,6 +1,6 @@
 # Kitchen Order Card, Display Settings Drawer & Toolbar Synchronization Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Redesign `KitchenOrderCard` with auto-height and alert-only coloring, build a reusable `DisplaySettingsDrawer` backed by `localStorage` for zoom/density/grid customization across POS, Kitchen, and Serving, synchronize all toolbars to `h-14` (56px), and optimize Kitchen & Serving for mobile.
 
@@ -45,7 +45,7 @@
   };
   ```
 
-- [ ] **Step 1: Write unit tests for `useDisplaySettings` logic**
+- [x] **Step 1: Write unit tests for `useDisplaySettings` logic**
 
 Create `resources/js/hooks/useDisplaySettings.test.ts`:
 ```typescript
@@ -77,12 +77,12 @@ describe('useDisplaySettings storage key and defaults logic', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it passes**
+- [x] **Step 2: Run test to verify it passes**
 
 Run: `node --test resources/js/hooks/useDisplaySettings.test.ts`
 Expected: PASS 3 tests.
 
-- [ ] **Step 3: Implement `useDisplaySettings.ts`**
+- [x] **Step 3: Implement `useDisplaySettings.ts`**
 
 Create `resources/js/hooks/useDisplaySettings.ts`:
 ```typescript
@@ -183,12 +183,12 @@ export function useDisplaySettings(screenId: 'kitchen' | 'pos' | 'serving') {
 }
 ```
 
-- [ ] **Step 4: Run typecheck**
+- [x] **Step 4: Run typecheck**
 
 Run: `npm run types:check`
 Expected: 0 errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add resources/js/hooks/useDisplaySettings.ts resources/js/hooks/useDisplaySettings.test.ts
@@ -219,7 +219,7 @@ git commit -m "feat(settings): add useDisplaySettings hook with localStorage per
   }
   ```
 
-- [ ] **Step 1: Implement `DisplaySettingsDrawer.tsx`**
+- [x] **Step 1: Implement `DisplaySettingsDrawer.tsx`**
 
 Create `resources/js/components/common/DisplaySettingsDrawer.tsx` with:
 - Right slide-over container on desktop (`w-88` to `w-96`), full-width bottom sheet on mobile (`< 640px`).
@@ -232,12 +232,12 @@ Create `resources/js/components/common/DisplaySettingsDrawer.tsx` with:
 - Sticky footer with "Đặt lại mặc định" (`RotateCcw`) and "Lưu thiết lập" (`Check`) buttons.
 - STRICTLY NO EMOJIS (use Lucide SVG icons only: `X`, `RotateCcw`, `Check`, `SlidersHorizontal`, `Monitor`, `LayoutGrid`, `Volume2`).
 
-- [ ] **Step 2: Run typecheck**
+- [x] **Step 2: Run typecheck**
 
 Run: `npm run types:check`
 Expected: 0 errors.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add resources/js/components/common/DisplaySettingsDrawer.tsx
@@ -255,7 +255,7 @@ git commit -m "feat(settings): add DisplaySettingsDrawer slide-over component"
 - Consumes: `order`, `group`, `nowMs`, `density`, `cardMode`.
 - Produces: Compact, auto-height card that does not stretch row neighbors; dynamic color-on-alert themes.
 
-- [ ] **Step 1: Refactor outer container and height constraints**
+- [x] **Step 1: Refactor outer container and height constraints**
 
 In `KitchenOrderCard.tsx`:
 - Change:
@@ -264,7 +264,7 @@ In `KitchenOrderCard.tsx`:
   + className={`border bg-white dark:bg-zinc-900 ${cardBorderClass} flex w-full flex-col justify-between overflow-hidden rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md`}
   ```
 
-- [ ] **Step 2: Refactor header color hierarchy (Coloring-on-Alert)**
+- [x] **Step 2: Refactor header color hierarchy (Coloring-on-Alert)**
 
 In `KitchenOrderCard.tsx`:
 - Change default header:
@@ -288,19 +288,19 @@ In `KitchenOrderCard.tsx`:
   }
   ```
 
-- [ ] **Step 3: Compact item checklist layout**
+- [x] **Step 3: Compact item checklist layout**
 
 Refactor item rows inside `KitchenOrderCard`:
 - Ensure item checklist rows have concise padding (`py-1.5 px-2.5` on compact/normal).
 - Quantities styled with `tabular-nums font-bold`.
 - Ensure complete buttons have accessible touch targets $\ge 40\text{px}$ without blowing out card height when there is only 1 item.
 
-- [ ] **Step 4: Run typecheck and existing tests**
+- [x] **Step 4: Run typecheck and existing tests**
 
 Run: `npm run types:check`
 Expected: 0 errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add resources/js/pages/staff/kitchen/components/KitchenOrderCard.tsx
@@ -314,14 +314,14 @@ git commit -m "feat(kitchen): redesign KitchenOrderCard with auto-height and col
 **Files:**
 - Modify: `resources/js/pages/staff/kitchen/KitchenDisplay.tsx`
 
-- [ ] **Step 1: Integrate `useDisplaySettings` and `DisplaySettingsDrawer`**
+- [x] **Step 1: Integrate `useDisplaySettings` and `DisplaySettingsDrawer`**
 
 In `KitchenDisplay.tsx`:
 - Import `useDisplaySettings` and `DisplaySettingsDrawer`.
 - Initialize `const displaySettings = useDisplaySettings('kitchen');`.
 - Add state `const [isSettingsOpen, setIsSettingsOpen] = useState(false);`.
 
-- [ ] **Step 2: Unify top toolbar to `h-14` (56px)**
+- [x] **Step 2: Unify top toolbar to `h-14` (56px)**
 
 In `KitchenDisplay.tsx`:
 - Update toolbar container to `flex h-14 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-5 dark:border-zinc-800 dark:bg-zinc-900`.
@@ -338,7 +338,7 @@ In `KitchenDisplay.tsx`:
   </button>
   ```
 
-- [ ] **Step 3: Refactor card grid container to `items-start` with dynamic column mapping**
+- [x] **Step 3: Refactor card grid container to `items-start` with dynamic column mapping**
 
 In `KitchenDisplay.tsx`:
 - Generate grid columns class:
@@ -363,7 +363,7 @@ In `KitchenDisplay.tsx`:
   <div style={{ zoom: displaySettings.previewSettings.scale === 100 ? undefined : `${displaySettings.previewSettings.scale}%` }}>
   ```
 
-- [ ] **Step 4: Mount `DisplaySettingsDrawer`**
+- [x] **Step 4: Mount `DisplaySettingsDrawer`**
 
 Render `DisplaySettingsDrawer` at the bottom of `KitchenDisplay.tsx`:
 ```tsx
@@ -386,12 +386,12 @@ Render `DisplaySettingsDrawer` at the bottom of `KitchenDisplay.tsx`:
 />
 ```
 
-- [ ] **Step 5: Run typecheck and verify**
+- [x] **Step 5: Run typecheck and verify**
 
 Run: `npm run types:check`
 Expected: 0 errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add resources/js/pages/staff/kitchen/KitchenDisplay.tsx
@@ -405,33 +405,33 @@ git commit -m "feat(kitchen): integrate display settings drawer and h-14 toolbar
 **Files:**
 - Modify: `resources/js/pages/staff/serving/ServingDisplay.tsx`
 
-- [ ] **Step 1: Integrate `useDisplaySettings` and `DisplaySettingsDrawer` in `ServingDisplay.tsx`**
+- [x] **Step 1: Integrate `useDisplaySettings` and `DisplaySettingsDrawer` in `ServingDisplay.tsx`**
 
 - Import `useDisplaySettings` and `DisplaySettingsDrawer`.
 - Initialize `const displaySettings = useDisplaySettings('serving');`.
 - Add `const [isSettingsOpen, setIsSettingsOpen] = useState(false);`.
 
-- [ ] **Step 2: Unify toolbar to `h-14` (56px) and add Settings button**
+- [x] **Step 2: Unify toolbar to `h-14` (56px) and add Settings button**
 
 In `ServingDisplay.tsx`:
 - Standardize toolbar to `h-14` (`flex h-14 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-5 dark:border-zinc-800 dark:bg-zinc-900`).
 - Add Settings button with icon `<SlidersHorizontal className="h-5 w-5 stroke-[1.5]" />`.
 
-- [ ] **Step 3: Connect dynamic column classes and scale wrapper**
+- [x] **Step 3: Connect dynamic column classes and scale wrapper**
 
 - In `ServingDisplay.tsx`, connect `displaySettings.previewSettings.gridColumns` and zoom scale style.
 - Ensure cards stack as `grid-cols-1` on mobile screens (`< 640px`).
 
-- [ ] **Step 4: Mount `DisplaySettingsDrawer`**
+- [x] **Step 4: Mount `DisplaySettingsDrawer`**
 
 Render `DisplaySettingsDrawer` for `serving`.
 
-- [ ] **Step 5: Run typecheck and verify**
+- [x] **Step 5: Run typecheck and verify**
 
 Run: `npm run types:check`
 Expected: 0 errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add resources/js/pages/staff/serving/ServingDisplay.tsx
@@ -446,7 +446,7 @@ git commit -m "feat(serving): integrate display settings drawer and h-14 toolbar
 - Modify: `resources/js/pages/staff/pos/components/POSToolbar.tsx`
 - Modify: `resources/js/pages/staff/pos/POSManager.tsx`
 
-- [ ] **Step 1: Standardize `POSToolbar.tsx` to `h-14` (56px)**
+- [x] **Step 1: Standardize `POSToolbar.tsx` to `h-14` (56px)**
 
 In `POSToolbar.tsx`:
 - Update line 124:
@@ -473,7 +473,7 @@ In `POSToolbar.tsx`:
   </button>
   ```
 
-- [ ] **Step 2: Connect settings drawer and zoom wrapper in `POSManager.tsx`**
+- [x] **Step 2: Connect settings drawer and zoom wrapper in `POSManager.tsx`**
 
 In `POSManager.tsx`:
 - Import `useDisplaySettings` and `DisplaySettingsDrawer`.
@@ -490,12 +490,12 @@ In `POSManager.tsx`:
   ```
 - PRESERVE 100% of internal POS logic (table map, cart, checkout, draft-undo).
 
-- [ ] **Step 3: Run typecheck and verify**
+- [x] **Step 3: Run typecheck and verify**
 
 Run: `npm run types:check`
 Expected: 0 errors.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add resources/js/pages/staff/pos/components/POSToolbar.tsx resources/js/pages/staff/pos/POSManager.tsx
@@ -509,30 +509,30 @@ git commit -m "feat(pos): standardize POSToolbar to h-14 and connect display set
 **Files:**
 - Test: All automated verification scripts
 
-- [ ] **Step 1: Run unit tests**
+- [x] **Step 1: Run unit tests**
 Run: `node --test resources/js/hooks/useDisplaySettings.test.ts`
 Run: `node --test resources/js/pages/staff/pos/utils/menuAlgorithms.test.ts`
 Expected: ALL PASS.
 
-- [ ] **Step 2: Run TypeScript check**
+- [x] **Step 2: Run TypeScript check**
 Run: `npm run types:check`
 Expected: 0 errors.
 
-- [ ] **Step 3: Run ESLint**
+- [x] **Step 3: Run ESLint**
 Run: `npm run lint:check`
 Expected: 0 errors.
 
-- [ ] **Step 4: Run Prettier check**
+- [x] **Step 4: Run Prettier check**
 Run: `npm run format:check`
 Expected: 100% code style compliant.
 
-- [ ] **Step 5: Run PHP feature regression test suite**
+- [x] **Step 5: Run PHP feature regression test suite**
 Run: `php artisan test tests/Feature/POSOrderFlowTest.php tests/Feature/POSCheckoutTest.php tests/Feature/KitchenFlowTest.php`
 Expected: 100% pass (44/44 tests green).
 
-- [ ] **Step 6: Run GitNexus detect-changes**
+- [x] **Step 6: Run GitNexus detect-changes**
 Run: `node .gitnexus/run.cjs detect-changes`
 Expected: Verify only intended symbols modified.
 
-- [ ] **Step 7: Final commit**
+- [x] **Step 7: Final commit**
 Commit any remaining docs or plan status updates.

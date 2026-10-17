@@ -425,6 +425,13 @@ export default function KitchenDisplay({
         soundEnabledRef.current = soundEnabled;
     }, [soundEnabled]);
 
+    const audioAlertRef = useRef<boolean>(
+        displaySettings.settings.audioAlert ?? true,
+    );
+    useEffect(() => {
+        audioAlertRef.current = displaySettings.settings.audioAlert ?? true;
+    }, [displaySettings.settings.audioAlert]);
+
     const lastEventRef = useRef<{ key: string; time: number }>({
         key: '',
         time: 0,
@@ -464,10 +471,7 @@ export default function KitchenDisplay({
                     payload?.action_type !== 'cancel_order' &&
                     payload?.action_type !== 'cancel_item'
                 ) {
-                    if (
-                        soundEnabledRef.current &&
-                        (displaySettings.settings.audioAlert ?? true)
-                    ) {
+                    if (soundEnabledRef.current && audioAlertRef.current) {
                         playKitchenChime();
                     }
                 }
@@ -1084,12 +1088,12 @@ export default function KitchenDisplay({
                                               onDiscard={discard}
                                               onPrint={setPrintOrder}
                                               density={
-                                                  displaySettings.previewSettings
-                                                      .density
+                                                  displaySettings
+                                                      .previewSettings.density
                                               }
                                               cardMode={
-                                                  displaySettings.previewSettings
-                                                      .cardMode
+                                                  displaySettings
+                                                      .previewSettings.cardMode
                                               }
                                           />
                                       );

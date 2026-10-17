@@ -29,7 +29,11 @@ const SCREEN_TITLES: Record<'kitchen' | 'pos' | 'serving', string> = {
     serving: 'Màn hình Phục vụ (Serving)',
 };
 
-const SCALE_OPTIONS: Array<{ value: 85 | 100 | 110 | 125; label: string; desc: string }> = [
+const SCALE_OPTIONS: Array<{
+    value: 85 | 100 | 110 | 125;
+    label: string;
+    desc: string;
+}> = [
     { value: 85, label: '85%', desc: 'Gọn nhẹ cho laptop nhỏ' },
     { value: 100, label: '100%', desc: 'Tiêu chuẩn mặc định' },
     { value: 110, label: '110%', desc: 'Rõ nét cho máy tính bảng' },
@@ -46,7 +50,10 @@ const DENSITY_OPTIONS: Array<{
     { value: 'comfortable', label: 'Rộng rãi', desc: 'Nút to cho cảm ứng' },
 ];
 
-const COLUMN_OPTIONS: Array<{ value: 'auto' | 2 | 3 | 4 | 5 | 6; label: string }> = [
+const COLUMN_OPTIONS: Array<{
+    value: 'auto' | 2 | 3 | 4 | 5 | 6;
+    label: string;
+}> = [
     { value: 'auto', label: 'Tự động' },
     { value: 2, label: '2 cột' },
     { value: 3, label: '3 cột' },
@@ -67,7 +74,9 @@ export default function DisplaySettingsDrawer({
 }: DisplaySettingsDrawerProps) {
     // ESC key closes drawer
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen) {
+            return;
+        }
 
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
@@ -76,10 +85,13 @@ export default function DisplaySettingsDrawer({
         };
 
         window.addEventListener('keydown', handleKeyDown);
+
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isOpen, onClose]);
 
-    if (!isOpen) return null;
+    if (!isOpen) {
+        return null;
+    }
 
     return (
         <div className="fixed inset-0 z-50 overflow-hidden">
@@ -124,7 +136,9 @@ export default function DisplaySettingsDrawer({
                             <span>Xem trước trực tiếp (Live Preview)</span>
                         </div>
                         <p className="mt-1 text-[11px] leading-relaxed text-sky-700/90 dark:text-sky-300/80">
-                            Các thay đổi được áp dụng ngay trên màn hình nền. Nhấn “Lưu thiết lập” để ghi nhớ cho các lần truy cập sau.
+                            Các thay đổi được áp dụng ngay trên màn hình nền.
+                            Nhấn “Lưu thiết lập” để ghi nhớ cho các lần truy cập
+                            sau.
                         </p>
                     </div>
 
@@ -135,12 +149,18 @@ export default function DisplaySettingsDrawer({
                         </label>
                         <div className="grid grid-cols-2 gap-2">
                             {SCALE_OPTIONS.map((opt) => {
-                                const isSelected = previewSettings.scale === opt.value;
+                                const isSelected =
+                                    previewSettings.scale === opt.value;
+
                                 return (
                                     <button
                                         key={opt.value}
                                         type="button"
-                                        onClick={() => onUpdatePreview({ scale: opt.value })}
+                                        onClick={() =>
+                                            onUpdatePreview({
+                                                scale: opt.value,
+                                            })
+                                        }
                                         className={`flex flex-col items-start rounded-xl border p-2.5 text-left transition-colors ${
                                             isSelected
                                                 ? 'border-sky-500 bg-sky-50/80 text-sky-900 dark:border-sky-500 dark:bg-sky-950/60 dark:text-sky-100'
@@ -171,12 +191,18 @@ export default function DisplaySettingsDrawer({
                         </label>
                         <div className="grid grid-cols-3 gap-1.5">
                             {DENSITY_OPTIONS.map((opt) => {
-                                const isSelected = previewSettings.density === opt.value;
+                                const isSelected =
+                                    previewSettings.density === opt.value;
+
                                 return (
                                     <button
                                         key={opt.value}
                                         type="button"
-                                        onClick={() => onUpdatePreview({ density: opt.value })}
+                                        onClick={() =>
+                                            onUpdatePreview({
+                                                density: opt.value,
+                                            })
+                                        }
                                         className={`rounded-lg border px-2.5 py-2 text-center text-xs font-semibold transition-colors ${
                                             isSelected
                                                 ? 'border-sky-500 bg-sky-600 text-white shadow-xs'
@@ -199,12 +225,19 @@ export default function DisplaySettingsDrawer({
                             </div>
                             <div className="grid grid-cols-3 gap-1.5">
                                 {COLUMN_OPTIONS.map((opt) => {
-                                    const isSelected = previewSettings.gridColumns === opt.value;
+                                    const isSelected =
+                                        previewSettings.gridColumns ===
+                                        opt.value;
+
                                     return (
                                         <button
                                             key={String(opt.value)}
                                             type="button"
-                                            onClick={() => onUpdatePreview({ gridColumns: opt.value })}
+                                            onClick={() =>
+                                                onUpdatePreview({
+                                                    gridColumns: opt.value,
+                                                })
+                                            }
                                             className={`rounded-lg border px-2 py-1.5 text-xs font-semibold tabular-nums transition-colors ${
                                                 isSelected
                                                     ? 'border-sky-500 bg-sky-600 text-white shadow-xs'
@@ -217,7 +250,8 @@ export default function DisplaySettingsDrawer({
                                 })}
                             </div>
                             <p className="text-[11px] text-zinc-400">
-                                Chế độ Tự động sẽ tự điều chỉnh số cột theo kích thước màn hình thiết bị.
+                                Chế độ Tự động sẽ tự điều chỉnh số cột theo kích
+                                thước màn hình thiết bị.
                             </p>
                         </div>
                     )}
@@ -232,28 +266,42 @@ export default function DisplaySettingsDrawer({
                                 <div className="grid grid-cols-2 gap-2">
                                     <button
                                         type="button"
-                                        onClick={() => onUpdatePreview({ cardMode: 'auto' })}
+                                        onClick={() =>
+                                            onUpdatePreview({
+                                                cardMode: 'auto',
+                                            })
+                                        }
                                         className={`rounded-xl border p-2.5 text-left transition-colors ${
-                                            previewSettings.cardMode !== 'compact'
+                                            previewSettings.cardMode !==
+                                            'compact'
                                                 ? 'border-sky-500 bg-sky-50/80 text-sky-900 dark:border-sky-500 dark:bg-sky-950/60 dark:text-sky-100'
                                                 : 'border-zinc-200 bg-zinc-50/50 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800/40 dark:text-zinc-300'
                                         }`}
                                     >
-                                        <span className="block text-xs font-bold">Auto-height</span>
+                                        <span className="block text-xs font-bold">
+                                            Auto-height
+                                        </span>
                                         <span className="mt-0.5 block text-[10px] text-zinc-500 dark:text-zinc-400">
                                             Co giãn theo số món thực tế
                                         </span>
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => onUpdatePreview({ cardMode: 'compact' })}
+                                        onClick={() =>
+                                            onUpdatePreview({
+                                                cardMode: 'compact',
+                                            })
+                                        }
                                         className={`rounded-xl border p-2.5 text-left transition-colors ${
-                                            previewSettings.cardMode === 'compact'
+                                            previewSettings.cardMode ===
+                                            'compact'
                                                 ? 'border-sky-500 bg-sky-50/80 text-sky-900 dark:border-sky-500 dark:bg-sky-950/60 dark:text-sky-100'
                                                 : 'border-zinc-200 bg-zinc-50/50 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800/40 dark:text-zinc-300'
                                         }`}
                                     >
-                                        <span className="block text-xs font-bold">Thu gọn tối đa</span>
+                                        <span className="block text-xs font-bold">
+                                            Thu gọn tối đa
+                                        </span>
                                         <span className="mt-0.5 block text-[10px] text-zinc-500 dark:text-zinc-400">
                                             Gọn gàng nhất cho giờ cao điểm
                                         </span>
@@ -282,7 +330,8 @@ export default function DisplaySettingsDrawer({
                                     type="button"
                                     onClick={() =>
                                         onUpdatePreview({
-                                            audioAlert: !previewSettings.audioAlert,
+                                            audioAlert:
+                                                !previewSettings.audioAlert,
                                         })
                                     }
                                     className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
@@ -322,7 +371,9 @@ export default function DisplaySettingsDrawer({
                         className="flex items-center space-x-1.5 rounded-lg bg-sky-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-sky-700 focus:outline-hidden"
                     >
                         <Check className="h-4 w-4 stroke-[1.5]" />
-                        <span>{hasUnsavedChanges ? 'Lưu thiết lập' : 'Đã lưu'}</span>
+                        <span>
+                            {hasUnsavedChanges ? 'Lưu thiết lập' : 'Đã lưu'}
+                        </span>
                     </button>
                 </div>
             </div>

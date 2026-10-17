@@ -426,23 +426,25 @@ export default function KitchenOrderCard({
     };
 
     // Header styling & Alert-driven coloring
-    const isAlert = isOverdue || isLongWait || isOver10Mins || hasAdditional;
-
     let headerBgClass =
         'bg-zinc-100 dark:bg-zinc-800/90 border-b border-zinc-200/80 dark:border-zinc-700/60';
     let cardBorderClass = 'border-zinc-200/80 dark:border-zinc-800 shadow-xs';
     let codeClass = 'text-zinc-500 dark:text-zinc-400';
     let tableTitleClass = 'text-zinc-900 dark:text-zinc-100';
-    let stationBadgeClass = 'bg-zinc-200/80 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200';
-    let timeBadgeClass = 'bg-zinc-200/80 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200';
-    let progressBadgeClass = 'bg-zinc-200/80 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200';
+    let stationBadgeClass =
+        'bg-zinc-200/80 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200';
+    let timeBadgeClass =
+        'bg-zinc-200/80 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200';
+    let progressBadgeClass =
+        'bg-zinc-200/80 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200';
     let subBorderClass = 'border-zinc-200 dark:border-zinc-700/60';
     let subTextClass = 'text-zinc-600 dark:text-zinc-300';
 
     if (isOverdue) {
         headerBgClass =
             'bg-gradient-to-r from-rose-600 to-rose-700 dark:from-rose-700/90 dark:to-rose-800/90 text-white animate-pulse shadow-xs';
-        cardBorderClass = 'border-rose-400 dark:border-rose-800/80 shadow-md shadow-rose-500/10 ring-1 ring-rose-500/20';
+        cardBorderClass =
+            'border-rose-400 dark:border-rose-800/80 shadow-md shadow-rose-500/10 ring-1 ring-rose-500/20';
         codeClass = 'text-white/85';
         tableTitleClass = 'text-white';
         stationBadgeClass = 'bg-white/20 text-white';
@@ -453,7 +455,8 @@ export default function KitchenOrderCard({
     } else if (isLongWait || isOver10Mins || hasAdditional) {
         headerBgClass =
             'bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-600/90 dark:to-amber-700/90 text-white shadow-xs';
-        cardBorderClass = 'border-amber-400 dark:border-amber-800/80 shadow-md shadow-amber-500/10 ring-1 ring-amber-500/20';
+        cardBorderClass =
+            'border-amber-400 dark:border-amber-800/80 shadow-md shadow-amber-500/10 ring-1 ring-amber-500/20';
         codeClass = 'text-white/85';
         tableTitleClass = 'text-white';
         stationBadgeClass = 'bg-white/20 text-white';
@@ -463,20 +466,29 @@ export default function KitchenOrderCard({
         subTextClass = 'text-white/90';
     }
 
+    const headerPaddingClass = cardMode === 'compact' ? 'p-2.5' : 'p-3';
+    const titleSizeClass = cardMode === 'compact' ? 'text-base' : 'text-lg';
+
     return (
         <div
             className={`border bg-white dark:bg-zinc-900 ${cardBorderClass} flex w-full flex-col justify-between overflow-hidden rounded-2xl transition-all duration-200 hover:shadow-md`}
         >
             {/* Header */}
-            <div className={`p-3 ${headerBgClass} space-y-1.5`}>
+            <div
+                className={`${headerPaddingClass} ${headerBgClass} space-y-1.5`}
+            >
                 <div className="flex items-start justify-between">
                     <div>
                         <div className="flex flex-wrap items-center gap-1.5">
-                            <span className={`block font-mono text-[11px] font-bold tracking-wider uppercase ${codeClass}`}>
+                            <span
+                                className={`block font-mono text-[11px] font-bold tracking-wider uppercase ${codeClass}`}
+                            >
                                 {order.order_code}
                             </span>
                             {group && (
-                                <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${stationBadgeClass}`}>
+                                <span
+                                    className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${stationBadgeClass}`}
+                                >
                                     {group.stationName}
                                 </span>
                             )}
@@ -499,7 +511,9 @@ export default function KitchenOrderCard({
                                 </span>
                             )}
                         </div>
-                        <h3 className={`mt-1 flex flex-wrap items-center gap-1.5 font-display text-lg leading-tight font-bold ${tableTitleClass}`}>
+                        <h3
+                            className={`mt-1 flex flex-wrap items-center gap-1.5 font-display ${titleSizeClass} leading-tight font-bold ${tableTitleClass}`}
+                        >
                             <span>
                                 {order.table?.table_number || 'Mang về'}
                             </span>
@@ -511,13 +525,17 @@ export default function KitchenOrderCard({
                             )}
                         </h3>
                     </div>
-                    <div className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${timeBadgeClass}`}>
+                    <div
+                        className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${timeBadgeClass}`}
+                    >
                         <Clock className="h-3.5 w-3.5 stroke-[1.5]" />
                         <span className="tabular-nums">{elapsedMinutes}'</span>
                     </div>
                 </div>
 
-                <div className={`flex items-center justify-between border-t pt-1.5 text-xs ${subBorderClass} ${subTextClass}`}>
+                <div
+                    className={`flex items-center justify-between border-t pt-1.5 text-xs ${subBorderClass} ${subTextClass}`}
+                >
                     {group ? (
                         <div className="flex items-center gap-1.5">
                             <span className="opacity-80">Hạn:</span>
@@ -529,7 +547,7 @@ export default function KitchenOrderCard({
                                     type="button"
                                     onClick={openEditDeadline}
                                     disabled={isDisconnected}
-                                    className="rounded p-0.5 transition-colors hover:bg-black/10 dark:hover:bg-white/20 disabled:opacity-40"
+                                    className="rounded p-0.5 transition-colors hover:bg-black/10 disabled:opacity-40 dark:hover:bg-white/20"
                                     title={
                                         isDisconnected
                                             ? 'Không thể sửa hạn khi mất kết nối mạng'
@@ -545,14 +563,16 @@ export default function KitchenOrderCard({
                             Tiến độ pha chế
                         </span>
                     )}
-                    <span className={`rounded-md px-2 py-0.5 font-bold tabular-nums ${progressBadgeClass}`}>
+                    <span
+                        className={`rounded-md px-2 py-0.5 font-bold tabular-nums ${progressBadgeClass}`}
+                    >
                         {completedItemsCount}/{displayItems.length} món
                     </span>
                 </div>
             </div>
 
             {/* Checklist */}
-            <div className="min-h-0 max-h-96 flex-1 divide-y divide-zinc-100 overflow-y-auto px-4 py-2 dark:divide-zinc-800/60">
+            <div className="max-h-96 min-h-0 flex-1 divide-y divide-zinc-100 overflow-y-auto px-4 py-2 dark:divide-zinc-800/60">
                 {displayItems
                     .filter((item) => item.status !== 'completed')
                     .map((item) => {

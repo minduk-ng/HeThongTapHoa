@@ -6,9 +6,9 @@ import React, {
     useCallback,
     useRef,
 } from 'react';
-import DashboardLayout from '../../../layouts/DashboardLayout';
 import DisplaySettingsDrawer from '../../../components/DisplaySettingsDrawer';
 import { useDisplaySettings } from '../../../hooks/useDisplaySettings';
+import DashboardLayout from '../../../layouts/DashboardLayout';
 import PaymentDrawer from './components/PaymentDrawer';
 import POSCartPanel from './components/POSCartPanel';
 import type { SystemLogEntry } from './components/POSLogTab';

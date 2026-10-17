@@ -522,7 +522,7 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
                                     <CheckCheck className="h-4 w-4 stroke-[1.5]" />
                                     <span>
                                         {batchSyncing
-                                             ? 'Đang đồng bộ…'
+                                            ? 'Đang đồng bộ…'
                                             : `Phục vụ đã chọn (${selectedIds.size})`}
                                     </span>
                                 </button>
