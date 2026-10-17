@@ -10,6 +10,7 @@ import {
     Maximize2,
     Minimize2,
     RefreshCw,
+    SlidersHorizontal,
     Sparkles,
     UtensilsCrossed,
     Volume2,
@@ -23,8 +24,10 @@ import React, {
     useMemo,
 } from 'react';
 import AvatarDropdown from '../../../components/AvatarDropdown';
+import DisplaySettingsDrawer from '../../../components/DisplaySettingsDrawer';
 import KitchenPrintTicket from '../../../components/KitchenPrintTicket';
 import { useCommandQueue } from '../../../hooks/useCommandQueue';
+import { useDisplaySettings } from '../../../hooks/useDisplaySettings';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 import type { PageProps } from '../../../types/auth';
 import { useReverbStatus } from '../pos/hooks/useReverbStatus';
@@ -86,6 +89,8 @@ export default function KitchenDisplay({
     categoryStations,
     kitchenReadiness,
 }: KitchenDisplayProps) {
+    const displaySettings = useDisplaySettings('kitchen');
+    const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
     const [nowTime, setNowTime] = useState<number>(0);
     const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
     // Durable station-ID filter; never match by station/category/item names.
@@ -459,7 +464,10 @@ export default function KitchenDisplay({
                     payload?.action_type !== 'cancel_order' &&
                     payload?.action_type !== 'cancel_item'
                 ) {
-                    if (soundEnabledRef.current) {
+                    if (
+                        soundEnabledRef.current &&
+                        (displaySettings.settings.audioAlert ?? true)
+                    ) {
                         playKitchenChime();
                     }
                 }
@@ -523,13 +531,30 @@ export default function KitchenDisplay({
             ? null
             : (stations?.find((s) => s.id === activeStationId)?.name ?? null);
 
+    const getGridColsClass = (cols?: 'auto' | 2 | 3 | 4 | 5 | 6) => {
+        switch (cols) {
+            case 2:
+                return 'grid-cols-1 sm:grid-cols-2';
+            case 3:
+                return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
+            case 4:
+                return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+            case 5:
+                return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5';
+            case 6:
+                return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6';
+            default:
+                return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5';
+        }
+    };
+
     return (
         <DashboardLayout fullWidth={true} hideNavbar={true}>
             <Head title="Màn hình Bếp & Chế biến món" />
 
             <div className="flex h-full w-full flex-col overflow-hidden">
                 {/* Top Toolbar */}
-                <div className="flex shrink-0 items-center gap-4 border-b border-zinc-200 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-zinc-200 bg-white px-5 dark:border-zinc-800 dark:bg-zinc-900">
                     {/* Left: Title + WS */}
                     <div className="flex shrink-0 items-center space-x-2">
                         <ChefHat className="h-6 w-6 stroke-[1.5] text-sky-600 dark:text-sky-400" />
@@ -690,7 +715,7 @@ export default function KitchenDisplay({
                         <button
                             type="button"
                             onClick={() => setSoundEnabled(!soundEnabled)}
-                            className={`rounded-lg border p-2.5 transition-colors ${
+                            className={`rounded-lg border p-2 transition-colors ${
                                 soundEnabled
                                     ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
                                     : 'border-zinc-200 bg-zinc-100 text-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-500'
@@ -710,12 +735,21 @@ export default function KitchenDisplay({
 
                         <button
                             type="button"
+                            onClick={() => setIsSettingsOpen(true)}
+                            className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
+                            title="Cài đặt hiển thị bếp"
+                        >
+                            <SlidersHorizontal className="h-5 w-5 stroke-[1.5]" />
+                        </button>
+
+                        <button
+                            type="button"
                             onClick={() =>
                                 router.reload({
                                     only: [...RELOAD_ONLY],
                                 })
                             }
-                            className="rounded-lg p-2.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
+                            className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
                             title="Làm mới dữ liệu bếp"
                         >
                             <RefreshCw className="h-5 w-5 stroke-[1.5]" />
@@ -724,7 +758,7 @@ export default function KitchenDisplay({
                         <button
                             type="button"
                             onClick={toggleFullscreen}
-                            className="rounded-lg p-2.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
+                            className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
                             title={
                                 isFullscreen
                                     ? 'Thoát toàn màn hình'
@@ -996,7 +1030,15 @@ export default function KitchenDisplay({
                 )}
 
                 {/* Cards Grid */}
-                <div className="flex-1 overflow-y-auto p-4">
+                <div
+                    className="flex-1 overflow-y-auto p-4"
+                    style={{
+                        zoom:
+                            displaySettings.previewSettings.scale === 100
+                                ? undefined
+                                : `${displaySettings.previewSettings.scale}%`,
+                    }}
+                >
                     {displayCount === 0 ? (
                         <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200 bg-white p-8 text-center shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
                             <Sparkles className="mb-3 h-8 w-8 stroke-[1.5] text-sky-500" />
@@ -1010,7 +1052,9 @@ export default function KitchenDisplay({
                             </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                        <div
+                            className={`grid ${getGridColsClass(displaySettings.previewSettings.gridColumns)} items-start gap-3`}
+                        >
                             {hasWorkGroupsProp
                                 ? orderedGroups.map((group) => {
                                       const order = orders.find(
@@ -1039,6 +1083,14 @@ export default function KitchenDisplay({
                                               onRetry={retry}
                                               onDiscard={discard}
                                               onPrint={setPrintOrder}
+                                              density={
+                                                  displaySettings.previewSettings
+                                                      .density
+                                              }
+                                              cardMode={
+                                                  displaySettings.previewSettings
+                                                      .cardMode
+                                              }
                                           />
                                       );
                                   })
@@ -1051,6 +1103,14 @@ export default function KitchenDisplay({
                                           onRetry={retry}
                                           onDiscard={discard}
                                           onPrint={setPrintOrder}
+                                          density={
+                                              displaySettings.previewSettings
+                                                  .density
+                                          }
+                                          cardMode={
+                                              displaySettings.previewSettings
+                                                  .cardMode
+                                          }
                                       />
                                   ))}
                         </div>
@@ -1082,6 +1142,24 @@ export default function KitchenDisplay({
                     })}
                 />
             )}
+
+            <DisplaySettingsDrawer
+                isOpen={isSettingsOpen}
+                onClose={() => {
+                    displaySettings.revertPreview();
+                    setIsSettingsOpen(false);
+                }}
+                screenId="kitchen"
+                settings={displaySettings.settings}
+                previewSettings={displaySettings.previewSettings}
+                onUpdatePreview={displaySettings.updatePreview}
+                onSave={() => {
+                    displaySettings.saveSettings();
+                    setIsSettingsOpen(false);
+                }}
+                onReset={displaySettings.resetSettings}
+                hasUnsavedChanges={displaySettings.hasUnsavedChanges}
+            />
         </DashboardLayout>
     );
 }

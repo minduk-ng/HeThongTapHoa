@@ -59,6 +59,8 @@ interface KitchenOrderCardProps {
     onRetry: (commandId: string) => void;
     onDiscard: (commandId: string) => void;
     onPrint: (order: KitchenOrderData) => void;
+    density?: 'compact' | 'normal' | 'comfortable';
+    cardMode?: 'auto' | 'compact';
 }
 
 export default function KitchenOrderCard({
@@ -72,6 +74,8 @@ export default function KitchenOrderCard({
     onRetry,
     onDiscard,
     onPrint,
+    density = 'normal',
+    cardMode = 'auto',
 }: KitchenOrderCardProps) {
     const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>(
         () => {
@@ -553,12 +557,18 @@ export default function KitchenOrderCard({
                     .filter((item) => item.status !== 'completed')
                     .map((item) => {
                         const isChecked = !!checkedItems[item.id];
+                        const rowPaddingClass =
+                            density === 'compact'
+                                ? 'py-1.5'
+                                : density === 'comfortable'
+                                  ? 'py-3.5'
+                                  : 'py-2.5';
 
                         return (
                             <div
                                 key={item.id}
                                 onClick={() => toggleCheckItem(item.id)}
-                                className={`flex cursor-pointer items-center justify-between gap-3 py-3 transition-all duration-150 select-none ${
+                                className={`flex cursor-pointer items-center justify-between gap-3 ${rowPaddingClass} transition-all duration-150 select-none ${
                                     isChecked
                                         ? 'line-through opacity-50'
                                         : 'hover:text-sky-600 dark:hover:text-sky-400'
