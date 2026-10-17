@@ -107,7 +107,7 @@ function generateCart(
             Object.freeze({
                 menu_item_id: prod.id,
                 name: prod.name,
-                unit_price: prod.price,
+                unit_price: Number(prod.price),
                 vat_rate: 0,
                 quantity,
                 isConfirmed: rand() > 0.5,
@@ -194,7 +194,7 @@ function linearRangeFilter(
     const survivors: POSProductData[] = [];
 
     for (const p of products) {
-        const minor = Math.round(p.price * 100);
+        const minor = Math.round(Number(p.price) * 100);
 
         if (minMinor !== null && minor < minMinor) {
             continue;
@@ -218,7 +218,7 @@ function linearCompleteQuery(
     const survivors: POSProductData[] = [];
 
     for (const p of products) {
-        const minor = Math.round(p.price * 100);
+        const minor = Math.round(Number(p.price) * 100);
 
         if (q.minMinor !== null && minor < q.minMinor) {
             continue;
@@ -253,8 +253,8 @@ function linearCompleteQuery(
             return d;
         }
 
-        const ma = Math.round(a.price * 100);
-        const mb = Math.round(b.price * 100);
+        const ma = Math.round(Number(a.price) * 100);
+        const mb = Math.round(Number(b.price) * 100);
         const c = ma - mb;
         const d = q.sort === 'price-asc' ? c : -c;
 
@@ -304,7 +304,7 @@ describe('POS Menu Algorithms Benchmark & Verification Ledger', () => {
                 const seen = new Set<number>();
                 mappedEntries = products.map((product, originalIndex) => {
                     seen.add(product.id);
-                    const priceMinor = Math.round(product.price * 100);
+                    const priceMinor = Math.round(Number(product.price) * 100);
 
                     return {
                         product,

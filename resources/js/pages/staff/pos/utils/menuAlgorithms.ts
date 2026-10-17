@@ -63,11 +63,18 @@ export function mergeSortStable<T>(
 }
 
 function toPriceMinor(price: unknown): number | null {
-    if (typeof price !== 'number' || !Number.isFinite(price) || price < 0) {
+    const num =
+        typeof price === 'number'
+            ? price
+            : typeof price === 'string' && price.trim() !== ''
+              ? Number(price)
+              : NaN;
+
+    if (!Number.isFinite(num) || num < 0) {
         return null;
     }
 
-    const minor = Math.round(price * 100);
+    const minor = Math.round(num * 100);
 
     if (!Number.isSafeInteger(minor) || minor < 0) {
         return null;

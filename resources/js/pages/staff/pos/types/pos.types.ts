@@ -60,8 +60,8 @@ export interface POSProductData {
     id: number;
     category_id: number;
     name: string;
-    price: number;
-    vat_rate?: number;
+    price: number | string;
+    vat_rate?: number | string;
     image?: string | null;
     image_url?: string;
     is_available: boolean;

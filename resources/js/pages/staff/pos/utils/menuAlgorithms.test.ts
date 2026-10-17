@@ -158,6 +158,79 @@ describe('buildMenuIndex', () => {
             () => buildMenuIndex(nanPrice),
             /invalid price for product 2/,
         );
+
+        const invalidStr = [
+            {
+                id: 3,
+                category_id: 1,
+                name: 'Món chữ',
+                price: 'abc',
+                is_available: true,
+            },
+        ];
+        assert.throws(
+            () => buildMenuIndex(invalidStr),
+            /invalid price for product 3/,
+        );
+
+        const emptyStr = [
+            {
+                id: 4,
+                category_id: 1,
+                name: 'Món rỗng',
+                price: '   ',
+                is_available: true,
+            },
+        ];
+        assert.throws(
+            () => buildMenuIndex(emptyStr),
+            /invalid price for product 4/,
+        );
+
+        const negativeStr = [
+            {
+                id: 5,
+                category_id: 1,
+                name: 'Món âm chuỗi',
+                price: '-15000.00',
+                is_available: true,
+            },
+        ];
+        assert.throws(
+            () => buildMenuIndex(negativeStr),
+            /invalid price for product 5/,
+        );
+    });
+
+    it('accepts string prices formatted as decimals or integers from Laravel Eloquent', () => {
+        const stringPrices = [
+            {
+                id: 1,
+                category_id: 1,
+                name: 'Cà phê đen',
+                price: '15000.00',
+                is_available: true,
+            },
+            {
+                id: 2,
+                category_id: 1,
+                name: 'Trà đá',
+                price: '5000',
+                is_available: true,
+            },
+            {
+                id: 3,
+                category_id: 1,
+                name: 'Nước lọc',
+                price: '0.00',
+                is_available: true,
+            },
+        ];
+
+        const index = buildMenuIndex(stringPrices);
+        assert.equal(index.entries[0].priceMinor, 1500000);
+        assert.equal(index.entries[1].priceMinor, 500000);
+        assert.equal(index.entries[2].priceMinor, 0);
     });
 });
 
