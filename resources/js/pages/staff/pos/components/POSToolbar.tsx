@@ -7,6 +7,7 @@ import {
     Minimize2,
     RefreshCw,
     Search,
+    SlidersHorizontal,
     X,
 } from 'lucide-react';
 import React, { useState, useRef, useEffect } from 'react';
@@ -26,6 +27,7 @@ interface POSToolbarProps {
     searchQuery: string;
     onSearchChange: (value: string) => void;
     onOpenLog: () => void;
+    onOpenSettings?: () => void;
 }
 
 export default function POSToolbar({
@@ -37,6 +39,7 @@ export default function POSToolbar({
     searchQuery,
     onSearchChange,
     onOpenLog,
+    onOpenSettings,
 }: POSToolbarProps) {
     const { auth } = usePage<PageProps>().props;
     const user = auth.user;
@@ -118,10 +121,10 @@ export default function POSToolbar({
         }`;
 
     const utilityButtonClass =
-        'p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors';
+        'p-2 rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors';
 
     return (
-        <div className="flex h-11 w-full shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-3 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex h-14 w-full shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-5 dark:border-zinc-800 dark:bg-zinc-900">
             {/* Left Side — Tab Switchers */}
             <div className="flex shrink-0 items-center space-x-1.5">
                 <button
@@ -249,13 +252,25 @@ export default function POSToolbar({
                     className={`${utilityButtonClass} relative`}
                     title="Nhật ký hoạt động hệ thống"
                 >
-                    <Activity className="h-4 w-4 stroke-[1.5]" />
+                    <Activity className="h-5 w-5 stroke-[1.5]" />
                     {unreadErrorCount > 0 && (
                         <span className="absolute -top-0.5 -right-0.5 animate-pulse rounded-full border border-white bg-rose-600 px-1 py-0.5 text-[11px] font-bold text-white tabular-nums shadow-xs dark:border-zinc-900">
                             {unreadErrorCount}
                         </span>
                     )}
                 </button>
+
+                {/* Display Settings Toggle */}
+                {onOpenSettings && (
+                    <button
+                        type="button"
+                        onClick={onOpenSettings}
+                        className={utilityButtonClass}
+                        title="Cài đặt hiển thị POS"
+                    >
+                        <SlidersHorizontal className="h-5 w-5 stroke-[1.5]" />
+                    </button>
+                )}
 
                 {/* Divider */}
                 <div className="mx-0.5 h-5 w-px bg-zinc-200 dark:bg-zinc-700" />
@@ -272,9 +287,9 @@ export default function POSToolbar({
                     }
                 >
                     {isFullscreen ? (
-                        <Minimize2 className="h-4 w-4 stroke-[1.5]" />
+                        <Minimize2 className="h-5 w-5 stroke-[1.5]" />
                     ) : (
-                        <Maximize2 className="h-4 w-4 stroke-[1.5]" />
+                        <Maximize2 className="h-5 w-5 stroke-[1.5]" />
                     )}
                 </button>
 
@@ -285,7 +300,7 @@ export default function POSToolbar({
                     className={utilityButtonClass}
                     title="Tải lại dữ liệu"
                 >
-                    <RefreshCw className="h-4 w-4 stroke-[1.5]" />
+                    <RefreshCw className="h-5 w-5 stroke-[1.5]" />
                 </button>
 
                 {/* Divider */}

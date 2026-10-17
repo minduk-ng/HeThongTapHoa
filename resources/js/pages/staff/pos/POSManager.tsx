@@ -7,6 +7,8 @@ import React, {
     useRef,
 } from 'react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
+import DisplaySettingsDrawer from '../../../components/DisplaySettingsDrawer';
+import { useDisplaySettings } from '../../../hooks/useDisplaySettings';
 import PaymentDrawer from './components/PaymentDrawer';
 import POSCartPanel from './components/POSCartPanel';
 import type { SystemLogEntry } from './components/POSLogTab';
@@ -48,6 +50,9 @@ export default function POSManager({
     const safePromotions = (
         Array.isArray(promotions) ? promotions : Object.values(promotions || {})
     ) as PromotionCandidate[];
+
+    const displaySettings = useDisplaySettings('pos');
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     const [activeTab, setActiveTab] = useState<'tables' | 'menu' | 'log'>(
         'tables',
@@ -496,7 +501,7 @@ export default function POSManager({
         <DashboardLayout fullWidth={true} hideNavbar={true}>
             <Head title="Đặt hàng POS & Quản lý bàn bán hàng" />
 
-            {/* Custom POS Toolbar — 44px */}
+            {/* Custom POS Toolbar — 56px */}
             <POSToolbar
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
@@ -506,10 +511,19 @@ export default function POSManager({
                 onOpenLog={() => setUnreadErrorCount(0)}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
+                onOpenSettings={() => setIsSettingsOpen(true)}
             />
 
             {/* Full Width & Height Split Screen Container */}
-            <div className="min-h-0 flex-1 overflow-hidden">
+            <div
+                className="min-h-0 flex-1 overflow-hidden"
+                style={{
+                    zoom:
+                        displaySettings.previewSettings.scale === 100
+                            ? undefined
+                            : `${displaySettings.previewSettings.scale}%`,
+                }}
+            >
                 <div className="grid h-full min-h-0 grid-cols-1 gap-3 lg:grid-cols-12">
                     {/* Left Panel (7 columns): Standalone Card for Tabs */}
                     <div className="flex h-full min-h-0 flex-col rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs lg:col-span-7 dark:border-zinc-800 dark:bg-zinc-900">
@@ -870,6 +884,24 @@ export default function POSManager({
                 depositAmount={receiptModal.depositAmount}
                 depositRefund={receiptModal.depositRefund}
                 promotionDiscount={receiptModal.promotionDiscount}
+            />
+
+            <DisplaySettingsDrawer
+                isOpen={isSettingsOpen}
+                onClose={() => {
+                    displaySettings.revertPreview();
+                    setIsSettingsOpen(false);
+                }}
+                screenId="pos"
+                settings={displaySettings.settings}
+                previewSettings={displaySettings.previewSettings}
+                onUpdatePreview={displaySettings.updatePreview}
+                onSave={() => {
+                    displaySettings.saveSettings();
+                    setIsSettingsOpen(false);
+                }}
+                onReset={displaySettings.resetSettings}
+                hasUnsavedChanges={displaySettings.hasUnsavedChanges}
             />
         </DashboardLayout>
     );
