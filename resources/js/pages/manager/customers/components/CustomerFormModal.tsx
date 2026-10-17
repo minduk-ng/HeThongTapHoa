@@ -1,11 +1,7 @@
 import { router } from '@inertiajs/react';
 import { FileText, User } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-    ManagerFormModal,
-    FormSection,
-    FormField,
-} from '@/components/form';
+import { ManagerFormModal, FormSection, FormField } from '@/components/form';
 import type { CustomerData } from '../CustomersManager';
 
 interface CustomerFormModalProps {
@@ -44,16 +40,14 @@ export default function CustomerFormModal({
     const isDirty = useMemo(() => {
         if (customerToEdit) {
             return (
-                fullName !== (customerToEdit.full_name || '')
-                || phone !== (customerToEdit.phone || '')
-                || note !== (customerToEdit.note || '')
+                fullName !== (customerToEdit.full_name || '') ||
+                phone !== (customerToEdit.phone || '') ||
+                note !== (customerToEdit.note || '')
             );
         }
 
         return (
-            fullName.trim() !== ''
-            || phone.trim() !== ''
-            || note.trim() !== ''
+            fullName.trim() !== '' || phone.trim() !== '' || note.trim() !== ''
         );
     }, [customerToEdit, fullName, phone, note]);
 
@@ -61,8 +55,8 @@ export default function CustomerFormModal({
         e.preventDefault();
 
         if (submitting) {
-return;
-}
+            return;
+        }
 
         setSubmitting(true);
         const timer = setTimeout(() => {
@@ -99,9 +93,7 @@ return;
             onClose={onClose}
             onSubmit={handleSubmit}
             title={
-                customerToEdit
-                    ? 'Cập nhật khách hàng'
-                    : 'Thêm khách hàng mới'
+                customerToEdit ? 'Cập nhật khách hàng' : 'Thêm khách hàng mới'
             }
             subtitle="Thông tin khách hàng phục vụ tích điểm, lịch sử mua hàng và chăm sóc"
             isEditing={!!customerToEdit}
@@ -117,11 +109,7 @@ return;
                 icon={User}
                 gridCols={2}
             >
-                <FormField
-                    label="Họ và tên"
-                    required
-                    error={errors.full_name}
-                >
+                <FormField label="Họ và tên" required error={errors.full_name}>
                     <input
                         type="text"
                         value={fullName}
@@ -132,17 +120,13 @@ return;
                     />
                 </FormField>
 
-                <FormField
-                    label="Số điện thoại"
-                    required
-                    error={errors.phone}
-                >
+                <FormField label="Số điện thoại" required error={errors.phone}>
                     <input
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="0912 345 678"
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                         required
                     />
                 </FormField>

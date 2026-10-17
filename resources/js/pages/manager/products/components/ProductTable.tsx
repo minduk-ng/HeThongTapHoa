@@ -27,7 +27,11 @@ interface ProductTableProps {
     onDelete: (item: MenuItemData) => void;
 }
 
-export default function ProductTable({ items, onEdit, onDelete }: ProductTableProps) {
+export default function ProductTable({
+    items,
+    onEdit,
+    onDelete,
+}: ProductTableProps) {
     const cdnUrl = useCdnBaseUrl();
     const formatCurrency = (val: number | string) => {
         return Number(val).toLocaleString('vi-VN') + ' đ';
@@ -45,11 +49,19 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
             hideWhenCompact: true,
             className: 'w-20',
             render: (item) => (
-                <div className="w-10 h-10 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800">
                     {item.image ? (
-                        <img src={cdnAsset(item.image, { w: 96, format: 'webp' }, cdnUrl)} alt={item.name} className="w-full h-full object-cover" />
+                        <img
+                            src={cdnAsset(
+                                item.image,
+                                { w: 96, format: 'webp' },
+                                cdnUrl,
+                            )}
+                            alt={item.name}
+                            className="h-full w-full object-cover"
+                        />
                     ) : (
-                        <ImageIcon className="w-5 h-5 text-zinc-400 stroke-[1.5]" />
+                        <ImageIcon className="h-5 w-5 stroke-[1.5] text-zinc-400" />
                     )}
                 </div>
             ),
@@ -59,7 +71,8 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
             header: 'Mã SP',
             align: 'center',
             sortable: true,
-            className: 'font-mono text-xs text-sky-600 dark:text-sky-400 font-medium tabular-nums',
+            className:
+                'font-mono text-xs text-sky-600 dark:text-sky-400 font-medium tabular-nums',
             render: (item) => formatProductCode(item.id),
         },
         {
@@ -67,28 +80,44 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
             header: 'Tên sản phẩm',
             align: 'left',
             sortable: true,
-            render: (item) => <span className="font-medium text-zinc-900 dark:text-zinc-100">{item.name}</span>,
+            render: (item) => (
+                <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {item.name}
+                </span>
+            ),
         },
         {
             key: 'category',
             header: 'Danh mục',
             align: 'center',
             sortable: true,
-            render: (item) => <span className="text-zinc-600 dark:text-zinc-400">{item.category?.name ?? '—'}</span>,
+            render: (item) => (
+                <span className="text-zinc-600 dark:text-zinc-400">
+                    {item.category?.name ?? '—'}
+                </span>
+            ),
         },
         {
             key: 'price',
             header: 'Giá bán',
             sortable: true,
             align: 'right',
-            render: (item) => <span className="font-medium text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(item.price)}</span>,
+            render: (item) => (
+                <span className="font-medium text-emerald-600 tabular-nums dark:text-emerald-400">
+                    {formatCurrency(item.price)}
+                </span>
+            ),
         },
         {
             key: 'vat_rate',
             header: 'Thuế VAT',
             sortable: true,
             align: 'center',
-            render: (item) => <span className="text-xs text-zinc-500 tabular-nums">{Number(item.vat_rate)}%</span>,
+            render: (item) => (
+                <span className="text-xs text-zinc-500 tabular-nums">
+                    {Number(item.vat_rate)}%
+                </span>
+            ),
         },
         {
             key: 'is_available',
@@ -96,11 +125,13 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
             sortable: true,
             align: 'center',
             render: (item) => (
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                    item.is_available
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                        : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
-                }`}>
+                <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        item.is_available
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                            : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                    }`}
+                >
                     {item.is_available ? 'Hoạt động' : 'Ngừng bán'}
                 </span>
             ),
@@ -115,20 +146,20 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
                     <button
                         type="button"
                         onClick={() => onEdit(item)}
-                        className="p-1.5 text-zinc-500 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                        className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
                         title="Chỉnh sửa sản phẩm"
                         aria-label="Chỉnh sửa sản phẩm"
                     >
-                        <Edit3 className="w-4 h-4 stroke-[1.5]" />
+                        <Edit3 className="h-4 w-4 stroke-[1.5]" />
                     </button>
                     <button
                         type="button"
                         onClick={() => onDelete(item)}
-                        className="p-1.5 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                        className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800 dark:hover:text-rose-400"
                         title="Xóa sản phẩm"
                         aria-label="Xóa sản phẩm"
                     >
-                        <Trash2 className="w-4 h-4 stroke-[1.5]" />
+                        <Trash2 className="h-4 w-4 stroke-[1.5]" />
                     </button>
                 </div>
             ),
@@ -143,28 +174,28 @@ export default function ProductTable({ items, onEdit, onDelete }: ProductTablePr
             defaultSortKey="name"
             getSortValue={(item, key) => {
                 if (key === 'code') {
-return item.id;
-}
+                    return item.id;
+                }
 
                 if (key === 'name') {
-return item.name;
-}
+                    return item.name;
+                }
 
                 if (key === 'category') {
-return item.category?.name ?? '';
-}
+                    return item.category?.name ?? '';
+                }
 
                 if (key === 'price') {
-return item.price;
-}
+                    return item.price;
+                }
 
                 if (key === 'vat_rate') {
-return item.vat_rate;
-}
+                    return item.vat_rate;
+                }
 
                 if (key === 'is_available') {
-return item.is_available ? 1 : 0;
-}
+                    return item.is_available ? 1 : 0;
+                }
 
                 return String(item[key as keyof MenuItemData] ?? '');
             }}

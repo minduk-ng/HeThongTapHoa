@@ -49,8 +49,7 @@ export default function ReportTable<T>({
     emptyHint = 'Thử đổi khoảng ngày hoặc bộ lọc',
 }: ReportTableProps<T>) {
     const paginationMeta = usePage().props.pagination as
-        | { truncated?: boolean; total_count?: number }
-        | undefined;
+        { truncated?: boolean; total_count?: number } | undefined;
     const ctx = useContext(ReportColumnsContext);
     const hidden = new Set(ctx?.hiddenKeys ?? []);
     // Ẩn khi key nằm trong hiddenKeys (seed ban đầu từ visible === false).
@@ -204,19 +203,19 @@ export default function ReportTable<T>({
     const getCellAlignClass = (c: ReportTableColumn) => {
         if (c.align) {
             if (c.align === 'center') {
-return 'text-center';
-}
+                return 'text-center';
+            }
 
             if (c.align === 'right') {
-return 'text-right';
-}
+                return 'text-right';
+            }
 
             return 'text-left';
         }
 
         if (c.numeric) {
-return 'text-center';
-}
+            return 'text-center';
+        }
 
         return 'text-left';
     };
@@ -245,12 +244,18 @@ return 'text-center';
                         ))}
                     </colgroup>
                     <thead className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-800/90">
-                        <tr className="text-xs font-semibold tracking-wider text-zinc-600 uppercase dark:text-zinc-400 text-center">
+                        <tr className="text-center text-xs font-semibold tracking-wider text-zinc-600 uppercase dark:text-zinc-400">
                             {visibleColumns.map((c, idx) => (
                                 <th
                                     key={c.key}
-                                    role={c.sortable !== false ? 'button' : undefined}
-                                    tabIndex={c.sortable !== false ? 0 : undefined}
+                                    role={
+                                        c.sortable !== false
+                                            ? 'button'
+                                            : undefined
+                                    }
+                                    tabIndex={
+                                        c.sortable !== false ? 0 : undefined
+                                    }
                                     aria-sort={
                                         c.sortable !== false
                                             ? sortKey === c.key
@@ -267,18 +272,19 @@ return 'text-center';
                                     onKeyDown={
                                         c.sortable !== false
                                             ? (e) => {
-                                                if (e.key === 'Enter' || e.key === ' ') {
-                                                    e.preventDefault();
-                                                    handleSort(c.key);
-                                                }
-                                            }
+                                                  if (
+                                                      e.key === 'Enter' ||
+                                                      e.key === ' '
+                                                  ) {
+                                                      e.preventDefault();
+                                                      handleSort(c.key);
+                                                  }
+                                              }
                                             : undefined
                                     }
-                                    className={`relative px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} select-none text-center ${c.sortable !== false ? 'cursor-pointer hover:bg-zinc-100/70 dark:hover:bg-zinc-700/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500' : ''}`}
+                                    className={`relative px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center select-none ${c.sortable !== false ? 'cursor-pointer hover:bg-zinc-100/70 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:hover:bg-zinc-700/50' : ''}`}
                                 >
-                                    <div
-                                        className="flex items-center justify-center space-x-1"
-                                    >
+                                    <div className="flex items-center justify-center space-x-1">
                                         <span>{c.label}</span>
                                         {c.sortable !== false &&
                                             renderSortIcon(c.key)}
@@ -333,7 +339,7 @@ return 'text-center';
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-3 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+            <div className="flex items-center justify-between border-t border-zinc-100 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="flex items-center space-x-3">
                     <span className="text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">
                         {groupStart

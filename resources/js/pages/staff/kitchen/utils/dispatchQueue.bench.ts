@@ -2,14 +2,8 @@ import { strict as assert } from 'node:assert';
 import os from 'node:os';
 import { performance } from 'node:perf_hooks';
 import { describe, it } from 'node:test';
-import {
-    isGroupLongWait,
-    MinHeap,
-    orderGroups
-    
-    
-} from './dispatchQueue.ts';
-import type {DispatchMode, QueueGroup} from './dispatchQueue.ts';
+import { isGroupLongWait, MinHeap, orderGroups } from './dispatchQueue.ts';
+import type { DispatchMode, QueueGroup } from './dispatchQueue.ts';
 
 // Deterministic PRNG using Mulberry32 (seed 20261016)
 function mulberry32(seed: number): () => number {
@@ -44,7 +38,9 @@ function generateDataset(n: number, seed = 20261016): SimulatedGroup[] {
     for (let i = 0; i < n; i++) {
         // Bursty vs uniform arrivals: 25% burst (0s offset), 75% uniform (5s - 45s)
         const isBurst = random() < 0.25;
-        const arrivalDeltaSec = isBurst ? Math.floor(random() * 3) : 5 + Math.floor(random() * 40);
+        const arrivalDeltaSec = isBurst
+            ? Math.floor(random() * 3)
+            : 5 + Math.floor(random() * 40);
         currentSentMs += arrivalDeltaSec * 1000;
 
         const stationIdx = Math.floor(random() * STATIONS.length);
@@ -55,7 +51,9 @@ function generateDataset(n: number, seed = 20261016): SimulatedGroup[] {
 
         // Service duration: 2 to 14 minutes (longer jobs included for starvation test)
         const isLongJob = random() < 0.15;
-        const serviceDurationMin = isLongJob ? 10 + Math.floor(random() * 15) : 2 + Math.floor(random() * 6);
+        const serviceDurationMin = isLongJob
+            ? 10 + Math.floor(random() * 15)
+            : 2 + Math.floor(random() * 6);
         const serviceDurationMs = serviceDurationMin * 60 * 1000;
 
         // Manual deadline edits: 10% modified deadline (some urgent, some relaxed)
@@ -63,11 +61,16 @@ function generateDataset(n: number, seed = 20261016): SimulatedGroup[] {
         let deadlineOffsetMin = targetMinutes;
 
         if (isManualDeadline) {
-            deadlineOffsetMin = random() < 0.5 ? 5 + Math.floor(random() * 5) : 25 + Math.floor(random() * 10);
+            deadlineOffsetMin =
+                random() < 0.5
+                    ? 5 + Math.floor(random() * 5)
+                    : 25 + Math.floor(random() * 10);
         }
 
         const sentAt = new Date(currentSentMs).toISOString();
-        const deadlineAt = new Date(currentSentMs + deadlineOffsetMin * 60 * 1000).toISOString();
+        const deadlineAt = new Date(
+            currentSentMs + deadlineOffsetMin * 60 * 1000,
+        ).toISOString();
 
         groups[i] = {
             id: i + 1,
@@ -97,7 +100,11 @@ function generateDataset(n: number, seed = 20261016): SimulatedGroup[] {
 }
 
 // Comparator oracle using Array.prototype.sort
-function oracleSort(groups: readonly QueueGroup[], mode: DispatchMode, nowMs: number): QueueGroup[] {
+function oracleSort(
+    groups: readonly QueueGroup[],
+    mode: DispatchMode,
+    nowMs: number,
+): QueueGroup[] {
     const copy = groups.slice();
 
     copy.sort((a, b) => {
@@ -146,11 +153,14 @@ function oracleSort(groups: readonly QueueGroup[], mode: DispatchMode, nowMs: nu
 
 function percentile(values: number[], p: number): number {
     if (values.length === 0) {
-return 0;
-}
+        return 0;
+    }
 
     const sorted = values.slice().sort((a, b) => a - b);
-    const idx = Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length));
+    const idx = Math.min(
+        sorted.length - 1,
+        Math.floor((p / 100) * sorted.length),
+    );
 
     return sorted[idx];
 }
@@ -169,7 +179,7 @@ describe('Kitchen Dispatch Queue - Benchmarks & Simulation', () => {
             assert.deepEqual(
                 fifoHeap.map((g) => g.id),
                 fifoOracle.map((g) => g.id),
-                `FIFO mismatch at n=${n}`
+                `FIFO mismatch at n=${n}`,
             );
 
             // Test Priority oracle
@@ -178,7 +188,7 @@ describe('Kitchen Dispatch Queue - Benchmarks & Simulation', () => {
             assert.deepEqual(
                 prioHeap.map((g) => g.id),
                 prioOracle.map((g) => g.id),
-                `Priority mismatch at n=${n}`
+                `Priority mismatch at n=${n}`,
             );
         }
     });
@@ -191,11 +201,17 @@ describe('Kitchen Dispatch Queue - Benchmarks & Simulation', () => {
 
         console.log('\n--- HARDWARE & RUNTIME METADATA ---');
         console.log(`OS: ${os.type()} ${os.release()} (${os.arch()})`);
-        console.log(`CPU: ${os.cpus()[0]?.model ?? 'Unknown'} (Cores: ${os.cpus().length})`);
+        console.log(
+            `CPU: ${os.cpus()[0]?.model ?? 'Unknown'} (Cores: ${os.cpus().length})`,
+        );
         console.log(`Node.js: ${process.version}`);
-        console.log(`Memory: Total ${(os.totalmem() / (1024 * 1024 * 1024)).toFixed(2)} GB, Free ${(os.freemem() / (1024 * 1024 * 1024)).toFixed(2)} GB\n`);
+        console.log(
+            `Memory: Total ${(os.totalmem() / (1024 * 1024 * 1024)).toFixed(2)} GB, Free ${(os.freemem() / (1024 * 1024 * 1024)).toFixed(2)} GB\n`,
+        );
 
-        console.log('--- BENCHMARK RESULTS (Median / P95 in ms across 30 measured runs) ---');
+        console.log(
+            '--- BENCHMARK RESULTS (Median / P95 in ms across 30 measured runs) ---',
+        );
 
         for (const n of sizes) {
             const data = generateDataset(n);
@@ -219,8 +235,8 @@ describe('Kitchen Dispatch Queue - Benchmarks & Simulation', () => {
                     const bLong = isGroupLongWait(b, nowMs);
 
                     if (aLong !== bLong) {
-return aLong ? -1 : 1;
-}
+                        return aLong ? -1 : 1;
+                    }
 
                     if (aLong) {
                         const aS = Date.parse(a.sentAt);
@@ -233,8 +249,8 @@ return aLong ? -1 : 1;
                     const bD = Date.parse(b.deadlineAt);
 
                     if (aD !== bD) {
-return aD - bD;
-}
+                        return aD - bD;
+                    }
 
                     const aS = Date.parse(a.sentAt);
                     const bS = Date.parse(b.sentAt);
@@ -265,7 +281,10 @@ return aD - bD;
                     station: g.stationName,
                     isLongWait: isGroupLongWait(g, nowMs),
                     isOverdue: nowMs > Date.parse(g.deadlineAt),
-                    waitMin: Math.max(0, Math.floor((nowMs - Date.parse(g.sentAt)) / 60000)),
+                    waitMin: Math.max(
+                        0,
+                        Math.floor((nowMs - Date.parse(g.sentAt)) / 60000),
+                    ),
                     itemCount: g.items.length,
                 }));
                 const t9 = performance.now();
@@ -281,11 +300,21 @@ return aD - bD;
             }
 
             console.log(`[n = ${n.toString().padStart(5)}]`);
-            console.log(`  Projection/Network : Median = ${percentile(projTimes, 50).toFixed(3)}ms | P95 = ${percentile(projTimes, 95).toFixed(3)}ms (Ops: O(n))`);
-            console.log(`  Heap Build (Floyd) : Median = ${percentile(heapTimes, 50).toFixed(3)}ms | P95 = ${percentile(heapTimes, 95).toFixed(3)}ms (Ops: O(n))`);
-            console.log(`  First Extract      : Median = ${percentile(firstExtTimes, 50).toFixed(4)}ms | P95 = ${percentile(firstExtTimes, 95).toFixed(4)}ms (Ops: O(log n))`);
-            console.log(`  Full Extract       : Median = ${percentile(fullExtTimes, 50).toFixed(3)}ms | P95 = ${percentile(fullExtTimes, 95).toFixed(3)}ms (Ops: O(n log n))`);
-            console.log(`  Render Projection  : Median = ${percentile(renderTimes, 50).toFixed(3)}ms | P95 = ${percentile(renderTimes, 95).toFixed(3)}ms (Ops: O(n))`);
+            console.log(
+                `  Projection/Network : Median = ${percentile(projTimes, 50).toFixed(3)}ms | P95 = ${percentile(projTimes, 95).toFixed(3)}ms (Ops: O(n))`,
+            );
+            console.log(
+                `  Heap Build (Floyd) : Median = ${percentile(heapTimes, 50).toFixed(3)}ms | P95 = ${percentile(heapTimes, 95).toFixed(3)}ms (Ops: O(n))`,
+            );
+            console.log(
+                `  First Extract      : Median = ${percentile(firstExtTimes, 50).toFixed(4)}ms | P95 = ${percentile(firstExtTimes, 95).toFixed(4)}ms (Ops: O(log n))`,
+            );
+            console.log(
+                `  Full Extract       : Median = ${percentile(fullExtTimes, 50).toFixed(3)}ms | P95 = ${percentile(fullExtTimes, 95).toFixed(3)}ms (Ops: O(n log n))`,
+            );
+            console.log(
+                `  Render Projection  : Median = ${percentile(renderTimes, 50).toFixed(3)}ms | P95 = ${percentile(renderTimes, 95).toFixed(3)}ms (Ops: O(n))`,
+            );
         }
     });
 
@@ -315,7 +344,9 @@ return aD - bD;
             const pendingByStation: Record<number, SimulatedGroup[]> = {};
 
             for (const st of STATIONS) {
-                pendingByStation[st.id] = dataset.filter((g) => g.stationId === st.id);
+                pendingByStation[st.id] = dataset.filter(
+                    (g) => g.stationId === st.id,
+                );
             }
 
             const waitTimesMin: number[] = [];
@@ -333,7 +364,10 @@ return aD - bD;
                     let earliestWorkerIdx = 0;
 
                     for (let w = 1; w < stationWorkers.length; w++) {
-                        if (stationWorkers[w] < stationWorkers[earliestWorkerIdx]) {
+                        if (
+                            stationWorkers[w] <
+                            stationWorkers[earliestWorkerIdx]
+                        ) {
                             earliestWorkerIdx = w;
                         }
                     }
@@ -341,7 +375,9 @@ return aD - bD;
                     const workerFreeTime = stationWorkers[earliestWorkerIdx];
 
                     // Find eligible groups: sentAt <= workerFreeTime (or next earliest arrival if all future)
-                    const eligible = pool.filter((g) => Date.parse(g.sentAt) <= workerFreeTime);
+                    const eligible = pool.filter(
+                        (g) => Date.parse(g.sentAt) <= workerFreeTime,
+                    );
 
                     let nextGroup: SimulatedGroup;
                     let startTime: number;
@@ -365,8 +401,8 @@ return aD - bD;
                                 const bLong = isGroupLongWait(b, startTime);
 
                                 if (aLong !== bLong) {
-return aLong ? -1 : 1;
-}
+                                    return aLong ? -1 : 1;
+                                }
 
                                 if (aLong) {
                                     const aS = Date.parse(a.sentAt);
@@ -379,8 +415,8 @@ return aLong ? -1 : 1;
                                 const bD = Date.parse(b.deadlineAt);
 
                                 if (aD !== bD) {
-return aD - bD;
-}
+                                    return aD - bD;
+                                }
 
                                 const aS = Date.parse(a.sentAt);
                                 const bS = Date.parse(b.sentAt);
@@ -391,13 +427,18 @@ return aD - bD;
                         }
                     } else {
                         // All remaining groups arrive after workerFreeTime; advance clock to earliest arrival
-                        pool.sort((a, b) => Date.parse(a.sentAt) - Date.parse(b.sentAt));
+                        pool.sort(
+                            (a, b) =>
+                                Date.parse(a.sentAt) - Date.parse(b.sentAt),
+                        );
                         nextGroup = pool[0];
                         startTime = Date.parse(nextGroup.sentAt);
                     }
 
                     // Remove selected group from pool
-                    const poolIdx = pool.findIndex((g) => g.id === nextGroup.id);
+                    const poolIdx = pool.findIndex(
+                        (g) => g.id === nextGroup.id,
+                    );
                     pool.splice(poolIdx, 1);
 
                     // Execute group
@@ -423,8 +464,10 @@ return aD - bD;
             }
 
             const totalWait = waitTimesMin.reduce((sum, w) => sum + w, 0);
-            const avgWaitMin = waitTimesMin.length > 0 ? totalWait / waitTimesMin.length : 0;
-            const maxWaitMin = waitTimesMin.length > 0 ? Math.max(...waitTimesMin) : 0;
+            const avgWaitMin =
+                waitTimesMin.length > 0 ? totalWait / waitTimesMin.length : 0;
+            const maxWaitMin =
+                waitTimesMin.length > 0 ? Math.max(...waitTimesMin) : 0;
 
             return {
                 avgWaitMin,
@@ -433,23 +476,32 @@ return aD - bD;
                 missedDeadlineCount: missedDeadlines,
                 missedDeadlineShare: (missedDeadlines / completedCount) * 100,
                 unfinishedAtHorizonCount: unfinishedAtHorizon,
-                unfinishedAtHorizonShare: (unfinishedAtHorizon / completedCount) * 100,
+                unfinishedAtHorizonShare:
+                    (unfinishedAtHorizon / completedCount) * 100,
             };
         }
 
         const fifoRes = runSim('fifo');
         const prioRes = runSim('priority');
 
-        console.log('\n--- SIMULATION RESULTS: EQUAL CAPACITY DRAINED RUN (n = 1,000 groups) ---');
-        console.log('Policy    | Avg Wait (m) | Max Wait (m) | Missed Deadlines | Missed Share (%) | Horizon Unfinished');
-        console.log('----------|--------------|--------------|------------------|------------------|-------------------');
         console.log(
-            `FIFO      | ${fifoRes.avgWaitMin.toFixed(2).padStart(12)} | ${fifoRes.maxWaitMin.toFixed(2).padStart(12)} | ${fifoRes.missedDeadlineCount.toString().padStart(16)} | ${(fifoRes.missedDeadlineShare.toFixed(2) + '%').padStart(16)} | ${fifoRes.unfinishedAtHorizonCount.toString().padStart(18)}`
+            '\n--- SIMULATION RESULTS: EQUAL CAPACITY DRAINED RUN (n = 1,000 groups) ---',
         );
         console.log(
-            `Priority  | ${prioRes.avgWaitMin.toFixed(2).padStart(12)} | ${prioRes.maxWaitMin.toFixed(2).padStart(12)} | ${prioRes.missedDeadlineCount.toString().padStart(16)} | ${(prioRes.missedDeadlineShare.toFixed(2) + '%').padStart(16)} | ${prioRes.unfinishedAtHorizonCount.toString().padStart(18)}`
+            'Policy    | Avg Wait (m) | Max Wait (m) | Missed Deadlines | Missed Share (%) | Horizon Unfinished',
         );
-        console.log('-------------------------------------------------------------------------------------------------');
+        console.log(
+            '----------|--------------|--------------|------------------|------------------|-------------------',
+        );
+        console.log(
+            `FIFO      | ${fifoRes.avgWaitMin.toFixed(2).padStart(12)} | ${fifoRes.maxWaitMin.toFixed(2).padStart(12)} | ${fifoRes.missedDeadlineCount.toString().padStart(16)} | ${(fifoRes.missedDeadlineShare.toFixed(2) + '%').padStart(16)} | ${fifoRes.unfinishedAtHorizonCount.toString().padStart(18)}`,
+        );
+        console.log(
+            `Priority  | ${prioRes.avgWaitMin.toFixed(2).padStart(12)} | ${prioRes.maxWaitMin.toFixed(2).padStart(12)} | ${prioRes.missedDeadlineCount.toString().padStart(16)} | ${(prioRes.missedDeadlineShare.toFixed(2) + '%').padStart(16)} | ${prioRes.unfinishedAtHorizonCount.toString().padStart(18)}`,
+        );
+        console.log(
+            '-------------------------------------------------------------------------------------------------',
+        );
 
         assert.equal(fifoRes.completedCount, 1_000);
         assert.equal(prioRes.completedCount, 1_000);

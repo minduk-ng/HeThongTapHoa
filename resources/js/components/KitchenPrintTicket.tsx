@@ -8,10 +8,16 @@ interface KitchenPrintTicketProps {
     createdAtLabel: string;
 }
 
-export default function KitchenPrintTicket({ orderNumber, tableNumber, items, note, createdAtLabel }: KitchenPrintTicketProps) {
+export default function KitchenPrintTicket({
+    orderNumber,
+    tableNumber,
+    items,
+    note,
+    createdAtLabel,
+}: KitchenPrintTicketProps) {
     return (
         <div className="print-area print-ticket font-mono text-[10px]">
-            <div className="text-center font-bold mb-1">TẠP HOÁ / QUÁN</div>
+            <div className="mb-1 text-center font-bold">TẠP HOÁ / QUÁN</div>
             <div>----------------------------</div>
             <div>BẾP · Ticket: {orderNumber}</div>
             <div>Bàn: {tableNumber}</div>
@@ -19,12 +25,19 @@ export default function KitchenPrintTicket({ orderNumber, tableNumber, items, no
             <div>----------------------------</div>
             {items.map((item, idx) => (
                 <div key={idx} className="flex justify-between">
-                    <span>{item.quantity}× {item.name}</span>
+                    <span>
+                        {item.quantity}× {item.name}
+                    </span>
                 </div>
             ))}
-            {items.map((item, idx) => item.note ? (
-                <div key={`n${idx}`} className="text-amber-700 italic">  → Ghi chú: {item.note}</div>
-            ) : null)}
+            {items.map((item, idx) =>
+                item.note ? (
+                    <div key={`n${idx}`} className="text-amber-700 italic">
+                        {' '}
+                        → Ghi chú: {item.note}
+                    </div>
+                ) : null,
+            )}
             {note && <div className="italic">Ghi chú order: {note}</div>}
             <div>----------------------------</div>
             <div className="text-center">Cảm ơn!</div>

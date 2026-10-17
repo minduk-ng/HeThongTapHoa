@@ -55,11 +55,7 @@ const COLUMNS: ReportTableColumn[] = [
     { key: 'status', label: 'Trạng thái' },
 ];
 
-export default function ExpiringReport({
-    rows,
-    startDate,
-    endDate,
-}: Props) {
+export default function ExpiringReport({ rows, startDate, endDate }: Props) {
     const today = new Date().toISOString().slice(0, 10);
     const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
     const { rangeStart, rangeEnd, applyRange, reset } = useReportFilters(
@@ -141,7 +137,7 @@ export default function ExpiringReport({
             case 'days_left':
                 return (
                     <span
-                        className={`tabular-nums font-semibold ${
+                        className={`font-semibold tabular-nums ${
                             row.days_left < 0
                                 ? 'text-rose-600 dark:text-rose-400'
                                 : row.days_left <= 7
@@ -154,7 +150,7 @@ export default function ExpiringReport({
                 );
             case 'quantity_remaining':
                 return (
-                    <span className="tabular-nums font-semibold text-zinc-900 dark:text-zinc-100">
+                    <span className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
                         {row.quantity_remaining.toLocaleString('vi-VN')}
                     </span>
                 );

@@ -54,9 +54,13 @@ export default function RunStatusBanner({
     className = '',
 }: RunStatusBannerProps) {
     const { auth } = usePage<PageProps>().props;
-    const canRun = Boolean(auth?.is_admin || auth?.permissions?.includes('planning.run'));
+    const canRun = Boolean(
+        auth?.is_admin || auth?.permissions?.includes('planning.run'),
+    );
     const { isSubmitting, guard } = useSubmitGuard();
-    const [horizonDays, setHorizonDays] = useState<number>(run?.horizon_days || defaultHorizon);
+    const [horizonDays, setHorizonDays] = useState<number>(
+        run?.horizon_days || defaultHorizon,
+    );
 
     const status = run?.status ?? latestRunStatus;
     const isRunning = status === 'running';
@@ -66,12 +70,17 @@ export default function RunStatusBanner({
     const isEmpty = !run || !run.id;
     const isStaleRun = Boolean(
         !isEmpty &&
-            (run.status === 'stale' || (isCompleted && isRunStale(run.completed_at || run.data_cutoff, 24)))
+        (run.status === 'stale' ||
+            (isCompleted &&
+                isRunStale(run.completed_at || run.data_cutoff, 24))),
     );
 
     const datasetId = sourceDatasetId ?? run?.synthetic_dataset_id;
     const sourceLabel = formatSourceLabel(
-        sourceDatasetName || run?.syntheticDataset?.name || run?.synthetic_dataset?.name || (datasetId != null ? { id: datasetId } : null)
+        sourceDatasetName ||
+            run?.syntheticDataset?.name ||
+            run?.synthetic_dataset?.name ||
+            (datasetId != null ? { id: datasetId } : null),
     );
 
     const handleTriggerRun = () => {
@@ -94,7 +103,10 @@ export default function RunStatusBanner({
                     '/planning/runs',
                     {
                         horizon_days: horizonDays,
-                        synthetic_dataset_id: sourceDatasetId ?? run?.synthetic_dataset_id ?? null,
+                        synthetic_dataset_id:
+                            sourceDatasetId ??
+                            run?.synthetic_dataset_id ??
+                            null,
                     },
                     {
                         preserveScroll: true,
@@ -112,7 +124,7 @@ export default function RunStatusBanner({
                                 resolve();
                             }
                         },
-                    }
+                    },
                 );
             });
         });
@@ -135,11 +147,16 @@ export default function RunStatusBanner({
                                     {formatRunStatusLabel('empty')}
                                 </span>
                                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                                    Nguồn: <span className="font-medium text-slate-700 dark:text-slate-300">{sourceLabel}</span>
+                                    Nguồn:{' '}
+                                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                                        {sourceLabel}
+                                    </span>
                                 </span>
                             </div>
                             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                                Hệ thống chưa có lượt dự báo nào đang hoạt động. Hãy chạy tính toán dự báo ban đầu để tạo kế hoạch.
+                                Hệ thống chưa có lượt dự báo nào đang hoạt động.
+                                Hãy chạy tính toán dự báo ban đầu để tạo kế
+                                hoạch.
                             </p>
                         </div>
                     </div>
@@ -149,7 +166,9 @@ export default function RunStatusBanner({
                             <select
                                 value={horizonDays}
                                 aria-label="Kỳ dự báo"
-                                onChange={(e) => setHorizonDays(Number(e.target.value))}
+                                onChange={(e) =>
+                                    setHorizonDays(Number(e.target.value))
+                                }
                                 disabled={isSubmitting}
                                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-2xs focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                             >
@@ -199,8 +218,11 @@ export default function RunStatusBanner({
                                     {formatRunStatusLabel(status)}
                                 </span>
                                 <span className="text-xs text-sky-700 dark:text-sky-300">
-                                    {run?.id ? `Lượt #${run.id}` : 'Lượt mới nhất'}
-                                    {run?.horizon_days != null && ` • Kỳ dự báo ${run.horizon_days} ngày`}
+                                    {run?.id
+                                        ? `Lượt #${run.id}`
+                                        : 'Lượt mới nhất'}
+                                    {run?.horizon_days != null &&
+                                        ` • Kỳ dự báo ${run.horizon_days} ngày`}
                                 </span>
                             </div>
                             <p className="mt-1 text-sm text-sky-900 dark:text-sky-100">
@@ -213,7 +235,9 @@ export default function RunStatusBanner({
 
                     <div className="flex items-center gap-3 text-xs text-sky-700 dark:text-sky-300">
                         <Database className="h-4 w-4" />
-                        <span>Nguồn: <strong>{sourceLabel}</strong></span>
+                        <span>
+                            Nguồn: <strong>{sourceLabel}</strong>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -237,11 +261,14 @@ export default function RunStatusBanner({
                                     {formatRunStatusLabel('failed')}
                                 </span>
                                 <span className="text-xs text-rose-700 dark:text-rose-300">
-                                    {run?.id ? `Lượt #${run.id}` : 'Lượt mới nhất'}
+                                    {run?.id
+                                        ? `Lượt #${run.id}`
+                                        : 'Lượt mới nhất'}
                                 </span>
                             </div>
                             <p className="mt-1 text-sm text-rose-900 dark:text-rose-100">
-                                {run?.error_message || 'Có lỗi xảy ra trong quá trình tính toán lượt dự báo.'}
+                                {run?.error_message ||
+                                    'Có lỗi xảy ra trong quá trình tính toán lượt dự báo.'}
                             </p>
                         </div>
                     </div>
@@ -303,12 +330,19 @@ export default function RunStatusBanner({
                                         : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-200'
                                 }`}
                             >
-                                {isStaleRun ? formatRunStatusLabel('stale') : formatRunStatusLabel('completed')}
+                                {isStaleRun
+                                    ? formatRunStatusLabel('stale')
+                                    : formatRunStatusLabel('completed')}
                             </span>
                             <span className="text-xs text-slate-500 dark:text-slate-400">
-                                Lượt <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-200">#{run.id}</span>
+                                Lượt{' '}
+                                <span className="font-semibold text-slate-700 tabular-nums dark:text-slate-200">
+                                    #{run.id}
+                                </span>
                             </span>
-                            <span className="text-slate-300 dark:text-slate-600">•</span>
+                            <span className="text-slate-300 dark:text-slate-600">
+                                •
+                            </span>
                             <span className="text-xs text-slate-500 dark:text-slate-400">
                                 Nguồn:{' '}
                                 <span className="font-medium text-slate-700 dark:text-slate-200">
@@ -318,24 +352,31 @@ export default function RunStatusBanner({
                         </div>
 
                         <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
-                            {latestRunStatus && latestRunStatus !== run.status && (
-                                <span>Lượt mới nhất: {formatRunStatusLabel(latestRunStatus)}. Đang giữ kết quả của lượt #{run.id}.</span>
-                            )}
+                            {latestRunStatus &&
+                                latestRunStatus !== run.status && (
+                                    <span>
+                                        Lượt mới nhất:{' '}
+                                        {formatRunStatusLabel(latestRunStatus)}.
+                                        Đang giữ kết quả của lượt #{run.id}.
+                                    </span>
+                                )}
                             <span>
                                 Điểm cắt dữ liệu (Cutoff):{' '}
-                                <strong className="tabular-nums text-slate-800 dark:text-slate-200">
+                                <strong className="text-slate-800 tabular-nums dark:text-slate-200">
                                     {formatDate(run.data_cutoff)}
                                 </strong>
                             </span>
                             <span>
                                 Chạy lúc:{' '}
-                                <strong className="tabular-nums text-slate-800 dark:text-slate-200">
-                                    {formatDateTime(run.completed_at || run.started_at)}
+                                <strong className="text-slate-800 tabular-nums dark:text-slate-200">
+                                    {formatDateTime(
+                                        run.completed_at || run.started_at,
+                                    )}
                                 </strong>
                             </span>
                             <span>
                                 Kỳ dự báo:{' '}
-                                <strong className="tabular-nums text-slate-800 dark:text-slate-200">
+                                <strong className="text-slate-800 tabular-nums dark:text-slate-200">
                                     {run.horizon_days ?? 7} ngày
                                 </strong>
                             </span>
@@ -348,7 +389,9 @@ export default function RunStatusBanner({
                         <>
                             <select
                                 value={horizonDays}
-                                onChange={(e) => setHorizonDays(Number(e.target.value))}
+                                onChange={(e) =>
+                                    setHorizonDays(Number(e.target.value))
+                                }
                                 disabled={isSubmitting}
                                 aria-label="Chọn kỳ dự báo"
                                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-2xs focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
@@ -370,7 +413,11 @@ export default function RunStatusBanner({
                                 ) : (
                                     <RefreshCw className="h-4 w-4" />
                                 )}
-                                <span>{isStaleRun ? 'Tính lại ngay' : 'Chạy lại dự báo'}</span>
+                                <span>
+                                    {isStaleRun
+                                        ? 'Tính lại ngay'
+                                        : 'Chạy lại dự báo'}
+                                </span>
                             </button>
                         </>
                     )}

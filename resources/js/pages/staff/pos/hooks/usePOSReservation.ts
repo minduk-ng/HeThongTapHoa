@@ -3,8 +3,8 @@ import type { POSTableData, ReservationDraft } from '../types/pos.types';
 
 function getCsrfTokenFromCookie(): string {
     if (typeof document === 'undefined') {
-return '';
-}
+        return '';
+    }
 
     const name = 'XSRF-TOKEN=';
     const decodedCookie = decodeURIComponent(document.cookie);
@@ -27,18 +27,29 @@ return '';
 
 export function usePOSReservation() {
     const [isLoading, setIsLoading] = useState(false);
-    const [reservationDrafts, setReservationDrafts] = useState<Record<string, ReservationDraft>>({});
+    const [reservationDrafts, setReservationDrafts] = useState<
+        Record<string, ReservationDraft>
+    >({});
 
-    const getDraftKey = (tableId: number, invoiceId: string) => `${tableId}_${invoiceId}`;
+    const getDraftKey = (tableId: number, invoiceId: string) =>
+        `${tableId}_${invoiceId}`;
 
-    const getDraft = (tableId: number, invoiceId: string) => reservationDrafts[getDraftKey(tableId, invoiceId)] || null;
+    const getDraft = (tableId: number, invoiceId: string) =>
+        reservationDrafts[getDraftKey(tableId, invoiceId)] || null;
 
-    const setDraft = (tableId: number, invoiceId: string, draft: ReservationDraft) => {
-        setReservationDrafts(prev => ({ ...prev, [getDraftKey(tableId, invoiceId)]: draft }));
+    const setDraft = (
+        tableId: number,
+        invoiceId: string,
+        draft: ReservationDraft,
+    ) => {
+        setReservationDrafts((prev) => ({
+            ...prev,
+            [getDraftKey(tableId, invoiceId)]: draft,
+        }));
     };
 
     const clearDraft = (tableId: number, invoiceId: string) => {
-        setReservationDrafts(prev => {
+        setReservationDrafts((prev) => {
             const next = { ...prev };
             delete next[getDraftKey(tableId, invoiceId)];
 
@@ -50,257 +61,284 @@ export function usePOSReservation() {
      * Set a table as reserved (no deposit, no items)
      * Legacy /staff/pos/tables/{id}/reserve is replaced by /staff/pos/reserve
      */
-    const reserveTable = useCallback(async (
-        tableId: number, 
-        data: {
-            reservation_time: string;
-            reservation_name: string;
-            reservation_phone: string;
-            reservation_note?: string;
-        },
-        onSuccess?: (table: POSTableData) => void
-    ) => {
-        setIsLoading(true);
+    const reserveTable = useCallback(
+        async (
+            tableId: number,
+            data: {
+                reservation_time: string;
+                reservation_name: string;
+                reservation_phone: string;
+                reservation_note?: string;
+            },
+            onSuccess?: (table: POSTableData) => void,
+        ) => {
+            setIsLoading(true);
 
-        try {
-            const response = await fetch(`/staff/pos/reserve`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': getCsrfTokenFromCookie(),
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    table_id: tableId,
-                    ...data,
-                    items: []
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok && result.success) {
-                if (onSuccess) {
-onSuccess(result.table);
-}
+            try {
+                const response = await fetch(`/staff/pos/reserve`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': getCsrfTokenFromCookie(),
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        table_id: tableId,
+                        ...data,
+                        items: [],
+                    }),
+                });
 
-                return result.table;
-            } else {
-                throw new Error(result.message || 'Không thể đặt trước bàn');
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    if (onSuccess) {
+                        onSuccess(result.table);
+                    }
+
+                    return result.table;
+                } else {
+                    throw new Error(
+                        result.message || 'Không thể đặt trước bàn',
+                    );
+                }
+            } catch (error: any) {
+                console.error('Lỗi khi đặt bàn:', error);
+
+                throw error;
+            } finally {
+                setIsLoading(false);
             }
-        } catch (error: any) {
-            console.error('Lỗi khi đặt bàn:', error);
-
-            throw error;
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+        },
+        [],
+    );
 
     /**
      * Submit a reservation with items and deposit
      */
-    const submitReservation = useCallback(async (
-        data: {
-            table_id: number;
-            reservation_time: string;
-            reservation_name: string;
-            reservation_phone: string;
-            reservation_note?: string;
-            deposit_amount: number;
-            payment_method: string;
-            deposit_reference?: string;
-            deposit_bank_verified?: boolean;
-            items: Array<{ menu_item_id: number; quantity: number }>;
-        },
-        onSuccess?: (table: POSTableData) => void
-    ) => {
-        setIsLoading(true);
+    const submitReservation = useCallback(
+        async (
+            data: {
+                table_id: number;
+                reservation_time: string;
+                reservation_name: string;
+                reservation_phone: string;
+                reservation_note?: string;
+                deposit_amount: number;
+                payment_method: string;
+                deposit_reference?: string;
+                deposit_bank_verified?: boolean;
+                items: Array<{ menu_item_id: number; quantity: number }>;
+            },
+            onSuccess?: (table: POSTableData) => void,
+        ) => {
+            setIsLoading(true);
 
-        try {
-            // Backend expects nested deposit: {amount, method} (nullable)
-            const { deposit_amount, payment_method, deposit_reference, deposit_bank_verified, ...rest } = data;
-            const response = await fetch(`/staff/pos/reserve`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': getCsrfTokenFromCookie(),
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    ...rest,
-                    deposit: deposit_amount > 0
-                        ? {
-                            amount: deposit_amount,
-                            method: payment_method,
-                            reference: deposit_reference,
-                            bank_verified: deposit_bank_verified,
-                        }
-                        : undefined,
-                    idempotency_key: `pos_reserve_${data.table_id}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok && result.success) {
-                if (onSuccess) {
-onSuccess(result.table);
-}
+            try {
+                // Backend expects nested deposit: {amount, method} (nullable)
+                const {
+                    deposit_amount,
+                    payment_method,
+                    deposit_reference,
+                    deposit_bank_verified,
+                    ...rest
+                } = data;
+                const response = await fetch(`/staff/pos/reserve`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': getCsrfTokenFromCookie(),
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        ...rest,
+                        deposit:
+                            deposit_amount > 0
+                                ? {
+                                      amount: deposit_amount,
+                                      method: payment_method,
+                                      reference: deposit_reference,
+                                      bank_verified: deposit_bank_verified,
+                                  }
+                                : undefined,
+                        idempotency_key: `pos_reserve_${data.table_id}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                    }),
+                });
 
-                return result.table;
-            } else {
-                throw new Error(result.message || 'Không thể đặt trước bàn');
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    if (onSuccess) {
+                        onSuccess(result.table);
+                    }
+
+                    return result.table;
+                } else {
+                    throw new Error(
+                        result.message || 'Không thể đặt trước bàn',
+                    );
+                }
+            } catch (error: any) {
+                console.error('Lỗi khi đặt bàn:', error);
+
+                throw error;
+            } finally {
+                setIsLoading(false);
             }
-        } catch (error: any) {
-            console.error('Lỗi khi đặt bàn:', error);
-
-            throw error;
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+        },
+        [],
+    );
 
     /**
      * Check in a reservation
      */
-    const checkInReservation = useCallback(async (
-        orderId: number,
-        onSuccess?: (table: POSTableData) => void
-    ) => {
-        setIsLoading(true);
+    const checkInReservation = useCallback(
+        async (orderId: number, onSuccess?: (table: POSTableData) => void) => {
+            setIsLoading(true);
 
-        try {
-            const response = await fetch(`/staff/pos/reservation/check-in`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': getCsrfTokenFromCookie(),
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    order_id: orderId,
-                    idempotency_key: `pos_checkin_${orderId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok && result.success) {
-                if (onSuccess) {
-onSuccess(result.table);
-}
+            try {
+                const response = await fetch(
+                    `/staff/pos/reservation/check-in`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': getCsrfTokenFromCookie(),
+                            Accept: 'application/json',
+                        },
+                        body: JSON.stringify({
+                            order_id: orderId,
+                            idempotency_key: `pos_checkin_${orderId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                        }),
+                    },
+                );
 
-                return result.table;
-            } else {
-                throw new Error(result.message || 'Không thể nhận bàn');
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    if (onSuccess) {
+                        onSuccess(result.table);
+                    }
+
+                    return result.table;
+                } else {
+                    throw new Error(result.message || 'Không thể nhận bàn');
+                }
+            } catch (error: any) {
+                console.error('Lỗi khi nhận bàn:', error);
+
+                throw error;
+            } finally {
+                setIsLoading(false);
             }
-        } catch (error: any) {
-            console.error('Lỗi khi nhận bàn:', error);
-
-            throw error;
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+        },
+        [],
+    );
 
     /**
      * Cancel a reservation
      */
-    const cancelReservation = useCallback(async (
-        orderId: number,
-        resolution: 'refund' | 'forfeit' | 'none',
-        note?: string,
-        onSuccess?: (table: POSTableData) => void
-    ) => {
-        setIsLoading(true);
+    const cancelReservation = useCallback(
+        async (
+            orderId: number,
+            resolution: 'refund' | 'forfeit' | 'none',
+            note?: string,
+            onSuccess?: (table: POSTableData) => void,
+        ) => {
+            setIsLoading(true);
 
-        try {
-            const response = await fetch(`/staff/pos/reservation/cancel`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': getCsrfTokenFromCookie(),
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    order_id: orderId,
-                    deposit_resolution: resolution === 'none' ? null : resolution,
-                    note,
-                    idempotency_key: `pos_cancelres_${orderId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok && result.success) {
-                if (onSuccess) {
-onSuccess(result.table);
-}
+            try {
+                const response = await fetch(`/staff/pos/reservation/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': getCsrfTokenFromCookie(),
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        order_id: orderId,
+                        deposit_resolution:
+                            resolution === 'none' ? null : resolution,
+                        note,
+                        idempotency_key: `pos_cancelres_${orderId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                    }),
+                });
 
-                return result.table;
-            } else {
-                throw new Error(result.message || 'Không thể huỷ đặt bàn');
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    if (onSuccess) {
+                        onSuccess(result.table);
+                    }
+
+                    return result.table;
+                } else {
+                    throw new Error(result.message || 'Không thể huỷ đặt bàn');
+                }
+            } catch (error: any) {
+                console.error('Lỗi khi huỷ đặt bàn:', error);
+
+                throw error;
+            } finally {
+                setIsLoading(false);
             }
-        } catch (error: any) {
-            console.error('Lỗi khi huỷ đặt bàn:', error);
-
-            throw error;
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+        },
+        [],
+    );
 
     /**
      * Submit a deposit for an existing reservation
      */
-    const submitDeposit = useCallback(async (
-        orderId: number,
-        amount: number,
-        paymentMethod: string,
-        onSuccess?: (table: POSTableData) => void,
-        reference?: string,
-        bankVerified?: boolean
-    ) => {
-        setIsLoading(true);
+    const submitDeposit = useCallback(
+        async (
+            orderId: number,
+            amount: number,
+            paymentMethod: string,
+            onSuccess?: (table: POSTableData) => void,
+            reference?: string,
+            bankVerified?: boolean,
+        ) => {
+            setIsLoading(true);
 
-        try {
-            const response = await fetch(`/staff/pos/deposit`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': getCsrfTokenFromCookie(),
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    order_id: orderId,
-                    amount,
-                    method: paymentMethod,
-                    reference,
-                    bank_verified: bankVerified,
-                    idempotency_key: `pos_deposit_${orderId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok && result.success) {
-                if (onSuccess) {
-onSuccess(result.table);
-}
+            try {
+                const response = await fetch(`/staff/pos/deposit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': getCsrfTokenFromCookie(),
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        order_id: orderId,
+                        amount,
+                        method: paymentMethod,
+                        reference,
+                        bank_verified: bankVerified,
+                        idempotency_key: `pos_deposit_${orderId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                    }),
+                });
 
-                return result.table;
-            } else {
-                throw new Error(result.message || 'Không thể nạp tiền cọc');
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    if (onSuccess) {
+                        onSuccess(result.table);
+                    }
+
+                    return result.table;
+                } else {
+                    throw new Error(result.message || 'Không thể nạp tiền cọc');
+                }
+            } catch (error: any) {
+                console.error('Lỗi khi nạp tiền cọc:', error);
+
+                throw error;
+            } finally {
+                setIsLoading(false);
             }
-        } catch (error: any) {
-            console.error('Lỗi khi nạp tiền cọc:', error);
-
-            throw error;
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+        },
+        [],
+    );
 
     return {
         reservationDrafts,
@@ -312,6 +350,6 @@ onSuccess(result.table);
         checkInReservation,
         cancelReservation,
         submitDeposit,
-        isLoading
+        isLoading,
     };
 }

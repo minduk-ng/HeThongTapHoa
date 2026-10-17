@@ -1,4 +1,9 @@
-import { AlertCircle, AlertTriangle, PackageCheck, XCircle } from 'lucide-react';
+import {
+    AlertCircle,
+    AlertTriangle,
+    PackageCheck,
+    XCircle,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import ReportPage from '../../components/reports/ReportPage';
@@ -59,11 +64,7 @@ const COLUMNS: ReportTableColumn[] = [
     { key: 'suggest_qty', label: 'Đề xuất nhập', numeric: true },
 ];
 
-export default function LowStockReport({
-    rows,
-    startDate,
-    endDate,
-}: Props) {
+export default function LowStockReport({ rows, startDate, endDate }: Props) {
     const today = new Date().toISOString().slice(0, 10);
     const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
     const { rangeStart, rangeEnd, applyRange, reset } = useReportFilters(
@@ -151,7 +152,7 @@ export default function LowStockReport({
             case 'stock_quantity':
                 return (
                     <span
-                        className={`tabular-nums font-semibold ${
+                        className={`font-semibold tabular-nums ${
                             row.stock_quantity <= 0
                                 ? 'text-rose-600 dark:text-rose-400'
                                 : 'text-zinc-900 dark:text-zinc-100'
@@ -176,7 +177,7 @@ export default function LowStockReport({
                 );
             case 'suggest_qty':
                 return (
-                    <span className="tabular-nums font-semibold text-sky-600 dark:text-sky-400">
+                    <span className="font-semibold text-sky-600 tabular-nums dark:text-sky-400">
                         {row.suggest_qty.toLocaleString('vi-VN')}
                     </span>
                 );

@@ -1,8 +1,4 @@
-import {
-    ChevronUp,
-    ChevronDown,
-    Rows3,
-} from 'lucide-react';
+import { ChevronUp, ChevronDown, Rows3 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 
 export interface DataTableColumn<T> {
@@ -179,18 +175,24 @@ export default function DataTable<T>({
                                     onKeyDown={
                                         col.sortable
                                             ? (e) => {
-                                                if (e.key === 'Enter' || e.key === ' ') {
-                                                    e.preventDefault();
-                                                    handleSort(col.key);
-                                                }
-                                            }
+                                                  if (
+                                                      e.key === 'Enter' ||
+                                                      e.key === ' '
+                                                  ) {
+                                                      e.preventDefault();
+                                                      handleSort(col.key);
+                                                  }
+                                              }
                                             : undefined
                                     }
-                                    className={`relative px-4 ${isCompact ? 'py-2' : 'py-3'} ${alignClass(col.align)} select-none border-r border-zinc-200/60 dark:border-zinc-800/60 last:border-r-0 ${col.headerClassName ?? ''} ${col.sortable ? 'cursor-pointer hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500' : ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
+                                    className={`relative px-4 ${isCompact ? 'py-2' : 'py-3'} ${alignClass(col.align)} border-r border-zinc-200/60 select-none last:border-r-0 dark:border-zinc-800/60 ${col.headerClassName ?? ''} ${col.sortable ? 'cursor-pointer hover:bg-zinc-100/80 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:hover:bg-zinc-700/60' : ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
                                 >
-                                    <div className={`flex items-center space-x-1.5 ${justifyClass(col.align)}`}>
+                                    <div
+                                        className={`flex items-center space-x-1.5 ${justifyClass(col.align)}`}
+                                    >
                                         <span>{col.header}</span>
-                                        {col.sortable && renderSortIcon(col.key)}
+                                        {col.sortable &&
+                                            renderSortIcon(col.key)}
                                     </div>
                                 </th>
                             ))}
@@ -225,7 +227,7 @@ export default function DataTable<T>({
                                     {columns.map((col) => (
                                         <td
                                             key={col.key}
-                                            className={`px-4 ${isCompact ? (col.compactClassName ?? 'py-1.5') : 'py-3'} text-sm tabular-nums text-zinc-700 dark:text-zinc-300 ${alignClass(col.align)} border-r border-zinc-100/80 dark:border-zinc-800/40 last:border-r-0 ${col.className ?? ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
+                                            className={`px-4 ${isCompact ? (col.compactClassName ?? 'py-1.5') : 'py-3'} text-sm text-zinc-700 tabular-nums dark:text-zinc-300 ${alignClass(col.align)} border-r border-zinc-100/80 last:border-r-0 dark:border-zinc-800/40 ${col.className ?? ''} ${col.hideWhenCompact && isCompact ? 'hidden' : ''}`}
                                         >
                                             {col.render(row)}
                                         </td>
@@ -238,7 +240,7 @@ export default function DataTable<T>({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-3 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+            <div className="flex items-center justify-between border-t border-zinc-100 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="flex items-center space-x-3">
                     <span className="text-[11px] text-zinc-600 tabular-nums dark:text-zinc-400">
                         {sortedRows.length} bản ghi
@@ -252,7 +254,9 @@ export default function DataTable<T>({
                                     ? 'bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'
                                     : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
                             }`}
-                            title={isCompact ? 'Chế độ thường' : 'Chế độ compact'}
+                            title={
+                                isCompact ? 'Chế độ thường' : 'Chế độ compact'
+                            }
                         >
                             <Rows3 className="h-3.5 w-3.5" />
                         </button>

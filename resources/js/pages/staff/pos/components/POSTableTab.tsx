@@ -36,8 +36,8 @@ export default function POSTableTab({
             const areaName = table.area || 'Khác';
 
             if (!acc[areaName]) {
-acc[areaName] = [];
-}
+                acc[areaName] = [];
+            }
 
             acc[areaName].push(table);
 
@@ -58,12 +58,12 @@ acc[areaName] = [];
     // Ensure "Mang đi (Takeaway)" appears first
     const sortedAreaEntries = Object.entries(groupedAreas).sort(([a], [b]) => {
         if (a.includes('Mang đi')) {
-return -1;
-}
+            return -1;
+        }
 
         if (b.includes('Mang đi')) {
-return 1;
-}
+            return 1;
+        }
 
         return a.localeCompare(b);
     });
@@ -82,20 +82,24 @@ return 1;
             ? [...safeTables].sort((a, b) => {
                   // Pin Mang đi (id=0) first, then natural sort by table_number
                   if (a.id === TAKEAWAY_TABLE_ID) {
-return -1;
-}
+                      return -1;
+                  }
 
                   if (b.id === TAKEAWAY_TABLE_ID) {
-return 1;
-}
+                      return 1;
+                  }
 
-                  return a.table_number.localeCompare(b.table_number, undefined, { numeric: true });
+                  return a.table_number.localeCompare(
+                      b.table_number,
+                      undefined,
+                      { numeric: true },
+                  );
               })
             : safeTables.filter((t) => (t.area || 'Khác') === selectedArea)
     ).filter((t) => {
         if (!searchQuery) {
-return true;
-}
+            return true;
+        }
 
         const q = searchQuery.toLowerCase();
 
@@ -189,7 +193,7 @@ return true;
                                         onSelectTable(table);
                                     }
                                 }}
-                                className={`relative flex h-28 cursor-pointer flex-col justify-between rounded-xl border p-3.5 transition-colors duration-150 select-none outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                                className={`relative flex h-28 cursor-pointer flex-col justify-between rounded-xl border p-3.5 transition-colors duration-150 outline-none select-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                                     isSelected
                                         ? 'border-sky-600 bg-sky-50/70 dark:bg-sky-950/50'
                                         : isOccupied

@@ -1,11 +1,7 @@
 import { router } from '@inertiajs/react';
 import { Calendar, LayoutGrid, Users, Zap } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-    ManagerFormModal,
-    FormSection,
-    FormField,
-} from '@/components/form';
+import { ManagerFormModal, FormSection, FormField } from '@/components/form';
 import type { TableData } from './TableListTable';
 
 interface TableFormModalProps {
@@ -101,28 +97,26 @@ export default function TableFormModal({
     const isDirty = useMemo(() => {
         if (tableToEdit) {
             return (
-                tableNumber !== (tableToEdit.table_number || '')
-                || capacity !== String(tableToEdit.capacity || 4)
-                || status !== (tableToEdit.status || 'available')
-                || reservationName !== (tableToEdit.reservation_name || '')
-                || reservationPhone !== (tableToEdit.reservation_phone || '')
-                || reservationNote !== (tableToEdit.reservation_note || '')
+                tableNumber !== (tableToEdit.table_number || '') ||
+                capacity !== String(tableToEdit.capacity || 4) ||
+                status !== (tableToEdit.status || 'available') ||
+                reservationName !== (tableToEdit.reservation_name || '') ||
+                reservationPhone !== (tableToEdit.reservation_phone || '') ||
+                reservationNote !== (tableToEdit.reservation_note || '')
             );
         }
 
         if (mode === 'batch') {
             return (
-                batchPrefix !== 'Bàn '
-                || batchFrom !== '11'
-                || batchTo !== '15'
+                batchPrefix !== 'Bàn ' || batchFrom !== '11' || batchTo !== '15'
             );
         }
 
         return (
-            tableNumber.trim() !== ''
-            || reservationName.trim() !== ''
-            || reservationPhone.trim() !== ''
-            || reservationNote.trim() !== ''
+            tableNumber.trim() !== '' ||
+            reservationName.trim() !== '' ||
+            reservationPhone.trim() !== '' ||
+            reservationNote.trim() !== ''
         );
     }, [
         tableToEdit,
@@ -160,8 +154,8 @@ export default function TableFormModal({
         e.preventDefault();
 
         if (submitting) {
-return;
-}
+            return;
+        }
 
         setSubmitting(true);
         const finalArea = isCustomArea ? customArea.trim() : selectedArea;
@@ -265,7 +259,7 @@ return;
                     <button
                         type="button"
                         onClick={() => setMode('batch')}
-                        className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition-colors ${
+                        className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition-colors ${
                             mode === 'batch'
                                 ? 'bg-sky-600 text-white shadow-xs'
                                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
@@ -359,7 +353,7 @@ return;
                                 max="50"
                                 value={capacity}
                                 onChange={(e) => setCapacity(e.target.value)}
-                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                             />
                         </FormField>
 
@@ -371,10 +365,14 @@ return;
                                 }
                                 className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-medium text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                             >
-                                <option value="available">Bàn trống (Sẵn sàng)</option>
+                                <option value="available">
+                                    Bàn trống (Sẵn sàng)
+                                </option>
                                 <option value="occupied">Đang có khách</option>
                                 <option value="reserved">Đặt bàn trước</option>
-                                <option value="maintenance">Tạm ngưng phục vụ</option>
+                                <option value="maintenance">
+                                    Tạm ngưng phục vụ
+                                </option>
                             </select>
                         </FormField>
                     </FormSection>
@@ -408,7 +406,7 @@ return;
                                         setReservationPhone(e.target.value)
                                     }
                                     placeholder="0912 345 678"
-                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                     required
                                 />
                             </FormField>
@@ -420,7 +418,7 @@ return;
                                     onChange={(e) =>
                                         setReservationTime(e.target.value)
                                     }
-                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                     required
                                 />
                             </FormField>
@@ -464,7 +462,7 @@ return;
                                 type="number"
                                 value={batchFrom}
                                 onChange={(e) => setBatchFrom(e.target.value)}
-                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                 required
                             />
                         </FormField>
@@ -474,7 +472,7 @@ return;
                                 type="number"
                                 value={batchTo}
                                 onChange={(e) => setBatchTo(e.target.value)}
-                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                 required
                             />
                         </FormField>
@@ -526,7 +524,7 @@ return;
                                 max="50"
                                 value={capacity}
                                 onChange={(e) => setCapacity(e.target.value)}
-                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                             />
                         </FormField>
                     </FormSection>

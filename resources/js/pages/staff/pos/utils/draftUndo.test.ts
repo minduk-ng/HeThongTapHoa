@@ -62,13 +62,25 @@ describe('pushDraftSnapshot', () => {
 
     it('deep copies metadata without freezing live cart metadata', () => {
         const metadata = { options: ['hot'] };
-        const history = pushDraftSnapshot([], { rows: [{
-            draftLineId: 'nested', menu_item_id: 1, quantity: 1,
-            unit_price: 1000, vat_rate: 0, metadata,
-        }] });
+        const history = pushDraftSnapshot([], {
+            rows: [
+                {
+                    draftLineId: 'nested',
+                    menu_item_id: 1,
+                    quantity: 1,
+                    unit_price: 1000,
+                    vat_rate: 0,
+                    metadata,
+                },
+            ],
+        });
         metadata.options.push('milk');
         assert.deepEqual(history[0].rows[0].metadata, { options: ['hot'] });
-        assert.ok(Object.isFrozen((history[0].rows[0].metadata as typeof metadata).options));
+        assert.ok(
+            Object.isFrozen(
+                (history[0].rows[0].metadata as typeof metadata).options,
+            ),
+        );
     });
 
     it('supports custom capacity limit', () => {
@@ -306,8 +318,14 @@ describe('generateDraftLineId', () => {
 describe('fingerprintBaseline', () => {
     it('returns empty array string for empty or missing orders', () => {
         assert.equal(fingerprintBaseline([]), '[]');
-        assert.equal(fingerprintBaseline(null as unknown as ServerOrderView[]), '[]');
-        assert.equal(fingerprintBaseline(undefined as unknown as ServerOrderView[]), '[]');
+        assert.equal(
+            fingerprintBaseline(null as unknown as ServerOrderView[]),
+            '[]',
+        );
+        assert.equal(
+            fingerprintBaseline(undefined as unknown as ServerOrderView[]),
+            '[]',
+        );
     });
 
     it('produces identical fingerprints regardless of order insertion order', () => {
@@ -317,7 +335,16 @@ describe('fingerprintBaseline', () => {
             status: 'pending',
             tableId: 1,
             items: [
-                { id: 10, quantity: 2, unit_price: 15000, note: 'ít cay', status: 'pending', isConfirmed: true, isKitchenCompleted: false, isServed: false },
+                {
+                    id: 10,
+                    quantity: 2,
+                    unit_price: 15000,
+                    note: 'ít cay',
+                    status: 'pending',
+                    isConfirmed: true,
+                    isKitchenCompleted: false,
+                    isServed: false,
+                },
             ],
         };
         const orderB: ServerOrderView = {
@@ -326,7 +353,16 @@ describe('fingerprintBaseline', () => {
             status: 'processing',
             tableId: 2,
             items: [
-                { id: 20, quantity: 1, unit_price: 30000, note: null, status: 'processing', isConfirmed: true, isKitchenCompleted: false, isServed: false },
+                {
+                    id: 20,
+                    quantity: 1,
+                    unit_price: 30000,
+                    note: null,
+                    status: 'processing',
+                    isConfirmed: true,
+                    isKitchenCompleted: false,
+                    isServed: false,
+                },
             ],
         };
 
@@ -337,8 +373,26 @@ describe('fingerprintBaseline', () => {
     });
 
     it('produces identical fingerprints regardless of item insertion order within an order', () => {
-        const item1 = { id: 10, quantity: 1, unit_price: 20000, note: 'nóng', status: 'pending', isConfirmed: true, isKitchenCompleted: false, isServed: false };
-        const item2 = { id: 20, quantity: 2, unit_price: 40000, note: 'lạnh', status: 'pending', isConfirmed: true, isKitchenCompleted: false, isServed: false };
+        const item1 = {
+            id: 10,
+            quantity: 1,
+            unit_price: 20000,
+            note: 'nóng',
+            status: 'pending',
+            isConfirmed: true,
+            isKitchenCompleted: false,
+            isServed: false,
+        };
+        const item2 = {
+            id: 20,
+            quantity: 2,
+            unit_price: 40000,
+            note: 'lạnh',
+            status: 'pending',
+            isConfirmed: true,
+            isKitchenCompleted: false,
+            isServed: false,
+        };
 
         const order1: ServerOrderView = {
             id: 1,
@@ -355,7 +409,10 @@ describe('fingerprintBaseline', () => {
             items: [item2, item1],
         };
 
-        assert.equal(fingerprintBaseline([order1]), fingerprintBaseline([order2]));
+        assert.equal(
+            fingerprintBaseline([order1]),
+            fingerprintBaseline([order2]),
+        );
     });
 
     it('detects changes in item quantities, prices, notes, and statuses', () => {
@@ -365,7 +422,16 @@ describe('fingerprintBaseline', () => {
             status: 'pending',
             tableId: 1,
             items: [
-                { id: 10, quantity: 2, unit_price: 25000, note: 'ghi chú', status: 'pending', isConfirmed: true, isKitchenCompleted: false, isServed: false },
+                {
+                    id: 10,
+                    quantity: 2,
+                    unit_price: 25000,
+                    note: 'ghi chú',
+                    status: 'pending',
+                    isConfirmed: true,
+                    isKitchenCompleted: false,
+                    isServed: false,
+                },
             ],
         };
 
@@ -497,13 +563,19 @@ describe('extractServerOrderViews', () => {
     it('isolates local unconfirmed drafts from server unconfirmed items', () => {
         // Simulates the baseline reconciliation filter:
         // Local drafts lack orderItemId; server draft items have orderItemId
-        const cartItems: Array<{ isConfirmed: boolean; orderItemId?: number; name: string }> = [
+        const cartItems: Array<{
+            isConfirmed: boolean;
+            orderItemId?: number;
+            name: string;
+        }> = [
             { isConfirmed: false, orderItemId: 101, name: 'Server draft item' },
             { isConfirmed: false, name: 'Local draft item' },
             { isConfirmed: true, orderItemId: 102, name: 'Confirmed item' },
         ];
 
-        const localDraftsOnly = cartItems.filter((i) => !i.isConfirmed && !i.orderItemId);
+        const localDraftsOnly = cartItems.filter(
+            (i) => !i.isConfirmed && !i.orderItemId,
+        );
 
         assert.equal(localDraftsOnly.length, 1);
         assert.equal(localDraftsOnly[0].name, 'Local draft item');

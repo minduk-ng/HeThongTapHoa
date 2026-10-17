@@ -1,8 +1,26 @@
 import { usePage } from '@inertiajs/react';
-import { Banknote, QrCode, X, Printer, CalendarClock, Tag, Ticket, ChevronDown, Check, Users, User } from 'lucide-react';
+import {
+    Banknote,
+    QrCode,
+    X,
+    Printer,
+    CalendarClock,
+    Tag,
+    Ticket,
+    ChevronDown,
+    Check,
+    Users,
+    User,
+} from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useSubmitGuard } from '../../../../hooks/useSubmitGuard';
-import type { POSTableData, CartItem, PosCustomer, ReservationDraft, PromotionCandidate } from '../types/pos.types';
+import type {
+    POSTableData,
+    CartItem,
+    PosCustomer,
+    ReservationDraft,
+    PromotionCandidate,
+} from '../types/pos.types';
 
 interface PaymentQrConfig {
     enabled?: boolean;
@@ -23,17 +41,51 @@ interface PaymentDrawerProps {
     promotions: PromotionCandidate[];
     selectedAutoId: number | null;
     onSelectAuto: (id: number | null) => void;
-    appliedPromotions: { id: number; name: string; code: string | null; discount_amount: number }[];
+    appliedPromotions: {
+        id: number;
+        name: string;
+        code: string | null;
+        discount_amount: number;
+    }[];
     totalDiscount: number;
-    onApplyPromotion?: (code: string, subtotal: number, items: { menu_item_id: number; quantity: number; unit_price: number }[]) => Promise<{ ok: boolean; discount_amount?: number; total?: number; error?: string }>;
+    onApplyPromotion?: (
+        code: string,
+        subtotal: number,
+        items: { menu_item_id: number; quantity: number; unit_price: number }[],
+    ) => Promise<{
+        ok: boolean;
+        discount_amount?: number;
+        total?: number;
+        error?: string;
+    }>;
     onClearPromotion?: () => void;
     customer?: PosCustomer | null;
     onSelectCustomer?: (customer: PosCustomer | null) => void;
     onSearchCustomers?: (q: string) => Promise<PosCustomer[]>;
-    onCreateCustomer?: (fullName: string, phone: string) => Promise<{ ok: boolean; customer?: PosCustomer; error?: string }>;
-    onConfirmPayment: (paymentMethod: 'cash' | 'bank_transfer', amountReceived: number, changeAmount: number, shouldPrint: boolean) => void;
-    onConfirmDeposit?: (amount: number, method: 'cash' | 'bank_transfer', reference?: string, bankVerified?: boolean) => Promise<void> | void;
-    onConfirmReservation?: (deposit: { amount: number; method: 'cash' | 'bank_transfer'; reference?: string; bankVerified?: boolean } | null) => Promise<void> | void;
+    onCreateCustomer?: (
+        fullName: string,
+        phone: string,
+    ) => Promise<{ ok: boolean; customer?: PosCustomer; error?: string }>;
+    onConfirmPayment: (
+        paymentMethod: 'cash' | 'bank_transfer',
+        amountReceived: number,
+        changeAmount: number,
+        shouldPrint: boolean,
+    ) => void;
+    onConfirmDeposit?: (
+        amount: number,
+        method: 'cash' | 'bank_transfer',
+        reference?: string,
+        bankVerified?: boolean,
+    ) => Promise<void> | void;
+    onConfirmReservation?: (
+        deposit: {
+            amount: number;
+            method: 'cash' | 'bank_transfer';
+            reference?: string;
+            bankVerified?: boolean;
+        } | null,
+    ) => Promise<void> | void;
     submitting: boolean;
 }
 
@@ -56,13 +108,18 @@ export default function PaymentDrawer({
     customer = null,
     onSelectCustomer = () => {},
     onSearchCustomers = async () => [],
-    onCreateCustomer = async () => ({ ok: false, error: 'Tạo khách hàng thất bại.' }),
+    onCreateCustomer = async () => ({
+        ok: false,
+        error: 'Tạo khách hàng thất bại.',
+    }),
     onConfirmPayment,
     onConfirmDeposit,
     onConfirmReservation,
     submitting,
 }: PaymentDrawerProps) {
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer'>('cash');
+    const [paymentMethod, setPaymentMethod] = useState<
+        'cash' | 'bank_transfer'
+    >('cash');
     const [amountReceived, setAmountReceived] = useState<number>(0);
     const [depositReference, setDepositReference] = useState('');
     const [bankVerified, setBankVerified] = useState(false);
@@ -79,9 +136,14 @@ export default function PaymentDrawer({
     const [createError, setCreateError] = useState<string | null>(null);
     const [createLoading, setCreateLoading] = useState(false);
     const { isSubmitting, guard } = useSubmitGuard();
-    const { payment_qr: paymentQr } = usePage<{ payment_qr?: PaymentQrConfig }>().props;
+    const { payment_qr: paymentQr } = usePage<{
+        payment_qr?: PaymentQrConfig;
+    }>().props;
 
-    const subtotal = cartItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+    const subtotal = cartItems.reduce(
+        (sum, item) => sum + item.quantity * item.unit_price,
+        0,
+    );
     // VAT trong giá: thuế nằm trong line, không cộng thêm vào payable (giá đã gồm thuế).
     const vatInTotal = cartItems.reduce((sum, item) => {
         const line = item.quantity * item.unit_price;
@@ -131,43 +193,49 @@ export default function PaymentDrawer({
 
     const calculatePresets = (total: number) => {
         if (total <= 0) {
-return [0];
-}
+            return [0];
+        }
 
         const presets = [total];
         let nextRound = Math.ceil(total / 50000) * 50000;
 
         if (nextRound === total) {
-nextRound += 50000;
-}
+            nextRound += 50000;
+        }
 
         if (!presets.includes(nextRound)) {
-presets.push(nextRound);
-}
+            presets.push(nextRound);
+        }
 
         const bigRound1 = Math.ceil(total / 100000) * 100000;
 
         if (!presets.includes(bigRound1) && bigRound1 > total) {
-presets.push(bigRound1);
-}
+            presets.push(bigRound1);
+        }
 
         const bigRound2 = 200000;
 
         if (!presets.includes(bigRound2) && bigRound2 > total) {
-presets.push(bigRound2);
-}
+            presets.push(bigRound2);
+        }
 
         const bigRound3 = 500000;
 
         if (!presets.includes(bigRound3) && bigRound3 > total) {
-presets.push(bigRound3);
-}
+            presets.push(bigRound3);
+        }
 
         return presets.slice(0, 4);
     };
 
-    const cashPresets = mode === 'payment' ? calculatePresets(payable) : [100000, 200000, 500000, totalAmount];
-    const changeAmount = mode === 'payment' ? Math.max(0, amountReceived - payable) + depositRefund : 0;
+    const cashPresets =
+        mode === 'payment'
+            ? calculatePresets(payable)
+            : [100000, 200000, 500000, totalAmount];
+    const changeAmount =
+        mode === 'payment'
+            ? Math.max(0, amountReceived - payable) + depositRefund
+            : 0;
     const promotionApplied = appliedPromotions.some((ap) => ap.code !== null);
     const bankDepositInvalid =
         paymentMethod === 'bank_transfer' &&
@@ -179,8 +247,8 @@ presets.push(bigRound3);
         const code = promotionInput.trim();
 
         if (!code || !onApplyPromotion || promotionLoading) {
-return;
-}
+            return;
+        }
 
         setPromotionLoading(true);
         setPromotionError(null);
@@ -219,7 +287,10 @@ return;
 
         setCreateLoading(true);
         setCreateError(null);
-        const result = await onCreateCustomer(createName.trim(), createPhone.trim());
+        const result = await onCreateCustomer(
+            createName.trim(),
+            createPhone.trim(),
+        );
         setCreateLoading(false);
 
         if (result.ok && result.customer) {
@@ -235,28 +306,50 @@ return;
 
     const handleConfirm = async (shouldPrint: boolean) => {
         if (mode === 'payment') {
-            const finalReceived = paymentMethod === 'bank_transfer' ? payable : amountReceived;
-            const finalChange = paymentMethod === 'bank_transfer' ? depositRefund : changeAmount;
-            onConfirmPayment(paymentMethod, finalReceived, finalChange, shouldPrint);
+            const finalReceived =
+                paymentMethod === 'bank_transfer' ? payable : amountReceived;
+            const finalChange =
+                paymentMethod === 'bank_transfer'
+                    ? depositRefund
+                    : changeAmount;
+            onConfirmPayment(
+                paymentMethod,
+                finalReceived,
+                finalChange,
+                shouldPrint,
+            );
         } else if (mode === 'deposit') {
             if (onConfirmDeposit) {
                 await guard(async () => {
                     await onConfirmDeposit(
                         amountReceived,
                         paymentMethod,
-                        paymentMethod === 'bank_transfer' ? depositReference.trim() : undefined,
-                        paymentMethod === 'bank_transfer' ? bankVerified : undefined,
+                        paymentMethod === 'bank_transfer'
+                            ? depositReference.trim()
+                            : undefined,
+                        paymentMethod === 'bank_transfer'
+                            ? bankVerified
+                            : undefined,
                     );
                 });
             }
         } else if (mode === 'reservation') {
             if (onConfirmReservation) {
-                const depositData = amountReceived > 0 ? {
-                    amount: amountReceived,
-                    method: paymentMethod,
-                    reference: paymentMethod === 'bank_transfer' ? depositReference.trim() : undefined,
-                    bankVerified: paymentMethod === 'bank_transfer' ? bankVerified : undefined,
-                } : null;
+                const depositData =
+                    amountReceived > 0
+                        ? {
+                              amount: amountReceived,
+                              method: paymentMethod,
+                              reference:
+                                  paymentMethod === 'bank_transfer'
+                                      ? depositReference.trim()
+                                      : undefined,
+                              bankVerified:
+                                  paymentMethod === 'bank_transfer'
+                                      ? bankVerified
+                                      : undefined,
+                          }
+                        : null;
                 await guard(async () => {
                     await onConfirmReservation(depositData);
                 });
@@ -264,132 +357,171 @@ return;
         }
     };
 
-    const itemsByOrder = cartItems.reduce((acc, item) => {
-        const code = item.orderCode || 'Chưa gửi bếp';
+    const itemsByOrder = cartItems.reduce(
+        (acc, item) => {
+            const code = item.orderCode || 'Chưa gửi bếp';
 
-        if (!acc[code]) {
-acc[code] = [];
-}
+            if (!acc[code]) {
+                acc[code] = [];
+            }
 
-        acc[code].push(item);
+            acc[code].push(item);
 
-        return acc;
-    }, {} as Record<string, CartItem[]>);
+            return acc;
+        },
+        {} as Record<string, CartItem[]>,
+    );
 
     if (!isOpen || !selectedTable) {
-return null;
-}
+        return null;
+    }
 
     return (
-        <div className="fixed inset-0 z-[100] overflow-hidden flex justify-end">
+        <div className="fixed inset-0 z-[100] flex justify-end overflow-hidden">
             {/* Backdrop Overlay */}
             <div
-                className="fixed inset-0 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200"
+                className="animate-in fade-in fixed inset-0 bg-black/40 backdrop-blur-xs duration-200"
                 onClick={onClose}
             />
 
             {/* Sliding Drawer - Expanded Width */}
-            <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 h-full border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-lg flex flex-col justify-between z-10 animate-in slide-in-from-right duration-300">
+            <div className="animate-in slide-in-from-right relative z-10 flex h-full w-full max-w-5xl flex-col justify-between border-l border-zinc-200/80 bg-white shadow-lg duration-300 dark:border-zinc-800/80 dark:bg-zinc-900">
                 {/* Header */}
-                <div className="px-6 py-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-800/40 flex items-center justify-between shrink-0">
+                <div className="flex shrink-0 items-center justify-between border-b border-zinc-200/80 bg-zinc-50/70 px-6 py-4 dark:border-zinc-800/80 dark:bg-zinc-800/40">
                     <div>
-                        <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider block">
+                        <span className="block text-xs font-semibold tracking-wider text-sky-600 uppercase dark:text-sky-400">
                             {mode === 'payment' && 'Thanh toán đơn hàng'}
                             {mode === 'deposit' && 'Đặt cọc đơn hàng'}
                             {mode === 'reservation' && 'Đặt bàn mới'}
                         </span>
-                        <h2 className="font-display text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                        <h2 className="flex items-center gap-2 font-display text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
                             <span>{selectedTable.table_number}</span>
                             <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
                                 ({selectedTable.area || 'Trong nhà'})
                             </span>
-                            {orderCodes.length > 0 && mode !== 'reservation' && (
-                                <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-700">
-                                    {orderCodes.join(', ')}
-                                </span>
-                            )}
+                            {orderCodes.length > 0 &&
+                                mode !== 'reservation' && (
+                                    <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                                        {orderCodes.join(', ')}
+                                    </span>
+                                )}
                         </h2>
                     </div>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="p-2 rounded-xl text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors"
-                     aria-label="Đóng">
-                        <X className="w-5 h-5 stroke-[1.5]" />
+                        className="rounded-xl p-2 text-zinc-400 transition-colors hover:bg-zinc-200/60 hover:text-zinc-600 dark:hover:bg-zinc-800"
+                        aria-label="Đóng"
+                    >
+                        <X className="h-5 w-5 stroke-[1.5]" />
                     </button>
                 </div>
 
                 {/* Main Content Area */}
                 <div className="flex-1 overflow-hidden">
-                    <div className="grid grid-cols-12 h-full">
+                    <div className="grid h-full grid-cols-12">
                         {/* Cột trái: CHỈ HIỂN THỊ DANH SÁCH MÓN (Full Height - 6/12) */}
-                        <div className="col-span-6 border-r border-zinc-200/80 dark:border-zinc-800/80 flex flex-col min-h-0 bg-white dark:bg-zinc-900">
+                        <div className="col-span-6 flex min-h-0 flex-col border-r border-zinc-200/80 bg-white dark:border-zinc-800/80 dark:bg-zinc-900">
                             {/* Column Subheader */}
-                            <div className="px-5 py-2.5 border-b border-zinc-200/60 dark:border-zinc-800/60 flex items-center justify-between text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider shrink-0 bg-zinc-100/50 dark:bg-zinc-800/30">
-                                <span>Món đã chọn ({cartItems.reduce((s, i) => s + i.quantity, 0)})</span>
+                            <div className="flex shrink-0 items-center justify-between border-b border-zinc-200/60 bg-zinc-100/50 px-5 py-2.5 text-xs font-semibold tracking-wider text-zinc-500 uppercase dark:border-zinc-800/60 dark:bg-zinc-800/30 dark:text-zinc-400">
+                                <span>
+                                    Món đã chọn (
+                                    {cartItems.reduce(
+                                        (s, i) => s + i.quantity,
+                                        0,
+                                    )}
+                                    )
+                                </span>
                                 <span>Thành tiền</span>
                             </div>
 
-                            <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                            <div className="min-h-0 flex-1 divide-y divide-zinc-100 overflow-y-auto dark:divide-zinc-800/60">
                                 {cartItems.length === 0 ? (
-                                    <div className="text-center text-xs text-zinc-400 dark:text-zinc-500 py-16">
+                                    <div className="py-16 text-center text-xs text-zinc-400 dark:text-zinc-500">
                                         Chưa có món nào được chọn
                                     </div>
                                 ) : (
-                                    Object.entries(itemsByOrder).map(([code, items]) => (
-                                        <div key={code} className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                                            {orderCodes.length > 1 && (
-                                                <div className="px-5 py-1.5 bg-zinc-50/80 dark:bg-zinc-800/50 text-[11px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800/60">
-                                                    {code}
-                                                </div>
-                                            )}
-                                            {items.map((item, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    className="flex justify-between items-center px-5 py-2.5 transition-colors hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40"
-                                                >
-                                                    <div className="flex-1 pr-3 min-w-0">
-                                                        <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                                                            {item.name}
+                                    Object.entries(itemsByOrder).map(
+                                        ([code, items]) => (
+                                            <div
+                                                key={code}
+                                                className="divide-y divide-zinc-100 dark:divide-zinc-800/60"
+                                            >
+                                                {orderCodes.length > 1 && (
+                                                    <div className="border-b border-zinc-100 bg-zinc-50/80 px-5 py-1.5 text-[11px] font-bold tracking-wider text-sky-600 uppercase dark:border-zinc-800/60 dark:bg-zinc-800/50 dark:text-sky-400">
+                                                        {code}
+                                                    </div>
+                                                )}
+                                                {items.map((item, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className="flex items-center justify-between px-5 py-2.5 transition-colors hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40"
+                                                    >
+                                                        <div className="min-w-0 flex-1 pr-3">
+                                                            <div className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                                                                {item.name}
+                                                            </div>
+                                                            <div className="mt-0.5 flex items-center gap-2">
+                                                                <span className="inline-flex items-center rounded border border-sky-200/60 bg-sky-50 px-1.5 py-0.5 text-[11px] font-bold text-sky-700 tabular-nums dark:border-sky-800/60 dark:bg-sky-950/50 dark:text-sky-300">
+                                                                    x
+                                                                    {
+                                                                        item.quantity
+                                                                    }
+                                                                </span>
+                                                                <span className="text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">
+                                                                    {item.unit_price.toLocaleString(
+                                                                        'vi-VN',
+                                                                    )}{' '}
+                                                                    đ
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 font-bold tabular-nums text-[11px] border border-sky-200/60 dark:border-sky-800/60">
-                                                                x{item.quantity}
-                                                            </span>
-                                                            <span className="text-[11px] text-zinc-500 dark:text-zinc-400 tabular-nums">
-                                                                {item.unit_price.toLocaleString('vi-VN')} đ
-                                                            </span>
+                                                        <div className="shrink-0 text-xs font-bold text-zinc-900 tabular-nums dark:text-zinc-100">
+                                                            {(
+                                                                item.quantity *
+                                                                item.unit_price
+                                                            ).toLocaleString(
+                                                                'vi-VN',
+                                                            )}{' '}
+                                                            đ
                                                         </div>
                                                     </div>
-                                                    <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 tabular-nums shrink-0">
-                                                        {(item.quantity * item.unit_price).toLocaleString('vi-VN')} đ
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ))
+                                                ))}
+                                            </div>
+                                        ),
+                                    )
                                 )}
                             </div>
                         </div>
 
                         {/* Cột phải: Tài chính, Khuyến mãi/Voucher, Phương thức & Thanh toán (6/12) */}
-                        <div className="col-span-6 px-6 py-4 flex flex-col justify-between overflow-y-auto space-y-4 bg-white dark:bg-zinc-900">
+                        <div className="col-span-6 flex flex-col justify-between space-y-4 overflow-y-auto bg-white px-6 py-4 dark:bg-zinc-900">
                             <div className="space-y-3.5">
                                 {/* Reservation info if mode === reservation */}
                                 {mode === 'reservation' && reservationDraft && (
-                                    <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/60 rounded-xl p-3.5 space-y-1 text-xs">
-                                        <div className="flex items-center gap-1.5 text-purple-700 dark:text-purple-300 font-bold mb-1">
-                                            <CalendarClock className="w-4 h-4 stroke-[1.5]" />
+                                    <div className="space-y-1 rounded-xl border border-purple-200 bg-purple-50 p-3.5 text-xs dark:border-purple-800/60 dark:bg-purple-950/30">
+                                        <div className="mb-1 flex items-center gap-1.5 font-bold text-purple-700 dark:text-purple-300">
+                                            <CalendarClock className="h-4 w-4 stroke-[1.5]" />
                                             <span>Thông tin đặt trước</span>
                                         </div>
                                         <div className="text-zinc-700 dark:text-zinc-300">
-                                            <span className="font-semibold">Khách:</span> {reservationDraft.name} ({reservationDraft.phone})
+                                            <span className="font-semibold">
+                                                Khách:
+                                            </span>{' '}
+                                            {reservationDraft.name} (
+                                            {reservationDraft.phone})
                                         </div>
                                         <div className="text-zinc-700 dark:text-zinc-300">
-                                            <span className="font-semibold">Thời gian:</span> {reservationDraft.time.replace('T', ' ')}
+                                            <span className="font-semibold">
+                                                Thời gian:
+                                            </span>{' '}
+                                            {reservationDraft.time.replace(
+                                                'T',
+                                                ' ',
+                                            )}
                                         </div>
                                         {reservationDraft.note && (
-                                            <div className="text-zinc-500 dark:text-zinc-400 italic">
+                                            <div className="text-zinc-500 italic dark:text-zinc-400">
                                                 Ghi chú: {reservationDraft.note}
                                             </div>
                                         )}
@@ -398,91 +530,119 @@ return null;
 
                                 {/* Financial Summary Card */}
                                 {mode !== 'reservation' && (
-                                    <div className="p-4 rounded-2xl bg-gradient-to-br from-sky-50 to-sky-100/40 dark:from-sky-950/40 dark:to-sky-900/20 border border-sky-200/80 dark:border-sky-800/60 space-y-2.5">
+                                    <div className="space-y-2.5 rounded-2xl border border-sky-200/80 bg-gradient-to-br from-sky-50 to-sky-100/40 p-4 dark:border-sky-800/60 dark:from-sky-950/40 dark:to-sky-900/20">
                                         <div className="grid grid-cols-2 gap-2 text-xs text-zinc-600 dark:text-zinc-400">
                                             <div className="flex justify-between">
                                                 <span>Tiền món:</span>
-                                                <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
-                                                    {subtotal.toLocaleString('vi-VN')} đ
+                                                <span className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+                                                    {subtotal.toLocaleString(
+                                                        'vi-VN',
+                                                    )}{' '}
+                                                    đ
                                                 </span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span>VAT (gồm):</span>
-                                                <span className="tabular-nums font-medium">
-                                                    {vatInTotal.toLocaleString('vi-VN')} đ
+                                                <span className="font-medium tabular-nums">
+                                                    {vatInTotal.toLocaleString(
+                                                        'vi-VN',
+                                                    )}{' '}
+                                                    đ
                                                 </span>
                                             </div>
-                                            {mode === 'payment' && totalDiscount > 0 && (
-                                                <div className="flex justify-between text-rose-600 dark:text-rose-400 col-span-2">
-                                                    <span>Giảm giá khuyến mãi:</span>
-                                                    <span className="font-bold tabular-nums">
-                                                        −{totalDiscount.toLocaleString('vi-VN')} đ
-                                                    </span>
-                                                </div>
-                                            )}
-                                            {mode === 'payment' && depositTotal > 0 && (
-                                                <div className="flex justify-between text-purple-600 dark:text-purple-400 col-span-2">
-                                                    <span>Đã đặt cọc trước:</span>
-                                                    <span className="font-bold tabular-nums">
-                                                        −{depositTotal.toLocaleString('vi-VN')} đ
-                                                    </span>
-                                                </div>
-                                            )}
+                                            {mode === 'payment' &&
+                                                totalDiscount > 0 && (
+                                                    <div className="col-span-2 flex justify-between text-rose-600 dark:text-rose-400">
+                                                        <span>
+                                                            Giảm giá khuyến mãi:
+                                                        </span>
+                                                        <span className="font-bold tabular-nums">
+                                                            −
+                                                            {totalDiscount.toLocaleString(
+                                                                'vi-VN',
+                                                            )}{' '}
+                                                            đ
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            {mode === 'payment' &&
+                                                depositTotal > 0 && (
+                                                    <div className="col-span-2 flex justify-between text-purple-600 dark:text-purple-400">
+                                                        <span>
+                                                            Đã đặt cọc trước:
+                                                        </span>
+                                                        <span className="font-bold tabular-nums">
+                                                            −
+                                                            {depositTotal.toLocaleString(
+                                                                'vi-VN',
+                                                            )}{' '}
+                                                            đ
+                                                        </span>
+                                                    </div>
+                                                )}
                                         </div>
 
-                                        <div className="pt-2.5 border-t border-sky-200/60 dark:border-sky-800/50 flex items-baseline justify-between">
-                                            <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+                                        <div className="flex items-baseline justify-between border-t border-sky-200/60 pt-2.5 dark:border-sky-800/50">
+                                            <span className="text-xs font-bold tracking-wider text-zinc-600 uppercase dark:text-zinc-400">
                                                 Khách cần trả:
                                             </span>
-                                            <span className="font-display text-3xl font-bold text-sky-600 dark:text-sky-400 tabular-nums">
-                                                {payable.toLocaleString('vi-VN')} đ
+                                            <span className="font-display text-3xl font-bold text-sky-600 tabular-nums dark:text-sky-400">
+                                                {payable.toLocaleString(
+                                                    'vi-VN',
+                                                )}{' '}
+                                                đ
                                             </span>
                                         </div>
                                     </div>
                                 )}
 
                                 {mode === 'payment' && depositRefund > 0 && (
-                                    <div className="flex justify-between items-center py-2.5 px-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/70 rounded-xl text-xs">
+                                    <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs dark:border-emerald-800/70 dark:bg-emerald-950/40">
                                         <span className="font-bold text-emerald-700 dark:text-emerald-300">
                                             Hoàn tiền cọc thừa:
                                         </span>
-                                        <span className="font-display text-base font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                                            {depositRefund.toLocaleString('vi-VN')} đ
+                                        <span className="font-display text-base font-bold text-emerald-600 tabular-nums dark:text-emerald-400">
+                                            {depositRefund.toLocaleString(
+                                                'vi-VN',
+                                            )}{' '}
+                                            đ
                                         </span>
                                     </div>
                                 )}
 
                                 {/* Khách hàng */}
                                 {mode === 'payment' && (
-                                    <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/80 dark:border-zinc-800 space-y-2.5">
+                                    <div className="space-y-2.5 rounded-2xl border border-zinc-200/80 bg-zinc-50 p-3.5 dark:border-zinc-800 dark:bg-zinc-800/40">
                                         <div className="flex items-center justify-between">
                                             <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                                                <Users className="h-3.5 w-3.5 text-sky-600 stroke-[1.5]" />
+                                                <Users className="h-3.5 w-3.5 stroke-[1.5] text-sky-600" />
                                                 <span>Khách hàng</span>
                                             </label>
                                             {customer && (
                                                 <button
                                                     type="button"
-                                                    onClick={() => onSelectCustomer(null)}
-                                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-600 transition-colors"
+                                                    onClick={() =>
+                                                        onSelectCustomer(null)
+                                                    }
+                                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-500 transition-colors hover:text-rose-600"
                                                 >
-                                                    <X className="w-3 h-3 stroke-[1.5]" />
+                                                    <X className="h-3 w-3 stroke-[1.5]" />
                                                     <span>Xóa</span>
                                                 </button>
                                             )}
                                         </div>
 
                                         {customer ? (
-                                            <div className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/60 flex items-center justify-between">
+                                            <div className="flex items-center justify-between rounded-xl border border-sky-200/80 bg-sky-50 px-3 py-2 dark:border-sky-800/60 dark:bg-sky-950/40">
                                                 <div className="min-w-0 pr-2">
-                                                    <div className="text-xs font-bold text-sky-800 dark:text-sky-200 truncate">
+                                                    <div className="truncate text-xs font-bold text-sky-800 dark:text-sky-200">
                                                         {customer.full_name}
                                                     </div>
-                                                    <div className="text-[11px] text-sky-600 dark:text-sky-400 tabular-nums">
+                                                    <div className="text-[11px] text-sky-600 tabular-nums dark:text-sky-400">
                                                         {customer.phone}
                                                     </div>
                                                 </div>
-                                                <span className="inline-flex items-center rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold text-white whitespace-nowrap">
+                                                <span className="inline-flex items-center rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold whitespace-nowrap text-white">
                                                     Đã chọn
                                                 </span>
                                             </div>
@@ -491,97 +651,160 @@ return null;
                                                 <div className="flex gap-2">
                                                     <input
                                                         value={customerQuery}
-                                                        onChange={(e) => setCustomerQuery(e.target.value)}
+                                                        onChange={(e) =>
+                                                            setCustomerQuery(
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') {
+                                                            if (
+                                                                e.key ===
+                                                                'Enter'
+                                                            ) {
                                                                 handleCustomerSearch();
                                                             }
                                                         }}
                                                         placeholder="Nhập SĐT hoặc tên..."
-                                                        className="min-w-0 flex-1 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs outline-none focus:border-sky-500 text-zinc-900 dark:text-zinc-100"
+                                                        className="min-w-0 flex-1 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                                     />
                                                     <button
                                                         type="button"
-                                                        onClick={handleCustomerSearch}
-                                                        disabled={customerSearching}
-                                                        className="rounded-xl border border-zinc-200 dark:border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shrink-0 disabled:opacity-50"
+                                                        onClick={
+                                                            handleCustomerSearch
+                                                        }
+                                                        disabled={
+                                                            customerSearching
+                                                        }
+                                                        className="shrink-0 rounded-xl border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                                                     >
-                                                        {customerSearching ? '...' : 'Tìm'}
+                                                        {customerSearching
+                                                            ? '...'
+                                                            : 'Tìm'}
                                                     </button>
                                                 </div>
 
                                                 {customerResults.length > 0 && (
-                                                    <div className="max-h-40 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800/60 rounded-xl border border-zinc-200 dark:border-zinc-700">
-                                                        {customerResults.map((c) => (
-                                                            <button
-                                                                key={c.id}
-                                                                type="button"
-                                                                onClick={() => onSelectCustomer(c)}
-                                                                className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                                                            >
-                                                                <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 truncate pr-2">
-                                                                    {c.full_name}
-                                                                </span>
-                                                                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 tabular-nums shrink-0">
-                                                                    {c.phone}
-                                                                </span>
-                                                            </button>
-                                                        ))}
+                                                    <div className="max-h-40 divide-y divide-zinc-100 overflow-y-auto rounded-xl border border-zinc-200 dark:divide-zinc-800/60 dark:border-zinc-700">
+                                                        {customerResults.map(
+                                                            (c) => (
+                                                                <button
+                                                                    key={c.id}
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        onSelectCustomer(
+                                                                            c,
+                                                                        )
+                                                                    }
+                                                                    className="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                                                >
+                                                                    <span className="truncate pr-2 text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                                                                        {
+                                                                            c.full_name
+                                                                        }
+                                                                    </span>
+                                                                    <span className="shrink-0 text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">
+                                                                        {
+                                                                            c.phone
+                                                                        }
+                                                                    </span>
+                                                                </button>
+                                                            ),
+                                                        )}
                                                     </div>
                                                 )}
-                                                {customerResults.length === 0 && customerQuery.trim() !== '' && !customerSearching && (
-                                                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                                                        Không tìm thấy khách hàng phù hợp.
-                                                    </p>
-                                                )}
+                                                {customerResults.length === 0 &&
+                                                    customerQuery.trim() !==
+                                                        '' &&
+                                                    !customerSearching && (
+                                                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                                            Không tìm thấy khách
+                                                            hàng phù hợp.
+                                                        </p>
+                                                    )}
 
                                                 {showCreateForm ? (
-                                                    <div className="space-y-2 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 animate-in fade-in duration-150">
+                                                    <div className="animate-in fade-in space-y-2 border-t border-zinc-200/60 pt-1.5 duration-150 dark:border-zinc-700/60">
                                                         <input
                                                             value={createName}
-                                                            onChange={(e) => setCreateName(e.target.value)}
+                                                            onChange={(e) =>
+                                                                setCreateName(
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             placeholder="Tên khách hàng..."
-                                                            className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs outline-none focus:border-sky-500 text-zinc-900 dark:text-zinc-100"
+                                                            className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                                         />
                                                         <input
                                                             value={createPhone}
-                                                            onChange={(e) => setCreatePhone(e.target.value)}
+                                                            onChange={(e) =>
+                                                                setCreatePhone(
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             placeholder="Số điện thoại..."
-                                                            className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs outline-none focus:border-sky-500 text-zinc-900 dark:text-zinc-100"
+                                                            className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                                         />
-                                                        {createError && <p className="text-xs text-rose-500">{createError}</p>}
+                                                        {createError && (
+                                                            <p className="text-xs text-rose-500">
+                                                                {createError}
+                                                            </p>
+                                                        )}
                                                         <div className="flex gap-1.5">
                                                             <button
                                                                 type="button"
-                                                                onClick={handleCustomerCreate}
-                                                                disabled={createLoading || !createName.trim() || !createPhone.trim()}
-                                                                className="rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-50 hover:bg-sky-700 transition-colors"
+                                                                onClick={
+                                                                    handleCustomerCreate
+                                                                }
+                                                                disabled={
+                                                                    createLoading ||
+                                                                    !createName.trim() ||
+                                                                    !createPhone.trim()
+                                                                }
+                                                                className="rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-sky-700 disabled:opacity-50"
                                                             >
-                                                                {createLoading ? '...' : 'Tạo & chọn'}
+                                                                {createLoading
+                                                                    ? '...'
+                                                                    : 'Tạo & chọn'}
                                                             </button>
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {
-                                                                    setShowCreateForm(false);
-                                                                    setCreateName('');
-                                                                    setCreatePhone('');
-                                                                    setCreateError(null);
+                                                                    setShowCreateForm(
+                                                                        false,
+                                                                    );
+                                                                    setCreateName(
+                                                                        '',
+                                                                    );
+                                                                    setCreatePhone(
+                                                                        '',
+                                                                    );
+                                                                    setCreateError(
+                                                                        null,
+                                                                    );
                                                                 }}
-                                                                className="p-2 rounded-xl text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/60 dark:hover:bg-zinc-700 transition-colors"
+                                                                className="rounded-xl p-2 text-zinc-400 transition-colors hover:bg-zinc-200/60 hover:text-zinc-600 dark:hover:bg-zinc-700"
                                                                 title="Đóng form tạo khách"
                                                             >
-                                                                <X className="w-3.5 h-3.5 stroke-[1.5]" />
+                                                                <X className="h-3.5 w-3.5 stroke-[1.5]" />
                                                             </button>
                                                         </div>
                                                     </div>
                                                 ) : (
                                                     <button
                                                         type="button"
-                                                        onClick={() => setShowCreateForm(true)}
-                                                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors"
+                                                        onClick={() =>
+                                                            setShowCreateForm(
+                                                                true,
+                                                            )
+                                                        }
+                                                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-600 transition-colors hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
                                                     >
-                                                        <User className="w-3 h-3 stroke-[1.5]" />
-                                                        <span>+ Tạo khách hàng mới</span>
+                                                        <User className="h-3 w-3 stroke-[1.5]" />
+                                                        <span>
+                                                            + Tạo khách hàng mới
+                                                        </span>
                                                     </button>
                                                 )}
                                             </div>
@@ -591,105 +814,173 @@ return null;
 
                                 {/* Khuyến mãi & Voucher ở Cột Phải */}
                                 {mode === 'payment' && onApplyPromotion && (
-                                    <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/80 dark:border-zinc-800 space-y-2.5">
+                                    <div className="space-y-2.5 rounded-2xl border border-zinc-200/80 bg-zinc-50 p-3.5 dark:border-zinc-800 dark:bg-zinc-800/40">
                                         <div className="flex items-center justify-between">
                                             <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                                                <Ticket className="h-3.5 w-3.5 text-sky-600 stroke-[1.5]" />
-                                                <span>Chương trình khuyến mãi</span>
+                                                <Ticket className="h-3.5 w-3.5 stroke-[1.5] text-sky-600" />
+                                                <span>
+                                                    Chương trình khuyến mãi
+                                                </span>
                                             </label>
-                                            {!showCouponInput && !promotionApplied && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowCouponInput(true)}
-                                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors"
-                                                >
-                                                    <Tag className="w-3 h-3 stroke-[1.5]" />
-                                                    <span>+ Thêm mã coupon/voucher</span>
-                                                </button>
-                                            )}
+                                            {!showCouponInput &&
+                                                !promotionApplied && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setShowCouponInput(
+                                                                true,
+                                                            )
+                                                        }
+                                                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-600 transition-colors hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
+                                                    >
+                                                        <Tag className="h-3 w-3 stroke-[1.5]" />
+                                                        <span>
+                                                            + Thêm mã
+                                                            coupon/voucher
+                                                        </span>
+                                                    </button>
+                                                )}
                                         </div>
 
                                         {/* Dropdown chương trình khuyến mãi tự động (Mặc định hiển thị) */}
                                         <div className="relative">
                                             <select
                                                 value={selectedAutoId ?? 0}
-                                                onChange={(e) => onSelectAuto(e.target.value ? Number(e.target.value) : 0)}
-                                                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs appearance-none focus:border-sky-500 outline-none text-zinc-900 dark:text-zinc-100 transition-colors"
+                                                onChange={(e) =>
+                                                    onSelectAuto(
+                                                        e.target.value
+                                                            ? Number(
+                                                                  e.target
+                                                                      .value,
+                                                              )
+                                                            : 0,
+                                                    )
+                                                }
+                                                className="w-full appearance-none rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-900 transition-colors outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                             >
-                                                <option value={0}>Không áp dụng chương trình</option>
+                                                <option value={0}>
+                                                    Không áp dụng chương trình
+                                                </option>
                                                 {promotions.map((p) => (
-                                                    <option key={p.id} value={p.id}>
-                                                        {p.name} {p.estimated_discount > 0 ? `(−${p.estimated_discount.toLocaleString('vi-VN')}đ)` : ''}
+                                                    <option
+                                                        key={p.id}
+                                                        value={p.id}
+                                                    >
+                                                        {p.name}{' '}
+                                                        {p.estimated_discount >
+                                                        0
+                                                            ? `(−${p.estimated_discount.toLocaleString('vi-VN')}đ)`
+                                                            : ''}
                                                     </option>
                                                 ))}
                                             </select>
-                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
-                                                <ChevronDown className="w-4 h-4 stroke-[1.5]" />
+                                            <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-zinc-400">
+                                                <ChevronDown className="h-4 w-4 stroke-[1.5]" />
                                             </span>
                                         </div>
 
                                         {/* Ô nhập mã Voucher khi mở rộng hoặc khi đã áp dụng */}
-                                        {(showCouponInput || promotionApplied) && (
-                                            <div className="space-y-1.5 pt-1 animate-in fade-in duration-150">
+                                        {(showCouponInput ||
+                                            promotionApplied) && (
+                                            <div className="animate-in fade-in space-y-1.5 pt-1 duration-150">
                                                 <div className="flex gap-2">
                                                     <input
                                                         value={promotionInput}
-                                                        onChange={(e) => setPromotionInput(e.target.value.toUpperCase())}
-                                                        disabled={promotionApplied}
+                                                        onChange={(e) =>
+                                                            setPromotionInput(
+                                                                e.target.value.toUpperCase(),
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            promotionApplied
+                                                        }
                                                         placeholder="NHẬP MÃ VOUCHER..."
-                                                        className="min-w-0 flex-1 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs font-semibold uppercase placeholder:normal-case placeholder:font-normal outline-none focus:border-sky-500 text-zinc-900 dark:text-zinc-100"
+                                                        className="min-w-0 flex-1 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 uppercase outline-none placeholder:font-normal placeholder:normal-case focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                                     />
                                                     {promotionApplied ? (
                                                         <button
                                                             type="button"
                                                             onClick={() => {
                                                                 onClearPromotion?.();
-                                                                setPromotionInput('');
-                                                                setPromotionError(null);
-                                                                setShowCouponInput(false);
+                                                                setPromotionInput(
+                                                                    '',
+                                                                );
+                                                                setPromotionError(
+                                                                    null,
+                                                                );
+                                                                setShowCouponInput(
+                                                                    false,
+                                                                );
                                                             }}
-                                                            className="rounded-xl border border-zinc-200 dark:border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shrink-0"
+                                                            className="shrink-0 rounded-xl border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                                                         >
                                                             Hủy mã
                                                         </button>
                                                     ) : (
-                                                        <div className="flex gap-1.5 shrink-0">
+                                                        <div className="flex shrink-0 gap-1.5">
                                                             <button
                                                                 type="button"
-                                                                onClick={handlePromotion}
-                                                                disabled={promotionLoading || promotionInput.trim() === ''}
-                                                                className="rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-50 hover:bg-sky-700 transition-colors"
+                                                                onClick={
+                                                                    handlePromotion
+                                                                }
+                                                                disabled={
+                                                                    promotionLoading ||
+                                                                    promotionInput.trim() ===
+                                                                        ''
+                                                                }
+                                                                className="rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-sky-700 disabled:opacity-50"
                                                             >
-                                                                {promotionLoading ? '...' : 'Áp dụng'}
+                                                                {promotionLoading
+                                                                    ? '...'
+                                                                    : 'Áp dụng'}
                                                             </button>
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {
-                                                                    setShowCouponInput(false);
-                                                                    setPromotionError(null);
+                                                                    setShowCouponInput(
+                                                                        false,
+                                                                    );
+                                                                    setPromotionError(
+                                                                        null,
+                                                                    );
                                                                 }}
-                                                                className="p-2 rounded-xl text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/60 dark:hover:bg-zinc-700 transition-colors"
+                                                                className="rounded-xl p-2 text-zinc-400 transition-colors hover:bg-zinc-200/60 hover:text-zinc-600 dark:hover:bg-zinc-700"
                                                                 title="Đóng ô nhập mã"
                                                             >
-                                                                <X className="w-3.5 h-3.5 stroke-[1.5]" />
+                                                                <X className="h-3.5 w-3.5 stroke-[1.5]" />
                                                             </button>
                                                         </div>
                                                     )}
                                                 </div>
                                                 {promotionError && (
-                                                    <p className="text-xs text-rose-500">{promotionError}</p>
+                                                    <p className="text-xs text-rose-500">
+                                                        {promotionError}
+                                                    </p>
                                                 )}
                                             </div>
                                         )}
 
                                         {appliedPromotions.length > 0 && (
-                                            <div className="space-y-1 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60">
-                                                {appliedPromotions.map((ap, i) => (
-                                                    <div key={i} className="flex justify-between text-xs text-rose-600 dark:text-rose-400">
-                                                        <span className="truncate pr-1">{ap.name}</span>
-                                                        <span className="tabular-nums font-semibold shrink-0">−{ap.discount_amount.toLocaleString('vi-VN')} đ</span>
-                                                    </div>
-                                                ))}
+                                            <div className="space-y-1 border-t border-zinc-200/60 pt-1.5 dark:border-zinc-700/60">
+                                                {appliedPromotions.map(
+                                                    (ap, i) => (
+                                                        <div
+                                                            key={i}
+                                                            className="flex justify-between text-xs text-rose-600 dark:text-rose-400"
+                                                        >
+                                                            <span className="truncate pr-1">
+                                                                {ap.name}
+                                                            </span>
+                                                            <span className="shrink-0 font-semibold tabular-nums">
+                                                                −
+                                                                {ap.discount_amount.toLocaleString(
+                                                                    'vi-VN',
+                                                                )}{' '}
+                                                                đ
+                                                            </span>
+                                                        </div>
+                                                    ),
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -697,7 +988,7 @@ return null;
 
                                 {/* Payment Method Segmented Buttons */}
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block uppercase tracking-wider">
+                                    <label className="block text-xs font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
                                         Phương thức thanh toán
                                     </label>
                                     <div className="grid grid-cols-2 gap-2.5">
@@ -709,29 +1000,36 @@ return null;
                                                 if (mode === 'payment') {
                                                     setAmountReceived(payable);
                                                 } else if (mode === 'deposit') {
-                                                    setAmountReceived(totalAmount);
+                                                    setAmountReceived(
+                                                        totalAmount,
+                                                    );
                                                 }
                                             }}
-                                            className={`py-2.5 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                                            className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                                                 paymentMethod === 'cash'
-                                                    ? 'border-sky-600 bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 shadow-xs ring-1 ring-sky-600'
-                                                    : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                                                    ? 'border-sky-600 bg-sky-50 text-sky-700 shadow-xs ring-1 ring-sky-600 dark:bg-sky-950/50 dark:text-sky-300'
+                                                    : 'border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800'
                                             }`}
                                         >
-                                            <Banknote className="w-4 h-4 stroke-[1.5]" />
+                                            <Banknote className="h-4 w-4 stroke-[1.5]" />
                                             <span>Tiền mặt</span>
                                         </button>
 
                                         <button
                                             type="button"
-                                            onClick={() => setPaymentMethod('bank_transfer')}
-                                            className={`py-2.5 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
-                                                paymentMethod === 'bank_transfer'
-                                                    ? 'border-sky-600 bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 shadow-xs ring-1 ring-sky-600'
-                                                    : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                                            onClick={() =>
+                                                setPaymentMethod(
+                                                    'bank_transfer',
+                                                )
+                                            }
+                                            className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                                                paymentMethod ===
+                                                'bank_transfer'
+                                                    ? 'border-sky-600 bg-sky-50 text-sky-700 shadow-xs ring-1 ring-sky-600 dark:bg-sky-950/50 dark:text-sky-300'
+                                                    : 'border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800'
                                             }`}
                                         >
-                                            <QrCode className="w-4 h-4 stroke-[1.5]" />
+                                            <QrCode className="h-4 w-4 stroke-[1.5]" />
                                             <span>Chuyển khoản</span>
                                         </button>
                                     </div>
@@ -739,46 +1037,66 @@ return null;
 
                                 {/* Content: Cash */}
                                 {paymentMethod === 'cash' && (
-                                    <div className="space-y-3 animate-in fade-in duration-150">
+                                    <div className="animate-in fade-in space-y-3 duration-150">
                                         <div className="space-y-1">
-                                            <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 block">
-                                                {mode === 'reservation' ? 'Tiền cọc giữ bàn (đ):' : 'Số tiền khách đưa (đ):'}
+                                            <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                                                {mode === 'reservation'
+                                                    ? 'Tiền cọc giữ bàn (đ):'
+                                                    : 'Số tiền khách đưa (đ):'}
                                             </label>
                                             <input
                                                 type="number"
                                                 value={amountReceived || ''}
-                                                onChange={(e) => setAmountReceived(Number(e.target.value))}
+                                                onChange={(e) =>
+                                                    setAmountReceived(
+                                                        Number(e.target.value),
+                                                    )
+                                                }
                                                 placeholder="Nhập số tiền..."
-                                                className="w-full px-3.5 py-2.5 text-lg font-bold text-center border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-500 outline-none tabular-nums"
+                                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-center text-lg font-bold text-zinc-900 tabular-nums outline-none focus:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                             />
                                         </div>
 
-                                        {(mode === 'payment' || mode === 'deposit') && (
+                                        {(mode === 'payment' ||
+                                            mode === 'deposit') && (
                                             <div className="grid grid-cols-4 gap-2">
-                                                {cashPresets.map((preset, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        type="button"
-                                                        onClick={() => setAmountReceived(preset)}
-                                                        className={`py-2 px-1 border rounded-xl text-xs font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sky-500 text-center tabular-nums ${
-                                                            amountReceived === preset
-                                                                ? 'border-sky-600 bg-sky-600 text-white shadow-xs'
-                                                                : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700'
-                                                        }`}
-                                                    >
-                                                        {(preset / 1000).toFixed(0)}k
-                                                    </button>
-                                                ))}
+                                                {cashPresets.map(
+                                                    (preset, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setAmountReceived(
+                                                                    preset,
+                                                                )
+                                                            }
+                                                            className={`rounded-xl border px-1 py-2 text-center text-xs font-bold tabular-nums transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                                                                amountReceived ===
+                                                                preset
+                                                                    ? 'border-sky-600 bg-sky-600 text-white shadow-xs'
+                                                                    : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
+                                                            }`}
+                                                        >
+                                                            {(
+                                                                preset / 1000
+                                                            ).toFixed(0)}
+                                                            k
+                                                        </button>
+                                                    ),
+                                                )}
                                             </div>
                                         )}
 
                                         {mode === 'payment' && (
-                                            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 flex justify-between items-center text-xs font-semibold">
+                                            <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold dark:border-emerald-800/80 dark:bg-emerald-950/40">
                                                 <span className="text-emerald-800 dark:text-emerald-300">
                                                     Tiền thừa trả khách:
                                                 </span>
-                                                <span className="text-base font-bold text-emerald-600 dark:text-emerald-400 tabular-nums font-display">
-                                                    {changeAmount.toLocaleString('vi-VN')} đ
+                                                <span className="font-display text-base font-bold text-emerald-600 tabular-nums dark:text-emerald-400">
+                                                    {changeAmount.toLocaleString(
+                                                        'vi-VN',
+                                                    )}{' '}
+                                                    đ
                                                 </span>
                                             </div>
                                         )}
@@ -787,75 +1105,156 @@ return null;
 
                                 {/* Content: Bank Transfer */}
                                 {paymentMethod === 'bank_transfer' && (
-                                    <div className="space-y-3 animate-in fade-in duration-150 text-center">
+                                    <div className="animate-in fade-in space-y-3 text-center duration-150">
                                         {mode === 'reservation' && (
-                                            <div className="space-y-1 text-left mb-2">
-                                                <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 block">
+                                            <div className="mb-2 space-y-1 text-left">
+                                                <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400">
                                                     Tiền cọc chuyển khoản (đ):
                                                 </label>
                                                 <input
                                                     type="number"
                                                     value={amountReceived || ''}
-                                                    onChange={(e) => setAmountReceived(Number(e.target.value))}
+                                                    onChange={(e) =>
+                                                        setAmountReceived(
+                                                            Number(
+                                                                e.target.value,
+                                                            ),
+                                                        )
+                                                    }
                                                     placeholder="Nhập số tiền cọc..."
-                                                    className="w-full px-3 py-2 text-sm font-bold border rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:border-sky-500 outline-none tabular-nums"
+                                                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-bold text-zinc-900 tabular-nums outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                                 />
                                             </div>
                                         )}
 
-                                        {paymentQr?.enabled && paymentQr?.account_no && ((mode === 'reservation' && amountReceived > 0) || mode !== 'reservation') && (() => {
-                                            const qrAmount = Math.max(0, Math.round(mode === 'payment' ? payable : amountReceived));
-                                            const tableLabel = selectedTable ? selectedTable.table_number : '';
-                                            const addInfo = `${mode === 'payment' ? 'Thanh toan' : 'Dat coc'} ${tableLabel}`.trim();
-                                            const bankCode = paymentQr?.bank_code ?? '970422';
-                                            const accountNo = paymentQr?.account_no ?? '';
-                                            const accountName = paymentQr?.account_name ?? '';
-                                            const vietQrUrl = `https://img.vietqr.io/image/${bankCode}-${accountNo}-qr_only.png?amount=${qrAmount}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent(accountName)}`;
+                                        {paymentQr?.enabled &&
+                                            paymentQr?.account_no &&
+                                            ((mode === 'reservation' &&
+                                                amountReceived > 0) ||
+                                                mode !== 'reservation') &&
+                                            (() => {
+                                                const qrAmount = Math.max(
+                                                    0,
+                                                    Math.round(
+                                                        mode === 'payment'
+                                                            ? payable
+                                                            : amountReceived,
+                                                    ),
+                                                );
+                                                const tableLabel = selectedTable
+                                                    ? selectedTable.table_number
+                                                    : '';
+                                                const addInfo =
+                                                    `${mode === 'payment' ? 'Thanh toan' : 'Dat coc'} ${tableLabel}`.trim();
+                                                const bankCode =
+                                                    paymentQr?.bank_code ??
+                                                    '970422';
+                                                const accountNo =
+                                                    paymentQr?.account_no ?? '';
+                                                const accountName =
+                                                    paymentQr?.account_name ??
+                                                    '';
+                                                const vietQrUrl = `https://img.vietqr.io/image/${bankCode}-${accountNo}-qr_only.png?amount=${qrAmount}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent(accountName)}`;
 
-                                            return (
-                                                <div className="p-3.5 border border-zinc-200/80 dark:border-zinc-700/80 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 flex flex-col items-center">
-                                                    <div className="p-2 bg-white rounded-xl shadow-xs border border-zinc-200 mb-2">
-                                                        <img
-                                                            key={vietQrUrl}
-                                                            src={vietQrUrl}
-                                                            alt="Mã VietQR"
-                                                            className="w-44 h-44 object-contain rounded-lg"
-                                                            onError={(e) => {
-                                                                (e.target as HTMLElement).style.display = 'none';
-                                                            }}
+                                                return (
+                                                    <div className="flex flex-col items-center rounded-2xl border border-zinc-200/80 bg-zinc-50 p-3.5 dark:border-zinc-700/80 dark:bg-zinc-800/40">
+                                                        <div className="mb-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-xs">
+                                                            <img
+                                                                key={vietQrUrl}
+                                                                src={vietQrUrl}
+                                                                alt="Mã VietQR"
+                                                                className="h-44 w-44 rounded-lg object-contain"
+                                                                onError={(
+                                                                    e,
+                                                                ) => {
+                                                                    (
+                                                                        e.target as HTMLElement
+                                                                    ).style.display =
+                                                                        'none';
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1 text-center text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                                                            <p>
+                                                                <span className="text-zinc-400">
+                                                                    Ngân hàng:
+                                                                </span>{' '}
+                                                                <strong className="tabular-nums">
+                                                                    {bankCode}
+                                                                </strong>{' '}
+                                                                ·{' '}
+                                                                <strong className="tabular-nums">
+                                                                    {accountNo}
+                                                                </strong>{' '}
+                                                                — {accountName}
+                                                            </p>
+                                                            <p>
+                                                                <span className="text-zinc-400">
+                                                                    Số tiền:
+                                                                </span>{' '}
+                                                                <strong className="text-sky-600 tabular-nums dark:text-sky-400">
+                                                                    {qrAmount.toLocaleString(
+                                                                        'vi-VN',
+                                                                    )}{' '}
+                                                                    đ
+                                                                </strong>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+                                        {(mode === 'deposit' ||
+                                            mode === 'reservation') &&
+                                            paymentMethod ===
+                                                'bank_transfer' && (
+                                                <div className="space-y-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-3.5 text-left dark:border-amber-800/60 dark:bg-amber-950/30">
+                                                    <div className="space-y-1">
+                                                        <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                                                            Mã tham chiếu chuyển
+                                                            khoản:{' '}
+                                                            <span className="text-rose-500">
+                                                                *
+                                                            </span>
+                                                        </label>
+                                                        <input
+                                                            value={
+                                                                depositReference
+                                                            }
+                                                            onChange={(e) =>
+                                                                setDepositReference(
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            placeholder="Nhập mã giao dịch ngân hàng..."
+                                                            className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                                         />
                                                     </div>
-                                                    <div className="text-xs space-y-1 text-zinc-600 dark:text-zinc-300 font-medium text-center">
-                                                        <p><span className="text-zinc-400">Ngân hàng:</span> <strong className="tabular-nums">{bankCode}</strong> · <strong className="tabular-nums">{accountNo}</strong> — {accountName}</p>
-                                                        <p><span className="text-zinc-400">Số tiền:</span> <strong className="text-sky-600 dark:text-sky-400 tabular-nums">{qrAmount.toLocaleString('vi-VN')} đ</strong></p>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })()}
-                                        {(mode === 'deposit' || mode === 'reservation') && paymentMethod === 'bank_transfer' && (
-                                            <div className="space-y-2.5 text-left rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30 p-3.5">
-                                                <div className="space-y-1">
-                                                    <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 block">
-                                                        Mã tham chiếu chuyển khoản: <span className="text-rose-500">*</span>
+                                                    <label className="flex cursor-pointer items-start gap-2 text-xs text-zinc-700 dark:text-zinc-300">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={
+                                                                bankVerified
+                                                            }
+                                                            onChange={(e) =>
+                                                                setBankVerified(
+                                                                    e.target
+                                                                        .checked,
+                                                                )
+                                                            }
+                                                            className="mt-0.5 h-4 w-4 rounded accent-sky-600"
+                                                        />
+                                                        <span>
+                                                            Tôi đã kiểm tra và
+                                                            xác nhận tiền đã vào
+                                                            tài khoản.{' '}
+                                                            <span className="font-semibold text-rose-500">
+                                                                (bắt buộc)
+                                                            </span>
+                                                        </span>
                                                     </label>
-                                                    <input
-                                                        value={depositReference}
-                                                        onChange={(e) => setDepositReference(e.target.value)}
-                                                        placeholder="Nhập mã giao dịch ngân hàng..."
-                                                        className="w-full px-3 py-2 text-sm border rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:border-sky-500 outline-none"
-                                                    />
                                                 </div>
-                                                <label className="flex items-start gap-2 cursor-pointer text-xs text-zinc-700 dark:text-zinc-300">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={bankVerified}
-                                                        onChange={(e) => setBankVerified(e.target.checked)}
-                                                        className="mt-0.5 h-4 w-4 rounded accent-sky-600"
-                                                    />
-                                                    <span>Tôi đã kiểm tra và xác nhận tiền đã vào tài khoản. <span className="text-rose-500 font-semibold">(bắt buộc)</span></span>
-                                                </label>
-                                            </div>
-                                        )}
+                                            )}
                                     </div>
                                 )}
                             </div>
@@ -864,26 +1263,44 @@ return null;
                 </div>
 
                 {/* Footer Action Buttons */}
-                <div className="px-6 py-4 border-t border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-800/40 shrink-0">
+                <div className="shrink-0 border-t border-zinc-200/80 bg-zinc-50/80 px-6 py-4 dark:border-zinc-800 dark:bg-zinc-800/40">
                     {mode === 'payment' && (
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 type="button"
-                                disabled={submitting || isSubmitting || (paymentMethod === 'cash' && amountReceived < payable)}
+                                disabled={
+                                    submitting ||
+                                    isSubmitting ||
+                                    (paymentMethod === 'cash' &&
+                                        amountReceived < payable)
+                                }
                                 onClick={() => handleConfirm(true)}
-                                className="py-3 px-4 text-xs font-bold text-sky-600 dark:text-sky-400 bg-white dark:bg-zinc-800 border border-sky-300 dark:border-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center space-x-1.5"
+                                className="flex items-center justify-center space-x-1.5 rounded-xl border border-sky-300 bg-white px-4 py-3 text-xs font-bold text-sky-600 transition-colors hover:bg-sky-50 disabled:opacity-40 dark:border-sky-600 dark:bg-zinc-800 dark:text-sky-400 dark:hover:bg-sky-950/40"
                             >
-                                <Printer className="w-4 h-4 stroke-[1.5]" />
-                                <span>{submitting ? 'Đang lưu...' : 'In phiếu K80'}</span>
+                                <Printer className="h-4 w-4 stroke-[1.5]" />
+                                <span>
+                                    {submitting
+                                        ? 'Đang lưu...'
+                                        : 'In phiếu K80'}
+                                </span>
                             </button>
                             <button
                                 type="button"
-                                disabled={submitting || isSubmitting || (paymentMethod === 'cash' && amountReceived < payable)}
+                                disabled={
+                                    submitting ||
+                                    isSubmitting ||
+                                    (paymentMethod === 'cash' &&
+                                        amountReceived < payable)
+                                }
                                 onClick={() => handleConfirm(false)}
-                                className="py-3 px-4 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs disabled:opacity-40 transition-colors flex items-center justify-center space-x-1.5"
+                                className="flex items-center justify-center space-x-1.5 rounded-xl bg-sky-600 px-4 py-3 text-xs font-bold text-white shadow-xs transition-colors hover:bg-sky-700 disabled:opacity-40"
                             >
-                                <Check className="w-4 h-4 stroke-2" />
-                                <span>{submitting ? 'Đang lưu...' : 'Xác nhận thanh toán'}</span>
+                                <Check className="h-4 w-4 stroke-2" />
+                                <span>
+                                    {submitting
+                                        ? 'Đang lưu...'
+                                        : 'Xác nhận thanh toán'}
+                                </span>
                             </button>
                         </div>
                     )}
@@ -891,24 +1308,39 @@ return null;
                     {mode === 'deposit' && (
                         <button
                             type="button"
-                            disabled={submitting || isSubmitting || amountReceived <= 0 || bankDepositInvalid}
+                            disabled={
+                                submitting ||
+                                isSubmitting ||
+                                amountReceived <= 0 ||
+                                bankDepositInvalid
+                            }
                             onClick={() => handleConfirm(false)}
-                            className="w-full py-3 px-4 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-xs disabled:opacity-40 transition-colors flex items-center justify-center space-x-1.5"
+                            className="flex w-full items-center justify-center space-x-1.5 rounded-xl bg-purple-600 px-4 py-3 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-700 disabled:opacity-40"
                         >
-                            <Banknote className="w-4 h-4 stroke-[1.5]" />
-                            <span>{submitting ? 'Đang lưu...' : 'Xác nhận đặt cọc'}</span>
+                            <Banknote className="h-4 w-4 stroke-[1.5]" />
+                            <span>
+                                {submitting
+                                    ? 'Đang lưu...'
+                                    : 'Xác nhận đặt cọc'}
+                            </span>
                         </button>
                     )}
 
                     {mode === 'reservation' && (
                         <button
                             type="button"
-                            disabled={submitting || isSubmitting || bankDepositInvalid}
+                            disabled={
+                                submitting || isSubmitting || bankDepositInvalid
+                            }
                             onClick={() => handleConfirm(false)}
-                            className="w-full py-3 px-4 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-xs disabled:opacity-40 transition-colors flex items-center justify-center space-x-1.5"
+                            className="flex w-full items-center justify-center space-x-1.5 rounded-xl bg-purple-600 px-4 py-3 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-700 disabled:opacity-40"
                         >
-                            <CalendarClock className="w-4 h-4 stroke-[1.5]" />
-                            <span>{submitting ? 'Đang lưu...' : 'Hoàn tất đặt bàn'}</span>
+                            <CalendarClock className="h-4 w-4 stroke-[1.5]" />
+                            <span>
+                                {submitting
+                                    ? 'Đang lưu...'
+                                    : 'Hoàn tất đặt bàn'}
+                            </span>
                         </button>
                     )}
                 </div>

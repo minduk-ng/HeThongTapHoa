@@ -13,9 +13,7 @@ import {
     X,
 } from 'lucide-react';
 import React, { useEffect, useState, useMemo } from 'react';
-import {
-    ManagerFormModal,
-} from '@/components/form';
+import { ManagerFormModal } from '@/components/form';
 import DatePicker from '../../../../components/DatePicker';
 import { exportXLSX } from '../../../../components/reports/reportExport';
 import type { PromotionData } from '../PromotionsManager';
@@ -111,7 +109,9 @@ export default function PromotionFormModal({
 
                 return {
                     ...s,
-                    days: has ? s.days.filter((x) => x !== d) : [...s.days, d].sort(),
+                    days: has
+                        ? s.days.filter((x) => x !== d)
+                        : [...s.days, d].sort(),
                 };
             }),
         );
@@ -155,20 +155,20 @@ export default function PromotionFormModal({
                 setActions(
                     promotionToEdit.actions.length
                         ? promotionToEdit.actions.map((a) => ({
-                            action_type: a.action_type,
-                            action_value: String(a.action_value),
-                            max_discount_amount:
+                              action_type: a.action_type,
+                              action_value: String(a.action_value),
+                              max_discount_amount:
                                   a.max_discount_amount === null
                                       ? ''
                                       : String(a.max_discount_amount),
-                        }))
+                          }))
                         : [
-                            {
-                                action_type: 'discount_percent',
-                                action_value: '',
-                                max_discount_amount: '',
-                            },
-                        ],
+                              {
+                                  action_type: 'discount_percent',
+                                  action_value: '',
+                                  max_discount_amount: '',
+                              },
+                          ],
                 );
                 setConditions(
                     promotionToEdit.conditions.map((c) => ({
@@ -219,18 +219,18 @@ export default function PromotionFormModal({
     const isDirty = useMemo(() => {
         if (promotionToEdit) {
             return (
-                name !== promotionToEdit.name
-                || type !== promotionToEdit.type
-                || code !== (promotionToEdit.code || '')
-                || status !== promotionToEdit.status
+                name !== promotionToEdit.name ||
+                type !== promotionToEdit.type ||
+                code !== (promotionToEdit.code || '') ||
+                status !== promotionToEdit.status
             );
         }
 
         return (
-            name.trim() !== ''
-            || code.trim() !== ''
-            || codePrefix.trim() !== ''
-            || conditions.length > 0
+            name.trim() !== '' ||
+            code.trim() !== '' ||
+            codePrefix.trim() !== '' ||
+            conditions.length > 0
         );
     }, [promotionToEdit, name, type, code, status, codePrefix, conditions]);
 
@@ -288,9 +288,9 @@ export default function PromotionFormModal({
         }
 
         if (
-            type === 'voucher'
-            && !promotionToEdit
-            && (!codePrefix.trim() || !codeQuantity)
+            type === 'voucher' &&
+            !promotionToEdit &&
+            (!codePrefix.trim() || !codeQuantity)
         ) {
             errs.code_prefix =
                 'Voucher yêu cầu phát hành mã hàng loạt (Tiền tố và Số lượng mã).';
@@ -319,9 +319,9 @@ export default function PromotionFormModal({
                 }
 
                 if (
-                    (a.action_type === 'discount_percent'
-                        || a.action_type === 'discount_amount')
-                    && (!a.action_value || Number(a.action_value) <= 0)
+                    (a.action_type === 'discount_percent' ||
+                        a.action_type === 'discount_amount') &&
+                    (!a.action_value || Number(a.action_value) <= 0)
                 ) {
                     errs.actions =
                         'Vui lòng nhập giá trị giảm giá hợp lệ lớn hơn 0.';
@@ -329,8 +329,8 @@ export default function PromotionFormModal({
                 }
 
                 if (
-                    a.action_type === 'discount_percent'
-                    && Number(a.action_value) > 100
+                    a.action_type === 'discount_percent' &&
+                    Number(a.action_value) > 100
                 ) {
                     errs.actions = 'Phần trăm giảm giá tối đa là 100%.';
                     break;
@@ -375,12 +375,11 @@ export default function PromotionFormModal({
             start_date: startDate || null,
             end_date: endDate || null,
             status,
-            max_usage:
-                codePrefix
-                    ? null
-                    : maxUsage === ''
-                      ? null
-                      : Number(maxUsage),
+            max_usage: codePrefix
+                ? null
+                : maxUsage === ''
+                  ? null
+                  : Number(maxUsage),
             target_usage: targetUsage === '' ? null : Number(targetUsage),
             stackable: !exclusive,
             code_prefix: code !== '' ? null : codePrefix || null,
@@ -400,8 +399,8 @@ export default function PromotionFormModal({
                 action_type: a.action_type,
                 action_value: Number(a.action_value) || 0,
                 max_discount_amount:
-                    a.action_type === 'discount_percent'
-                    && a.max_discount_amount !== ''
+                    a.action_type === 'discount_percent' &&
+                    a.max_discount_amount !== ''
                         ? Number(a.max_discount_amount)
                         : null,
             })),
@@ -447,7 +446,7 @@ export default function PromotionFormModal({
             size="2xl"
             formId="promo-form"
         >
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
+            <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
                 {/* Left Column (8 cols): Form Sections */}
                 <div className="space-y-6 lg:col-span-8">
                     {/* Section 1: General Info */}
@@ -461,8 +460,9 @@ export default function PromotionFormModal({
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-                                    Tên chương trình khuyến mãi <span className="text-rose-500">*</span>
+                                <label className="mb-1.5 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                    Tên chương trình khuyến mãi{' '}
+                                    <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     value={name}
@@ -471,7 +471,7 @@ export default function PromotionFormModal({
                                     className={inputCls}
                                 />
                                 {errors.name && (
-                                    <p className="mt-1 flex items-center gap-1 text-xs text-rose-500 font-medium">
+                                    <p className="mt-1 flex items-center gap-1 text-xs font-medium text-rose-500">
                                         <AlertCircle className="h-3.5 w-3.5" />
                                         {errors.name}
                                     </p>
@@ -480,10 +480,11 @@ export default function PromotionFormModal({
 
                             {/* Type Card Selector */}
                             <div>
-                                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-                                    Loại hình khuyến mãi <span className="text-rose-500">*</span>
+                                <label className="mb-1.5 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                    Loại hình khuyến mãi{' '}
+                                    <span className="text-rose-500">*</span>
                                 </label>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -492,18 +493,19 @@ export default function PromotionFormModal({
                                             setCodePrefix('');
                                             setCodeQuantity('');
                                         }}
-                                        className={`flex flex-col items-start p-3 rounded-xl border text-left transition-colors ${
+                                        className={`flex flex-col items-start rounded-xl border p-3 text-left transition-colors ${
                                             type === 'promotion'
-                                                ? 'border-sky-500 bg-sky-50/60 dark:bg-sky-950/40 ring-1 ring-sky-500 text-sky-900 dark:text-sky-200'
-                                                : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/40 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100/70'
+                                                ? 'border-sky-500 bg-sky-50/60 text-sky-900 ring-1 ring-sky-500 dark:bg-sky-950/40 dark:text-sky-200'
+                                                : 'border-zinc-200 bg-zinc-50/50 text-zinc-700 hover:bg-zinc-100/70 dark:border-zinc-800 dark:bg-zinc-800/40 dark:text-zinc-300'
                                         }`}
                                     >
-                                        <div className="flex items-center gap-1.5 font-bold text-xs">
+                                        <div className="flex items-center gap-1.5 text-xs font-bold">
                                             <Sparkles className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
                                             <span>Tự động (Auto)</span>
                                         </div>
-                                        <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400 leading-tight">
-                                            Tự động áp dụng trên hoá đơn khi đủ điều kiện
+                                        <p className="mt-1 text-[11px] leading-tight text-zinc-500 dark:text-zinc-400">
+                                            Tự động áp dụng trên hoá đơn khi đủ
+                                            điều kiện
                                         </p>
                                     </button>
 
@@ -515,18 +517,19 @@ export default function PromotionFormModal({
                                             setCodeQuantity('');
                                             setCodeRandom(false);
                                         }}
-                                        className={`flex flex-col items-start p-3 rounded-xl border text-left transition-colors ${
+                                        className={`flex flex-col items-start rounded-xl border p-3 text-left transition-colors ${
                                             type === 'coupon'
-                                                ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 ring-1 ring-emerald-500 text-emerald-900 dark:text-emerald-200'
-                                                : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/40 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100/70'
+                                                ? 'border-emerald-500 bg-emerald-50/60 text-emerald-900 ring-1 ring-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-200'
+                                                : 'border-zinc-200 bg-zinc-50/50 text-zinc-700 hover:bg-zinc-100/70 dark:border-zinc-800 dark:bg-zinc-800/40 dark:text-zinc-300'
                                         }`}
                                     >
-                                        <div className="flex items-center gap-1.5 font-bold text-xs">
+                                        <div className="flex items-center gap-1.5 text-xs font-bold">
                                             <Tag className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                                             <span>Mã Coupon</span>
                                         </div>
-                                        <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400 leading-tight">
-                                            Dùng chung một mã công khai (vd: CHAOMUNG2026)
+                                        <p className="mt-1 text-[11px] leading-tight text-zinc-500 dark:text-zinc-400">
+                                            Dùng chung một mã công khai (vd:
+                                            CHAOMUNG2026)
                                         </p>
                                     </button>
 
@@ -537,18 +540,19 @@ export default function PromotionFormModal({
                                             setCode('');
                                             setCodeRandom(true);
                                         }}
-                                        className={`flex flex-col items-start p-3 rounded-xl border text-left transition-colors ${
+                                        className={`flex flex-col items-start rounded-xl border p-3 text-left transition-colors ${
                                             type === 'voucher'
-                                                ? 'border-purple-500 bg-purple-50/60 dark:bg-purple-950/40 ring-1 ring-purple-500 text-purple-900 dark:text-purple-200'
-                                                : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/40 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100/70'
+                                                ? 'border-purple-500 bg-purple-50/60 text-purple-900 ring-1 ring-purple-500 dark:bg-purple-950/40 dark:text-purple-200'
+                                                : 'border-zinc-200 bg-zinc-50/50 text-zinc-700 hover:bg-zinc-100/70 dark:border-zinc-800 dark:bg-zinc-800/40 dark:text-zinc-300'
                                         }`}
                                     >
-                                        <div className="flex items-center gap-1.5 font-bold text-xs">
+                                        <div className="flex items-center gap-1.5 text-xs font-bold">
                                             <Ticket className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                                             <span>Voucher độc bản</span>
                                         </div>
-                                        <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400 leading-tight">
-                                            Mỗi khách hàng sở hữu 1 mã riêng, dùng 1 lần
+                                        <p className="mt-1 text-[11px] leading-tight text-zinc-500 dark:text-zinc-400">
+                                            Mỗi khách hàng sở hữu 1 mã riêng,
+                                            dùng 1 lần
                                         </p>
                                     </button>
                                 </div>
@@ -557,20 +561,27 @@ export default function PromotionFormModal({
                             {/* Conditional Code Generation */}
                             {type === 'coupon' && (
                                 <div className="rounded-xl border border-zinc-200/80 bg-zinc-50/50 p-3.5 dark:border-zinc-800 dark:bg-zinc-800/40">
-                                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-                                        Mã Coupon áp dụng <span className="text-rose-500">*</span>
+                                    <label className="mb-1.5 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                        Mã Coupon áp dụng{' '}
+                                        <span className="text-rose-500">*</span>
                                     </label>
                                     <div className="flex gap-2">
                                         <input
                                             value={code}
-                                            onChange={(e) => setCode(e.target.value.toUpperCase())}
+                                            onChange={(e) =>
+                                                setCode(
+                                                    e.target.value.toUpperCase(),
+                                                )
+                                            }
                                             placeholder="Ví dụ: SALE50K, FREESHIP"
-                                            className={`${inputCls} uppercase font-mono font-bold tracking-wider`}
+                                            className={`${inputCls} font-mono font-bold tracking-wider uppercase`}
                                         />
                                         <button
                                             type="button"
-                                            onClick={() => setCode(randomCode())}
-                                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors shrink-0"
+                                            onClick={() =>
+                                                setCode(randomCode())
+                                            }
+                                            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
                                             title="Sinh mã ngẫu nhiên"
                                         >
                                             <Shuffle className="h-3.5 w-3.5" />
@@ -578,7 +589,7 @@ export default function PromotionFormModal({
                                         </button>
                                     </div>
                                     {errors.code && (
-                                        <p className="mt-1 flex items-center gap-1 text-xs text-rose-500 font-medium">
+                                        <p className="mt-1 flex items-center gap-1 text-xs font-medium text-rose-500">
                                             <AlertCircle className="h-3.5 w-3.5" />
                                             {errors.code}
                                         </p>
@@ -588,20 +599,24 @@ export default function PromotionFormModal({
 
                             {type === 'voucher' && (
                                 <div className="rounded-xl border border-purple-200/70 bg-purple-50/30 p-3.5 dark:border-purple-900/40 dark:bg-purple-950/20">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                         <div>
-                                            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                            <label className="mb-1.5 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                                                 Tiền tố mã (Prefix)
                                             </label>
                                             <input
                                                 value={codePrefix}
-                                                onChange={(e) => setCodePrefix(e.target.value.toUpperCase())}
+                                                onChange={(e) =>
+                                                    setCodePrefix(
+                                                        e.target.value.toUpperCase(),
+                                                    )
+                                                }
                                                 placeholder="VD: VIP, TET2026"
-                                                className={`${inputCls} uppercase font-mono`}
+                                                className={`${inputCls} font-mono uppercase`}
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                            <label className="mb-1.5 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                                                 Số lượng mã phát hành
                                             </label>
                                             <input
@@ -609,14 +624,18 @@ export default function PromotionFormModal({
                                                 min="1"
                                                 max="10000"
                                                 value={codeQuantity}
-                                                onChange={(e) => setCodeQuantity(e.target.value)}
+                                                onChange={(e) =>
+                                                    setCodeQuantity(
+                                                        e.target.value,
+                                                    )
+                                                }
                                                 placeholder="VD: 100"
-                                                className={`${inputCls} tabular-nums font-semibold`}
+                                                className={`${inputCls} font-semibold tabular-nums`}
                                             />
                                         </div>
                                     </div>
                                     {errors.code_prefix && (
-                                        <p className="mt-1.5 flex items-center gap-1 text-xs text-rose-500 font-medium">
+                                        <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-rose-500">
                                             <AlertCircle className="h-3.5 w-3.5" />
                                             {errors.code_prefix}
                                         </p>
@@ -635,9 +654,9 @@ export default function PromotionFormModal({
                             </h4>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
-                                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                <label className="mb-1.5 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                                     Ngày bắt đầu
                                 </label>
                                 <DatePicker
@@ -649,7 +668,7 @@ export default function PromotionFormModal({
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                <label className="mb-1.5 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                                     Ngày kết thúc
                                 </label>
                                 <DatePicker
@@ -661,53 +680,66 @@ export default function PromotionFormModal({
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                <label className="mb-1.5 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                                     Tổng lượt dùng tối đa
                                 </label>
                                 <input
                                     type="number"
                                     min="1"
                                     value={maxUsage}
-                                    onChange={(e) => setMaxUsage(e.target.value)}
+                                    onChange={(e) =>
+                                        setMaxUsage(e.target.value)
+                                    }
                                     placeholder="Không giới hạn"
                                     className={`${inputCls} tabular-nums`}
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                <label className="mb-1.5 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                                     Mục tiêu lượt dùng (KPI)
                                 </label>
                                 <input
                                     type="number"
                                     min="1"
                                     value={targetUsage}
-                                    onChange={(e) => setTargetUsage(e.target.value)}
+                                    onChange={(e) =>
+                                        setTargetUsage(e.target.value)
+                                    }
                                     placeholder="Ví dụ: 200 lượt"
                                     className={`${inputCls} tabular-nums`}
                                 />
                             </div>
                         </div>
 
-                        <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 space-y-2.5">
-                            <label className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                        <div className="mt-4 space-y-2.5 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                            <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
                                 <input
                                     type="checkbox"
                                     checked={exclusive}
-                                    onChange={(e) => setExclusive(e.target.checked)}
+                                    onChange={(e) =>
+                                        setExclusive(e.target.checked)
+                                    }
                                     className="rounded border-zinc-300 text-sky-600 focus:ring-sky-500"
                                 />
-                                <span>Không áp dụng đồng thời với các chương trình khuyến mãi khác</span>
+                                <span>
+                                    Không áp dụng đồng thời với các chương trình
+                                    khuyến mãi khác
+                                </span>
                             </label>
 
-                            <label className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                            <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
                                 <input
                                     type="checkbox"
                                     checked={status}
-                                    onChange={(e) => setStatus(e.target.checked)}
+                                    onChange={(e) =>
+                                        setStatus(e.target.checked)
+                                    }
                                     className="rounded border-zinc-300 text-sky-600 focus:ring-sky-500"
                                 />
-                                <span>Kích hoạt chương trình ngay sau khi lưu</span>
+                                <span>
+                                    Kích hoạt chương trình ngay sau khi lưu
+                                </span>
                             </label>
                         </div>
                     </div>
@@ -732,25 +764,29 @@ export default function PromotionFormModal({
                         </div>
 
                         {timeSlots.length === 0 ? (
-                            <p className="text-xs text-zinc-400 py-1">
-                                Áp dụng cho mọi khung giờ trong ngày. Nhấn “Thêm khung giờ” để giới hạn theo giờ vàng.
+                            <p className="py-1 text-xs text-zinc-400">
+                                Áp dụng cho mọi khung giờ trong ngày. Nhấn “Thêm
+                                khung giờ” để giới hạn theo giờ vàng.
                             </p>
                         ) : (
                             <div className="space-y-3">
                                 {timeSlots.map((slot, idx) => (
                                     <div
                                         key={idx}
-                                        className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-3 dark:border-zinc-800 dark:bg-zinc-800/40 space-y-2"
+                                        className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50/60 p-3 dark:border-zinc-800 dark:bg-zinc-800/40"
                                     >
                                         <div className="flex flex-wrap items-center gap-1">
                                             {DAYS.map((d) => {
-                                                const active = slot.days.includes(d.v);
+                                                const active =
+                                                    slot.days.includes(d.v);
 
                                                 return (
                                                     <button
                                                         key={d.v}
                                                         type="button"
-                                                        onClick={() => toggleDay(idx, d.v)}
+                                                        onClick={() =>
+                                                            toggleDay(idx, d.v)
+                                                        }
                                                         className={`rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors ${
                                                             active
                                                                 ? 'bg-sky-600 text-white'
@@ -764,7 +800,7 @@ export default function PromotionFormModal({
                                             <button
                                                 type="button"
                                                 onClick={() => removeSlot(idx)}
-                                                className="ml-auto text-zinc-400 hover:text-rose-500 p-1"
+                                                className="ml-auto p-1 text-zinc-400 hover:text-rose-500"
                                                 title="Xoá khung giờ"
                                             >
                                                 <X className="h-3.5 w-3.5" />
@@ -776,14 +812,22 @@ export default function PromotionFormModal({
                                             <input
                                                 type="time"
                                                 value={slot.start}
-                                                onChange={(e) => updateSlot(idx, { start: e.target.value })}
+                                                onChange={(e) =>
+                                                    updateSlot(idx, {
+                                                        start: e.target.value,
+                                                    })
+                                                }
                                                 className="rounded-lg border border-zinc-200 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-800"
                                             />
                                             <span>Đến:</span>
                                             <input
                                                 type="time"
                                                 value={slot.end}
-                                                onChange={(e) => updateSlot(idx, { end: e.target.value })}
+                                                onChange={(e) =>
+                                                    updateSlot(idx, {
+                                                        end: e.target.value,
+                                                    })
+                                                }
                                                 className="rounded-lg border border-zinc-200 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-800"
                                             />
                                         </div>
@@ -802,7 +846,7 @@ export default function PromotionFormModal({
                             </h4>
                         </div>
                         {errors.actions && (
-                            <p className="mb-3 text-xs text-rose-500 font-medium">
+                            <p className="mb-3 text-xs font-medium text-rose-500">
                                 {errors.actions}
                             </p>
                         )}
@@ -822,7 +866,7 @@ export default function PromotionFormModal({
                             </h4>
                         </div>
                         {errors.conditions && (
-                            <p className="mb-3 text-xs text-rose-500 font-medium">
+                            <p className="mb-3 text-xs font-medium text-rose-500">
                                 {errors.conditions}
                             </p>
                         )}
@@ -836,13 +880,13 @@ export default function PromotionFormModal({
                 </div>
 
                 {/* Right Column (4 cols): Live Preview & Batch Export */}
-                <div className="space-y-4 lg:col-span-4 lg:sticky lg:top-0">
+                <div className="space-y-4 lg:sticky lg:top-0 lg:col-span-4">
                     <div className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
                         <div className="mb-3 flex items-center justify-between border-b border-zinc-100 pb-2.5 dark:border-zinc-800">
-                            <h4 className="font-display text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                            <h4 className="font-display text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
                                 Xem trước (Live Preview)
                             </h4>
-                            <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">
+                            <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
                                 Thẻ mẫu
                             </span>
                         </div>
@@ -871,10 +915,14 @@ export default function PromotionFormModal({
                             type="button"
                             onClick={handleExport}
                             disabled={exporting}
-                            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white py-2.5 text-xs font-semibold text-zinc-700 shadow-xs transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 disabled:opacity-50"
+                            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white py-2.5 text-xs font-semibold text-zinc-700 shadow-xs transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                         >
                             <Download className="h-4 w-4 stroke-[1.5]" />
-                            <span>{exporting ? 'Đang xuất Excel…' : 'Xuất danh sách mã Excel'}</span>
+                            <span>
+                                {exporting
+                                    ? 'Đang xuất Excel…'
+                                    : 'Xuất danh sách mã Excel'}
+                            </span>
                         </button>
                     )}
                 </div>

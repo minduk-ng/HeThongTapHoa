@@ -14,7 +14,10 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import ModelMetricChart from '../../components/planning/ModelMetricChart';
-import type { MetricType, ModelMetricPoint } from '../../components/planning/ModelMetricChart';
+import type {
+    MetricType,
+    ModelMetricPoint,
+} from '../../components/planning/ModelMetricChart';
 import { recommendedModelKeys } from '../../components/planning/modelRecommendation';
 import PlanningDialog from '../../components/planning/PlanningDialog';
 import {
@@ -117,9 +120,12 @@ export default function ModelEvaluation({
     can_apply_model = false,
 }: ModelEvaluationProps) {
     const [activeTab, setActiveTab] = useState<TabType>('performance');
-    const [evaluationStage, setEvaluationStage] = useState<StageType>('validation');
+    const [evaluationStage, setEvaluationStage] =
+        useState<StageType>('validation');
     const [selectedMetric, setSelectedMetric] = useState<MetricType>('wape');
-    const [horizon, setHorizon] = useState<number>(selectedHorizon || activeRun?.horizon_days || 7);
+    const [horizon, setHorizon] = useState<number>(
+        selectedHorizon || activeRun?.horizon_days || 7,
+    );
     const [isTriggeringRun, setIsTriggeringRun] = useState(false);
 
     // Dialog state for model application
@@ -128,12 +134,19 @@ export default function ModelEvaluation({
     const [isSubmittingApply, setIsSubmittingApply] = useState(false);
 
     const recommendedKeys = recommendedModelKeys(modelComparison);
-    const recommendedCandidates = modelComparison.filter((row) => recommendedKeys.includes(row.model_key));
+    const recommendedCandidates = modelComparison.filter((row) =>
+        recommendedKeys.includes(row.model_key),
+    );
     const primaryCandidate = recommendedCandidates[0];
-    const contextQuery = new URLSearchParams({ horizon_days: String(activeRun?.horizon_days || horizon) });
+    const contextQuery = new URLSearchParams({
+        horizon_days: String(activeRun?.horizon_days || horizon),
+    });
 
     if (filters.synthetic_dataset_id != null) {
-        contextQuery.set('synthetic_dataset_id', String(filters.synthetic_dataset_id));
+        contextQuery.set(
+            'synthetic_dataset_id',
+            String(filters.synthetic_dataset_id),
+        );
     }
 
     const handleHorizonChange = (newHorizon: number) => {
@@ -144,7 +157,7 @@ export default function ModelEvaluation({
                 horizon_days: newHorizon,
                 synthetic_dataset_id: filters.synthetic_dataset_id,
             },
-            { preserveState: true, preserveScroll: true }
+            { preserveState: true, preserveScroll: true },
         );
     };
 
@@ -175,7 +188,7 @@ export default function ModelEvaluation({
                     setIsSubmittingApply(false);
                     setIsConfirmOpen(false);
                 },
-            }
+            },
         );
     };
 
@@ -190,7 +203,7 @@ export default function ModelEvaluation({
             {
                 preserveScroll: true,
                 onFinish: () => setIsTriggeringRun(false),
-            }
+            },
         );
     };
 
@@ -206,14 +219,15 @@ export default function ModelEvaluation({
                             Đánh giá mô hình dự báo
                         </h1>
                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                            Kiểm thử Rolling Origin Cross-Validation và so sánh độ chính xác của 7 mô hình ứng viên.
+                            Kiểm thử Rolling Origin Cross-Validation và so sánh
+                            độ chính xác của 7 mô hình ứng viên.
                         </p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
                         {/* Horizon Switcher */}
                         <div className="inline-flex items-center rounded-xl border border-slate-200 bg-white p-1 text-xs dark:border-slate-800 dark:bg-slate-900">
-                            <span className="px-2 font-medium text-slate-500 dark:text-slate-400 inline-flex items-center gap-1">
+                            <span className="inline-flex items-center gap-1 px-2 font-medium text-slate-500 dark:text-slate-400">
                                 <SlidersHorizontal className="h-3.5 w-3.5" />
                                 <span>Kỳ dự báo:</span>
                             </span>
@@ -258,10 +272,14 @@ export default function ModelEvaluation({
                             type="button"
                             onClick={handleRunEvaluation}
                             disabled={isTriggeringRun}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-sky-700 px-3.5 py-2 text-sm font-semibold text-white shadow-2xs hover:bg-sky-800 transition-colors disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-sky-700 px-3.5 py-2 text-sm font-semibold text-white shadow-2xs transition-colors hover:bg-sky-800 disabled:opacity-50"
                         >
                             <Play className="h-3.5 w-3.5" />
-                            <span>{isTriggeringRun ? 'Đang kích hoạt...' : `Chạy đánh giá mới (${horizon} ngày)`}</span>
+                            <span>
+                                {isTriggeringRun
+                                    ? 'Đang kích hoạt...'
+                                    : `Chạy đánh giá mới (${horizon} ngày)`}
+                            </span>
                         </button>
                     </div>
                 </div>
@@ -297,7 +315,10 @@ export default function ModelEvaluation({
                             label="Giai đoạn đánh giá"
                             options={[
                                 { value: 'validation', label: 'Tập lựa chọn' },
-                                { value: 'holdout', label: 'Tập kiểm tra cuối' },
+                                {
+                                    value: 'holdout',
+                                    label: 'Tập kiểm tra cuối',
+                                },
                             ]}
                             value={evaluationStage}
                             onChange={setEvaluationStage}
@@ -312,35 +333,66 @@ export default function ModelEvaluation({
                                 className="space-y-6 focus-visible:outline-none"
                             >
                                 {/* Primary CTA Bar */}
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-sky-200 bg-sky-50/60 p-4 dark:border-sky-900/60 dark:bg-sky-950/30">
+                                <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-sky-200 bg-sky-50/60 p-4 sm:flex-row sm:items-center dark:border-sky-900/60 dark:bg-sky-950/30">
                                     <div className="flex items-center gap-3">
                                         <div className="rounded-xl bg-sky-700/10 p-2.5 text-sky-700 dark:bg-sky-400/10 dark:text-sky-300">
                                             <Sparkles className="h-5 w-5" />
                                         </div>
                                         <div>
                                             <h3 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">
-                                                {primaryCandidate ? 'Mô hình được chọn cho nhiều sản phẩm nhất' : 'Chưa có mô hình khuyến nghị'}{' '}
+                                                {primaryCandidate
+                                                    ? 'Mô hình được chọn cho nhiều sản phẩm nhất'
+                                                    : 'Chưa có mô hình khuyến nghị'}{' '}
                                                 <span className="text-sky-700 dark:text-sky-300">
-                                                    {recommendedCandidates.map((row) => row.name).join(', ')}
+                                                    {recommendedCandidates
+                                                        .map((row) => row.name)
+                                                        .join(', ')}
                                                 </span>
                                             </h3>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                                Ưu tiên số sản phẩm được chọn, khi bằng nhau ưu tiên WAPE thấp hơn trong các giá trị xác định.
+                                            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                                Ưu tiên số sản phẩm được chọn,
+                                                khi bằng nhau ưu tiên WAPE thấp
+                                                hơn trong các giá trị xác định.
                                             </p>
                                             {primaryCandidate ? (
                                                 <>
-                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                                        Được chọn cho {primaryCandidate.selected_count} sản phẩm. WAPE tham khảo: {primaryCandidate.avg_wape !== null && Number.isFinite(primaryCandidate.avg_wape) ? formatWape(primaryCandidate.avg_wape) : '—'}.
+                                                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                                        Được chọn cho{' '}
+                                                        {
+                                                            primaryCandidate.selected_count
+                                                        }{' '}
+                                                        sản phẩm. WAPE tham
+                                                        khảo:{' '}
+                                                        {primaryCandidate.avg_wape !==
+                                                            null &&
+                                                        Number.isFinite(
+                                                            primaryCandidate.avg_wape,
+                                                        )
+                                                            ? formatWape(
+                                                                  primaryCandidate.avg_wape,
+                                                              )
+                                                            : '—'}
+                                                        .
                                                     </p>
-                                                    {recommendedCandidates.length > 1 && (
-                                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                                            Đồng hạng. Nút áp dụng chọn mô hình đầu tiên trong danh sách: {primaryCandidate.name}.
+                                                    {recommendedCandidates.length >
+                                                        1 && (
+                                                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                                            Đồng hạng. Nút áp
+                                                            dụng chọn mô hình
+                                                            đầu tiên trong danh
+                                                            sách:{' '}
+                                                            {
+                                                                primaryCandidate.name
+                                                            }
+                                                            .
                                                         </p>
                                                     )}
                                                 </>
                                             ) : (
-                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                                    Chưa có sản phẩm được chọn hoặc chưa có kết quả đánh giá để khuyến nghị mô hình.
+                                                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                                    Chưa có sản phẩm được chọn
+                                                    hoặc chưa có kết quả đánh
+                                                    giá để khuyến nghị mô hình.
                                                 </p>
                                             )}
                                         </div>
@@ -348,9 +400,17 @@ export default function ModelEvaluation({
 
                                     <button
                                         type="button"
-                                        disabled={!can_apply_model || !primaryCandidate}
-                                        onClick={() => primaryCandidate && handleOpenConfirm(primaryCandidate.model_key)}
-                                        className="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-bold text-white shadow-md hover:bg-sky-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                                        disabled={
+                                            !can_apply_model ||
+                                            !primaryCandidate
+                                        }
+                                        onClick={() =>
+                                            primaryCandidate &&
+                                            handleOpenConfirm(
+                                                primaryCandidate.model_key,
+                                            )
+                                        }
+                                        className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50"
                                         title={
                                             !can_apply_model
                                                 ? 'Yêu cầu quyền planning.apply_model để thực hiện thao tác này'
@@ -363,14 +423,17 @@ export default function ModelEvaluation({
                                 </div>
 
                                 {/* Metric Selector & Chart Card */}
-                                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+                                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                                         <div>
                                             <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
-                                                So sánh sai số giữa 7 mô hình ứng viên (Tập lựa chọn)
+                                                So sánh sai số giữa 7 mô hình
+                                                ứng viên (Tập lựa chọn)
                                             </h2>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                                Đánh giá qua các mốc thời gian rolling origins trên tập dữ liệu lịch sử.
+                                            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                                Đánh giá qua các mốc thời gian
+                                                rolling origins trên tập dữ liệu
+                                                lịch sử.
                                             </p>
                                         </div>
 
@@ -378,8 +441,12 @@ export default function ModelEvaluation({
                                         <div className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
                                             <button
                                                 type="button"
-                                                aria-pressed={selectedMetric === 'wape'}
-                                                onClick={() => setSelectedMetric('wape')}
+                                                aria-pressed={
+                                                    selectedMetric === 'wape'
+                                                }
+                                                onClick={() =>
+                                                    setSelectedMetric('wape')
+                                                }
                                                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                                                     selectedMetric === 'wape'
                                                         ? 'bg-white text-sky-700 shadow-2xs dark:bg-slate-700 dark:text-sky-300'
@@ -390,8 +457,12 @@ export default function ModelEvaluation({
                                             </button>
                                             <button
                                                 type="button"
-                                                aria-pressed={selectedMetric === 'mae'}
-                                                onClick={() => setSelectedMetric('mae')}
+                                                aria-pressed={
+                                                    selectedMetric === 'mae'
+                                                }
+                                                onClick={() =>
+                                                    setSelectedMetric('mae')
+                                                }
                                                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                                                     selectedMetric === 'mae'
                                                         ? 'bg-white text-sky-700 shadow-2xs dark:bg-slate-700 dark:text-sky-300'
@@ -402,8 +473,12 @@ export default function ModelEvaluation({
                                             </button>
                                             <button
                                                 type="button"
-                                                aria-pressed={selectedMetric === 'rmse'}
-                                                onClick={() => setSelectedMetric('rmse')}
+                                                aria-pressed={
+                                                    selectedMetric === 'rmse'
+                                                }
+                                                onClick={() =>
+                                                    setSelectedMetric('rmse')
+                                                }
                                                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                                                     selectedMetric === 'rmse'
                                                         ? 'bg-white text-sky-700 shadow-2xs dark:bg-slate-700 dark:text-sky-300'
@@ -426,14 +501,18 @@ export default function ModelEvaluation({
                                 </div>
 
                                 {/* Comparison Table containing 7 approved candidate models */}
-                                <div className="rounded-2xl border border-slate-200 bg-white shadow-2xs dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
-                                    <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between dark:border-slate-800">
-                                        <h3 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+                                    <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+                                        <h3 className="flex items-center gap-2 font-display text-sm font-semibold text-slate-900 dark:text-slate-100">
                                             <Cpu className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                                            <span>Bảng so sánh 7 mô hình ứng viên (Tập lựa chọn)</span>
+                                            <span>
+                                                Bảng so sánh 7 mô hình ứng viên
+                                                (Tập lựa chọn)
+                                            </span>
                                         </h3>
-                                        <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-                                            {candidate_keys.length} mô hình ứng viên
+                                        <span className="text-xs text-slate-500 tabular-nums dark:text-slate-400">
+                                            {candidate_keys.length} mô hình ứng
+                                            viên
                                         </span>
                                     </div>
 
@@ -446,20 +525,38 @@ export default function ModelEvaluation({
                                         <table className="w-full text-left text-xs">
                                             <thead className="border-b border-slate-200 bg-slate-50/75 text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
                                                 <tr>
-                                                    <th className="px-6 py-3 font-semibold">Mô hình dự báo</th>
-                                                    <th className="px-4 py-3 font-semibold">Tham số cấu hình</th>
-                                                    <th className="px-4 py-3 font-semibold text-right">MAE trung bình</th>
-                                                    <th className="px-4 py-3 font-semibold text-right">RMSE trung bình</th>
-                                                    <th className="px-4 py-3 font-semibold text-right">WAPE trung bình</th>
-                                                    <th className="px-4 py-3 font-semibold text-center">Số mốc kiểm thử</th>
-                                                    <th className="px-4 py-3 font-semibold text-center">Trạng thái</th>
-                                                    <th className="px-6 py-3 font-semibold text-center">Thao tác</th>
+                                                    <th className="px-6 py-3 font-semibold">
+                                                        Mô hình dự báo
+                                                    </th>
+                                                    <th className="px-4 py-3 font-semibold">
+                                                        Tham số cấu hình
+                                                    </th>
+                                                    <th className="px-4 py-3 text-right font-semibold">
+                                                        MAE trung bình
+                                                    </th>
+                                                    <th className="px-4 py-3 text-right font-semibold">
+                                                        RMSE trung bình
+                                                    </th>
+                                                    <th className="px-4 py-3 text-right font-semibold">
+                                                        WAPE trung bình
+                                                    </th>
+                                                    <th className="px-4 py-3 text-center font-semibold">
+                                                        Số mốc kiểm thử
+                                                    </th>
+                                                    <th className="px-4 py-3 text-center font-semibold">
+                                                        Trạng thái
+                                                    </th>
+                                                    <th className="px-6 py-3 text-center font-semibold">
+                                                        Thao tác
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                                                 {modelComparison.map((m) => {
-                                                    const isCurrentSelected = m.is_selected;
-                                                    const selectedCount = m.selected_count ?? 0;
+                                                    const isCurrentSelected =
+                                                        m.is_selected;
+                                                    const selectedCount =
+                                                        m.selected_count ?? 0;
 
                                                     return (
                                                         <tr
@@ -474,62 +571,130 @@ export default function ModelEvaluation({
                                                                 <div className="font-semibold text-slate-900 dark:text-slate-100">
                                                                     {m.name}
                                                                 </div>
-                                                                <div className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
-                                                                    {m.model_key}
+                                                                <div className="font-mono text-[11px] text-slate-400 dark:text-slate-500">
+                                                                    {
+                                                                        m.model_key
+                                                                    }
                                                                 </div>
                                                             </td>
-                                                            <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300 font-mono text-[11px]">
-                                                                {m.model_key === 'naive' && 'Điểm quan sát cuối'}
-                                                                {m.model_key === 'seasonal_naive_7' && 'period: 7'}
-                                                                {m.model_key === 'sma_7' && 'window: 7'}
-                                                                {m.model_key === 'sma_14' && 'window: 14'}
-                                                                {m.model_key === 'sma_28' && 'window: 28'}
-                                                                {m.model_key === 'holt_winters_additive' && 'season: 7, add'}
-                                                                {m.model_key === 'holt_winters_multiplicative' && 'season: 7, mul'}
+                                                            <td className="px-4 py-3.5 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+                                                                {m.model_key ===
+                                                                    'naive' &&
+                                                                    'Điểm quan sát cuối'}
+                                                                {m.model_key ===
+                                                                    'seasonal_naive_7' &&
+                                                                    'period: 7'}
+                                                                {m.model_key ===
+                                                                    'sma_7' &&
+                                                                    'window: 7'}
+                                                                {m.model_key ===
+                                                                    'sma_14' &&
+                                                                    'window: 14'}
+                                                                {m.model_key ===
+                                                                    'sma_28' &&
+                                                                    'window: 28'}
+                                                                {m.model_key ===
+                                                                    'holt_winters_additive' &&
+                                                                    'season: 7, add'}
+                                                                {m.model_key ===
+                                                                    'holt_winters_multiplicative' &&
+                                                                    'season: 7, mul'}
                                                             </td>
-                                                            <td className="px-4 py-3.5 text-right font-medium text-slate-800 dark:text-slate-200 tabular-nums">
-                                                                {m.avg_mae !== null ? formatQuantity(m.avg_mae, 3) : <span className="text-slate-400 font-normal">—</span>}
+                                                            <td className="px-4 py-3.5 text-right font-medium text-slate-800 tabular-nums dark:text-slate-200">
+                                                                {m.avg_mae !==
+                                                                null ? (
+                                                                    formatQuantity(
+                                                                        m.avg_mae,
+                                                                        3,
+                                                                    )
+                                                                ) : (
+                                                                    <span className="font-normal text-slate-400">
+                                                                        —
+                                                                    </span>
+                                                                )}
                                                             </td>
-                                                            <td className="px-4 py-3.5 text-right font-medium text-slate-800 dark:text-slate-200 tabular-nums">
-                                                                {m.avg_rmse !== null ? formatQuantity(m.avg_rmse, 3) : <span className="text-slate-400 font-normal">—</span>}
+                                                            <td className="px-4 py-3.5 text-right font-medium text-slate-800 tabular-nums dark:text-slate-200">
+                                                                {m.avg_rmse !==
+                                                                null ? (
+                                                                    formatQuantity(
+                                                                        m.avg_rmse,
+                                                                        3,
+                                                                    )
+                                                                ) : (
+                                                                    <span className="font-normal text-slate-400">
+                                                                        —
+                                                                    </span>
+                                                                )}
                                                             </td>
-                                                            <td className="px-4 py-3.5 text-right font-bold text-slate-800 dark:text-slate-200 tabular-nums">
-                                                                {m.avg_wape !== null ? formatWape(m.avg_wape) : <span className="text-slate-400 font-normal">—</span>}
+                                                            <td className="px-4 py-3.5 text-right font-bold text-slate-800 tabular-nums dark:text-slate-200">
+                                                                {m.avg_wape !==
+                                                                null ? (
+                                                                    formatWape(
+                                                                        m.avg_wape,
+                                                                    )
+                                                                ) : (
+                                                                    <span className="font-normal text-slate-400">
+                                                                        —
+                                                                    </span>
+                                                                )}
                                                             </td>
-                                                            <td className="px-4 py-3.5 text-center text-slate-600 dark:text-slate-400 tabular-nums">
-                                                                {m.origins_count ?? 0} mốc
+                                                            <td className="px-4 py-3.5 text-center text-slate-600 tabular-nums dark:text-slate-400">
+                                                                {m.origins_count ??
+                                                                    0}{' '}
+                                                                mốc
                                                             </td>
                                                             <td className="px-4 py-3.5 text-center">
-                                                                {selectedCount > 0 ? (
+                                                                {selectedCount >
+                                                                0 ? (
                                                                     <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-semibold text-sky-700 dark:bg-sky-900/50 dark:text-sky-300">
                                                                         <CheckCircle2 className="h-3 w-3" />
-                                                                        <span>Được chọn cho {selectedCount} sản phẩm</span>
+                                                                        <span>
+                                                                            Được
+                                                                            chọn
+                                                                            cho{' '}
+                                                                            {
+                                                                                selectedCount
+                                                                            }{' '}
+                                                                            sản
+                                                                            phẩm
+                                                                        </span>
                                                                     </span>
                                                                 ) : (
                                                                     <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                                                                        Chưa được chọn
+                                                                        Chưa
+                                                                        được
+                                                                        chọn
                                                                     </span>
                                                                 )}
                                                             </td>
                                                             <td className="px-6 py-3.5 text-center">
                                                                 <button
                                                                     type="button"
-                                                                    disabled={!can_apply_model || isCurrentSelected}
-                                                                    onClick={() => handleOpenConfirm(m.model_key)}
+                                                                    disabled={
+                                                                        !can_apply_model ||
+                                                                        isCurrentSelected
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleOpenConfirm(
+                                                                            m.model_key,
+                                                                        )
+                                                                    }
                                                                     className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                                                                         isCurrentSelected
-                                                                            ? 'opacity-40 cursor-not-allowed text-slate-400'
+                                                                            ? 'cursor-not-allowed text-slate-400 opacity-40'
                                                                             : 'border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-300 dark:hover:bg-sky-900/60'
                                                                     }`}
                                                                     title={
                                                                         !can_apply_model
                                                                             ? 'Yêu cầu quyền planning.apply_model'
                                                                             : isCurrentSelected
-                                                                            ? `Được chọn cho ${selectedCount} sản phẩm`
-                                                                            : 'Áp dụng mô hình này'
+                                                                              ? `Được chọn cho ${selectedCount} sản phẩm`
+                                                                              : 'Áp dụng mô hình này'
                                                                     }
                                                                 >
-                                                                    <span>Áp dụng</span>
+                                                                    <span>
+                                                                        Áp dụng
+                                                                    </span>
                                                                 </button>
                                                             </td>
                                                         </tr>
@@ -549,36 +714,47 @@ export default function ModelEvaluation({
                                 className="space-y-6 focus-visible:outline-none"
                             >
                                 {/* Holdout Explanatory Banner */}
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-sky-200 bg-sky-50/60 p-4 dark:border-sky-900/60 dark:bg-sky-950/30">
+                                <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-sky-200 bg-sky-50/60 p-4 sm:flex-row sm:items-center dark:border-sky-900/60 dark:bg-sky-950/30">
                                     <div className="flex items-center gap-3">
                                         <div className="rounded-xl bg-sky-600/10 p-2.5 text-sky-600 dark:bg-sky-400/10 dark:text-sky-400">
                                             <ShieldCheck className="h-5 w-5" />
                                         </div>
                                         <div>
                                             <h3 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">
-                                                Tập kiểm tra cuối độc lập ({horizon} ngày)
+                                                Tập kiểm tra cuối độc lập (
+                                                {horizon} ngày)
                                             </h3>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                                Được giữ lại {horizon} ngày cuối của lịch sử dữ liệu. Mô hình sau khi lựa chọn trên tập lựa chọn được huấn luyện lại trên toàn bộ dữ liệu trước tập kiểm tra cuối để kiểm chứng độc lập. Tuyệt đối không dùng kết quả này để chọn lại mô hình.
+                                            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                                Được giữ lại {horizon} ngày cuối
+                                                của lịch sử dữ liệu. Mô hình sau
+                                                khi lựa chọn trên tập lựa chọn
+                                                được huấn luyện lại trên toàn bộ
+                                                dữ liệu trước tập kiểm tra cuối
+                                                để kiểm chứng độc lập. Tuyệt đối
+                                                không dùng kết quả này để chọn
+                                                lại mô hình.
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 shadow-2xs dark:border-sky-800 dark:bg-slate-900 dark:text-sky-300 shrink-0">
+                                    <div className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-sky-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 shadow-2xs dark:border-sky-800 dark:bg-slate-900 dark:text-sky-300">
                                         <Info className="h-3.5 w-3.5" />
                                         <span>Độc lập kiểm chứng</span>
                                     </div>
                                 </div>
 
                                 {/* Metric Selector & Chart Card for Holdout */}
-                                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+                                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                                         <div>
                                             <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
-                                                So sánh sai số trên tập kiểm tra cuối
+                                                So sánh sai số trên tập kiểm tra
+                                                cuối
                                             </h2>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                                Đo lường năng lực khái quát hóa trên chu kỳ {horizon} ngày độc lập cuối cùng.
+                                            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                                Đo lường năng lực khái quát hóa
+                                                trên chu kỳ {horizon} ngày độc
+                                                lập cuối cùng.
                                             </p>
                                         </div>
 
@@ -586,8 +762,12 @@ export default function ModelEvaluation({
                                         <div className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
                                             <button
                                                 type="button"
-                                                aria-pressed={selectedMetric === 'wape'}
-                                                onClick={() => setSelectedMetric('wape')}
+                                                aria-pressed={
+                                                    selectedMetric === 'wape'
+                                                }
+                                                onClick={() =>
+                                                    setSelectedMetric('wape')
+                                                }
                                                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                                                     selectedMetric === 'wape'
                                                         ? 'bg-white text-sky-700 shadow-2xs dark:bg-slate-700 dark:text-sky-300'
@@ -598,8 +778,12 @@ export default function ModelEvaluation({
                                             </button>
                                             <button
                                                 type="button"
-                                                aria-pressed={selectedMetric === 'mae'}
-                                                onClick={() => setSelectedMetric('mae')}
+                                                aria-pressed={
+                                                    selectedMetric === 'mae'
+                                                }
+                                                onClick={() =>
+                                                    setSelectedMetric('mae')
+                                                }
                                                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                                                     selectedMetric === 'mae'
                                                         ? 'bg-white text-sky-700 shadow-2xs dark:bg-slate-700 dark:text-sky-300'
@@ -610,8 +794,12 @@ export default function ModelEvaluation({
                                             </button>
                                             <button
                                                 type="button"
-                                                aria-pressed={selectedMetric === 'rmse'}
-                                                onClick={() => setSelectedMetric('rmse')}
+                                                aria-pressed={
+                                                    selectedMetric === 'rmse'
+                                                }
+                                                onClick={() =>
+                                                    setSelectedMetric('rmse')
+                                                }
                                                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                                                     selectedMetric === 'rmse'
                                                         ? 'bg-white text-sky-700 shadow-2xs dark:bg-slate-700 dark:text-sky-300'
@@ -634,14 +822,18 @@ export default function ModelEvaluation({
                                 </div>
 
                                 {/* Comparison Table containing candidate models on Holdout */}
-                                <div className="rounded-2xl border border-slate-200 bg-white shadow-2xs dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
-                                    <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between dark:border-slate-800">
-                                        <h3 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+                                    <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+                                        <h3 className="flex items-center gap-2 font-display text-sm font-semibold text-slate-900 dark:text-slate-100">
                                             <ShieldCheck className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-                                            <span>Bảng kết quả trên tập kiểm tra cuối</span>
+                                            <span>
+                                                Bảng kết quả trên tập kiểm tra
+                                                cuối
+                                            </span>
                                         </h3>
-                                        <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-                                            Tập kiểm tra cuối: {horizon} ngày độc lập
+                                        <span className="text-xs text-slate-500 tabular-nums dark:text-slate-400">
+                                            Tập kiểm tra cuối: {horizon} ngày
+                                            độc lập
                                         </span>
                                     </div>
 
@@ -654,53 +846,114 @@ export default function ModelEvaluation({
                                         <table className="w-full text-left text-xs">
                                             <thead className="border-b border-slate-200 bg-slate-50/75 text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
                                                 <tr>
-                                                    <th className="px-6 py-3 font-semibold">Mô hình dự báo</th>
-                                                    <th className="px-4 py-3 font-semibold">Tham số cấu hình</th>
-                                                    <th className="px-4 py-3 font-semibold text-right">MAE</th>
-                                                    <th className="px-4 py-3 font-semibold text-right">RMSE</th>
-                                                    <th className="px-4 py-3 font-semibold text-right">WAPE</th>
-                                                    <th className="px-4 py-3 font-semibold text-center">Phạm vi kiểm tra</th>
-                                                    <th className="px-6 py-3 font-semibold text-center">Phân loại</th>
+                                                    <th className="px-6 py-3 font-semibold">
+                                                        Mô hình dự báo
+                                                    </th>
+                                                    <th className="px-4 py-3 font-semibold">
+                                                        Tham số cấu hình
+                                                    </th>
+                                                    <th className="px-4 py-3 text-right font-semibold">
+                                                        MAE
+                                                    </th>
+                                                    <th className="px-4 py-3 text-right font-semibold">
+                                                        RMSE
+                                                    </th>
+                                                    <th className="px-4 py-3 text-right font-semibold">
+                                                        WAPE
+                                                    </th>
+                                                    <th className="px-4 py-3 text-center font-semibold">
+                                                        Phạm vi kiểm tra
+                                                    </th>
+                                                    <th className="px-6 py-3 text-center font-semibold">
+                                                        Phân loại
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                                                 {holdoutComparison.map((m) => (
                                                     <tr
                                                         key={m.model_key}
-                                                        className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
+                                                        className="transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40"
                                                     >
                                                         <td className="px-6 py-3.5">
                                                             <div className="font-semibold text-slate-900 dark:text-slate-100">
                                                                 {m.name}
                                                             </div>
-                                                            <div className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                                                            <div className="font-mono text-[11px] text-slate-400 dark:text-slate-500">
                                                                 {m.model_key}
                                                             </div>
                                                         </td>
-                                                        <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300 font-mono text-[11px]">
-                                                            {m.model_key === 'naive' && 'Điểm quan sát cuối'}
-                                                            {m.model_key === 'seasonal_naive_7' && 'period: 7'}
-                                                            {m.model_key === 'sma_7' && 'window: 7'}
-                                                            {m.model_key === 'sma_14' && 'window: 14'}
-                                                            {m.model_key === 'sma_28' && 'window: 28'}
-                                                            {m.model_key === 'holt_winters_additive' && 'season: 7, add'}
-                                                            {m.model_key === 'holt_winters_multiplicative' && 'season: 7, mul'}
+                                                        <td className="px-4 py-3.5 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+                                                            {m.model_key ===
+                                                                'naive' &&
+                                                                'Điểm quan sát cuối'}
+                                                            {m.model_key ===
+                                                                'seasonal_naive_7' &&
+                                                                'period: 7'}
+                                                            {m.model_key ===
+                                                                'sma_7' &&
+                                                                'window: 7'}
+                                                            {m.model_key ===
+                                                                'sma_14' &&
+                                                                'window: 14'}
+                                                            {m.model_key ===
+                                                                'sma_28' &&
+                                                                'window: 28'}
+                                                            {m.model_key ===
+                                                                'holt_winters_additive' &&
+                                                                'season: 7, add'}
+                                                            {m.model_key ===
+                                                                'holt_winters_multiplicative' &&
+                                                                'season: 7, mul'}
                                                         </td>
-                                                        <td className="px-4 py-3.5 text-right font-medium text-slate-800 dark:text-slate-200 tabular-nums">
-                                                            {m.avg_mae !== null ? formatQuantity(m.avg_mae, 3) : <span className="text-slate-400 font-normal">—</span>}
+                                                        <td className="px-4 py-3.5 text-right font-medium text-slate-800 tabular-nums dark:text-slate-200">
+                                                            {m.avg_mae !==
+                                                            null ? (
+                                                                formatQuantity(
+                                                                    m.avg_mae,
+                                                                    3,
+                                                                )
+                                                            ) : (
+                                                                <span className="font-normal text-slate-400">
+                                                                    —
+                                                                </span>
+                                                            )}
                                                         </td>
-                                                        <td className="px-4 py-3.5 text-right font-medium text-slate-800 dark:text-slate-200 tabular-nums">
-                                                            {m.avg_rmse !== null ? formatQuantity(m.avg_rmse, 3) : <span className="text-slate-400 font-normal">—</span>}
+                                                        <td className="px-4 py-3.5 text-right font-medium text-slate-800 tabular-nums dark:text-slate-200">
+                                                            {m.avg_rmse !==
+                                                            null ? (
+                                                                formatQuantity(
+                                                                    m.avg_rmse,
+                                                                    3,
+                                                                )
+                                                            ) : (
+                                                                <span className="font-normal text-slate-400">
+                                                                    —
+                                                                </span>
+                                                            )}
                                                         </td>
-                                                        <td className="px-4 py-3.5 text-right font-bold text-slate-800 dark:text-slate-200 tabular-nums">
-                                                            {m.avg_wape !== null ? formatWape(m.avg_wape) : <span className="text-slate-400 font-normal">—</span>}
+                                                        <td className="px-4 py-3.5 text-right font-bold text-slate-800 tabular-nums dark:text-slate-200">
+                                                            {m.avg_wape !==
+                                                            null ? (
+                                                                formatWape(
+                                                                    m.avg_wape,
+                                                                )
+                                                            ) : (
+                                                                <span className="font-normal text-slate-400">
+                                                                    —
+                                                                </span>
+                                                            )}
                                                         </td>
-                                                        <td className="px-4 py-3.5 text-center text-slate-600 dark:text-slate-400 tabular-nums">
-                                                            {(m.origins_count ?? 0) > 0 ? `1 mốc (${horizon} ngày)` : '0 mốc'}
+                                                        <td className="px-4 py-3.5 text-center text-slate-600 tabular-nums dark:text-slate-400">
+                                                            {(m.origins_count ??
+                                                                0) > 0
+                                                                ? `1 mốc (${horizon} ngày)`
+                                                                : '0 mốc'}
                                                         </td>
                                                         <td className="px-6 py-3.5 text-center">
                                                             <span className="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">
-                                                                Độc lập — Không chọn lại
+                                                                Độc lập — Không
+                                                                chọn lại
                                                             </span>
                                                         </td>
                                                     </tr>
@@ -723,13 +976,13 @@ export default function ModelEvaluation({
                         tabIndex={0}
                         className="space-y-6 focus-visible:outline-none"
                     >
-                        <div className="rounded-2xl border border-slate-200 bg-white shadow-2xs dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
-                            <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between dark:border-slate-800">
-                                <h3 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+                            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+                                <h3 className="flex items-center gap-2 font-display text-sm font-semibold text-slate-900 dark:text-slate-100">
                                     <History className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                                     Lịch sử các đợt đánh giá mô hình
                                 </h3>
-                                <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                                <span className="text-xs text-slate-500 tabular-nums dark:text-slate-400">
                                     {recentRuns.length} lượt gần nhất
                                 </span>
                             </div>
@@ -748,42 +1001,66 @@ export default function ModelEvaluation({
                                     <table className="w-full text-left text-xs">
                                         <thead className="border-b border-slate-200 bg-slate-50/75 text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
                                             <tr>
-                                                <th className="px-6 py-3 font-semibold">Mã lượt</th>
-                                                <th className="px-4 py-3 font-semibold">Trạng thái</th>
-                                                <th className="px-4 py-3 font-semibold">Kỳ dự báo</th>
-                                                <th className="px-4 py-3 font-semibold">Ngày chốt dữ liệu</th>
-                                                <th className="px-4 py-3 font-semibold">Thời gian tạo</th>
+                                                <th className="px-6 py-3 font-semibold">
+                                                    Mã lượt
+                                                </th>
+                                                <th className="px-4 py-3 font-semibold">
+                                                    Trạng thái
+                                                </th>
+                                                <th className="px-4 py-3 font-semibold">
+                                                    Kỳ dự báo
+                                                </th>
+                                                <th className="px-4 py-3 font-semibold">
+                                                    Ngày chốt dữ liệu
+                                                </th>
+                                                <th className="px-4 py-3 font-semibold">
+                                                    Thời gian tạo
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                                             {recentRuns.map((r) => (
-                                                <tr key={r.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                                                    <td className="px-6 py-3 font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+                                                <tr
+                                                    key={r.id}
+                                                    className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40"
+                                                >
+                                                    <td className="px-6 py-3 font-semibold text-slate-900 tabular-nums dark:text-slate-100">
                                                         #{r.id}
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <span
                                                             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                                                r.status === 'completed'
+                                                                r.status ===
+                                                                'completed'
                                                                     ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
-                                                                    : r.status === 'running'
-                                                                    ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
-                                                                    : r.status === 'failed'
-                                                                    ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300'
-                                                                    : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                                                                    : r.status ===
+                                                                        'running'
+                                                                      ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
+                                                                      : r.status ===
+                                                                          'failed'
+                                                                        ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300'
+                                                                        : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
                                                             }`}
                                                         >
-                                                            <span>{formatRunStatusLabel(r.status)}</span>
+                                                            <span>
+                                                                {formatRunStatusLabel(
+                                                                    r.status,
+                                                                )}
+                                                            </span>
                                                         </span>
                                                     </td>
-                                                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300 tabular-nums">
+                                                    <td className="px-4 py-3 text-slate-700 tabular-nums dark:text-slate-300">
                                                         {r.horizon_days} ngày
                                                     </td>
-                                                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300 tabular-nums">
-                                                        {formatDate(r.data_cutoff)}
+                                                    <td className="px-4 py-3 text-slate-700 tabular-nums dark:text-slate-300">
+                                                        {formatDate(
+                                                            r.data_cutoff,
+                                                        )}
                                                     </td>
-                                                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400 tabular-nums">
-                                                        {formatDateTime(r.created_at)}
+                                                    <td className="px-4 py-3 text-slate-500 tabular-nums dark:text-slate-400">
+                                                        {formatDateTime(
+                                                            r.created_at,
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -805,122 +1082,156 @@ export default function ModelEvaluation({
                         className="space-y-6 focus-visible:outline-none"
                     >
                         {/* Rolling Origin CV Configuration */}
-                        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
-                            <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+                            <h3 className="flex items-center gap-2 font-display text-base font-bold text-slate-900 dark:text-slate-100">
                                 <Activity className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                                 Tham số kiểm thử Rolling Origin Cross-Validation
                             </h3>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+                            <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2 lg:grid-cols-4">
                                 <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/50">
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">Cửa sổ huấn luyện ban đầu:</span>
-                                    <div className="mt-1 font-display text-lg font-bold text-slate-900 dark:text-slate-100 tabular-nums">
-                                        {methodology.initial_training_window} ngày
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                                        Cửa sổ huấn luyện ban đầu:
+                                    </span>
+                                    <div className="mt-1 font-display text-lg font-bold text-slate-900 tabular-nums dark:text-slate-100">
+                                        {methodology.initial_training_window}{' '}
+                                        ngày
                                     </div>
-                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">Initial training window</span>
+                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                                        Initial training window
+                                    </span>
                                 </div>
 
                                 <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/50">
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">Kỳ dự báo kiểm thử:</span>
-                                    <div className="mt-1 font-display text-lg font-bold text-slate-900 dark:text-slate-100 tabular-nums">
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                                        Kỳ dự báo kiểm thử:
+                                    </span>
+                                    <div className="mt-1 font-display text-lg font-bold text-slate-900 tabular-nums dark:text-slate-100">
                                         {methodology.horizon} ngày
                                     </div>
-                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">Kỳ dự báo dùng để đánh giá</span>
+                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                                        Kỳ dự báo dùng để đánh giá
+                                    </span>
                                 </div>
 
                                 <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/50">
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">Bước trượt mốc đánh giá:</span>
-                                    <div className="mt-1 font-display text-lg font-bold text-slate-900 dark:text-slate-100 tabular-nums">
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                                        Bước trượt mốc đánh giá:
+                                    </span>
+                                    <div className="mt-1 font-display text-lg font-bold text-slate-900 tabular-nums dark:text-slate-100">
                                         {methodology.origin_step} ngày
                                     </div>
-                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">Origin rolling step</span>
+                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                                        Origin rolling step
+                                    </span>
                                 </div>
 
                                 <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/50">
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">Số mốc đánh giá chuẩn:</span>
-                                    <div className="mt-1 font-display text-lg font-bold text-slate-900 dark:text-slate-100 tabular-nums">
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                                        Số mốc đánh giá chuẩn:
+                                    </span>
+                                    <div className="mt-1 font-display text-lg font-bold text-slate-900 tabular-nums dark:text-slate-100">
                                         {methodology.origins_count} mốc
                                     </div>
-                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">Tối thiểu {methodology.origins_min} mốc</span>
+                                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                                        Tối thiểu {methodology.origins_min} mốc
+                                    </span>
                                 </div>
                             </div>
 
                             {/* Identifiers */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs border-t border-slate-100 dark:border-slate-800">
+                            <div className="grid grid-cols-1 gap-3 border-t border-slate-100 pt-2 text-xs sm:grid-cols-3 dark:border-slate-800">
                                 <div>
-                                    <span className="text-slate-500 dark:text-slate-400">Snapshot ID:</span>
-                                    <div className="font-mono font-medium text-slate-800 dark:text-slate-200 mt-0.5">
+                                    <span className="text-slate-500 dark:text-slate-400">
+                                        Snapshot ID:
+                                    </span>
+                                    <div className="mt-0.5 font-mono font-medium text-slate-800 dark:text-slate-200">
                                         {methodology.snapshot_id}
                                     </div>
                                 </div>
                                 <div>
-                                    <span className="text-slate-500 dark:text-slate-400">Config ID:</span>
-                                    <div className="font-mono font-medium text-slate-800 dark:text-slate-200 mt-0.5">
+                                    <span className="text-slate-500 dark:text-slate-400">
+                                        Config ID:
+                                    </span>
+                                    <div className="mt-0.5 font-mono font-medium text-slate-800 dark:text-slate-200">
                                         {methodology.config_id}
                                     </div>
                                 </div>
                                 <div>
-                                    <span className="text-slate-500 dark:text-slate-400">Cutoff Timestamp:</span>
-                                    <div className="font-medium text-slate-800 dark:text-slate-200 mt-0.5 tabular-nums">
-                                        {methodology.data_cutoff ? formatDateTime(methodology.data_cutoff) : 'Theo lượt hiện hành'}
+                                    <span className="text-slate-500 dark:text-slate-400">
+                                        Cutoff Timestamp:
+                                    </span>
+                                    <div className="mt-0.5 font-medium text-slate-800 tabular-nums dark:text-slate-200">
+                                        {methodology.data_cutoff
+                                            ? formatDateTime(
+                                                  methodology.data_cutoff,
+                                              )
+                                            : 'Theo lượt hiện hành'}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Mathematical Formulas */}
-                        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
-                            <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+                            <h3 className="flex items-center gap-2 font-display text-base font-bold text-slate-900 dark:text-slate-100">
                                 <Info className="h-5 w-5 text-sky-600 dark:text-sky-400" />
                                 Công thức tính các chỉ số đo lường sai số
                             </h3>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                            <div className="grid grid-cols-1 gap-4 pt-1 md:grid-cols-3">
                                 <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-                                    <h4 className="font-display font-bold text-sm text-slate-900 dark:text-slate-100">
+                                    <h4 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">
                                         WAPE (Độ lệch trọng số) - Chuẩn lựa chọn
                                     </h4>
-                                    <div className="mt-2 rounded-lg bg-white p-3 font-mono text-[11px] text-slate-800 dark:bg-slate-900 dark:text-slate-200 border border-slate-200 dark:border-slate-800">
+                                    <div className="mt-2 rounded-lg border border-slate-200 bg-white p-3 font-mono text-[11px] text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
                                         {methodology.formulas.wape}
                                     </div>
-                                    <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                                        Tránh lỗi chia cho 0 khi ngày bán bằng 0, phản ánh chính xác quy mô sai lệch so với tổng nhu cầu thực tế.
+                                    <p className="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                                        Tránh lỗi chia cho 0 khi ngày bán bằng
+                                        0, phản ánh chính xác quy mô sai lệch so
+                                        với tổng nhu cầu thực tế.
                                     </p>
                                 </div>
 
                                 <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-                                    <h4 className="font-display font-bold text-sm text-slate-900 dark:text-slate-100">
+                                    <h4 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">
                                         MAE (Sai số tuyệt đối trung bình)
                                     </h4>
-                                    <div className="mt-2 rounded-lg bg-white p-3 font-mono text-[11px] text-slate-800 dark:bg-slate-900 dark:text-slate-200 border border-slate-200 dark:border-slate-800">
+                                    <div className="mt-2 rounded-lg border border-slate-200 bg-white p-3 font-mono text-[11px] text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
                                         {methodology.formulas.mae}
                                     </div>
-                                    <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                                        Đo độ lệch tuyệt đối bình quân mỗi ngày, dùng làm tiêu chí phụ phân xử hòa (tie-breaker) khi chênh lệch WAPE &lt; 0.5%.
+                                    <p className="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                                        Đo độ lệch tuyệt đối bình quân mỗi ngày,
+                                        dùng làm tiêu chí phụ phân xử hòa
+                                        (tie-breaker) khi chênh lệch WAPE &lt;
+                                        0.5%.
                                     </p>
                                 </div>
 
                                 <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-                                    <h4 className="font-display font-bold text-sm text-slate-900 dark:text-slate-100">
+                                    <h4 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">
                                         RMSE (Căn bậc hai sai số bình phương)
                                     </h4>
-                                    <div className="mt-2 rounded-lg bg-white p-3 font-mono text-[11px] text-slate-800 dark:bg-slate-900 dark:text-slate-200 border border-slate-200 dark:border-slate-800">
+                                    <div className="mt-2 rounded-lg border border-slate-200 bg-white p-3 font-mono text-[11px] text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
                                         {methodology.formulas.rmse}
                                     </div>
-                                    <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                                        Phạt nặng các sai số đột biến lớn so với các sai số nhỏ, giúp phát hiện mô hình bất ổn định.
+                                    <p className="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                                        Phạt nặng các sai số đột biến lớn so với
+                                        các sai số nhỏ, giúp phát hiện mô hình
+                                        bất ổn định.
                                     </p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Limitations Disclosure */}
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-6 dark:border-amber-900/60 dark:bg-amber-950/20 space-y-3">
-                            <h3 className="font-display text-sm font-bold text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                        <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/50 p-6 dark:border-amber-900/60 dark:bg-amber-950/20">
+                            <h3 className="flex items-center gap-2 font-display text-sm font-bold text-amber-900 dark:text-amber-200">
                                 <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                                 Giới hạn của phương pháp & Mô hình
                             </h3>
-                            <ul className="list-disc list-inside space-y-1.5 text-xs text-amber-900/80 dark:text-amber-300/80">
+                            <ul className="list-inside list-disc space-y-1.5 text-xs text-amber-900/80 dark:text-amber-300/80">
                                 {methodology.limitations.map((lim, idx) => (
                                     <li key={idx} className="leading-relaxed">
                                         {lim}
@@ -940,7 +1251,7 @@ export default function ModelEvaluation({
                     busy={isSubmittingApply}
                     labelledBy="confirm-modal-title"
                 >
-                    <div className="max-h-full w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 space-y-4">
+                    <div className="max-h-full w-full max-w-md space-y-4 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
                         <div className="flex items-center gap-3">
                             <div className="rounded-xl bg-sky-100 p-2.5 text-sky-700 dark:bg-sky-950 dark:text-sky-300">
                                 <ShieldCheck className="h-6 w-6" />
@@ -955,21 +1266,25 @@ export default function ModelEvaluation({
                                     Xác nhận áp dụng mô hình
                                 </h3>
                                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    Thao tác này yêu cầu quyền quản trị quy trình dự báo.
+                                    Thao tác này yêu cầu quyền quản trị quy
+                                    trình dự báo.
                                 </p>
                             </div>
                         </div>
 
-                        <div className="rounded-xl bg-slate-50 p-3.5 text-xs text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 space-y-1">
+                        <div className="space-y-1 rounded-xl bg-slate-50 p-3.5 text-xs text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
                             <p>
                                 Bạn có chắc chắn muốn áp dụng mô hình{' '}
                                 <strong className="font-semibold text-sky-700 dark:text-sky-300">
-                                    {MODEL_NAMES[targetModelKey] || targetModelKey}
+                                    {MODEL_NAMES[targetModelKey] ||
+                                        targetModelKey}
                                 </strong>{' '}
                                 cho toàn cửa hàng không?
                             </p>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200 dark:border-slate-700">
-                                Áp dụng cho các mặt hàng đủ điều kiện trong lượt dự báo tiếp theo; không sửa kết quả dự báo lịch sử.
+                            <p className="border-t border-slate-200 pt-1 text-[11px] text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                                Áp dụng cho các mặt hàng đủ điều kiện trong lượt
+                                dự báo tiếp theo; không sửa kết quả dự báo lịch
+                                sử.
                             </p>
                         </div>
 
@@ -980,7 +1295,7 @@ export default function ModelEvaluation({
                                 data-dialog-close
                                 aria-label="Hủy áp dụng mô hình"
                                 disabled={isSubmittingApply}
-                                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition"
+                                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                             >
                                 Hủy bỏ
                             </button>
@@ -988,9 +1303,11 @@ export default function ModelEvaluation({
                                 type="button"
                                 onClick={handleConfirmApply}
                                 disabled={isSubmittingApply}
-                                className="rounded-xl bg-sky-700 px-4 py-2 text-sm font-bold text-white shadow-md hover:bg-sky-800 transition-colors disabled:opacity-50"
+                                className="rounded-xl bg-sky-700 px-4 py-2 text-sm font-bold text-white shadow-md transition-colors hover:bg-sky-800 disabled:opacity-50"
                             >
-                                {isSubmittingApply ? 'Đang lưu...' : 'Xác nhận áp dụng'}
+                                {isSubmittingApply
+                                    ? 'Đang lưu...'
+                                    : 'Xác nhận áp dụng'}
                             </button>
                         </div>
                     </div>

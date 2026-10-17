@@ -24,13 +24,17 @@ export default function AvatarDropdown({ user }: AvatarDropdownProps) {
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+            if (
+                containerRef.current &&
+                !containerRef.current.contains(event.target as Node)
+            ) {
                 setIsOpen(false);
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
 
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        return () =>
+            document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const handleLogout = (e: React.MouseEvent) => {
@@ -62,13 +66,13 @@ export default function AvatarDropdown({ user }: AvatarDropdownProps) {
                         {user.name.charAt(0).toUpperCase()}
                     </div>
                 )}
-                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 max-w-[80px] truncate hidden sm:inline">
+                <span className="hidden max-w-[80px] truncate text-xs font-semibold text-zinc-700 sm:inline dark:text-zinc-300">
                     {user.name}
                 </span>
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-60 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-zinc-700 dark:bg-zinc-800 z-50 animate-fade-in">
+                <div className="animate-fade-in absolute right-0 z-50 mt-2 w-60 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-zinc-700 dark:bg-zinc-800">
                     <div className="px-3 py-2">
                         <p className="truncate text-sm font-bold text-zinc-800 dark:text-zinc-100">
                             {user.name}
@@ -80,16 +84,18 @@ export default function AvatarDropdown({ user }: AvatarDropdownProps) {
 
                     <div className="my-2 h-px bg-zinc-100 dark:bg-zinc-700" />
 
-                    <div className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-200 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-700/50">
+                    <div className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-700/50">
                         <span className="flex items-center gap-2">
                             {isDarkTheme ? (
-                                <Moon className="w-4 h-4 text-sky-400 stroke-[1.5]" />
+                                <Moon className="h-4 w-4 stroke-[1.5] text-sky-400" />
                             ) : (
-                                <Sun className="w-4 h-4 text-amber-500 stroke-[1.5]" />
+                                <Sun className="h-4 w-4 stroke-[1.5] text-amber-500" />
                             )}
                             Giao diện
                         </span>
-                        <ThemeToggle onThemeChange={(isDark) => setIsDarkTheme(isDark)} />
+                        <ThemeToggle
+                            onThemeChange={(isDark) => setIsDarkTheme(isDark)}
+                        />
                     </div>
 
                     <div className="my-2 h-px bg-zinc-100 dark:bg-zinc-700" />
@@ -100,7 +106,7 @@ export default function AvatarDropdown({ user }: AvatarDropdownProps) {
                             onClick={() => setIsOpen(false)}
                             className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-sky-50 hover:text-sky-600 dark:text-zinc-200 dark:hover:bg-zinc-700/60 dark:hover:text-sky-300"
                         >
-                            <Settings className="w-4 h-4 text-zinc-500 dark:text-zinc-400 stroke-[1.5]" />
+                            <Settings className="h-4 w-4 stroke-[1.5] text-zinc-500 dark:text-zinc-400" />
                             Cài đặt
                         </Link>
 
@@ -108,7 +114,7 @@ export default function AvatarDropdown({ user }: AvatarDropdownProps) {
                             onClick={handleLogout}
                             className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
                         >
-                            <LogOut className="w-4 h-4 text-rose-500 dark:text-rose-400 stroke-[1.5]" />
+                            <LogOut className="h-4 w-4 stroke-[1.5] text-rose-500 dark:text-rose-400" />
                             Đăng xuất
                         </button>
                     </div>

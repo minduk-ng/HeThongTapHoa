@@ -1,13 +1,19 @@
 import { router, usePage } from '@inertiajs/react';
 import { useState, useRef, useEffect } from 'react';
-import type { POSTableData, CartItem, PosCustomer, ReceiptModalState, PromotionCandidate } from '../types/pos.types';
+import type {
+    POSTableData,
+    CartItem,
+    PosCustomer,
+    ReceiptModalState,
+    PromotionCandidate,
+} from '../types/pos.types';
 import type { usePOSCart } from './usePOSCart';
 import { usePOSCheckoutLock } from './usePOSCheckoutLock';
 
 function getCsrfTokenFromCookie(): string {
     if (typeof document === 'undefined') {
-return '';
-}
+        return '';
+    }
 
     const name = 'XSRF-TOKEN=';
     const decodedCookie = decodeURIComponent(document.cookie);
@@ -32,29 +38,54 @@ export function usePOSCheckout(
     selectedTable: POSTableData | null = null,
     tables: POSTableData[] = [],
     promotions: PromotionCandidate[] = [],
-    cartLifecycle?: Pick<ReturnType<typeof usePOSCart>, 'onSendBegin' | 'onSendSuccess' | 'onSendFailure' | 'onSendAmbiguous'>,
+    cartLifecycle?: Pick<
+        ReturnType<typeof usePOSCart>,
+        'onSendBegin' | 'onSendSuccess' | 'onSendFailure' | 'onSendAmbiguous'
+    >,
 ) {
     const { auth } = usePage<any>().props;
-    const [processingOrders, setProcessingOrders] = useState<Record<number, boolean>>({});
+    const [processingOrders, setProcessingOrders] = useState<
+        Record<number, boolean>
+    >({});
     const [kitchenSubmitting, setKitchenSubmitting] = useState(false);
     const [isPaymentDrawerOpen, setIsPaymentDrawerOpen] = useState(false);
-    const [availablePromotions, setAvailablePromotions] = useState<PromotionCandidate[]>(promotions);
+    const [availablePromotions, setAvailablePromotions] =
+        useState<PromotionCandidate[]>(promotions);
     const [selectedAutoId, setSelectedAutoId] = useState<number | null>(null);
-    const [appliedPromotions, setAppliedPromotions] = useState<{ id: number; name: string; code: string | null; discount_amount: number }[]>([]);
+    const [appliedPromotions, setAppliedPromotions] = useState<
+        {
+            id: number;
+            name: string;
+            code: string | null;
+            discount_amount: number;
+        }[]
+    >([]);
     const [totalDiscount, setTotalDiscount] = useState(0);
     const [promotionCode, setPromotionCode] = useState<string | null>(null);
     const [promotionDiscount, setPromotionDiscount] = useState(0);
     const [promotionName, setPromotionName] = useState<string | null>(null);
     const [customer, setCustomer] = useState<PosCustomer | null>(null);
 
-    const submitting = kitchenSubmitting || (selectedTable
-        ? (() => {
-              const orders = selectedTable.active_orders || (selectedTable.active_order ? [selectedTable.active_order] : []);
+    const submitting =
+        kitchenSubmitting ||
+        (selectedTable
+            ? (() => {
+                  const orders =
+                      selectedTable.active_orders ||
+                      (selectedTable.active_order
+                          ? [selectedTable.active_order]
+                          : []);
 
-              return orders.some((o) => !!processingOrders[o.id]);
-          })()
-        : false);
-    const { lockedCheckoutTables, lockTableCheckout, unlockTableCheckout, fetchStatus, handleLockBroadcast } = usePOSCheckoutLock();
+                  return orders.some((o) => !!processingOrders[o.id]);
+              })()
+            : false);
+    const {
+        lockedCheckoutTables,
+        lockTableCheckout,
+        unlockTableCheckout,
+        fetchStatus,
+        handleLockBroadcast,
+    } = usePOSCheckoutLock();
     const [receiptModal, setReceiptModal] = useState<ReceiptModalState>({
         isOpen: false,
         paymentMethod: 'cash',
@@ -71,7 +102,10 @@ export function usePOSCheckout(
     const clearPromotion = () => {
         setPromotionCode(null);
         const autoOnly = appliedPromotions.filter((ap) => ap.code === null);
-        const autoDiscount = autoOnly.reduce((sum, ap) => sum + ap.discount_amount, 0);
+        const autoDiscount = autoOnly.reduce(
+            (sum, ap) => sum + ap.discount_amount,
+            0,
+        );
         setAppliedPromotions(autoOnly);
         setTotalDiscount(autoDiscount);
         setPromotionDiscount(autoDiscount);
@@ -93,12 +127,12 @@ export function usePOSCheckout(
         }
 
         if (selectedTable) {
-            const groupId = selectedTable.merged_into_table_id || selectedTable.id;
+            const groupId =
+                selectedTable.merged_into_table_id || selectedTable.id;
             const linkedTableIds = tables
                 .filter(
                     (t) =>
-                        t.id === groupId ||
-                        t.merged_into_table_id === groupId
+                        t.id === groupId || t.merged_into_table_id === groupId,
                 )
                 .map((t) => t.id);
 
@@ -121,7 +155,8 @@ export function usePOSCheckout(
     // Sync server lock state for the selected merged group (locks live server-side;
     // broadcasts cover acquire/release, the poll below catches TTL expiry).
     const selectedTableId = selectedTable?.id;
-    const selectedGroupId = selectedTable?.merged_into_table_id || selectedTable?.id;
+    const selectedGroupId =
+        selectedTable?.merged_into_table_id || selectedTable?.id;
 
     useEffect(() => {
         if (selectedTableId === undefined || selectedTableId === null) {
@@ -129,7 +164,11 @@ export function usePOSCheckout(
         }
 
         const ids = tables
-            .filter((t) => t.id === selectedGroupId || t.merged_into_table_id === selectedGroupId)
+            .filter(
+                (t) =>
+                    t.id === selectedGroupId ||
+                    t.merged_into_table_id === selectedGroupId,
+            )
             .map((t) => t.id);
 
         void fetchStatus(ids.length > 0 ? ids : [selectedTableId]);
@@ -148,7 +187,16 @@ export function usePOSCheckout(
 
             if (promotions.length > 0 && selectedAutoId === null) {
                 // mặc định chọn promotion ước tính cao nhất (payload cache không có estimated_discount → giữ đầu list)
-                setSelectedAutoId(promotions.reduce((best, p) => (p.estimated_discount > (best?.estimated_discount ?? -1) ? p : best), promotions[0])?.id ?? null);
+                setSelectedAutoId(
+                    promotions.reduce(
+                        (best, p) =>
+                            p.estimated_discount >
+                            (best?.estimated_discount ?? -1)
+                                ? p
+                                : best,
+                        promotions[0],
+                    )?.id ?? null,
+                );
             }
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,18 +212,21 @@ export function usePOSCheckout(
         selectedTable: POSTableData | null,
         currentCart: CartItem[],
         activeInvoiceId?: string | null,
-        onSuccessCallback?: () => void
+        onSuccessCallback?: () => void,
     ) => {
         if (!selectedTable || currentCart.length === 0 || submitting) {
-return;
-}
+            return;
+        }
 
         let orderId: number | null = null;
 
         if (activeInvoiceId && !activeInvoiceId.startsWith('draft_')) {
-            const matchedOrder = selectedTable.active_orders?.find(
-                (o) => o.order_code === activeInvoiceId || `order_${o.id}` === activeInvoiceId
-            ) || selectedTable.active_order;
+            const matchedOrder =
+                selectedTable.active_orders?.find(
+                    (o) =>
+                        o.order_code === activeInvoiceId ||
+                        `order_${o.id}` === activeInvoiceId,
+                ) || selectedTable.active_order;
 
             if (matchedOrder) {
                 orderId = matchedOrder.id;
@@ -193,19 +244,28 @@ return;
             }));
 
         const reducedItems = currentCart
-            .filter((item) => item.isConfirmed && (item.stagedReduceQty || 0) > 0 && item.orderItemId)
+            .filter(
+                (item) =>
+                    item.isConfirmed &&
+                    (item.stagedReduceQty || 0) > 0 &&
+                    item.orderItemId,
+            )
             .map((item) => ({
                 order_item_id: item.orderItemId!,
                 reduce_quantity: item.stagedReduceQty!,
-                cancellation_reason: item.stagedReason || 'Khách đổi ý / Khách giảm số lượng',
+                cancellation_reason:
+                    item.stagedReason || 'Khách đổi ý / Khách giảm số lượng',
                 note: item.stagedNote || '',
             }));
 
         if (newDeltaItems.length === 0 && reducedItems.length === 0) {
-return;
-}
+            return;
+        }
 
-        const captured = cartLifecycle?.onSendBegin(selectedTable.id, activeInvoiceId || 'draft_default');
+        const captured = cartLifecycle?.onSendBegin(
+            selectedTable.id,
+            activeInvoiceId || 'draft_default',
+        );
 
         if (cartLifecycle && !captured) {
             return;
@@ -225,14 +285,17 @@ return;
 
         // Safety timeout (8s) if DB/Server hangs indefinitely
         if (timeoutRef.current) {
-clearTimeout(timeoutRef.current);
-}
+            clearTimeout(timeoutRef.current);
+        }
 
         timeoutRef.current = setTimeout(() => {
             ambiguous();
         }, 8000);
 
-        const subtotal = newDeltaItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+        const subtotal = newDeltaItems.reduce(
+            (sum, item) => sum + item.quantity * item.unit_price,
+            0,
+        );
         const vatTotal = newDeltaItems.reduce((sum, item) => {
             const itemSubtotal = item.quantity * item.unit_price;
 
@@ -269,8 +332,8 @@ clearTimeout(timeoutRef.current);
                 ambiguous();
 
                 if (timeoutRef.current) {
-clearTimeout(timeoutRef.current);
-}
+                    clearTimeout(timeoutRef.current);
+                }
 
                 setKitchenSubmitting(false);
             },
@@ -282,8 +345,8 @@ clearTimeout(timeoutRef.current);
                 }
 
                 if (timeoutRef.current) {
-clearTimeout(timeoutRef.current);
-}
+                    clearTimeout(timeoutRef.current);
+                }
 
                 setKitchenSubmitting(false);
                 const firstError = errors && Object.values(errors)[0];
@@ -300,9 +363,15 @@ clearTimeout(timeoutRef.current);
     const syncApplied = (data: any) => {
         setTotalDiscount(Number(data.discount_amount) || 0);
         setPromotionDiscount(Number(data.discount_amount) || 0); // giữ cho ReceiptPrintModal
-        const list = Array.isArray(data.promotions) && data.promotions.length
-            ? data.promotions.map((x: any) => ({ id: x.id, name: x.name, code: x.code ?? null, discount_amount: Number(x.discount_amount) || 0 }))
-            : [];
+        const list =
+            Array.isArray(data.promotions) && data.promotions.length
+                ? data.promotions.map((x: any) => ({
+                      id: x.id,
+                      name: x.name,
+                      code: x.code ?? null,
+                      discount_amount: Number(x.discount_amount) || 0,
+                  }))
+                : [];
         setAppliedPromotions(list);
         setPromotionName(data.promotion?.name ?? null); // giữ cho ReceiptPrintModal
 
@@ -315,8 +384,17 @@ clearTimeout(timeoutRef.current);
     const applyPromotion = async (
         code: string,
         subtotal: number,
-        items: { menu_item_id: number; quantity: number; unit_price: number }[] = []
-    ): Promise<{ ok: boolean; discount_amount?: number; total?: number; error?: string }> => {
+        items: {
+            menu_item_id: number;
+            quantity: number;
+            unit_price: number;
+        }[] = [],
+    ): Promise<{
+        ok: boolean;
+        discount_amount?: number;
+        total?: number;
+        error?: string;
+    }> => {
         const csrfToken = getCsrfTokenFromCookie();
 
         try {
@@ -328,7 +406,12 @@ clearTimeout(timeoutRef.current);
                     'X-XSRF-TOKEN': csrfToken,
                     'X-Requested-With': 'XMLHttpRequest',
                 },
-                body: JSON.stringify({ code, subtotal, items, selected_promotion_id: selectedAutoId }),
+                body: JSON.stringify({
+                    code,
+                    subtotal,
+                    items,
+                    selected_promotion_id: selectedAutoId,
+                }),
             });
             const data = await response.json().catch(() => ({}));
 
@@ -354,14 +437,23 @@ clearTimeout(timeoutRef.current);
 
     const applyAutoPromotions = async (
         subtotal: number,
-        items: { menu_item_id: number; quantity: number; unit_price: number }[] = []
+        items: {
+            menu_item_id: number;
+            quantity: number;
+            unit_price: number;
+        }[] = [],
     ) => {
         const csrfToken = getCsrfTokenFromCookie();
 
         try {
             const response = await fetch('/staff/pos/validate-promotion', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-XSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
                 body: JSON.stringify({
                     subtotal,
                     items,
@@ -372,23 +464,34 @@ clearTimeout(timeoutRef.current);
             const data = await response.json().catch(() => ({}));
 
             if (response.ok && data.ok) {
-syncApplied(data);
-}
-        } catch { /* bỏ qua */ }
+                syncApplied(data);
+            }
+        } catch {
+            /* bỏ qua */
+        }
     };
 
     // Lấy danh sách auto promotion khớp giỏ hàng kèm estimated_discount (từ available-promotions),
     // cập nhật dropdown; nếu chưa chọn → tự chọn promotion ước tính cao nhất.
     const loadAvailablePromotions = async (
         subtotal: number,
-        items: { menu_item_id: number; quantity: number; unit_price: number }[] = []
+        items: {
+            menu_item_id: number;
+            quantity: number;
+            unit_price: number;
+        }[] = [],
     ) => {
         const csrfToken = getCsrfTokenFromCookie();
 
         try {
             const response = await fetch('/staff/pos/available-promotions', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-XSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
                 body: JSON.stringify({ subtotal, items }),
             });
             const data = await response.json().catch(() => ({}));
@@ -396,17 +499,24 @@ syncApplied(data);
             if (response.ok && data.ok && Array.isArray(data.promotions)) {
                 const list = data.promotions as PromotionCandidate[];
                 setAvailablePromotions(list);
-                const currentlyUnset = selectedAutoId === null || selectedAutoId === 0;
+                const currentlyUnset =
+                    selectedAutoId === null || selectedAutoId === 0;
 
                 if (currentlyUnset && list.length > 0) {
                     const best = list.reduce<PromotionCandidate | undefined>(
-                        (acc, p) => (p.estimated_discount > (acc?.estimated_discount ?? -1) ? p : acc),
-                        list[0]
+                        (acc, p) =>
+                            p.estimated_discount >
+                            (acc?.estimated_discount ?? -1)
+                                ? p
+                                : acc,
+                        list[0],
                     );
                     setSelectedAutoId(best?.id ?? null);
                 }
             }
-        } catch { /* bỏ qua */ }
+        } catch {
+            /* bỏ qua */
+        }
     };
 
     const searchCustomers = async (q: string): Promise<PosCustomer[]> => {
@@ -415,7 +525,12 @@ syncApplied(data);
         try {
             const response = await fetch('/staff/pos/customers/search', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-XSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
                 body: JSON.stringify({ q }),
             });
             const data = await response.json().catch(() => ({}));
@@ -423,18 +538,28 @@ syncApplied(data);
             if (response.ok && data.ok && Array.isArray(data.customers)) {
                 return data.customers;
             }
-        } catch { /* bỏ qua */ }
+        } catch {
+            /* bỏ qua */
+        }
 
         return [];
     };
 
-    const createCustomer = async (full_name: string, phone: string): Promise<{ ok: boolean; customer?: PosCustomer; error?: string }> => {
+    const createCustomer = async (
+        full_name: string,
+        phone: string,
+    ): Promise<{ ok: boolean; customer?: PosCustomer; error?: string }> => {
         const csrfToken = getCsrfTokenFromCookie();
 
         try {
             const response = await fetch('/staff/pos/customers', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-XSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
                 body: JSON.stringify({ full_name, phone }),
             });
             const data = await response.json().catch(() => ({}));
@@ -443,7 +568,10 @@ syncApplied(data);
                 return { ok: true, customer: data.customer };
             }
 
-            return { ok: false, error: data.error || 'Tạo khách hàng thất bại.' };
+            return {
+                ok: false,
+                error: data.error || 'Tạo khách hàng thất bại.',
+            };
         } catch {
             return { ok: false, error: 'Không thể kết nối máy chủ.' };
         }
@@ -459,19 +587,26 @@ syncApplied(data);
         shouldPrint: boolean,
         customerId: number | null,
         onSuccessClearCart: () => void,
-        onLogEntry?: (type: 'sent' | 'received' | 'error', message: string, details?: string) => void
+        onLogEntry?: (
+            type: 'sent' | 'received' | 'error',
+            message: string,
+            details?: string,
+        ) => void,
     ) => {
         if (!selectedTable) {
-return;
-}
+            return;
+        }
 
         let orderId: number | null = null;
         let matchedOrderObj: any = null;
 
         if (activeInvoiceId && !activeInvoiceId.startsWith('draft_')) {
-            const matchedOrder = selectedTable.active_orders?.find(
-                (o) => o.order_code === activeInvoiceId || `order_${o.id}` === activeInvoiceId
-            ) || selectedTable.active_order;
+            const matchedOrder =
+                selectedTable.active_orders?.find(
+                    (o) =>
+                        o.order_code === activeInvoiceId ||
+                        `order_${o.id}` === activeInvoiceId,
+                ) || selectedTable.active_order;
 
             if (matchedOrder) {
                 orderId = matchedOrder.id;
@@ -487,14 +622,16 @@ return;
 
         // Prevent duplicate processing
         if (processingOrders[orderId]) {
-return;
-}
+            return;
+        }
 
-        const hasUnconfirmedDrafts = currentCart.some((i) => !i.isConfirmed || (i.stagedReduceQty || 0) > 0);
+        const hasUnconfirmedDrafts = currentCart.some(
+            (i) => !i.isConfirmed || (i.stagedReduceQty || 0) > 0,
+        );
 
         if (hasUnconfirmedDrafts) {
-return;
-}
+            return;
+        }
 
         // Server-authoritative lock: only a FOREIGN lock blocks payment. Own lock carries our user id.
         const checkoutLock = lockedCheckoutTables[selectedTable.id];
@@ -508,12 +645,14 @@ return;
 
         // Safety timeout (15s for background tasks) if DB/Server hangs indefinitely
         if (timeoutRef.current) {
-clearTimeout(timeoutRef.current);
-}
+            clearTimeout(timeoutRef.current);
+        }
 
         timeoutRef.current = setTimeout(() => {
             setProcessingOrders((prev) => ({ ...prev, [orderId]: false }));
-            alert('Kết nối cơ sở dữ liệu/máy chủ quá thời gian chờ (Timeout). Vui lòng thử thanh toán lại!');
+            alert(
+                'Kết nối cơ sở dữ liệu/máy chủ quá thời gian chờ (Timeout). Vui lòng thử thanh toán lại!',
+            );
         }, 15000);
 
         const idempotencyKey = `pos_pay_${orderId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -524,7 +663,9 @@ clearTimeout(timeoutRef.current);
             amount_received: amountReceived,
             change_amount: changeAmount,
             ...(promotionCode ? { promotion_code: promotionCode } : {}),
-            ...(selectedAutoId !== null ? { selected_promotion_id: selectedAutoId } : {}),
+            ...(selectedAutoId !== null
+                ? { selected_promotion_id: selectedAutoId }
+                : {}),
             ...(customerId !== null ? { customer_id: customerId } : {}),
             idempotency_key: idempotencyKey,
         };
@@ -539,7 +680,7 @@ clearTimeout(timeoutRef.current);
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json',
+                Accept: 'application/json',
                 'X-XSRF-TOKEN': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest',
             },
@@ -547,10 +688,13 @@ clearTimeout(timeoutRef.current);
         })
             .then(async (response) => {
                 if (timeoutRef.current) {
-clearTimeout(timeoutRef.current);
-}
+                    clearTimeout(timeoutRef.current);
+                }
 
-                setProcessingOrders((prev) => ({ ...prev, [currentOrderId]: false }));
+                setProcessingOrders((prev) => ({
+                    ...prev,
+                    [currentOrderId]: false,
+                }));
 
                 const data = await response.json().catch(() => ({}));
 
@@ -559,7 +703,9 @@ clearTimeout(timeoutRef.current);
                     onSuccessClearCart();
 
                     if (data.deposit_refund > 0) {
-                        alert(`Hoàn khách ${data.deposit_refund.toLocaleString('vi-VN')} đ từ tiền cọc thừa.`);
+                        alert(
+                            `Hoàn khách ${data.deposit_refund.toLocaleString('vi-VN')} đ từ tiền cọc thừa.`,
+                        );
                     }
 
                     router.reload({
@@ -571,7 +717,7 @@ clearTimeout(timeoutRef.current);
                     onLogEntry?.(
                         'sent',
                         'Thanh toán thành công',
-                        `Đã thanh toán thành công hóa đơn ${matchedOrderObj?.order_code || ''} tại Bàn ${selectedTable.table_number}`
+                        `Đã thanh toán thành công hóa đơn ${matchedOrderObj?.order_code || ''} tại Bàn ${selectedTable.table_number}`,
                     );
 
                     if (shouldPrint) {
@@ -589,27 +735,35 @@ clearTimeout(timeoutRef.current);
                         });
                     }
                 } else {
-                    const errorMsg = data.error || data.message || 'Thanh toán thất bại do kết nối CSDL chập chờn. Vui lòng thử lại!';
+                    const errorMsg =
+                        data.error ||
+                        data.message ||
+                        'Thanh toán thất bại do kết nối CSDL chập chờn. Vui lòng thử lại!';
                     onLogEntry?.(
                         'error',
                         'Thanh toán thất bại',
-                        `Hóa đơn ${matchedOrderObj?.order_code || ''} tại Bàn ${selectedTable.table_number}: ${errorMsg}`
+                        `Hóa đơn ${matchedOrderObj?.order_code || ''} tại Bàn ${selectedTable.table_number}: ${errorMsg}`,
                     );
                     alert(errorMsg);
                 }
             })
             .catch((error) => {
                 if (timeoutRef.current) {
-clearTimeout(timeoutRef.current);
-}
+                    clearTimeout(timeoutRef.current);
+                }
 
-                setProcessingOrders((prev) => ({ ...prev, [currentOrderId]: false }));
+                setProcessingOrders((prev) => ({
+                    ...prev,
+                    [currentOrderId]: false,
+                }));
 
-                const errorMsg = error?.message || 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng!';
+                const errorMsg =
+                    error?.message ||
+                    'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng!';
                 onLogEntry?.(
                     'error',
                     'Thanh toán thất bại',
-                    `Hóa đơn ${matchedOrderObj?.order_code || ''} tại Bàn ${selectedTable.table_number}: ${errorMsg}`
+                    `Hóa đơn ${matchedOrderObj?.order_code || ''} tại Bàn ${selectedTable.table_number}: ${errorMsg}`,
                 );
                 alert(errorMsg);
             });
@@ -629,8 +783,8 @@ clearTimeout(timeoutRef.current);
         onSuccess: () => void,
     ) => {
         if (!selectedTable || allConfirmedOrders.length === 0) {
-return;
-}
+            return;
+        }
 
         const csrfToken = getCsrfTokenFromCookie();
         const idempotencyKey = `pos_bulk_${selectedTable.id}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -639,7 +793,7 @@ return;
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json',
+                Accept: 'application/json',
                 'X-XSRF-TOKEN': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest',
             },
@@ -650,7 +804,9 @@ return;
                 amount_received: amountReceived,
                 change_amount: changeAmount,
                 ...(promotionCode ? { promotion_code: promotionCode } : {}),
-                ...(selectedAutoId !== null ? { selected_promotion_id: selectedAutoId } : {}),
+                ...(selectedAutoId !== null
+                    ? { selected_promotion_id: selectedAutoId }
+                    : {}),
                 ...(customerId !== null ? { customer_id: customerId } : {}),
                 idempotency_key: idempotencyKey,
             }),
@@ -662,7 +818,9 @@ return;
                     togglePaymentDrawer(false);
 
                     if (data.deposit_refund > 0) {
-                        alert(`Hoàn khách ${data.deposit_refund.toLocaleString('vi-VN')} đ từ tiền cọc thừa.`);
+                        alert(
+                            `Hoàn khách ${data.deposit_refund.toLocaleString('vi-VN')} đ từ tiền cọc thừa.`,
+                        );
                     }
 
                     if (shouldPrint) {

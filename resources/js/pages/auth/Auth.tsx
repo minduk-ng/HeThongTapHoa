@@ -28,15 +28,15 @@ export default function Auth({ step, email, otpType }: AuthPageProps) {
             <ThemeToggle />
 
             {/* Decorative background elements */}
-            <div className="absolute top-0 -left-4 h-72 w-72 rounded-full bg-sky-300 opacity-20 mix-blend-multiply blur-3xl filter animate-blob dark:bg-sky-900 dark:opacity-20" />
-            <div className="absolute top-0 -right-4 h-72 w-72 rounded-full bg-sky-200 opacity-20 mix-blend-multiply blur-3xl filter animate-blob animation-delay-2000 dark:bg-sky-950 dark:opacity-20" />
-            <div className="absolute -bottom-8 left-20 h-72 w-72 rounded-full bg-zinc-300 opacity-20 mix-blend-multiply blur-3xl filter animate-blob animation-delay-4000 dark:bg-zinc-800 dark:opacity-20" />
+            <div className="animate-blob absolute top-0 -left-4 h-72 w-72 rounded-full bg-sky-300 opacity-20 mix-blend-multiply blur-3xl filter dark:bg-sky-900 dark:opacity-20" />
+            <div className="animate-blob animation-delay-2000 absolute top-0 -right-4 h-72 w-72 rounded-full bg-sky-200 opacity-20 mix-blend-multiply blur-3xl filter dark:bg-sky-950 dark:opacity-20" />
+            <div className="animate-blob animation-delay-4000 absolute -bottom-8 left-20 h-72 w-72 rounded-full bg-zinc-300 opacity-20 mix-blend-multiply blur-3xl filter dark:bg-zinc-800 dark:opacity-20" />
 
             <div className="relative z-10 w-full max-w-md px-6 py-12">
-                <div className="rounded-3xl bg-white p-8 shadow-lg border border-zinc-200 dark:border-zinc-800 transition-colors duration-200 dark:bg-zinc-900">
+                <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-lg transition-colors duration-200 dark:border-zinc-800 dark:bg-zinc-900">
                     <div className="mb-8 flex justify-center">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-600 shadow-xs text-white">
-                            <Store className="h-8 w-8 text-white stroke-[1.5]" />
+                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-600 text-white shadow-xs">
+                            <Store className="h-8 w-8 stroke-[1.5] text-white" />
                         </div>
                     </div>
 
@@ -44,12 +44,24 @@ export default function Auth({ step, email, otpType }: AuthPageProps) {
                         {step === 'login' && (
                             <LoginForm
                                 onSwitchToSignup={() => router.visit('/signup')}
-                                onSwitchToForgot={() => router.visit('/forgot-password')}
+                                onSwitchToForgot={() =>
+                                    router.visit('/forgot-password')
+                                }
                             />
                         )}
-                        {step === 'signup' && <SignupForm onSwitchToLogin={() => router.visit('/login')} />}
-                        {step === 'otp' && email && otpType && <OtpVerify email={email} type={otpType} />}
-                        {step === 'forgot' && <ForgotPassword onBack={() => router.visit('/login')} />}
+                        {step === 'signup' && (
+                            <SignupForm
+                                onSwitchToLogin={() => router.visit('/login')}
+                            />
+                        )}
+                        {step === 'otp' && email && otpType && (
+                            <OtpVerify email={email} type={otpType} />
+                        )}
+                        {step === 'forgot' && (
+                            <ForgotPassword
+                                onBack={() => router.visit('/login')}
+                            />
+                        )}
                         {step === 'reset' && <ResetPassword />}
                     </div>
                 </div>

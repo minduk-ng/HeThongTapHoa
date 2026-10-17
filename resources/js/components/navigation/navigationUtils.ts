@@ -53,8 +53,14 @@ export function normalizeNavigation(value: unknown): NavGroup[] {
         } else {
             const groupRecord = groupValue as Record<string, unknown>;
 
-            if (groupRecord.__subs && typeof groupRecord.__subs === 'object' && !Array.isArray(groupRecord.__subs)) {
-                for (const [subName, subList] of Object.entries(groupRecord.__subs)) {
+            if (
+                groupRecord.__subs &&
+                typeof groupRecord.__subs === 'object' &&
+                !Array.isArray(groupRecord.__subs)
+            ) {
+                for (const [subName, subList] of Object.entries(
+                    groupRecord.__subs,
+                )) {
                     if (Array.isArray(subList)) {
                         const validSubLinks = subList.filter(isValidNavLink);
 
@@ -87,7 +93,10 @@ export function normalizeNavigation(value: unknown): NavGroup[] {
     return groups;
 }
 
-export function activeRoute(currentUrl: string, paths: readonly string[]): string | null {
+export function activeRoute(
+    currentUrl: string,
+    paths: readonly string[],
+): string | null {
     if (!currentUrl || !paths || paths.length === 0) {
         return null;
     }
@@ -103,7 +112,10 @@ export function activeRoute(currentUrl: string, paths: readonly string[]): strin
             if (cleanUrl === '/') {
                 matches.push(rawPath);
             }
-        } else if (cleanUrl === cleanPath || cleanUrl.startsWith(`${cleanPath}/`)) {
+        } else if (
+            cleanUrl === cleanPath ||
+            cleanUrl.startsWith(`${cleanPath}/`)
+        ) {
             matches.push(rawPath);
         }
     }
@@ -117,17 +129,36 @@ export function activeRoute(currentUrl: string, paths: readonly string[]): strin
     return matches[0];
 }
 
-export function needsCompact(viewport: number, available: number, required: number): boolean {
+export function needsCompact(
+    viewport: number,
+    available: number,
+    required: number,
+): boolean {
     return viewport < 768 || required + 16 > available;
 }
 
-export function dropdownPlacement(left: number, bottom: number, width: number, viewport: number, height: number) {
+export function dropdownPlacement(
+    left: number,
+    bottom: number,
+    width: number,
+    viewport: number,
+    height: number,
+) {
     const top = Math.max(8, Math.min(bottom + 8, height - 52));
 
-    return { left: Math.max(8, Math.min(left, viewport - width - 8)), top, maxHeight: Math.max(0, height - top - 8) };
+    return {
+        left: Math.max(8, Math.min(left, viewport - width - 8)),
+        top,
+        maxHeight: Math.max(0, height - top - 8),
+    };
 }
 
-export function flyoutSide(left: number, right: number, width: number, viewport: number): 'right' | 'left' | 'inline' {
+export function flyoutSide(
+    left: number,
+    right: number,
+    width: number,
+    viewport: number,
+): 'right' | 'left' | 'inline' {
     if (right + 8 + width <= viewport - 8) {
         return 'right';
     }

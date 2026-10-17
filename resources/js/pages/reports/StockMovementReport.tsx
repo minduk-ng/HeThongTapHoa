@@ -1,4 +1,9 @@
-import { ArrowDownCircle, ArrowUpCircle, MoveHorizontal, Scale } from 'lucide-react';
+import {
+    ArrowDownCircle,
+    ArrowUpCircle,
+    MoveHorizontal,
+    Scale,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import ReportPage from '../../components/reports/ReportPage';
@@ -52,9 +57,7 @@ export default function StockMovementReport({
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
 
-        return safeRows.filter(
-            (r) => !q || r.name.toLowerCase().includes(q),
-        );
+        return safeRows.filter((r) => !q || r.name.toLowerCase().includes(q));
     }, [safeRows, search]);
 
     const totalEnd = useMemo(

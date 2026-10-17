@@ -33,7 +33,7 @@ export interface KitchenStationOption {
 // ponytail: durable station-ID filter; never infer station from category/item names
 export function filterGroupsByStation(
     groups: readonly QueueGroup[],
-    stationId: number | 'all'
+    stationId: number | 'all',
 ): QueueGroup[] {
     if (stationId === 'all') {
         return groups.slice();
@@ -47,7 +47,9 @@ export type Comparator<T> = (a: T, b: T) => number;
 export function isGroupLongWait(group: QueueGroup, nowMs: number): boolean {
     const sentAtMs = Date.parse(group.sentAt);
 
-    return sentAtMs <= nowMs && nowMs - sentAtMs >= group.longWaitMinutes * 60_000;
+    return (
+        sentAtMs <= nowMs && nowMs - sentAtMs >= group.longWaitMinutes * 60_000
+    );
 }
 
 // ponytail: bottom-up Floyd heapify O(n), extractAll O(n log n)
@@ -138,11 +140,17 @@ export class MinHeap<T> {
             const left = (i << 1) + 1;
             const right = left + 1;
 
-            if (left < n && this.compare(this.data[left], this.data[best]) < 0) {
+            if (
+                left < n &&
+                this.compare(this.data[left], this.data[best]) < 0
+            ) {
                 best = left;
             }
 
-            if (right < n && this.compare(this.data[right], this.data[best]) < 0) {
+            if (
+                right < n &&
+                this.compare(this.data[right], this.data[best]) < 0
+            ) {
                 best = right;
             }
 
@@ -168,7 +176,7 @@ interface ParsedQueueGroup {
 export function orderGroups(
     groups: readonly QueueGroup[],
     mode: DispatchMode,
-    nowMs: number
+    nowMs: number,
 ): QueueGroup[] {
     if (groups.length === 0) {
         return [];
@@ -185,7 +193,8 @@ export function orderGroups(
         const sentAtMs = Date.parse(g.sentAt);
         const deadlineAtMs = Date.parse(g.deadlineAt);
         const waitMs = nowMs - sentAtMs;
-        const isLongWait = sentAtMs <= nowMs && waitMs >= g.longWaitMinutes * 60_000;
+        const isLongWait =
+            sentAtMs <= nowMs && waitMs >= g.longWaitMinutes * 60_000;
         parsed[i] = {
             group: g,
             sentAtMs,

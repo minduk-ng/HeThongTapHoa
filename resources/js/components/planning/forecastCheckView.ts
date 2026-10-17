@@ -50,7 +50,9 @@ export function formatSignedError(val: number | null | undefined): string {
     return `${n.toFixed(2)} — dự báo thiếu`;
 }
 
-export function initialModelKey(candidates: ForecastCheckCandidate[]): string | null {
+export function initialModelKey(
+    candidates: ForecastCheckCandidate[],
+): string | null {
     if (!candidates || candidates.length === 0) {
         return null;
     }

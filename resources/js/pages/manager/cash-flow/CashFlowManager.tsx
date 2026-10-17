@@ -128,7 +128,10 @@ export default function CashFlowManager({
         shift !== 'all' ||
         employee !== 'all';
 
-    const safeEntries = React.useMemo(() => (Array.isArray(entries) ? entries : []), [entries]);
+    const safeEntries = React.useMemo(
+        () => (Array.isArray(entries) ? entries : []),
+        [entries],
+    );
 
     const shiftOptions = React.useMemo(() => {
         const ids = new Map<number, true>();
@@ -243,7 +246,9 @@ export default function CashFlowManager({
                                 type="button"
                                 className={linkClass}
                                 onClick={() =>
-                                    router.get(`/manager/orders/${row.order_id}`)
+                                    router.get(
+                                        `/manager/orders/${row.order_id}`,
+                                    )
                                 }
                             >
                                 Đơn #{row.order_id}
@@ -267,9 +272,7 @@ export default function CashFlowManager({
                             <button
                                 type="button"
                                 className={linkClass}
-                                onClick={() =>
-                                    router.get('/manager/suppliers')
-                                }
+                                onClick={() => router.get('/manager/suppliers')}
                             >
                                 NCC #{row.supplier_id}
                             </button>

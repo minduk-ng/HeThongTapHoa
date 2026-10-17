@@ -32,11 +32,13 @@ export default function IngredientsManager({
 
     // Modals States
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [ingredientToEdit, setIngredientToEdit] = useState<IngredientData | null>(null);
+    const [ingredientToEdit, setIngredientToEdit] =
+        useState<IngredientData | null>(null);
     const [isImportOpen, setIsImportOpen] = useState(false);
 
     // Delete confirmation state
-    const [deletingIngredient, setDeletingIngredient] = useState<IngredientData | null>(null);
+    const [deletingIngredient, setDeletingIngredient] =
+        useState<IngredientData | null>(null);
     const [passwordValue, setPasswordValue] = useState('');
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -50,12 +52,16 @@ export default function IngredientsManager({
                 item.name.toLowerCase().includes(query) ||
                 (item.code && item.code.toLowerCase().includes(query));
 
-            const matchesUnit = selectedUnit === 'all' || item.unit === selectedUnit;
+            const matchesUnit =
+                selectedUnit === 'all' || item.unit === selectedUnit;
 
             let matchesAlert = true;
 
             if (alertFilter === 'low_stock') {
-                const minAlert = item.min_stock_alert !== undefined ? item.min_stock_alert : 5;
+                const minAlert =
+                    item.min_stock_alert !== undefined
+                        ? item.min_stock_alert
+                        : 5;
                 matchesAlert = Number(item.stock_quantity || 0) <= minAlert;
             } else if (alertFilter === 'out_of_stock') {
                 matchesAlert = Number(item.stock_quantity || 0) <= 0;
@@ -97,8 +103,8 @@ export default function IngredientsManager({
         e.preventDefault();
 
         if (!deletingIngredient) {
-return;
-}
+            return;
+        }
 
         if (!passwordValue) {
             setDeleteError('Vui lòng nhập mật khẩu xác nhận');
@@ -109,35 +115,48 @@ return;
         setIsDeleting(true);
         setDeleteError(null);
 
-        router.delete(`/manager/inventory/ingredients/${deletingIngredient.id}`, {
-            data: { password: passwordValue },
-            onSuccess: () => {
-                setIsDeleting(false);
-                setDeletingIngredient(null);
-                setPasswordValue('');
-            },
-            onError: (errs: any) => {
-                setIsDeleting(false);
+        router.delete(
+            `/manager/inventory/ingredients/${deletingIngredient.id}`,
+            {
+                data: { password: passwordValue },
+                onSuccess: () => {
+                    setIsDeleting(false);
+                    setDeletingIngredient(null);
+                    setPasswordValue('');
+                },
+                onError: (errs: any) => {
+                    setIsDeleting(false);
 
-                if (errs.password) {
-                    setDeleteError(errs.password);
-                } else {
-                    setDeleteError('Không thể xóa nguyên liệu. Vui lòng kiểm tra lại.');
-                }
+                    if (errs.password) {
+                        setDeleteError(errs.password);
+                    } else {
+                        setDeleteError(
+                            'Không thể xóa nguyên liệu. Vui lòng kiểm tra lại.',
+                        );
+                    }
+                },
             },
-        });
+        );
     };
 
     // Mini Stats calculations
     const totalCount = ingredients.length;
     const lowStockCount = ingredients.filter((i) => {
-        const minAlert = i.min_stock_alert !== undefined ? i.min_stock_alert : 5;
+        const minAlert =
+            i.min_stock_alert !== undefined ? i.min_stock_alert : 5;
 
-        return Number(i.stock_quantity || 0) <= minAlert && Number(i.stock_quantity || 0) > 0;
+        return (
+            Number(i.stock_quantity || 0) <= minAlert &&
+            Number(i.stock_quantity || 0) > 0
+        );
     }).length;
-    const outOfStockCount = ingredients.filter((i) => Number(i.stock_quantity || 0) <= 0).length;
+    const outOfStockCount = ingredients.filter(
+        (i) => Number(i.stock_quantity || 0) <= 0,
+    ).length;
 
-    const hasActiveFilter = Boolean(searchQuery || selectedUnit !== 'all' || alertFilter !== 'all');
+    const hasActiveFilter = Boolean(
+        searchQuery || selectedUnit !== 'all' || alertFilter !== 'all',
+    );
 
     return (
         <DashboardLayout fullWidth={true}>
@@ -148,12 +167,12 @@ return;
                 title="Nguyên liệu & Kho vật tư"
                 subtitle="Quản lý định mức tồn kho và cảnh báo hao hụt nguyên liệu"
                 badge={
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                             {totalCount} nguyên liệu
                         </span>
                         {lowStockCount + outOfStockCount > 0 && (
-                            <span className="px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                            <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300">
                                 {lowStockCount + outOfStockCount} cảnh báo tồn
                             </span>
                         )}
@@ -165,17 +184,17 @@ return;
                         <button
                             type="button"
                             onClick={() => setIsImportOpen(true)}
-                            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl transition-colors shadow-xs"
+                            className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-emerald-700 active:bg-emerald-800"
                         >
-                            <Plus className="w-3.5 h-3.5 stroke-2" />
+                            <Plus className="h-3.5 w-3.5 stroke-2" />
                             <span>Nhập kho</span>
                         </button>
                         <button
                             type="button"
                             onClick={handleOpenAddModal}
-                            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors shadow-xs"
+                            className="flex items-center gap-1.5 rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-sky-700 active:bg-sky-800"
                         >
-                            <Plus className="w-3.5 h-3.5 stroke-2" />
+                            <Plus className="h-3.5 w-3.5 stroke-2" />
                             <span>Thêm nguyên liệu</span>
                         </button>
                     </div>
@@ -183,14 +202,16 @@ return;
                 filters={
                     <div className="flex flex-wrap items-center gap-2.5">
                         {/* Search Input */}
-                        <div className="relative flex-1 min-w-[200px] max-w-xs">
-                            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                        <div className="relative max-w-xs min-w-[200px] flex-1">
+                            <Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
                             <input
                                 type="text"
                                 value={searchQuery}
-                                onChange={(e) => handleSearchChange(e.target.value)}
+                                onChange={(e) =>
+                                    handleSearchChange(e.target.value)
+                                }
                                 placeholder="Tìm tên / mã nguyên liệu..."
-                                className="w-full pl-8 pr-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 transition-colors"
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-1.5 pr-3 pl-8 text-xs text-zinc-900 transition-colors focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100"
                             />
                         </div>
 
@@ -198,10 +219,14 @@ return;
                         <div className="w-44">
                             <select
                                 value={selectedUnit}
-                                onChange={(e) => handleUnitChange(e.target.value)}
-                                className="w-full px-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
+                                onChange={(e) =>
+                                    handleUnitChange(e.target.value)
+                                }
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-900 focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100"
                             >
-                                <option value="all">Tất cả đơn vị ({units.length})</option>
+                                <option value="all">
+                                    Tất cả đơn vị ({units.length})
+                                </option>
                                 {units.map((unit) => (
                                     <option key={unit} value={unit}>
                                         {unit}
@@ -214,12 +239,20 @@ return;
                         <div className="w-52">
                             <select
                                 value={alertFilter}
-                                onChange={(e) => handleAlertChange(e.target.value)}
-                                className="w-full px-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
+                                onChange={(e) =>
+                                    handleAlertChange(e.target.value)
+                                }
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-900 focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100"
                             >
-                                <option value="all">Tất cả trạng thái kho</option>
-                                <option value="low_stock">Sắp hết hàng (Dưới định mức)</option>
-                                <option value="out_of_stock">Đã hết hàng (Tồn = 0)</option>
+                                <option value="all">
+                                    Tất cả trạng thái kho
+                                </option>
+                                <option value="low_stock">
+                                    Sắp hết hàng (Dưới định mức)
+                                </option>
+                                <option value="out_of_stock">
+                                    Đã hết hàng (Tồn = 0)
+                                </option>
                             </select>
                         </div>
 
@@ -232,10 +265,10 @@ return;
                                     handleUnitChange('all');
                                     handleAlertChange('all');
                                 }}
-                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                                className="flex items-center gap-1 rounded-xl bg-zinc-100 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                                 title="Đặt lại bộ lọc"
                             >
-                                <RotateCcw className="w-3.5 h-3.5" />
+                                <RotateCcw className="h-3.5 w-3.5" />
                                 <span>Đặt lại</span>
                             </button>
                         )}
@@ -243,28 +276,32 @@ return;
                 }
             >
                 {/* Summary Strip & Ingredient Data Table */}
-                <div className="flex flex-col h-full min-h-0">
-                    <div className="flex flex-wrap items-center gap-6 mb-3 shrink-0 px-1">
+                <div className="flex h-full min-h-0 flex-col">
+                    <div className="mb-3 flex shrink-0 flex-wrap items-center gap-6 px-1">
                         <div className="flex items-baseline gap-2">
-                            <span className="text-2xl font-display font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                            <span className="font-display text-2xl font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
                                 {totalCount}
                             </span>
                             <span className="text-xs text-zinc-500 dark:text-zinc-400">
                                 loại nguyên liệu
                             </span>
                         </div>
-                        <span className="text-zinc-300 dark:text-zinc-700 select-none">•</span>
+                        <span className="text-zinc-300 select-none dark:text-zinc-700">
+                            •
+                        </span>
                         <div className="flex items-baseline gap-2">
-                            <span className="text-2xl font-display font-semibold tabular-nums text-amber-600 dark:text-amber-400">
+                            <span className="font-display text-2xl font-semibold text-amber-600 tabular-nums dark:text-amber-400">
                                 {lowStockCount}
                             </span>
                             <span className="text-xs text-zinc-500 dark:text-zinc-400">
                                 sắp hết hàng
                             </span>
                         </div>
-                        <span className="text-zinc-300 dark:text-zinc-700 select-none">•</span>
+                        <span className="text-zinc-300 select-none dark:text-zinc-700">
+                            •
+                        </span>
                         <div className="flex items-baseline gap-2">
-                            <span className="text-2xl font-display font-semibold tabular-nums text-rose-600 dark:text-rose-400">
+                            <span className="font-display text-2xl font-semibold text-rose-600 tabular-nums dark:text-rose-400">
                                 {outOfStockCount}
                             </span>
                             <span className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -272,7 +309,7 @@ return;
                             </span>
                         </div>
                     </div>
-                    <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="min-h-0 flex-1 overflow-hidden">
                         <IngredientTable
                             ingredients={filteredIngredients}
                             onEdit={handleEditIngredient}
@@ -309,7 +346,7 @@ return;
                 processing={isDeleting}
             />
             {deleteError && (
-                <div className="fixed bottom-4 right-4 z-50 bg-rose-600 text-white text-xs px-4 py-2 rounded-xl shadow-lg">
+                <div className="fixed right-4 bottom-4 z-50 rounded-xl bg-rose-600 px-4 py-2 text-xs text-white shadow-lg">
                     {deleteError}
                 </div>
             )}

@@ -42,9 +42,7 @@ export default function ConsumptionReport({ rows, startDate, endDate }: Props) {
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
 
-        return safeRows.filter(
-            (r) => !q || r.name.toLowerCase().includes(q),
-        );
+        return safeRows.filter((r) => !q || r.name.toLowerCase().includes(q));
     }, [safeRows, search]);
 
     const totalQty = useMemo(
@@ -101,7 +99,7 @@ export default function ConsumptionReport({ rows, startDate, endDate }: Props) {
                 );
             case 'cost':
                 return (
-                    <span className="tabular-nums font-semibold text-zinc-900 dark:text-zinc-100">
+                    <span className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
                         {row.cost.toLocaleString('vi-VN')} đ
                     </span>
                 );

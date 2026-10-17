@@ -1,4 +1,8 @@
-import type { CartItem, POSProductData, POSTableData } from '../types/pos.types';
+import type {
+    CartItem,
+    POSProductData,
+    POSTableData,
+} from '../types/pos.types';
 
 export type { CartItem, POSProductData, POSTableData };
 
@@ -20,7 +24,10 @@ export interface DraftSnapshot {
 export type UndoEntry = DraftSnapshot;
 
 export function generateDraftLineId(): string {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    if (
+        typeof crypto !== 'undefined' &&
+        typeof crypto.randomUUID === 'function'
+    ) {
         return crypto.randomUUID();
     }
 
@@ -107,7 +114,10 @@ export function validateRestore(
         const cap = p.max_servings;
 
         if (cap == null || !Number.isFinite(cap) || cap < 0) {
-            return { ok: false, message: 'Chưa có dữ liệu suất phục vụ hiện tại.' };
+            return {
+                ok: false,
+                message: 'Chưa có dữ liệu suất phục vụ hiện tại.',
+            };
         }
 
         if (qty > cap) {
@@ -141,7 +151,9 @@ export interface ServerOrderView {
     items: ServerItemView[];
 }
 
-export function fingerprintBaseline(orders: readonly ServerOrderView[]): string {
+export function fingerprintBaseline(
+    orders: readonly ServerOrderView[],
+): string {
     if (!orders || !Array.isArray(orders)) {
         return '[]';
     }
@@ -154,16 +166,19 @@ export function fingerprintBaseline(orders: readonly ServerOrderView[]): string 
             k: o.invoiceKey,
             s: o.status,
             items: [...(o.items || [])]
-                .map((i) => [
-                    i.id,
-                    i.quantity,
-                    i.unit_price,
-                    i.note ?? '',
-                    i.status ?? '',
-                    !!i.isConfirmed,
-                    !!i.isKitchenCompleted,
-                    !!i.isServed,
-                ] as const)
+                .map(
+                    (i) =>
+                        [
+                            i.id,
+                            i.quantity,
+                            i.unit_price,
+                            i.note ?? '',
+                            i.status ?? '',
+                            !!i.isConfirmed,
+                            !!i.isKitchenCompleted,
+                            !!i.isServed,
+                        ] as const,
+                )
                 .sort((a, b) => (a[0] as number) - (b[0] as number)),
         }))
         .sort((a, b) => a.t - b.t || (a.k < b.k ? -1 : a.k > b.k ? 1 : 0));

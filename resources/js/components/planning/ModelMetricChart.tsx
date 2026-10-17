@@ -74,9 +74,11 @@ function MetricCustomTooltip({
     };
 
     return (
-        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-800 text-sm tabular-nums">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm tabular-nums shadow-lg dark:border-slate-700 dark:bg-slate-800">
             <div className="flex items-center gap-2">
-                <span className="font-display font-bold text-slate-900 dark:text-slate-100">{item.name}</span>
+                <span className="font-display font-bold text-slate-900 dark:text-slate-100">
+                    {item.name}
+                </span>
                 {item.is_selected && (
                     <span className="rounded-md bg-sky-100 px-1.5 py-0.5 text-xs font-semibold text-sky-700 dark:bg-sky-900/50 dark:text-sky-300">
                         Đang áp dụng
@@ -86,11 +88,11 @@ function MetricCustomTooltip({
             <div className="mt-2 space-y-1">
                 <div className="flex items-center justify-between gap-4 text-slate-600 dark:text-slate-300">
                     <span>{metricLabels[metric]}:</span>
-                    <span className="font-bold tabular-nums text-slate-900 dark:text-slate-100">
+                    <span className="font-bold text-slate-900 tabular-nums dark:text-slate-100">
                         {getFormattedValue()}
                     </span>
                 </div>
-                <p className="text-xs text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-100 dark:border-slate-700">
+                <p className="border-t border-slate-100 pt-1 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
                     * Giá trị càng thấp biểu thị độ chính xác càng cao
                 </p>
             </div>
@@ -108,7 +110,7 @@ export default function ModelMetricChart({
     if (!data || data.length === 0) {
         return (
             <div
-                className="planning-ui flex items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-600 dark:text-slate-300 dark:border-slate-800"
+                className="planning-ui flex items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300"
                 style={{ height }}
             >
                 Chưa có dữ liệu đánh giá mô hình
@@ -136,8 +138,15 @@ export default function ModelMetricChart({
     return (
         <div className="planning-ui w-full tabular-nums" style={{ height }}>
             <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 25 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--planning-grid)" />
+                <BarChart
+                    data={data}
+                    margin={{ top: 20, right: 20, left: 0, bottom: 25 }}
+                >
+                    <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="var(--planning-grid)"
+                    />
                     <XAxis
                         dataKey="name"
                         stroke="var(--planning-axis)"
@@ -154,8 +163,15 @@ export default function ModelMetricChart({
                         axisLine={false}
                         tickFormatter={formatYTick}
                     />
-                    <Tooltip content={<MetricCustomTooltip metric={metric} />} />
-                    <Bar dataKey={activeKey as string} radius={[6, 6, 0, 0]} maxBarSize={56} isAnimationActive={!reduced}>
+                    <Tooltip
+                        content={<MetricCustomTooltip metric={metric} />}
+                    />
+                    <Bar
+                        dataKey={activeKey as string}
+                        radius={[6, 6, 0, 0]}
+                        maxBarSize={56}
+                        isAnimationActive={!reduced}
+                    >
                         {data.map((entry, index) => (
                             <Cell
                                 key={`cell-${index}`}

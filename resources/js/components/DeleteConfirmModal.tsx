@@ -24,8 +24,8 @@ export default function DeleteConfirmModal({
     errorMsg,
 }: DeleteConfirmModalProps) {
     if (!isOpen) {
-return null;
-}
+        return null;
+    }
 
     return (
         <div className="modal-overlay">
@@ -33,7 +33,7 @@ return null;
                 <h2 className="modal-heading text-red-600 dark:text-red-400">
                     {title}
                 </h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
                     {description}
                 </p>
                 <form onSubmit={onConfirm} className="space-y-4">
@@ -55,17 +55,17 @@ return null;
                         )}
                     </div>
                     <div className="modal-footer">
-                        <button 
-                            type="button" 
-                            onClick={onClose} 
+                        <button
+                            type="button"
+                            onClick={onClose}
                             className="btn-secondary"
                             disabled={processing}
                         >
                             Hủy
                         </button>
-                        <button 
-                            type="submit" 
-                            className="btn-primary bg-red-600 hover:bg-red-700 w-auto font-semibold"
+                        <button
+                            type="submit"
+                            className="btn-primary w-auto bg-red-600 font-semibold hover:bg-red-700"
                             disabled={processing}
                         >
                             Xác nhận xóa

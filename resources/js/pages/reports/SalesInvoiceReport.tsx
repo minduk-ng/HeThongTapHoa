@@ -158,7 +158,7 @@ export default function SalesInvoiceReport({
                 );
             case 'discount_amount':
                 return (
-                    <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">
+                    <span className="font-medium text-rose-600 tabular-nums dark:text-rose-400">
                         {formatVND(row.discount_amount)}
                     </span>
                 );

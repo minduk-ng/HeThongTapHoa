@@ -40,8 +40,9 @@ export default function ForgotPassword({ onBack }: ForgotPasswordProps) {
                     <KeyRound className="h-6 w-6 stroke-[1.5]" />
                 </div>
                 <h2 className="auth-heading">Quên mật khẩu?</h2>
-                <p className="mt-2 auth-subtitle">
-                    Không sao cả, chuyện này vẫn thường xảy ra. Vui lòng nhập địa chỉ email liên kết với tài khoản của bạn.
+                <p className="auth-subtitle mt-2">
+                    Không sao cả, chuyện này vẫn thường xảy ra. Vui lòng nhập
+                    địa chỉ email liên kết với tài khoản của bạn.
                 </p>
             </div>
 
@@ -64,7 +65,7 @@ export default function ForgotPassword({ onBack }: ForgotPasswordProps) {
             <button
                 type="submit"
                 disabled={processing}
-                className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
                 {showSpinner ? (
                     <span className="flex items-center justify-center gap-2">
@@ -79,7 +80,7 @@ export default function ForgotPassword({ onBack }: ForgotPasswordProps) {
             <button
                 type="button"
                 onClick={onBack}
-                className="flex w-full items-center justify-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
+                className="flex w-full items-center justify-center gap-2 text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
             >
                 <ArrowLeft className="h-4 w-4 stroke-[1.5]" />
                 Quay lại đăng nhập

@@ -122,7 +122,9 @@ export default function ProductDetailsReport({
                     </span>
                 );
             case 'discount_amount':
-                return row.discount_amount > 0 ? formatVND(row.discount_amount) : '—';
+                return row.discount_amount > 0
+                    ? formatVND(row.discount_amount)
+                    : '—';
             default:
                 return '—';
         }

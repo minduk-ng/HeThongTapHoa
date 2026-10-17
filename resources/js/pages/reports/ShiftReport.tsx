@@ -147,7 +147,7 @@ export default function ShiftReport({
                 return row.closer_name ?? '—';
             case 'opening_cash':
                 return (
-                    <span className="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
+                    <span className="font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
                         {formatVND(row.opening_cash)}
                     </span>
                 );

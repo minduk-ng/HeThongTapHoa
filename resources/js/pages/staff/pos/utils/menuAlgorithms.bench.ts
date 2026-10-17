@@ -9,11 +9,7 @@ import {
     normalizeName,
     queryMenu,
 } from './menuAlgorithms.ts';
-import type {
-    IndexedEntry,
-    MenuIndex,
-    MenuQuery,
-} from './menuAlgorithms.ts';
+import type { IndexedEntry, MenuIndex, MenuQuery } from './menuAlgorithms.ts';
 
 // PRNG: mulberry32 deterministic generator (seed: 20261016)
 function mulberry32(seed: number): () => number {
@@ -29,8 +25,8 @@ function mulberry32(seed: number): () => number {
 }
 
 const PRICE_POOL = [
-    15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0, 60.0, 65.0, 70.0, 75.0,
-    80.0, 100.0,
+    15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0, 60.0, 65.0, 70.0,
+    75.0, 80.0, 100.0,
 ];
 
 const VN_BASE_NAMES = [
@@ -69,7 +65,10 @@ const VN_MODIFIERS = [
     'Nhà Làm',
 ];
 
-function generateProducts(n: number, rand: () => number): readonly POSProductData[] {
+function generateProducts(
+    n: number,
+    rand: () => number,
+): readonly POSProductData[] {
     const list: POSProductData[] = [];
 
     for (let i = 0; i < n; i++) {
@@ -229,10 +228,7 @@ function linearCompleteQuery(
             continue;
         }
 
-        if (
-            q.categoryId !== 'all' &&
-            String(p.category_id) !== q.categoryId
-        ) {
+        if (q.categoryId !== 'all' && String(p.category_id) !== q.categoryId) {
             continue;
         }
 
@@ -375,7 +371,11 @@ describe('POS Menu Algorithms Benchmark & Verification Ledger', () => {
             });
 
             // Oracle verification: bounds match linear filter exactly
-            const linearRangeMatches = linearRangeFilter(products, minMinor, maxMinor);
+            const linearRangeMatches = linearRangeFilter(
+                products,
+                minMinor,
+                maxMinor,
+            );
             assert.equal(
                 rBounds,
                 linearRangeMatches.length,
@@ -408,7 +408,10 @@ describe('POS Menu Algorithms Benchmark & Verification Ledger', () => {
             });
 
             // Oracle verification for complete query
-            const linearQueryMatches = linearCompleteQuery(products, queryOriginal);
+            const linearQueryMatches = linearCompleteQuery(
+                products,
+                queryOriginal,
+            );
             assert.deepEqual(
                 queryResults.map((p) => p.id),
                 linearQueryMatches.map((p) => p.id),
@@ -435,7 +438,10 @@ describe('POS Menu Algorithms Benchmark & Verification Ledger', () => {
             });
 
             // Oracle verification for sorted query
-            const linearSortedMatches = linearCompleteQuery(products, queryNameAsc);
+            const linearSortedMatches = linearCompleteQuery(
+                products,
+                queryNameAsc,
+            );
             assert.deepEqual(
                 queryMenu(index, queryNameAsc).map((p) => p.id),
                 linearSortedMatches.map((p) => p.id),
@@ -461,20 +467,28 @@ describe('POS Menu Algorithms Benchmark & Verification Ledger', () => {
 
             for (const qCount of queryCounts) {
                 // Measure linear: Q sequential linear queries
-                const linearTotal = measure(() => {
-                    for (let q = 0; q < qCount; q++) {
-                        linearCompleteQuery(products, queryOriginal);
-                    }
-                }, 2, 10);
+                const linearTotal = measure(
+                    () => {
+                        for (let q = 0; q < qCount; q++) {
+                            linearCompleteQuery(products, queryOriginal);
+                        }
+                    },
+                    2,
+                    10,
+                );
 
                 // Measure indexed: 1 buildMenuIndex + Q queries
-                const indexedTotal = measure(() => {
-                    const idx = buildMenuIndex(products);
+                const indexedTotal = measure(
+                    () => {
+                        const idx = buildMenuIndex(products);
 
-                    for (let q = 0; q < qCount; q++) {
-                        queryMenu(idx, queryOriginal);
-                    }
-                }, 2, 10);
+                        for (let q = 0; q < qCount; q++) {
+                            queryMenu(idx, queryOriginal);
+                        }
+                    },
+                    2,
+                    10,
+                );
 
                 amortizationResults.push({
                     sizeN: n,
@@ -482,7 +496,10 @@ describe('POS Menu Algorithms Benchmark & Verification Ledger', () => {
                     linearTotalMs: linearTotal.median,
                     indexedTotalMs: indexedTotal.median,
                     linearPerQueryMs: linearTotal.median / qCount,
-                    indexedPerQueryMs: (indexedTotal.median - (normMapStats.median + sortStats.median)) / qCount,
+                    indexedPerQueryMs:
+                        (indexedTotal.median -
+                            (normMapStats.median + sortStats.median)) /
+                        qCount,
                 });
             }
         }
@@ -493,54 +510,92 @@ describe('POS Menu Algorithms Benchmark & Verification Ledger', () => {
         const osInfo = `${os.type()} ${os.release()} (${os.arch()})`;
         const nodeInfo = `Node.js ${process.version} (V8 ${process.versions.v8})`;
 
-        console.log('\n================================================================================');
-        console.log('               POS MENU ALGORITHMS BENCHMARK & VERIFICATION LEDGER              ');
-        console.log('================================================================================');
+        console.log(
+            '\n================================================================================',
+        );
+        console.log(
+            '               POS MENU ALGORITHMS BENCHMARK & VERIFICATION LEDGER              ',
+        );
+        console.log(
+            '================================================================================',
+        );
         console.log(`Runtime:   ${nodeInfo}`);
         console.log(`System:    ${osInfo}`);
         console.log(`CPU:       ${cpuInfo} (${cpuCount} cores)`);
-        console.log(`Seed:      mulberry32 (seed: 20261016) | Duplicate-heavy prices, Vietnamese accents`);
-        console.log(`Samples:   5 warmups + 30 measured runs per phase (median & p95)`);
-        console.log('--------------------------------------------------------------------------------\n');
+        console.log(
+            `Seed:      mulberry32 (seed: 20261016) | Duplicate-heavy prices, Vietnamese accents`,
+        );
+        console.log(
+            `Samples:   5 warmups + 30 measured runs per phase (median & p95)`,
+        );
+        console.log(
+            '--------------------------------------------------------------------------------\n',
+        );
 
         console.log('### Table 1: Separate Phase Timings by Dataset Size');
-        console.log('| Dataset N | Phase | Theoretical Complexity | Parameters | Median (ms) | p95 (ms) |');
-        console.log('|----------:|:---------------------------------------|:-----------------------|:-----------|------------:|---------:|');
+        console.log(
+            '| Dataset N | Phase | Theoretical Complexity | Parameters | Median (ms) | p95 (ms) |',
+        );
+        console.log(
+            '|----------:|:---------------------------------------|:-----------------------|:-----------|------------:|---------:|',
+        );
 
         for (const row of phaseResults) {
             console.log(
                 `| ${row.sizeN.toLocaleString().padStart(9)} ` +
-                `| ${row.phase.padEnd(39)} ` +
-                `| ${row.complexity.padEnd(22)} ` +
-                `| ${row.params.padEnd(10)} ` +
-                `| ${row.medianMs.toFixed(4).padStart(11)} ` +
-                `| ${row.p95Ms.toFixed(4).padStart(8)} |`,
+                    `| ${row.phase.padEnd(39)} ` +
+                    `| ${row.complexity.padEnd(22)} ` +
+                    `| ${row.params.padEnd(10)} ` +
+                    `| ${row.medianMs.toFixed(4).padStart(11)} ` +
+                    `| ${row.p95Ms.toFixed(4).padStart(8)} |`,
             );
         }
 
-        console.log('\n### Table 2: Repeated Queries & Index Amortization vs Linear Filtering');
-        console.log('| Dataset N | Queries Q | Linear Total (ms) | Indexed Total [Build+Q] (ms) | Linear / Query (ms) | Indexed Query Alone (ms) |');
-        console.log('|----------:|----------:|------------------:|-----------------------------:|--------------------:|-------------------------:|');
+        console.log(
+            '\n### Table 2: Repeated Queries & Index Amortization vs Linear Filtering',
+        );
+        console.log(
+            '| Dataset N | Queries Q | Linear Total (ms) | Indexed Total [Build+Q] (ms) | Linear / Query (ms) | Indexed Query Alone (ms) |',
+        );
+        console.log(
+            '|----------:|----------:|------------------:|-----------------------------:|--------------------:|-------------------------:|',
+        );
 
         for (const row of amortizationResults) {
             console.log(
                 `| ${row.sizeN.toLocaleString().padStart(9)} ` +
-                `| ${row.queriesQ.toString().padStart(9)} ` +
-                `| ${row.linearTotalMs.toFixed(4).padStart(17)} ` +
-                `| ${row.indexedTotalMs.toFixed(4).padStart(28)} ` +
-                `| ${row.linearPerQueryMs.toFixed(4).padStart(19)} ` +
-                `| ${Math.max(0, row.indexedPerQueryMs).toFixed(4).padStart(24)} |`,
+                    `| ${row.queriesQ.toString().padStart(9)} ` +
+                    `| ${row.linearTotalMs.toFixed(4).padStart(17)} ` +
+                    `| ${row.indexedTotalMs.toFixed(4).padStart(28)} ` +
+                    `| ${row.linearPerQueryMs.toFixed(4).padStart(19)} ` +
+                    `| ${Math.max(0, row.indexedPerQueryMs).toFixed(4).padStart(24)} |`,
             );
         }
 
         console.log('\n### Verification & Correctness Ledger');
-        console.log('- [x] Normalization & map building conforms to Unicode NFD and lowercase mapping');
-        console.log('- [x] Stable MergeSort preserves originalIndex tie order across identical prices');
-        console.log('- [x] Binary bounds search matches linear range filter oracle 100% (inclusive duplicate counts exact)');
-        console.log('- [x] Complete query returns exact identical IDs to linear query baseline in original order');
-        console.log('- [x] Final sort preserves stable order on duplicate keys in name-asc and price-asc');
-        console.log('- [x] Cart aggregation runs O(c) without row mutation or key consolidation');
-        console.log('- [x] Inputs are Object.freeze immutable fixtures; no mutation occurred');
-        console.log('================================================================================\n');
+        console.log(
+            '- [x] Normalization & map building conforms to Unicode NFD and lowercase mapping',
+        );
+        console.log(
+            '- [x] Stable MergeSort preserves originalIndex tie order across identical prices',
+        );
+        console.log(
+            '- [x] Binary bounds search matches linear range filter oracle 100% (inclusive duplicate counts exact)',
+        );
+        console.log(
+            '- [x] Complete query returns exact identical IDs to linear query baseline in original order',
+        );
+        console.log(
+            '- [x] Final sort preserves stable order on duplicate keys in name-asc and price-asc',
+        );
+        console.log(
+            '- [x] Cart aggregation runs O(c) without row mutation or key consolidation',
+        );
+        console.log(
+            '- [x] Inputs are Object.freeze immutable fixtures; no mutation occurred',
+        );
+        console.log(
+            '================================================================================\n',
+        );
     });
 });

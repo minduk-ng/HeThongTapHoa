@@ -39,7 +39,9 @@ export default function ResetPassword() {
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="text-center">
                 <h2 className="auth-heading">Đặt lại mật khẩu</h2>
-                <p className="mt-2 auth-subtitle">Vui lòng nhập mật khẩu mới của bạn.</p>
+                <p className="auth-subtitle mt-2">
+                    Vui lòng nhập mật khẩu mới của bạn.
+                </p>
             </div>
 
             <div>
@@ -68,7 +70,9 @@ export default function ResetPassword() {
                         )}
                     </button>
                 </div>
-                {errors.password && <p className="form-error">{errors.password}</p>}
+                {errors.password && (
+                    <p className="form-error">{errors.password}</p>
+                )}
             </div>
 
             <div>
@@ -80,7 +84,9 @@ export default function ResetPassword() {
                         id="reset-confirm"
                         type={showConfirm ? 'text' : 'password'}
                         value={data.password_confirmation}
-                        onChange={(e) => setData('password_confirmation', e.target.value)}
+                        onChange={(e) =>
+                            setData('password_confirmation', e.target.value)
+                        }
                         className={`${inputClass} pr-12`}
                         required
                     />
@@ -97,13 +103,15 @@ export default function ResetPassword() {
                         )}
                     </button>
                 </div>
-                {errors.password_confirmation && <p className="form-error">{errors.password_confirmation}</p>}
+                {errors.password_confirmation && (
+                    <p className="form-error">{errors.password_confirmation}</p>
+                )}
             </div>
 
             <button
                 type="submit"
                 disabled={processing}
-                className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
                 {showSpinner ? (
                     <span className="flex items-center justify-center gap-2">

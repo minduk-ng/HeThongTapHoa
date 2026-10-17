@@ -42,7 +42,10 @@ export default function CustomersManager({
     const [isDeleting, setIsDeleting] = useState(false);
 
     const safeCustomers = useMemo(
-        () => (Array.isArray(customers) ? customers : Object.values(customers || {})) as CustomerData[],
+        () =>
+            (Array.isArray(customers)
+                ? customers
+                : Object.values(customers || {})) as CustomerData[],
         [customers],
     );
 
@@ -157,8 +160,11 @@ export default function CustomersManager({
             sortable: true,
             align: 'right',
             render: (c) => (
-                <span className="tabular-nums font-medium text-zinc-800 dark:text-zinc-200">
-                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(c.total_spent)}
+                <span className="font-medium text-zinc-800 tabular-nums dark:text-zinc-200">
+                    {new Intl.NumberFormat('vi-VN', {
+                        style: 'currency',
+                        currency: 'VND',
+                    }).format(c.total_spent)}
                 </span>
             ),
         },

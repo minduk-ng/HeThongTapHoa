@@ -26,22 +26,40 @@ const staticColumns: DataTableColumn<Ingredient>[] = [
         sortable: true,
         render: (r) => <span className="font-medium">{r.name}</span>,
     },
-    { key: 'code', header: 'Mã NVL', align: 'center', sortable: true, render: (r) => <span className="font-mono text-xs text-sky-600 dark:text-sky-400">{r.code}</span> },
-    { key: 'unit', header: 'Đơn vị', align: 'center', sortable: true, render: (r) => r.unit },
+    {
+        key: 'code',
+        header: 'Mã NVL',
+        align: 'center',
+        sortable: true,
+        render: (r) => (
+            <span className="font-mono text-xs text-sky-600 dark:text-sky-400">
+                {r.code}
+            </span>
+        ),
+    },
+    {
+        key: 'unit',
+        header: 'Đơn vị',
+        align: 'center',
+        sortable: true,
+        render: (r) => r.unit,
+    },
     {
         key: 'stock_quantity',
         header: 'Tồn lý thuyết',
         sortable: true,
         align: 'right',
         render: (r) => (
-            <span className="tabular-nums font-semibold">
+            <span className="font-semibold tabular-nums">
                 {Number(r.stock_quantity).toLocaleString('vi-VN')} {r.unit}
             </span>
         ),
     },
 ];
 
-export default function StocktakeManager({ ingredients }: StocktakeManagerProps) {
+export default function StocktakeManager({
+    ingredients,
+}: StocktakeManagerProps) {
     const [values, setValues] = useState<Record<number, string>>({});
     const [saving, setSaving] = useState(false);
 
@@ -65,10 +83,13 @@ export default function StocktakeManager({ ingredients }: StocktakeManagerProps)
                         step="any"
                         value={values[r.id] ?? ''}
                         onChange={(e) =>
-                            setValues((prev) => ({ ...prev, [r.id]: e.target.value }))
+                            setValues((prev) => ({
+                                ...prev,
+                                [r.id]: e.target.value,
+                            }))
                         }
                         placeholder="—"
-                        className="w-28 px-2.5 py-1 text-center text-xs tabular-nums rounded-lg border bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-sky-500 mx-auto block"
+                        className="mx-auto block w-28 rounded-lg border border-zinc-300 bg-zinc-50 px-2.5 py-1 text-center text-xs text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                     />
                 ),
             },
@@ -92,7 +113,9 @@ export default function StocktakeManager({ ingredients }: StocktakeManagerProps)
                               : 'text-zinc-500';
 
                     return (
-                        <span className={`tabular-nums font-semibold text-xs ${cls}`}>
+                        <span
+                            className={`text-xs font-semibold tabular-nums ${cls}`}
+                        >
                             {diff > 0 ? '+' : ''}
                             {diff.toLocaleString('vi-VN')} {r.unit}
                         </span>
@@ -116,8 +139,8 @@ export default function StocktakeManager({ ingredients }: StocktakeManagerProps)
             }));
 
         if (items.length === 0) {
-return;
-}
+            return;
+        }
 
         setSaving(true);
         router.post(
@@ -138,14 +161,14 @@ return;
                 title="Kiểm kê kho"
                 subtitle="Nhập số lượng thực tế đếm được để đối soát với tồn lý thuyết"
                 badge={
-                    <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                         {ingredients.length} nguyên liệu
                     </span>
                 }
                 actions={
                     <div className="flex items-center gap-2">
                         {changedCount > 0 && (
-                            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800/60">
+                            <span className="rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-600 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-400">
                                 {changedCount} thay đổi
                             </span>
                         )}
@@ -153,10 +176,14 @@ return;
                             type="button"
                             onClick={handleSave}
                             disabled={saving || changedCount === 0}
-                            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors duration-150 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center gap-1.5 rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition-colors duration-150 hover:bg-sky-700 active:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            <Save className="w-3.5 h-3.5 stroke-[1.5]" />
-                            <span>{saving ? 'Đang lưu...' : `Lưu kiểm kê (${changedCount})`}</span>
+                            <Save className="h-3.5 w-3.5 stroke-[1.5]" />
+                            <span>
+                                {saving
+                                    ? 'Đang lưu...'
+                                    : `Lưu kiểm kê (${changedCount})`}
+                            </span>
                         </button>
                     </div>
                 }
@@ -166,7 +193,9 @@ return;
                     rows={ingredients}
                     rowKey={(r) => r.id}
                     defaultSortKey="name"
-                    getSortValue={(r, k) => r[k as keyof Ingredient] as string | number}
+                    getSortValue={(r, k) =>
+                        r[k as keyof Ingredient] as string | number
+                    }
                     emptyMessage="Chưa có nguyên liệu nào"
                 />
             </ManagerPageLayout>

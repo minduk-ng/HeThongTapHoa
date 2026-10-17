@@ -1,9 +1,20 @@
 import { deepEqual, equal } from 'node:assert/strict';
 import { test } from 'node:test';
-import { activeRoute, flyoutSide, needsCompact, normalizeNavigation } from './navigationUtils.ts';
+import {
+    activeRoute,
+    flyoutSide,
+    needsCompact,
+    normalizeNavigation,
+} from './navigationUtils.ts';
 
 test('route is most specific and segment bounded', () => {
-    equal(activeRoute('/planning/products?page=2#list', ['/planning', '/planning/products']), '/planning/products');
+    equal(
+        activeRoute('/planning/products?page=2#list', [
+            '/planning',
+            '/planning/products',
+        ]),
+        '/planning/products',
+    );
     equal(activeRoute('/planning-other', ['/planning']), null);
     equal(activeRoute('/anything', ['/']), null);
     equal(activeRoute('/', ['/', '/planning']), '/');
@@ -12,9 +23,18 @@ test('route is most specific and segment bounded', () => {
 
 test('mixed groups preserve links and subgroups', () => {
     const link = { id: 1, name: 'Tổng quan', route_path: '/planning' };
-    deepEqual(normalizeNavigation({ Planning: { 0: link, __subs: { Reports: [link] } } }), [
-        { name: 'Planning', links: [link], subs: [{ name: 'Reports', links: [link] }] },
-    ]);
+    deepEqual(
+        normalizeNavigation({
+            Planning: { 0: link, __subs: { Reports: [link] } },
+        }),
+        [
+            {
+                name: 'Planning',
+                links: [link],
+                subs: [{ name: 'Reports', links: [link] }],
+            },
+        ],
+    );
     deepEqual(normalizeNavigation(null), []);
     deepEqual(normalizeNavigation({}), []);
 });

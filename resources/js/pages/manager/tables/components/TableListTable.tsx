@@ -1,4 +1,12 @@
-import { Armchair, CheckCircle2, Users, Clock, AlertTriangle, Edit3, Trash2 } from 'lucide-react';
+import {
+    Armchair,
+    CheckCircle2,
+    Users,
+    Clock,
+    AlertTriangle,
+    Edit3,
+    Trash2,
+} from 'lucide-react';
 import React from 'react';
 import type { DataTableColumn } from '../../../../components/DataTable';
 import DataTable from '../../../../components/DataTable';
@@ -21,34 +29,38 @@ interface TableListTableProps {
     onDelete: (table: TableData) => void;
 }
 
-export default function TableListTable({ tables, onEdit, onDelete }: TableListTableProps) {
+export default function TableListTable({
+    tables,
+    onEdit,
+    onDelete,
+}: TableListTableProps) {
     const renderStatusBadge = (status: TableData['status']) => {
         switch (status) {
             case 'available':
                 return (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
                         Bàn trống
                     </span>
                 );
             case 'occupied':
                 return (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
-                        <Users className="w-3.5 h-3.5 mr-1" />
+                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                        <Users className="mr-1 h-3.5 w-3.5" />
                         Đang dùng
                     </span>
                 );
             case 'reserved':
                 return (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300">
-                        <Clock className="w-3.5 h-3.5 mr-1" />
+                    <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-semibold text-purple-800 dark:bg-purple-950/60 dark:text-purple-300">
+                        <Clock className="mr-1 h-3.5 w-3.5" />
                         Đã đặt trước
                     </span>
                 );
             case 'maintenance':
                 return (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
-                        <AlertTriangle className="w-3.5 h-3.5 mr-1" />
+                    <span className="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                        <AlertTriangle className="mr-1 h-3.5 w-3.5" />
                         Bảo trì
                     </span>
                 );
@@ -65,10 +77,12 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
             sortable: true,
             render: (item) => (
                 <div className="flex items-center justify-center space-x-2">
-                    <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">
-                        <Armchair className="w-4 h-4 stroke-[1.5]" />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-xs font-bold text-sky-600 dark:bg-sky-950/60 dark:text-sky-400">
+                        <Armchair className="h-4 w-4 stroke-[1.5]" />
                     </div>
-                    <span className="font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">{item.table_number}</span>
+                    <span className="font-bold text-zinc-900 tabular-nums dark:text-zinc-100">
+                        {item.table_number}
+                    </span>
                 </div>
             ),
         },
@@ -77,14 +91,22 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
             header: 'Khu vực / Tầng',
             align: 'center',
             sortable: true,
-            render: (item) => <span className="text-zinc-600 dark:text-zinc-400 font-medium">{item.area || '—'}</span>,
+            render: (item) => (
+                <span className="font-medium text-zinc-600 dark:text-zinc-400">
+                    {item.area || '—'}
+                </span>
+            ),
         },
         {
             key: 'capacity',
             header: 'Số ghế (Sức chứa)',
             sortable: true,
             align: 'center',
-            render: (item) => <span className="font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">{item.capacity} ghế</span>,
+            render: (item) => (
+                <span className="font-semibold text-zinc-800 tabular-nums dark:text-zinc-200">
+                    {item.capacity} ghế
+                </span>
+            ),
         },
         {
             key: 'status',
@@ -104,24 +126,28 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
                         type="button"
                         disabled={item.status === 'occupied'}
                         onClick={() => onEdit(item)}
-                        className={`p-1.5 rounded-lg transition-colors ${
+                        className={`rounded-lg p-1.5 transition-colors ${
                             item.status === 'occupied'
-                                ? 'text-zinc-300 dark:text-zinc-700 cursor-not-allowed opacity-50'
-                                : 'text-zinc-500 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                ? 'cursor-not-allowed text-zinc-300 opacity-50 dark:text-zinc-700'
+                                : 'text-zinc-500 hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400'
                         }`}
-                        title={item.status === 'occupied' ? 'Bàn đang có khách sử dụng, không thể chỉnh sửa' : 'Chỉnh sửa bàn'}
+                        title={
+                            item.status === 'occupied'
+                                ? 'Bàn đang có khách sử dụng, không thể chỉnh sửa'
+                                : 'Chỉnh sửa bàn'
+                        }
                         aria-label="Chỉnh sửa bàn"
                     >
-                        <Edit3 className="w-4 h-4 stroke-[1.5]" />
+                        <Edit3 className="h-4 w-4 stroke-[1.5]" />
                     </button>
                     <button
                         type="button"
                         onClick={() => onDelete(item)}
-                        className="p-1.5 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                        className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800 dark:hover:text-rose-400"
                         title="Xóa bàn"
                         aria-label="Xóa bàn"
                     >
-                        <Trash2 className="w-4 h-4 stroke-[1.5]" />
+                        <Trash2 className="h-4 w-4 stroke-[1.5]" />
                     </button>
                 </div>
             ),
@@ -136,20 +162,20 @@ export default function TableListTable({ tables, onEdit, onDelete }: TableListTa
             defaultSortKey="table_number"
             getSortValue={(item, key) => {
                 if (key === 'table_number') {
-return item.table_number;
-}
+                    return item.table_number;
+                }
 
                 if (key === 'area') {
-return item.area;
-}
+                    return item.area;
+                }
 
                 if (key === 'capacity') {
-return item.capacity;
-}
+                    return item.capacity;
+                }
 
                 if (key === 'status') {
-return item.status;
-}
+                    return item.status;
+                }
 
                 return item[key as keyof TableData] ?? '';
             }}

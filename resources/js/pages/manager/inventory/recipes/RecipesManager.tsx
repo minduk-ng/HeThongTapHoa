@@ -37,8 +37,11 @@ export default function RecipesManager({
     filters,
 }: RecipesManagerProps) {
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
-    const [selectedCategory, setSelectedCategory] = useState(filters.category_id || 'all');
-    const [selectedProduct, setSelectedProduct] = useState<ProductRecipeData | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState(
+        filters.category_id || 'all',
+    );
+    const [selectedProduct, setSelectedProduct] =
+        useState<ProductRecipeData | null>(null);
 
     const [prevFilters, setPrevFilters] = useState(filters);
 
@@ -58,7 +61,8 @@ export default function RecipesManager({
                 String(product.id).includes(query);
 
             const matchesCategory =
-                selectedCategory === 'all' || String(product.category_id) === selectedCategory;
+                selectedCategory === 'all' ||
+                String(product.category_id) === selectedCategory;
 
             return matchesSearch && matchesCategory;
         });
@@ -73,7 +77,9 @@ export default function RecipesManager({
     };
 
     // Calculate recipe stats
-    const configuredCount = products.filter((p) => p.recipes && p.recipes.length > 0).length;
+    const configuredCount = products.filter(
+        (p) => p.recipes && p.recipes.length > 0,
+    ).length;
     const totalProducts = products.length;
 
     const hasActiveFilter = Boolean(searchQuery || selectedCategory !== 'all');
@@ -87,11 +93,11 @@ export default function RecipesManager({
                 title="Định lượng & Công thức món"
                 subtitle="Định lượng nguyên liệu và tính giá vốn ước tính (COGS)"
                 badge={
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                             {totalProducts} món
                         </span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300">
                             {configuredCount} đã có định lượng
                         </span>
                     </div>
@@ -100,14 +106,16 @@ export default function RecipesManager({
                 filters={
                     <div className="flex flex-wrap items-center gap-2.5">
                         {/* Search Bar */}
-                        <div className="relative flex-1 min-w-[200px] max-w-xs">
-                            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                        <div className="relative max-w-xs min-w-[200px] flex-1">
+                            <Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
                             <input
                                 type="text"
                                 value={searchQuery}
-                                onChange={(e) => handleSearchChange(e.target.value)}
+                                onChange={(e) =>
+                                    handleSearchChange(e.target.value)
+                                }
                                 placeholder="Tìm theo tên món ăn..."
-                                className="w-full pl-8 pr-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 transition-colors"
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-1.5 pr-3 pl-8 text-xs text-zinc-900 transition-colors focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100"
                             />
                         </div>
 
@@ -115,10 +123,14 @@ export default function RecipesManager({
                         <div className="w-48">
                             <select
                                 value={selectedCategory}
-                                onChange={(e) => handleCategoryChange(e.target.value)}
-                                className="w-full px-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
+                                onChange={(e) =>
+                                    handleCategoryChange(e.target.value)
+                                }
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-900 focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100"
                             >
-                                <option value="all">Tất cả danh mục ({categories.length})</option>
+                                <option value="all">
+                                    Tất cả danh mục ({categories.length})
+                                </option>
                                 {categories.map((cat) => (
                                     <option key={cat.id} value={cat.id}>
                                         {cat.name}
@@ -135,10 +147,10 @@ export default function RecipesManager({
                                     handleSearchChange('');
                                     handleCategoryChange('all');
                                 }}
-                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                                className="flex items-center gap-1 rounded-xl bg-zinc-100 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                                 title="Đặt lại bộ lọc"
                             >
-                                <RotateCcw className="w-3.5 h-3.5" />
+                                <RotateCcw className="h-3.5 w-3.5" />
                                 <span>Đặt lại</span>
                             </button>
                         )}

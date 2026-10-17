@@ -46,7 +46,10 @@ describe('formatSourceLabel', () => {
 
     it('returns dataset name when passed as string or object with name', () => {
         equal(formatSourceLabel('Kịch bản Tết 2026'), 'Kịch bản Tết 2026');
-        equal(formatSourceLabel({ name: 'Bộ dữ liệu Black Friday' }), 'Bộ dữ liệu Black Friday');
+        equal(
+            formatSourceLabel({ name: 'Bộ dữ liệu Black Friday' }),
+            'Bộ dữ liệu Black Friday',
+        );
     });
 
     it('returns generated name when object only contains id', () => {
@@ -152,7 +155,12 @@ describe('formatQuantity and formatCurrency', () => {
     it('formats currency with VND format', () => {
         const formatted = formatCurrency(50000);
         equal(formatted.includes('50.000'), true);
-        equal(formatted.includes('₫') || formatted.includes('đ') || formatted.includes('VND'), true);
+        equal(
+            formatted.includes('₫') ||
+                formatted.includes('đ') ||
+                formatted.includes('VND'),
+            true,
+        );
     });
 });
 
@@ -165,4 +173,3 @@ describe('MODEL_NAMES', () => {
         equal(MODEL_NAMES.holt_winters_multiplicative, 'Holt-Winters (Nhân)');
     });
 });
-

@@ -113,7 +113,12 @@ const COLUMNS: ReportTableColumn[] = [
     { key: 'quantity', label: 'SL', numeric: true, sortable: false },
     { key: 'unit_price', label: 'Đơn giá', numeric: true, sortable: false },
     { key: 'subtotal', label: 'Thành tiền', numeric: true, sortable: false },
-    { key: 'discount_amount', label: 'Giảm giá', numeric: true, sortable: false },
+    {
+        key: 'discount_amount',
+        label: 'Giảm giá',
+        numeric: true,
+        sortable: false,
+    },
     { key: 'net', label: 'Thực thu', numeric: true, sortable: false },
     { key: 'payment_method', label: 'PTTT', sortable: false },
 ];
@@ -246,14 +251,17 @@ export default function InvoiceItemsReport({
                     );
                 case 'discount_amount':
                     return (
-                        <span className="font-semibold tabular-nums text-rose-600 dark:text-rose-400">
+                        <span className="font-semibold text-rose-600 tabular-nums dark:text-rose-400">
                             {formatVND(row.order_discount ?? 0)}
                         </span>
                     );
                 case 'net':
                     return (
                         <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                            {formatVND((row.order_gross ?? row.total ?? 0) - (row.order_discount ?? 0))}
+                            {formatVND(
+                                (row.order_gross ?? row.total ?? 0) -
+                                    (row.order_discount ?? 0),
+                            )}
                         </span>
                     );
                 default:
@@ -278,7 +286,7 @@ export default function InvoiceItemsReport({
                 return formatVND(it.subtotal);
             case 'discount_amount':
                 return it.discount_amount > 0 ? (
-                    <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">
+                    <span className="font-medium text-rose-600 tabular-nums dark:text-rose-400">
                         {formatVND(it.discount_amount)}
                     </span>
                 ) : (
@@ -310,7 +318,10 @@ export default function InvoiceItemsReport({
                 case 'discount_amount':
                     return row.order_discount ?? 0;
                 case 'net':
-                    return (row.order_gross ?? row.total ?? 0) - (row.order_discount ?? 0);
+                    return (
+                        (row.order_gross ?? row.total ?? 0) -
+                        (row.order_discount ?? 0)
+                    );
                 default:
                     return '';
             }

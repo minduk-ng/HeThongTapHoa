@@ -8,8 +8,8 @@ const getCookie = (name: string): string => {
     const parts = value.split(`; ${name}=`);
 
     if (parts.length === 2) {
-return decodeURIComponent(parts.pop()?.split(';').shift() || '');
-}
+        return decodeURIComponent(parts.pop()?.split(';').shift() || '');
+    }
 
     return '';
 };
@@ -50,7 +50,10 @@ export default function Settings() {
     }, [resendCooldown]);
 
     // OTP Overlay states
-    const [otpConfig, setOtpConfig] = useState<{ email: string; verifyUrl: string } | null>(null);
+    const [otpConfig, setOtpConfig] = useState<{
+        email: string;
+        verifyUrl: string;
+    } | null>(null);
 
     const handleUpdateName = async () => {
         if (!nameVal.trim()) {
@@ -63,11 +66,11 @@ export default function Settings() {
             const response = await fetch('/profile/update-name', {
                 method: 'POST',
                 headers: {
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'Content-Type': 'application/json',
                     'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'),
                 },
-                body: JSON.stringify({ name: nameVal })
+                body: JSON.stringify({ name: nameVal }),
             });
             const result = await response.json();
 
@@ -94,11 +97,11 @@ export default function Settings() {
             const response = await fetch('/profile/update-email', {
                 method: 'POST',
                 headers: {
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'Content-Type': 'application/json',
                     'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'),
                 },
-                body: JSON.stringify({ email: emailVal })
+                body: JSON.stringify({ email: emailVal }),
             });
             const result = await response.json();
 
@@ -106,10 +109,14 @@ export default function Settings() {
                 setEmailError(null);
                 setOtpConfig({
                     email: emailVal,
-                    verifyUrl: '/profile/verify-email-otp'
+                    verifyUrl: '/profile/verify-email-otp',
                 });
             } else {
-                setEmailError(result.errors?.email || result.errors?.password || 'Email không hợp lệ hoặc đã được sử dụng.');
+                setEmailError(
+                    result.errors?.email ||
+                        result.errors?.password ||
+                        'Email không hợp lệ hoặc đã được sử dụng.',
+                );
             }
         } catch {
             setEmailError('Đã có lỗi xảy ra.');
@@ -138,14 +145,14 @@ export default function Settings() {
                 const response = await fetch('/profile/setup-password', {
                     method: 'POST',
                     headers: {
-                        'Accept': 'application/json',
+                        Accept: 'application/json',
                         'Content-Type': 'application/json',
                         'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'),
                     },
                     body: JSON.stringify({
                         password: newPass,
-                        password_confirmation: confirmPass
-                    })
+                        password_confirmation: confirmPass,
+                    }),
                 });
                 const result = await response.json();
 
@@ -155,7 +162,10 @@ export default function Settings() {
                     setPassSuccess('Đã thiết lập mật khẩu thành công.');
                     router.reload();
                 } else {
-                    setPassError(result.errors?.password || 'Thiết lập mật khẩu thất bại.');
+                    setPassError(
+                        result.errors?.password ||
+                            'Thiết lập mật khẩu thất bại.',
+                    );
                 }
             } catch {
                 setPassError('Đã có lỗi xảy ra.');
@@ -172,25 +182,29 @@ export default function Settings() {
                 const response = await fetch('/profile/change-password', {
                     method: 'POST',
                     headers: {
-                        'Accept': 'application/json',
+                        Accept: 'application/json',
                         'Content-Type': 'application/json',
                         'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'),
                     },
                     body: JSON.stringify({
                         current_password: currentPass,
                         password: newPass,
-                        password_confirmation: confirmPass
-                    })
+                        password_confirmation: confirmPass,
+                    }),
                 });
                 const result = await response.json();
 
                 if (response.ok && result.requires_otp) {
                     setOtpConfig({
                         email: user.email,
-                        verifyUrl: '/profile/verify-password-otp'
+                        verifyUrl: '/profile/verify-password-otp',
                     });
                 } else {
-                    setPassError(result.errors?.current_password || result.errors?.password || 'Đổi mật khẩu thất bại.');
+                    setPassError(
+                        result.errors?.current_password ||
+                            result.errors?.password ||
+                            'Đổi mật khẩu thất bại.',
+                    );
                 }
             } catch {
                 setPassError('Đã có lỗi xảy ra.');
@@ -212,21 +226,28 @@ export default function Settings() {
         <>
             <DashboardLayout>
                 <div className="mb-6">
-                    <h1 className="font-display text-2xl font-bold text-zinc-900 dark:text-zinc-100">Cài đặt tài khoản</h1>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Quản lý thông tin hồ sơ và bảo mật của bạn</p>
+                    <h1 className="font-display text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                        Cài đặt tài khoản
+                    </h1>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                        Quản lý thông tin hồ sơ và bảo mật của bạn
+                    </p>
                 </div>
 
                 {/* Outer container wrapping both panels - 1:2 column ratio split */}
                 <div className="relative py-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        
+                    <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
                         {/* Left Column (1/3 width) - Profile Details */}
-                        <div className="md:col-span-1 flex flex-col items-center justify-center text-center space-y-6 md:border-r md:border-zinc-100 dark:md:border-zinc-800 md:pr-8 py-4">
+                        <div className="flex flex-col items-center justify-center space-y-6 py-4 text-center md:col-span-1 md:border-r md:border-zinc-100 md:pr-8 dark:md:border-zinc-800">
                             <div className="relative">
                                 {user.avatar ? (
-                                    <img src={user.avatar} alt="Avatar" className="h-28 w-28 rounded-full border-4 border-sky-50 dark:border-sky-950/40 object-cover shadow-sm" />
+                                    <img
+                                        src={user.avatar}
+                                        alt="Avatar"
+                                        className="h-28 w-28 rounded-full border-4 border-sky-50 object-cover shadow-sm dark:border-sky-950/40"
+                                    />
                                 ) : (
-                                    <div className="avatar-placeholder h-28 w-28 text-3xl font-bold rounded-full border-4 border-sky-50 dark:border-sky-950/40 shadow-sm">
+                                    <div className="avatar-placeholder h-28 w-28 rounded-full border-4 border-sky-50 text-3xl font-bold shadow-sm dark:border-sky-950/40">
                                         {user.name.charAt(0).toUpperCase()}
                                     </div>
                                 )}
@@ -234,16 +255,25 @@ export default function Settings() {
 
                             <div className="w-full space-y-4">
                                 {isEditingName ? (
-                                    <div className="space-y-2 max-w-xs mx-auto">
+                                    <div className="mx-auto max-w-xs space-y-2">
                                         <input
                                             type="text"
                                             value={nameVal}
-                                            onChange={(e) => setNameVal(e.target.value)}
+                                            onChange={(e) =>
+                                                setNameVal(e.target.value)
+                                            }
                                             className="input-field text-center"
                                         />
-                                        {nameError && <p className="text-xs text-red-500">{nameError}</p>}
-                                        <div className="flex gap-2 justify-center">
-                                            <button onClick={handleUpdateName} className="btn-primary py-1.5 text-xs w-auto px-4 font-semibold">
+                                        {nameError && (
+                                            <p className="text-xs text-red-500">
+                                                {nameError}
+                                            </p>
+                                        )}
+                                        <div className="flex justify-center gap-2">
+                                            <button
+                                                onClick={handleUpdateName}
+                                                className="btn-primary w-auto px-4 py-1.5 text-xs font-semibold"
+                                            >
                                                 Lưu
                                             </button>
                                             <button
@@ -252,7 +282,7 @@ export default function Settings() {
                                                     setNameVal(user.name);
                                                     setNameError(null);
                                                 }}
-                                                className="btn-secondary py-1.5 text-xs w-auto px-4"
+                                                className="btn-secondary w-auto px-4 py-1.5 text-xs"
                                             >
                                                 Hủy
                                             </button>
@@ -264,12 +294,19 @@ export default function Settings() {
                                             <h3 className="font-display text-xl font-bold text-zinc-800 dark:text-zinc-100">
                                                 {user.name}
                                             </h3>
-                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-1">
+                                            <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
                                                 {user.email}
                                             </p>
-                                            <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">Người dùng</p>
+                                            <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500">
+                                                Người dùng
+                                            </p>
                                         </div>
-                                        <button onClick={() => setIsEditingName(true)} className="btn-secondary py-1.5 text-xs w-auto px-6">
+                                        <button
+                                            onClick={() =>
+                                                setIsEditingName(true)
+                                            }
+                                            className="btn-secondary w-auto px-6 py-1.5 text-xs"
+                                        >
                                             Sửa thông tin
                                         </button>
                                     </div>
@@ -278,8 +315,8 @@ export default function Settings() {
                         </div>
 
                         {/* Right Column (2/3 width) - Security Settings */}
-                        <div className="md:col-span-2 space-y-6 md:pl-8 py-4">
-                            <h2 className="font-display text-lg font-semibold text-zinc-800 dark:text-zinc-200 border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                        <div className="space-y-6 py-4 md:col-span-2 md:pl-8">
+                            <h2 className="border-b border-zinc-100 pb-3 font-display text-lg font-semibold text-zinc-800 dark:border-zinc-800 dark:text-zinc-200">
                                 Bảo mật tài khoản
                             </h2>
 
@@ -293,12 +330,21 @@ export default function Settings() {
                                         <input
                                             type="email"
                                             value={emailVal}
-                                            onChange={(e) => setEmailVal(e.target.value)}
+                                            onChange={(e) =>
+                                                setEmailVal(e.target.value)
+                                            }
                                             className="input-field"
                                         />
-                                        {emailError && <p className="text-xs text-red-500">{emailError}</p>}
+                                        {emailError && (
+                                            <p className="text-xs text-red-500">
+                                                {emailError}
+                                            </p>
+                                        )}
                                         <div className="flex gap-2">
-                                            <button onClick={handleUpdateEmail} className="btn-primary py-1.5 text-xs w-auto px-4 font-semibold">
+                                            <button
+                                                onClick={handleUpdateEmail}
+                                                className="btn-primary w-auto px-4 py-1.5 text-xs font-semibold"
+                                            >
                                                 Lưu
                                             </button>
                                             <button
@@ -307,18 +353,23 @@ export default function Settings() {
                                                     setEmailVal(user.email);
                                                     setEmailError(null);
                                                 }}
-                                                className="btn-secondary py-1.5 text-xs w-auto px-4"
+                                                className="btn-secondary w-auto px-4 py-1.5 text-xs"
                                             >
                                                 Hủy
                                             </button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
-                                        <span className="text-sm text-zinc-700 dark:text-zinc-300 font-mono">
+                                    <div className="flex items-center justify-between rounded-xl border border-zinc-200/80 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-800/50">
+                                        <span className="font-mono text-sm text-zinc-700 dark:text-zinc-300">
                                             {user.email}
                                         </span>
-                                        <button onClick={() => setIsEditingEmail(true)} className="btn-secondary py-1.5 text-xs w-auto px-4">
+                                        <button
+                                            onClick={() =>
+                                                setIsEditingEmail(true)
+                                            }
+                                            className="btn-secondary w-auto px-4 py-1.5 text-xs"
+                                        >
                                             Sửa
                                         </button>
                                     </div>
@@ -326,10 +377,12 @@ export default function Settings() {
                             </div>
 
                             {/* Password Section */}
-                            <div className="space-y-4 border-t border-zinc-100 dark:border-zinc-800 pt-6">
+                            <div className="space-y-4 border-t border-zinc-100 pt-6 dark:border-zinc-800">
                                 <div>
                                     <h3 className="font-display text-lg font-semibold text-zinc-800 dark:text-zinc-200">
-                                        {user.has_password ? 'Đổi mật khẩu' : 'Thiết lập mật khẩu'}
+                                        {user.has_password
+                                            ? 'Đổi mật khẩu'
+                                            : 'Thiết lập mật khẩu'}
                                     </h3>
                                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
                                         {user.has_password
@@ -341,41 +394,66 @@ export default function Settings() {
                                 <div className="space-y-3">
                                     {user.has_password && (
                                         <div className="space-y-1.5">
-                                            <label className="text-xs text-zinc-500 dark:text-zinc-400">Mật khẩu cũ</label>
+                                            <label className="text-xs text-zinc-500 dark:text-zinc-400">
+                                                Mật khẩu cũ
+                                            </label>
                                             <input
                                                 type="password"
                                                 value={currentPass}
-                                                onChange={(e) => setCurrentPass(e.target.value)}
+                                                onChange={(e) =>
+                                                    setCurrentPass(
+                                                        e.target.value,
+                                                    )
+                                                }
                                                 className="input-field"
                                                 placeholder="Nhập mật khẩu hiện tại"
                                             />
                                         </div>
                                     )}
                                     <div className="space-y-1.5">
-                                        <label className="text-xs text-zinc-500 dark:text-zinc-400">Mật khẩu mới</label>
+                                        <label className="text-xs text-zinc-500 dark:text-zinc-400">
+                                            Mật khẩu mới
+                                        </label>
                                         <input
                                             type="password"
                                             value={newPass}
-                                            onChange={(e) => setNewPass(e.target.value)}
+                                            onChange={(e) =>
+                                                setNewPass(e.target.value)
+                                            }
                                             className="input-field"
                                             placeholder="Tối thiểu 8 ký tự"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs text-zinc-500 dark:text-zinc-400">Xác nhận mật khẩu mới</label>
+                                        <label className="text-xs text-zinc-500 dark:text-zinc-400">
+                                            Xác nhận mật khẩu mới
+                                        </label>
                                         <input
                                             type="password"
                                             value={confirmPass}
-                                            onChange={(e) => setConfirmPass(e.target.value)}
+                                            onChange={(e) =>
+                                                setConfirmPass(e.target.value)
+                                            }
                                             className="input-field"
                                             placeholder="Nhập lại mật khẩu mới"
                                         />
                                     </div>
 
-                                    {passError && <p className="text-xs text-red-500">{passError}</p>}
-                                    {passSuccess && <p className="text-xs text-green-500">{passSuccess}</p>}
+                                    {passError && (
+                                        <p className="text-xs text-red-500">
+                                            {passError}
+                                        </p>
+                                    )}
+                                    {passSuccess && (
+                                        <p className="text-xs text-green-500">
+                                            {passSuccess}
+                                        </p>
+                                    )}
 
-                                    <button onClick={handleSavePassword} className="btn-primary py-2 text-xs font-semibold">
+                                    <button
+                                        onClick={handleSavePassword}
+                                        className="btn-primary py-2 text-xs font-semibold"
+                                    >
                                         Lưu mật khẩu
                                     </button>
                                 </div>

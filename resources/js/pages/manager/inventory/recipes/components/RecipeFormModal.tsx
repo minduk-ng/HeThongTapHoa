@@ -1,10 +1,7 @@
 import { router } from '@inertiajs/react';
 import { ChefHat, Plus, Scale, Trash2 } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-    ManagerFormModal,
-    FormSection,
-} from '@/components/form';
+import { ManagerFormModal, FormSection } from '@/components/form';
 import type { ProductRecipeData } from './RecipeTable';
 
 interface Ingredient {
@@ -58,8 +55,8 @@ export default function RecipeFormModal({
 
     const isDirty = useMemo(() => {
         if (!product) {
-return false;
-}
+            return false;
+        }
 
         const initialLines = (product.recipes || []).map((r) => ({
             ingredient_id: r.ingredient_id,
@@ -68,20 +65,20 @@ return false;
         }));
 
         if (lines.length !== initialLines.length) {
-return true;
-}
+            return true;
+        }
 
         return lines.some((l, idx) => {
             const init = initialLines[idx];
 
             if (!init) {
-return true;
-}
+                return true;
+            }
 
             return (
-                l.ingredient_id !== init.ingredient_id
-                || l.amount !== init.amount
-                || l.unit !== init.unit
+                l.ingredient_id !== init.ingredient_id ||
+                l.amount !== init.amount ||
+                l.unit !== init.unit
             );
         });
     }, [product, lines]);
@@ -94,8 +91,8 @@ return true;
         const firstIng = ingredients[0];
 
         if (!firstIng) {
-return;
-}
+            return;
+        }
 
         setLines((prev) => [
             ...prev,
@@ -117,10 +114,10 @@ return;
             prev.map((line, i) =>
                 i === index
                     ? {
-                        ...line,
-                        ingredient_id: ingId,
-                        unit: selectedIng?.unit || line.unit,
-                    }
+                          ...line,
+                          ingredient_id: ingId,
+                          unit: selectedIng?.unit || line.unit,
+                      }
                     : line,
             ),
         );
@@ -150,8 +147,8 @@ return;
         e.preventDefault();
 
         if (submitting) {
-return;
-}
+            return;
+        }
 
         setErrorMsg(null);
 
@@ -179,8 +176,8 @@ return;
                 },
                 onError: (errs) => {
                     setErrorMsg(
-                        Object.values(errs)[0]
-                            || 'Có lỗi xảy ra khi lưu công thức.',
+                        Object.values(errs)[0] ||
+                            'Có lỗi xảy ra khi lưu công thức.',
                     );
                     setSubmitting(false);
                 },
@@ -214,24 +211,25 @@ return;
                 icon={ChefHat}
                 gridCols={2}
             >
-                <div className="flex flex-col justify-center rounded-xl bg-white p-3.5 border border-zinc-200/70 dark:bg-zinc-900 dark:border-zinc-800">
+                <div className="flex flex-col justify-center rounded-xl border border-zinc-200/70 bg-white p-3.5 dark:border-zinc-800 dark:bg-zinc-900">
                     <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
                         Sản phẩm thực đơn
                     </span>
-                    <span className="font-display text-sm font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">
+                    <span className="mt-0.5 font-display text-sm font-bold text-zinc-900 dark:text-zinc-100">
                         {product.name}
                     </span>
-                    <span className="text-xs font-semibold tabular-nums text-sky-600 dark:text-sky-400 mt-1">
-                        Giá bán: {Number(product.price).toLocaleString('vi-VN')} ₫
+                    <span className="mt-1 text-xs font-semibold text-sky-600 tabular-nums dark:text-sky-400">
+                        Giá bán: {Number(product.price).toLocaleString('vi-VN')}{' '}
+                        ₫
                     </span>
                 </div>
 
-                <div className="flex items-center justify-between gap-4 rounded-xl bg-white p-3.5 border border-zinc-200/70 dark:bg-zinc-900 dark:border-zinc-800">
+                <div className="flex items-center justify-between gap-4 rounded-xl border border-zinc-200/70 bg-white p-3.5 dark:border-zinc-800 dark:bg-zinc-900">
                     <div>
                         <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
                             Giá vốn định lượng (COGS)
                         </span>
-                        <div className="text-sm font-bold tabular-nums text-zinc-900 dark:text-zinc-100 mt-0.5">
+                        <div className="mt-0.5 text-sm font-bold text-zinc-900 tabular-nums dark:text-zinc-100">
                             {cogs.toLocaleString('vi-VN')} ₫
                         </div>
                     </div>
@@ -240,7 +238,7 @@ return;
                             Tỷ suất lãi gộp
                         </span>
                         <div
-                            className={`text-sm font-bold tabular-nums mt-0.5 ${
+                            className={`mt-0.5 text-sm font-bold tabular-nums ${
                                 marginPercent >= 60
                                     ? 'text-emerald-600 dark:text-emerald-400'
                                     : marginPercent >= 40
@@ -271,11 +269,21 @@ return;
                             <table className="w-full text-left text-xs">
                                 <thead>
                                     <tr className="border-b border-zinc-200/80 bg-zinc-50/50 text-[11px] font-medium text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
-                                        <th className="px-3.5 py-2.5">Nguyên liệu</th>
-                                        <th className="px-3.5 py-2.5 w-32">Định lượng</th>
-                                        <th className="px-3.5 py-2.5 w-24">Đơn vị</th>
-                                        <th className="px-3.5 py-2.5 w-28 text-right">Chi phí ước tính</th>
-                                        <th className="px-3.5 py-2.5 w-12 text-center">Xóa</th>
+                                        <th className="px-3.5 py-2.5">
+                                            Nguyên liệu
+                                        </th>
+                                        <th className="w-32 px-3.5 py-2.5">
+                                            Định lượng
+                                        </th>
+                                        <th className="w-24 px-3.5 py-2.5">
+                                            Đơn vị
+                                        </th>
+                                        <th className="w-28 px-3.5 py-2.5 text-right">
+                                            Chi phí ước tính
+                                        </th>
+                                        <th className="w-12 px-3.5 py-2.5 text-center">
+                                            Xóa
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
@@ -284,7 +292,8 @@ return;
                                             (i) => i.id === line.ingredient_id,
                                         );
                                         const lineCost = ing
-                                            ? line.amount * Number(ing.cost_price)
+                                            ? line.amount *
+                                              Number(ing.cost_price)
                                             : 0;
 
                                         return (
@@ -294,23 +303,41 @@ return;
                                             >
                                                 <td className="px-3.5 py-2">
                                                     <select
-                                                        value={line.ingredient_id}
+                                                        value={
+                                                            line.ingredient_id
+                                                        }
                                                         onChange={(e) =>
                                                             handleIngredientChange(
                                                                 index,
-                                                                Number(e.target.value),
+                                                                Number(
+                                                                    e.target
+                                                                        .value,
+                                                                ),
                                                             )
                                                         }
                                                         className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-xs text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                                     >
-                                                        {ingredients.map((ingItem) => (
-                                                            <option
-                                                                key={ingItem.id}
-                                                                value={ingItem.id}
-                                                            >
-                                                                {ingItem.name} ({ingItem.unit})
-                                                            </option>
-                                                        ))}
+                                                        {ingredients.map(
+                                                            (ingItem) => (
+                                                                <option
+                                                                    key={
+                                                                        ingItem.id
+                                                                    }
+                                                                    value={
+                                                                        ingItem.id
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        ingItem.name
+                                                                    }{' '}
+                                                                    (
+                                                                    {
+                                                                        ingItem.unit
+                                                                    }
+                                                                    )
+                                                                </option>
+                                                            ),
+                                                        )}
                                                     </select>
                                                 </td>
 
@@ -319,7 +346,9 @@ return;
                                                         type="number"
                                                         step="any"
                                                         min="0.001"
-                                                        value={line.amount || ''}
+                                                        value={
+                                                            line.amount || ''
+                                                        }
                                                         onChange={(e) =>
                                                             handleAmountChange(
                                                                 index,
@@ -327,23 +356,30 @@ return;
                                                             )
                                                         }
                                                         placeholder="0"
-                                                        className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-xs font-semibold tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                                        className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                                     />
                                                 </td>
 
-                                                <td className="px-3.5 py-2 text-zinc-600 dark:text-zinc-400 font-medium">
+                                                <td className="px-3.5 py-2 font-medium text-zinc-600 dark:text-zinc-400">
                                                     {line.unit}
                                                 </td>
 
-                                                <td className="px-3.5 py-2 text-right font-semibold tabular-nums text-zinc-800 dark:text-zinc-200">
-                                                    {lineCost.toLocaleString('vi-VN')} ₫
+                                                <td className="px-3.5 py-2 text-right font-semibold text-zinc-800 tabular-nums dark:text-zinc-200">
+                                                    {lineCost.toLocaleString(
+                                                        'vi-VN',
+                                                    )}{' '}
+                                                    ₫
                                                 </td>
 
                                                 <td className="px-3.5 py-2 text-center">
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleRemoveLine(index)}
-                                                        className="p-1 text-zinc-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                                                        onClick={() =>
+                                                            handleRemoveLine(
+                                                                index,
+                                                            )
+                                                        }
+                                                        className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30"
                                                         title="Xóa dòng"
                                                     >
                                                         <Trash2 className="h-4 w-4" />
@@ -360,7 +396,7 @@ return;
                     <button
                         type="button"
                         onClick={handleAddLine}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 text-xs font-semibold text-sky-600 hover:bg-sky-50/50 dark:text-sky-400 dark:hover:bg-sky-950/20 transition-colors w-full justify-center"
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-zinc-300 px-3.5 py-2 text-xs font-semibold text-sky-600 transition-colors hover:bg-sky-50/50 dark:border-zinc-700 dark:text-sky-400 dark:hover:bg-sky-950/20"
                     >
                         <Plus className="h-3.5 w-3.5 stroke-2" />
                         <span>Thêm dòng nguyên liệu</span>

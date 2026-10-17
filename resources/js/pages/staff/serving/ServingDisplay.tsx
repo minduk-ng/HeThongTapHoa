@@ -48,10 +48,10 @@ function ElapsedTimer({ completedAt }: { completedAt: string }) {
             const diff = Date.now() - new Date(completedAt).getTime();
 
             if (diff < 0) {
- setElapsed('0:00');
+                setElapsed('0:00');
 
- return; 
-}
+                return;
+            }
 
             const mins = Math.floor(diff / 60000);
             const secs = Math.floor((diff % 60000) / 1000);
@@ -64,8 +64,8 @@ function ElapsedTimer({ completedAt }: { completedAt: string }) {
     }, [completedAt]);
 
     return (
-        <span className="tabular-nums text-xs text-zinc-400 flex items-center gap-1">
-            <Clock className="w-3 h-3 stroke-[1.5]" />
+        <span className="flex items-center gap-1 text-xs text-zinc-400 tabular-nums">
+            <Clock className="h-3 w-3 stroke-[1.5]" />
             {elapsed}
         </span>
     );
@@ -81,12 +81,21 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
     const { auth } = usePage<PageProps>().props;
     const user = auth.user;
     const { status: reverbStatus } = useReverbStatus();
-    const { queue: commands, enqueue, retry, discard } = useCommandQueue({
-        reconcile: () => router.reload({ only: ['servingQueue'], onError: () => {} }),
+    const {
+        queue: commands,
+        enqueue,
+        retry,
+        discard,
+    } = useCommandQueue({
+        reconcile: () =>
+            router.reload({ only: ['servingQueue'], onError: () => {} }),
     });
 
     const [queue, setQueue] = useState<ServingItemData[]>(
-        () => (Array.isArray(servingQueue) ? servingQueue : Object.values(servingQueue || {})) as ServingItemData[]
+        () =>
+            (Array.isArray(servingQueue)
+                ? servingQueue
+                : Object.values(servingQueue || {})) as ServingItemData[],
     );
     const [activeFilter, setActiveFilter] = useState<string>('all');
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -105,18 +114,25 @@ export default function ServingDisplay({ servingQueue }: ServingDisplayProps) {
             ids.forEach((id) => all.add(id));
 
             if (c.status !== 'failed') {
-ids.forEach((id) => active.add(id));
-}
+                ids.forEach((id) => active.add(id));
+            }
         });
 
         queueMicrotask(() => {
             setSyncIds(active);
-            const gone = [...cmdCardIdsRef.current].filter((id) => !all.has(id));
+            const gone = [...cmdCardIdsRef.current].filter(
+                (id) => !all.has(id),
+            );
 
             if (gone.length > 0) {
                 const goneSet = new Set(gone);
-                setQueue((prev) => prev.filter((card) => !goneSet.has(card.id)));
-                setSelectedIds((prev) => new Set([...prev].filter((id) => !goneSet.has(id))));
+                setQueue((prev) =>
+                    prev.filter((card) => !goneSet.has(card.id)),
+                );
+                setSelectedIds(
+                    (prev) =>
+                        new Set([...prev].filter((id) => !goneSet.has(id))),
+                );
             }
 
             cmdCardIdsRef.current = all;
@@ -125,23 +141,45 @@ ids.forEach((id) => active.add(id));
 
     // Sync when Inertia reloads props (keep cards with any live command — pending/flushing/failed — never clobber)
     useEffect(() => {
-        const safe = (Array.isArray(servingQueue) ? servingQueue : Object.values(servingQueue || {})) as ServingItemData[];
+        const safe = (
+            Array.isArray(servingQueue)
+                ? servingQueue
+                : Object.values(servingQueue || {})
+        ) as ServingItemData[];
         setQueue((prev) => {
-            const retained = prev.filter((card) => cmdCardIdsRef.current.has(card.id));
+            const retained = prev.filter((card) =>
+                cmdCardIdsRef.current.has(card.id),
+            );
             const safeIds = new Set(safe.map((card) => card.id));
 
-            return [...safe, ...retained.filter((card) => !safeIds.has(card.id))];
+            return [
+                ...safe,
+                ...retained.filter((card) => !safeIds.has(card.id)),
+            ];
         });
         const validIds = new Set(safe.map((card) => card.id));
-        setSelectedIds((prev) => new Set([...prev].filter((id) => validIds.has(id) || cmdCardIdsRef.current.has(id))));
+        setSelectedIds(
+            (prev) =>
+                new Set(
+                    [...prev].filter(
+                        (id) =>
+                            validIds.has(id) || cmdCardIdsRef.current.has(id),
+                    ),
+                ),
+        );
     }, [servingQueue]);
 
     // Fullscreen
     useEffect(() => {
-        const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+        const handleFullscreenChange = () =>
+            setIsFullscreen(!!document.fullscreenElement);
         document.addEventListener('fullscreenchange', handleFullscreenChange);
 
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        return () =>
+            document.removeEventListener(
+                'fullscreenchange',
+                handleFullscreenChange,
+            );
     }, []);
 
     const toggleFullscreen = () => {
@@ -155,23 +193,33 @@ ids.forEach((id) => active.add(id));
     // WS Popover close on outside click
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
-            if (wsPopoverRef.current && !wsPopoverRef.current.contains(event.target as Node)) {
+            if (
+                wsPopoverRef.current &&
+                !wsPopoverRef.current.contains(event.target as Node)
+            ) {
                 setIsWsPopoverOpen(false);
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
 
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        return () =>
+            document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     // Realtime WebSocket
-    const lastEventRef = useRef<{ key: string; time: number }>({ key: '', time: 0 });
+    const lastEventRef = useRef<{ key: string; time: number }>({
+        key: '',
+        time: 0,
+    });
     const isDuplicateEvent = useCallback((eventKey: string) => {
         const now = Date.now();
 
-        if (lastEventRef.current.key === eventKey && now - lastEventRef.current.time < 1000) {
-return true;
-}
+        if (
+            lastEventRef.current.key === eventKey &&
+            now - lastEventRef.current.time < 1000
+        ) {
+            return true;
+        }
 
         lastEventRef.current = { key: eventKey, time: now };
 
@@ -186,8 +234,8 @@ return true;
                 const eventKey = `ItemsReadyToServe_${payload?.order_id}`;
 
                 if (isDuplicateEvent(eventKey)) {
-return;
-}
+                    return;
+                }
 
                 const newCard: ServingItemData = {
                     id: `${payload.order_id}_${Date.now()}`,
@@ -203,7 +251,7 @@ return;
                     })),
                     completed_at: payload.completed_at,
                 };
-                setQueue(prev => [newCard, ...prev]);
+                setQueue((prev) => [newCard, ...prev]);
             };
 
             const handleOrderCompleted = () => {
@@ -215,7 +263,9 @@ return;
                     const tableNum = payload.table_number || '';
 
                     if (tableNum) {
-                        setQueue(prev => prev.filter(c => c.table_number !== tableNum));
+                        setQueue((prev) =>
+                            prev.filter((c) => c.table_number !== tableNum),
+                        );
                     }
                 }
             };
@@ -226,8 +276,8 @@ return;
                 .listen('.TableStatusUpdated', handleTableStatus);
 
             return () => {
- window.Echo.leave('pos-channel'); 
-};
+                window.Echo.leave('pos-channel');
+            };
         }
     }, [isDuplicateEvent]);
 
@@ -236,22 +286,25 @@ return;
     }, []);
 
     // Mark served via offline command queue — card stays until command syncs
-    const handleServed = useCallback((card: ServingItemData) => {
-        if (commands.some((c) => cardIdsInCommand(c).includes(card.id))) {
-return;
-}
+    const handleServed = useCallback(
+        (card: ServingItemData) => {
+            if (commands.some((c) => cardIdsInCommand(c).includes(card.id))) {
+                return;
+            }
 
-        markSync(card.id);
-        enqueue('serving.mark-served', '/staff/serving/mark-served', {
-            item_ids: card.items.map((i) => i.id),
-            __card_id: card.id,
-        });
-    }, [commands, enqueue, markSync]);
+            markSync(card.id);
+            enqueue('serving.mark-served', '/staff/serving/mark-served', {
+                item_ids: card.items.map((i) => i.id),
+                __card_id: card.id,
+            });
+        },
+        [commands, enqueue, markSync],
+    );
 
     // Filter pills — extract unique tables from queue
     const tableFilters = React.useMemo(() => {
         const map = new Map<string, { area: string; count: number }>();
-        queue.forEach(card => {
+        queue.forEach((card) => {
             const existing = map.get(card.table_number);
 
             if (existing) {
@@ -268,15 +321,19 @@ return;
         }));
     }, [queue]);
 
-    const filteredQueue = activeFilter === 'all'
-        ? queue
-        : queue.filter(c => c.table_number === activeFilter);
+    const filteredQueue =
+        activeFilter === 'all'
+            ? queue
+            : queue.filter((c) => c.table_number === activeFilter);
 
-    const totalItems = queue.reduce((sum, c) => sum + c.items.reduce((s, i) => s + i.quantity, 0), 0);
+    const totalItems = queue.reduce(
+        (sum, c) => sum + c.items.reduce((s, i) => s + i.quantity, 0),
+        0,
+    );
 
     // Toggle card selection
     const toggleSelect = useCallback((cardId: string) => {
-        setSelectedIds(prev => {
+        setSelectedIds((prev) => {
             const next = new Set(prev);
 
             if (next.has(cardId)) {
@@ -291,7 +348,7 @@ return;
 
     // Select all visible (filtered) cards
     const selectAll = useCallback(() => {
-        setSelectedIds(new Set(filteredQueue.map(c => c.id)));
+        setSelectedIds(new Set(filteredQueue.map((c) => c.id)));
     }, [filteredQueue]);
 
     // Clear selection
@@ -302,12 +359,16 @@ return;
     // Batch mark served via queue — one command covering all selected cards
     const handleBatchServed = useCallback(() => {
         if (selectedIds.size === 0) {
-return;
-}
+            return;
+        }
 
-        if ([...selectedIds].some((id) => commands.some((c) => cardIdsInCommand(c).includes(id)))) {
-return;
-}
+        if (
+            [...selectedIds].some((id) =>
+                commands.some((c) => cardIdsInCommand(c).includes(id)),
+            )
+        ) {
+            return;
+        }
 
         const allItemIds = queue
             .filter((c) => selectedIds.has(c.id))
@@ -321,13 +382,18 @@ return;
 
     const batchDisabled =
         selectedIds.size === 0 ||
-        [...selectedIds].some((id) => commands.some((c) => cardIdsInCommand(c).includes(id)));
+        [...selectedIds].some((id) =>
+            commands.some((c) => cardIdsInCommand(c).includes(id)),
+        );
     const batchSyncing = [...selectedIds].some((id) => syncIds.has(id));
 
     // WS status config
     const statusConfig = {
         connected: { dotClass: 'bg-emerald-500', label: 'Socket' },
-        connecting: { dotClass: 'bg-amber-500 animate-pulse', label: 'Kết nối…' },
+        connecting: {
+            dotClass: 'bg-amber-500 animate-pulse',
+            label: 'Kết nối…',
+        },
         disconnected: { dotClass: 'bg-rose-500', label: 'Mất kết nối' },
     };
     const wsConfig = statusConfig[reverbStatus];
@@ -348,11 +414,15 @@ return;
                         <div className="relative" ref={wsPopoverRef}>
                             <button
                                 type="button"
-                                onClick={() => setIsWsPopoverOpen(!isWsPopoverOpen)}
+                                onClick={() =>
+                                    setIsWsPopoverOpen(!isWsPopoverOpen)
+                                }
                                 className="flex items-center space-x-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 transition-colors hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-zinc-800"
                                 title="Xem chi tiết kết nối mạng"
                             >
-                                <span className={`h-2 w-2 rounded-full ${wsConfig.dotClass}`} />
+                                <span
+                                    className={`h-2 w-2 rounded-full ${wsConfig.dotClass}`}
+                                />
                                 <span className="text-[11px] font-semibold text-zinc-500 tabular-nums dark:text-zinc-400">
                                     {wsConfig.label}
                                 </span>
@@ -364,17 +434,30 @@ return;
                                         <span className="font-display text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                                             Thông tin mạng
                                         </span>
-                                        <span className={`h-2 w-2 rounded-full ${wsConfig.dotClass}`} />
+                                        <span
+                                            className={`h-2 w-2 rounded-full ${wsConfig.dotClass}`}
+                                        />
                                     </div>
                                     <div className="flex flex-col gap-1.5 text-[11px]">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-zinc-400">Kết nối:</span>
-                                            <span className="font-medium text-zinc-800 dark:text-zinc-200">WebSocket (Reverb)</span>
+                                            <span className="text-zinc-400">
+                                                Kết nối:
+                                            </span>
+                                            <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                                                WebSocket (Reverb)
+                                            </span>
                                         </div>
                                         <div className="flex items-center justify-between">
-                                            <span className="text-zinc-400">Trạng thái:</span>
+                                            <span className="text-zinc-400">
+                                                Trạng thái:
+                                            </span>
                                             <span className="font-medium text-zinc-800 dark:text-zinc-200">
-                                                {reverbStatus === 'connected' ? 'Đã kết nối' : reverbStatus === 'connecting' ? 'Đang kết nối' : 'Mất kết nối'}
+                                                {reverbStatus === 'connected'
+                                                    ? 'Đã kết nối'
+                                                    : reverbStatus ===
+                                                        'connecting'
+                                                      ? 'Đang kết nối'
+                                                      : 'Mất kết nối'}
                                             </span>
                                         </div>
                                     </div>
@@ -384,12 +467,14 @@ return;
                     </div>
 
                     {/* Center: Selection Action Bar OR Filter Pills */}
-                    <div className="flex-1 min-w-0 overflow-x-auto">
+                    <div className="min-w-0 flex-1 overflow-x-auto">
                         {selectedIds.size > 0 ? (
                             <div className="flex items-center gap-2">
                                 <span className="flex shrink-0 items-center gap-1.5 rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
                                     <CheckSquare className="h-4 w-4 stroke-[1.5]" />
-                                    <span className="tabular-nums">Đã chọn {selectedIds.size} đơn</span>
+                                    <span className="tabular-nums">
+                                        Đã chọn {selectedIds.size} đơn
+                                    </span>
                                 </span>
                                 <button
                                     type="button"
@@ -413,7 +498,11 @@ return;
                                     className="flex shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     <CheckCheck className="h-4 w-4 stroke-[1.5]" />
-                                    <span>{batchSyncing ? 'Đang đồng bộ…' : `Phục vụ đã chọn (${selectedIds.size})`}</span>
+                                    <span>
+                                        {batchSyncing
+                                            ? 'Đang đồng bộ…'
+                                            : `Phục vụ đã chọn (${selectedIds.size})`}
+                                    </span>
                                 </button>
                             </div>
                         ) : (
@@ -430,11 +519,13 @@ return;
                                     <Layers className="h-4 w-4 stroke-[1.5]" />
                                     <span>Tất cả</span>
                                 </button>
-                                {tableFilters.map(f => (
+                                {tableFilters.map((f) => (
                                     <button
                                         key={f.tableNumber}
                                         type="button"
-                                        onClick={() => setActiveFilter(f.tableNumber)}
+                                        onClick={() =>
+                                            setActiveFilter(f.tableNumber)
+                                        }
                                         className={`flex shrink-0 items-center space-x-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
                                             activeFilter === f.tableNumber
                                                 ? 'bg-sky-600 text-white shadow-xs'
@@ -442,11 +533,13 @@ return;
                                         }`}
                                     >
                                         <span>{f.tableNumber}</span>
-                                        <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[11px] tabular-nums ${
-                                            activeFilter === f.tableNumber
-                                                ? 'bg-white/20'
-                                                : 'bg-zinc-200 dark:bg-zinc-700'
-                                        }`}>
+                                        <span
+                                            className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[11px] tabular-nums ${
+                                                activeFilter === f.tableNumber
+                                                    ? 'bg-white/20'
+                                                    : 'bg-zinc-200 dark:bg-zinc-700'
+                                            }`}
+                                        >
                                             {f.count}
                                         </span>
                                     </button>
@@ -456,7 +549,7 @@ return;
                     </div>
 
                     {/* Right: Stats + Actions + Avatar */}
-                    <div className="ml-auto flex items-center space-x-2 shrink-0">
+                    <div className="ml-auto flex shrink-0 items-center space-x-2">
                         <div className="flex items-center space-x-1.5 rounded-lg border border-sky-200/80 bg-sky-50/80 px-2.5 py-1.5 dark:border-sky-900/60 dark:bg-sky-950/40">
                             <ClipboardList className="h-4 w-4 stroke-[1.5] text-sky-600 dark:text-sky-400" />
                             <span className="text-xs font-bold text-sky-700 tabular-nums dark:text-sky-300">
@@ -474,7 +567,12 @@ return;
 
                         <button
                             type="button"
-                            onClick={() => router.reload({ only: ['servingQueue'], onError: () => {} })}
+                            onClick={() =>
+                                router.reload({
+                                    only: ['servingQueue'],
+                                    onError: () => {},
+                                })
+                            }
                             className="rounded-lg p-2.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
                             title="Làm mới dữ liệu"
                         >
@@ -485,7 +583,11 @@ return;
                             type="button"
                             onClick={toggleFullscreen}
                             className="rounded-lg p-2.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
-                            title={isFullscreen ? 'Thoát toàn màn hình' : 'Mở toàn màn hình'}
+                            title={
+                                isFullscreen
+                                    ? 'Thoát toàn màn hình'
+                                    : 'Mở toàn màn hình'
+                            }
                         >
                             {isFullscreen ? (
                                 <Minimize2 className="h-5 w-5 stroke-[1.5]" />
@@ -505,13 +607,14 @@ return;
                     {filteredQueue.length === 0 ? (
                         <div className="flex items-start justify-start pt-12 pl-8">
                             <div className="flex flex-col items-start space-y-3">
-                                <ConciergeBell className="w-10 h-10 stroke-[1.5] text-zinc-300 dark:text-zinc-700" />
+                                <ConciergeBell className="h-10 w-10 stroke-[1.5] text-zinc-300 dark:text-zinc-700" />
                                 <div>
                                     <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                                         Chưa có món nào cần phục vụ
                                     </p>
-                                    <p className="text-xs text-zinc-400 mt-0.5">
-                                        Các món hoàn thành từ bếp sẽ xuất hiện tại đây
+                                    <p className="mt-0.5 text-xs text-zinc-400">
+                                        Các món hoàn thành từ bếp sẽ xuất hiện
+                                        tại đây
                                     </p>
                                 </div>
                             </div>
@@ -522,9 +625,13 @@ return;
                                 const isSelected = selectedIds.has(card.id);
                                 const isSyncing = syncIds.has(card.id);
                                 const failedCmd = commands.find(
-                                    (c) => c.status === 'failed' && cardIdsInCommand(c).includes(card.id),
+                                    (c) =>
+                                        c.status === 'failed' &&
+                                        cardIdsInCommand(c).includes(card.id),
                                 );
-                                const handleServeClick = (e: React.MouseEvent) => {
+                                const handleServeClick = (
+                                    e: React.MouseEvent,
+                                ) => {
                                     e.stopPropagation();
 
                                     if (failedCmd) {
@@ -539,45 +646,50 @@ return;
                                 return (
                                     <div
                                         key={card.id}
-                                        className={`bg-white dark:bg-zinc-900 border rounded-2xl shadow-xs flex flex-col overflow-hidden cursor-pointer transition-colors duration-150 ${
+                                        className={`flex cursor-pointer flex-col overflow-hidden rounded-2xl border bg-white shadow-xs transition-colors duration-150 dark:bg-zinc-900 ${
                                             isSelected
                                                 ? 'border-sky-300 ring-2 ring-sky-500 dark:border-sky-700'
                                                 : 'border-zinc-200/80 dark:border-zinc-800/80'
                                         } ${isSyncing ? 'opacity-60' : ''}`}
                                         onClick={() => toggleSelect(card.id)}
                                     >
-                                        <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                                            <div className="flex items-center gap-2 min-w-0">
+                                        <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+                                            <div className="flex min-w-0 items-center gap-2">
                                                 {isSelected ? (
-                                                    <CheckSquare className="w-4 h-4 stroke-[1.5] text-sky-600 dark:text-sky-400 shrink-0" />
+                                                    <CheckSquare className="h-4 w-4 shrink-0 stroke-[1.5] text-sky-600 dark:text-sky-400" />
                                                 ) : (
-                                                    <Square className="w-4 h-4 stroke-[1.5] text-zinc-300 dark:text-zinc-600 shrink-0" />
+                                                    <Square className="h-4 w-4 shrink-0 stroke-[1.5] text-zinc-300 dark:text-zinc-600" />
                                                 )}
-                                                <span className="font-display font-bold text-sm text-zinc-900 dark:text-zinc-100 truncate">
+                                                <span className="truncate font-display text-sm font-bold text-zinc-900 dark:text-zinc-100">
                                                     {card.table_number}
                                                 </span>
                                                 {card.table_area && (
-                                                    <span className="text-[11px] font-medium text-zinc-400 truncate">
+                                                    <span className="truncate text-[11px] font-medium text-zinc-400">
                                                         {card.table_area}
                                                     </span>
                                                 )}
                                             </div>
-                                            <ElapsedTimer completedAt={card.completed_at} />
+                                            <ElapsedTimer
+                                                completedAt={card.completed_at}
+                                            />
                                         </div>
 
-                                        <div className="flex-1 px-4 py-2.5 space-y-1.5 min-h-0">
+                                        <div className="min-h-0 flex-1 space-y-1.5 px-4 py-2.5">
                                             {card.items.map((item) => (
-                                                <div key={item.id} className="flex items-start justify-between gap-2">
-                                                    <div className="flex items-center gap-1.5 min-w-0">
-                                                        <span className="tabular-nums text-xs font-bold text-zinc-900 dark:text-zinc-100 shrink-0">
+                                                <div
+                                                    key={item.id}
+                                                    className="flex items-start justify-between gap-2"
+                                                >
+                                                    <div className="flex min-w-0 items-center gap-1.5">
+                                                        <span className="shrink-0 text-xs font-bold text-zinc-900 tabular-nums dark:text-zinc-100">
                                                             {item.quantity}x
                                                         </span>
-                                                        <span className="text-xs text-zinc-600 dark:text-zinc-400 truncate">
+                                                        <span className="truncate text-xs text-zinc-600 dark:text-zinc-400">
                                                             {item.name}
                                                         </span>
                                                     </div>
                                                     {item.note && (
-                                                        <span className="text-[11px] text-amber-600 dark:text-amber-400 shrink-0 italic max-w-[120px] truncate">
+                                                        <span className="max-w-[120px] shrink-0 truncate text-[11px] text-amber-600 italic dark:text-amber-400">
                                                             {item.note}
                                                         </span>
                                                     )}
@@ -585,16 +697,18 @@ return;
                                             ))}
                                         </div>
 
-                                        <div className="px-4 py-2.5 border-t border-zinc-100 dark:border-zinc-800 flex flex-col gap-2">
+                                        <div className="flex flex-col gap-2 border-t border-zinc-100 px-4 py-2.5 dark:border-zinc-800">
                                             <div className="flex justify-end">
                                                 <button
                                                     type="button"
                                                     onClick={handleServeClick}
                                                     disabled={isSyncing}
-                                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
+                                                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                                                 >
-                                                    <CheckCircle className="w-3.5 h-3.5 stroke-[1.5]" />
-                                                    {isSyncing ? 'Đang đồng bộ…' : 'Đã phục vụ'}
+                                                    <CheckCircle className="h-3.5 w-3.5 stroke-[1.5]" />
+                                                    {isSyncing
+                                                        ? 'Đang đồng bộ…'
+                                                        : 'Đã phục vụ'}
                                                 </button>
                                             </div>
                                             {failedCmd && (
@@ -602,15 +716,19 @@ return;
                                                     <div className="flex min-w-0 flex-1 items-center gap-1.5">
                                                         <XCircle className="h-3.5 w-3.5 shrink-0 stroke-[1.5]" />
                                                         <span className="truncate">
-                                                            {failedCmd.error || 'Không thể đồng bộ. Kiểm tra mạng và thử lại.'}
+                                                            {failedCmd.error ||
+                                                                'Không thể đồng bộ. Kiểm tra mạng và thử lại.'}
                                                         </span>
                                                     </div>
                                                     <div className="flex shrink-0 items-center gap-1">
                                                         <button
                                                             type="button"
                                                             onClick={(e) => {
- e.stopPropagation(); retry(failedCmd.id); 
-}}
+                                                                e.stopPropagation();
+                                                                retry(
+                                                                    failedCmd.id,
+                                                                );
+                                                            }}
                                                             className="rounded-md bg-rose-600 px-2 py-1 text-xs font-bold text-white transition-colors hover:bg-rose-700"
                                                         >
                                                             Thử lại
@@ -618,8 +736,11 @@ return;
                                                         <button
                                                             type="button"
                                                             onClick={(e) => {
- e.stopPropagation(); discard(failedCmd.id); 
-}}
+                                                                e.stopPropagation();
+                                                                discard(
+                                                                    failedCmd.id,
+                                                                );
+                                                            }}
                                                             className="rounded-md border border-rose-300 px-2 py-1 text-xs font-bold text-rose-600 transition-colors hover:bg-rose-100 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-900/40"
                                                         >
                                                             Bỏ qua

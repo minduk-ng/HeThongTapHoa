@@ -239,7 +239,13 @@ export default function OrderList({
         );
     };
 
-    const hasActiveFilter = Boolean(searchQuery || typeFilter !== 'all' || statusFilter !== 'all' || startDateVal || endDateVal);
+    const hasActiveFilter = Boolean(
+        searchQuery ||
+        typeFilter !== 'all' ||
+        statusFilter !== 'all' ||
+        startDateVal ||
+        endDateVal,
+    );
 
     return (
         <DashboardLayout fullWidth={true}>
@@ -250,11 +256,11 @@ export default function OrderList({
                 title="Danh sách Đơn hàng"
                 subtitle="Xem lịch sử và chi tiết toàn bộ đơn hàng"
                 badge={
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                             {summary.total_orders} đơn
                         </span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300">
                             {summary.paid_orders} đã thanh toán
                         </span>
                     </div>
@@ -263,8 +269,8 @@ export default function OrderList({
                 filters={
                     <div className="flex flex-wrap items-center gap-2.5">
                         {/* Search Input */}
-                        <div className="relative flex-1 min-w-[200px] max-w-xs">
-                            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                        <div className="relative max-w-xs min-w-[200px] flex-1">
+                            <Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
                             <input
                                 type="text"
                                 placeholder="Tìm mã đơn / hóa đơn..."
@@ -273,7 +279,7 @@ export default function OrderList({
                                     setSearchQuery(e.target.value);
                                     setCurrentPage(1);
                                 }}
-                                className="w-full pl-8 pr-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 transition-colors"
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-1.5 pr-3 pl-8 text-xs text-zinc-900 transition-colors focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100"
                             />
                         </div>
 
@@ -285,7 +291,7 @@ export default function OrderList({
                                     setTypeFilter(e.target.value as any);
                                     setCurrentPage(1);
                                 }}
-                                className="w-full px-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-900 focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100"
                             >
                                 <option value="all">Tất cả loại đơn</option>
                                 <option value="dine_in">Tại bàn</option>
@@ -301,11 +307,13 @@ export default function OrderList({
                                     setStatusFilter(e.target.value);
                                     setCurrentPage(1);
                                 }}
-                                className="w-full px-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-900 focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100"
                             >
                                 <option value="all">Tất cả trạng thái</option>
                                 <option value="pending">Chờ xử lý</option>
-                                <option value="processing">Đang chế biến</option>
+                                <option value="processing">
+                                    Đang chế biến
+                                </option>
                                 <option value="completed">Hoàn thành</option>
                                 <option value="paid">Đã thanh toán</option>
                                 <option value="cancelled">Đã hủy</option>
@@ -319,7 +327,7 @@ export default function OrderList({
                                 startDate={startDateVal}
                                 endDate={endDateVal}
                                 onChange={handleRangeApply}
-                                className="w-full justify-start text-xs rounded-xl"
+                                className="w-full justify-start rounded-xl text-xs"
                             />
                         </div>
 
@@ -328,24 +336,23 @@ export default function OrderList({
                             <button
                                 type="button"
                                 onClick={handleReset}
-                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                                className="flex items-center gap-1 rounded-xl bg-zinc-100 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                                 title="Đặt lại bộ lọc"
                             >
-                                <RotateCcw className="w-3.5 h-3.5" />
+                                <RotateCcw className="h-3.5 w-3.5" />
                                 <span>Đặt lại</span>
                             </button>
                         )}
                     </div>
                 }
             >
-
                 {/* Table */}
                 <div className="min-h-0 flex-1 overflow-auto">
                     <table className="w-full border-collapse text-left">
                         <thead className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50/95 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-800/95">
                             <tr className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 select-none text-center border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60"
+                                    className="cursor-pointer border-r border-zinc-200/60 px-4 py-2.5 text-center select-none hover:bg-zinc-100/80 dark:border-zinc-800/60 dark:hover:bg-zinc-700/60"
                                     onClick={() => handleSort('order_code')}
                                 >
                                     <span className="flex items-center justify-center space-x-1">
@@ -354,7 +361,7 @@ export default function OrderList({
                                     </span>
                                 </th>
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 select-none text-center border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60"
+                                    className="cursor-pointer border-r border-zinc-200/60 px-4 py-2.5 text-center select-none hover:bg-zinc-100/80 dark:border-zinc-800/60 dark:hover:bg-zinc-700/60"
                                     onClick={() => handleSort('table_number')}
                                 >
                                     <span className="flex items-center justify-center space-x-1">
@@ -363,7 +370,7 @@ export default function OrderList({
                                     </span>
                                 </th>
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 select-none text-center border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60"
+                                    className="cursor-pointer border-r border-zinc-200/60 px-4 py-2.5 text-center select-none hover:bg-zinc-100/80 dark:border-zinc-800/60 dark:hover:bg-zinc-700/60"
                                     onClick={() => handleSort('status')}
                                 >
                                     <span className="flex items-center justify-center space-x-1">
@@ -371,10 +378,14 @@ export default function OrderList({
                                         {renderSortIcon('status')}
                                     </span>
                                 </th>
-                                <th className="px-4 py-2.5 text-left border-r border-zinc-200/60 dark:border-zinc-800/60">Khách hàng</th>
-                                <th className="px-4 py-2.5 text-center border-r border-zinc-200/60 dark:border-zinc-800/60">Món</th>
+                                <th className="border-r border-zinc-200/60 px-4 py-2.5 text-left dark:border-zinc-800/60">
+                                    Khách hàng
+                                </th>
+                                <th className="border-r border-zinc-200/60 px-4 py-2.5 text-center dark:border-zinc-800/60">
+                                    Món
+                                </th>
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 select-none text-right border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60"
+                                    className="cursor-pointer border-r border-zinc-200/60 px-4 py-2.5 text-right select-none hover:bg-zinc-100/80 dark:border-zinc-800/60 dark:hover:bg-zinc-700/60"
                                     onClick={() => handleSort('total')}
                                 >
                                     <span className="flex items-center justify-end space-x-1">
@@ -382,9 +393,11 @@ export default function OrderList({
                                         {renderSortIcon('total')}
                                     </span>
                                 </th>
-                                <th className="px-4 py-2.5 text-center border-r border-zinc-200/60 dark:border-zinc-800/60">Thanh toán</th>
+                                <th className="border-r border-zinc-200/60 px-4 py-2.5 text-center dark:border-zinc-800/60">
+                                    Thanh toán
+                                </th>
                                 <th
-                                    className="cursor-pointer px-4 py-2.5 select-none text-center hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60"
+                                    className="cursor-pointer px-4 py-2.5 text-center select-none hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60"
                                     onClick={() => handleSort('created_at')}
                                 >
                                     <span className="flex items-center justify-center space-x-1">
@@ -428,18 +441,18 @@ export default function OrderList({
                                             className="cursor-pointer transition-colors hover:bg-sky-50/40 dark:hover:bg-sky-900/15"
                                         >
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs font-mono font-medium text-sky-600 dark:text-sky-400 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} border-r border-zinc-100/80 text-center font-mono text-xs font-medium text-sky-600 tabular-nums dark:border-zinc-800/40 dark:text-sky-400`}
                                             >
                                                 {order.order_code}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs font-medium text-zinc-700 dark:text-zinc-300 border-r border-zinc-100/80 dark:border-zinc-800/40`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} border-r border-zinc-100/80 text-center text-xs font-medium text-zinc-700 dark:border-zinc-800/40 dark:text-zinc-300`}
                                             >
                                                 {order.table_number ??
                                                     'Mang đi'}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center border-r border-zinc-100/80 dark:border-zinc-800/40`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} border-r border-zinc-100/80 text-center dark:border-zinc-800/40`}
                                             >
                                                 <span
                                                     className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${statusInfo.className}`}
@@ -448,27 +461,27 @@ export default function OrderList({
                                                 </span>
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-left text-xs font-medium text-zinc-800 dark:text-zinc-200 border-r border-zinc-100/80 dark:border-zinc-800/40`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} border-r border-zinc-100/80 text-left text-xs font-medium text-zinc-800 dark:border-zinc-800/40 dark:text-zinc-200`}
                                             >
                                                 {order.customer_name || '—'}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs text-zinc-600 tabular-nums dark:text-zinc-400 border-r border-zinc-100/80 dark:border-zinc-800/40`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} border-r border-zinc-100/80 text-center text-xs text-zinc-600 tabular-nums dark:border-zinc-800/40 dark:text-zinc-400`}
                                             >
                                                 {order.item_count}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-right text-xs font-semibold text-zinc-900 tabular-nums dark:text-zinc-100 border-r border-zinc-100/80 dark:border-zinc-800/40`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} border-r border-zinc-100/80 text-right text-xs font-semibold text-zinc-900 tabular-nums dark:border-zinc-800/40 dark:text-zinc-100`}
                                             >
                                                 {formatCurrency(order.total)}
                                             </td>
                                             <td
-                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} text-center text-xs text-zinc-600 dark:text-zinc-400 border-r border-zinc-100/80 dark:border-zinc-800/40`}
+                                                className={`px-4 ${isCompact ? 'py-1.5' : 'py-2.5'} border-r border-zinc-100/80 text-center text-xs text-zinc-600 dark:border-zinc-800/40 dark:text-zinc-400`}
                                             >
                                                 {order.payment_method
                                                     ? (PAYMENT_LABELS[
-                                                           order.payment_method
-                                                       ] ?? order.payment_method)
+                                                          order.payment_method
+                                                      ] ?? order.payment_method)
                                                     : '—'}
                                             </td>
                                             <td

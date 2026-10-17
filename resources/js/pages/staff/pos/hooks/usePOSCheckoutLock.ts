@@ -61,7 +61,10 @@ async function postLock(
                 'X-XSRF-TOKEN': getCsrfTokenFromCookie(),
                 'X-Requested-With': 'XMLHttpRequest',
             },
-            body: JSON.stringify({ table_id: tableId, owner_token: ownerToken }),
+            body: JSON.stringify({
+                table_id: tableId,
+                owner_token: ownerToken,
+            }),
         });
         const data = await response.json().catch(() => ({}));
 
@@ -76,30 +79,39 @@ async function postLock(
 const HEARTBEAT_MS = 30000;
 
 export function usePOSCheckoutLock() {
-    const [lockedCheckoutTables, setLockedCheckoutTables] = useState<Record<number, CheckoutLockInfo>>({});
+    const [lockedCheckoutTables, setLockedCheckoutTables] = useState<
+        Record<number, CheckoutLockInfo>
+    >({});
     const ownLocksRef = useRef<Map<number, string>>(new Map());
 
-    const applyServerLock = useCallback((tableId: number, lock: ServerLock | null) => {
-        setLockedCheckoutTables((prev) => {
-            if (!lock) {
-                if (!(tableId in prev)) {
-                    return prev;
+    const applyServerLock = useCallback(
+        (tableId: number, lock: ServerLock | null) => {
+            setLockedCheckoutTables((prev) => {
+                if (!lock) {
+                    if (!(tableId in prev)) {
+                        return prev;
+                    }
+
+                    const next = { ...prev };
+                    delete next[tableId];
+
+                    return next;
                 }
 
-                const next = { ...prev };
-                delete next[tableId];
-
-                return next;
-            }
-
-            return { ...prev, [tableId]: toLockInfo(lock) };
-        });
-    }, []);
+                return { ...prev, [tableId]: toLockInfo(lock) };
+            });
+        },
+        [],
+    );
 
     // Stable broadcast handler — wired into POSManager's existing pos-channel
     // subscription so the shared channel is joined/left in exactly one place.
     const handleLockBroadcast = useCallback(
-        (data: { table_id: number; action: string; lock?: ServerLock | null }) => {
+        (data: {
+            table_id: number;
+            action: string;
+            lock?: ServerLock | null;
+        }) => {
             if (!data || typeof data.table_id !== 'number') {
                 return;
             }
@@ -123,16 +135,23 @@ export function usePOSCheckoutLock() {
 
         try {
             const qs = ids.map((id) => `table_ids[]=${id}`).join('&');
-            const response = await fetch(`/staff/pos/checkout-lock/status?${qs}`, {
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            });
+            const response = await fetch(
+                `/staff/pos/checkout-lock/status?${qs}`,
+                {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                },
+            );
             const data = await response.json().catch(() => ({}));
 
             if (response.ok && data.locks) {
                 setLockedCheckoutTables((prev) => {
                     const next = { ...prev };
                     ids.forEach((id) => {
-                        const lock = data.locks[id] as ServerLock | null | undefined;
+                        const lock = data.locks[id] as
+                            ServerLock | null | undefined;
 
                         if (lock) {
                             next[id] = toLockInfo(lock);
@@ -170,24 +189,31 @@ export function usePOSCheckoutLock() {
         [applyServerLock],
     );
 
-    const unlockTableCheckout = useCallback(async (tableId: number, linkedTableIds: number[] = [], keepalive = false) => {
-        const ids = [...new Set([tableId, ...linkedTableIds])];
+    const unlockTableCheckout = useCallback(
+        async (
+            tableId: number,
+            linkedTableIds: number[] = [],
+            keepalive = false,
+        ) => {
+            const ids = [...new Set([tableId, ...linkedTableIds])];
 
-        await Promise.all(
-            ids.map(async (id) => {
-                // Only ever release locks held by this client — never others'.
-                const token = ownLocksRef.current.get(id);
+            await Promise.all(
+                ids.map(async (id) => {
+                    // Only ever release locks held by this client — never others'.
+                    const token = ownLocksRef.current.get(id);
 
-                if (!token) {
-                    return;
-                }
+                    if (!token) {
+                        return;
+                    }
 
-                ownLocksRef.current.delete(id);
-                await postLock('release', id, keepalive, token);
-                applyServerLock(id, null);
-            }),
-        );
-    }, [applyServerLock]);
+                    ownLocksRef.current.delete(id);
+                    await postLock('release', id, keepalive, token);
+                    applyServerLock(id, null);
+                }),
+            );
+        },
+        [applyServerLock],
+    );
 
     // Heartbeat: renew own locks so they survive past the server TTL while the drawer stays open.
     useEffect(() => {

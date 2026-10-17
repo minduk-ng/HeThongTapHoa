@@ -27,9 +27,7 @@ export default function SearchableSelect({
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
 
-        return options.filter(
-            (o) => !q || o.name.toLowerCase().includes(q),
-        );
+        return options.filter((o) => !q || o.name.toLowerCase().includes(q));
     }, [options, query]);
 
     const openList = () => {
@@ -43,16 +41,19 @@ export default function SearchableSelect({
             <button
                 type="button"
                 onClick={() => (open ? setOpen(false) : openList())}
-                className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-800 transition-colors hover:bg-zinc-50/50 hover:border-zinc-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800/50 dark:hover:border-zinc-700 dark:focus:border-sky-500 dark:focus:ring-sky-950/50 outline-none"
+                className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-800 transition-colors outline-none hover:border-zinc-300 hover:bg-zinc-50/50 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/50 dark:focus:border-sky-500 dark:focus:ring-sky-950/50"
             >
                 <span className={selected ? 'font-medium' : 'text-zinc-400'}>
                     {selected ? selected.name : placeholder}
                 </span>
-                <ChevronDown className="h-4 w-4 text-zinc-400 transition-transform duration-200" style={{ transform: open ? 'rotate(180deg)' : 'none' }} />
+                <ChevronDown
+                    className="h-4 w-4 text-zinc-400 transition-transform duration-200"
+                    style={{ transform: open ? 'rotate(180deg)' : 'none' }}
+                />
             </button>
 
             {open && (
-                <div className="absolute z-20 mt-1.5 w-full overflow-hidden rounded-xl border border-zinc-200/80 bg-white/95 backdrop-blur-md shadow-lg dark:border-zinc-800/80 dark:bg-zinc-900/95 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="animate-in fade-in slide-in-from-top-1 absolute z-20 mt-1.5 w-full overflow-hidden rounded-xl border border-zinc-200/80 bg-white/95 shadow-lg backdrop-blur-md duration-150 dark:border-zinc-800/80 dark:bg-zinc-900/95">
                     <div className="flex items-center gap-2 border-b border-zinc-100 px-3 dark:border-zinc-800/60">
                         <Search className="h-4 w-4 shrink-0 text-zinc-400" />
                         <input
@@ -60,7 +61,7 @@ export default function SearchableSelect({
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             placeholder="Tìm kiếm..."
-                            className="w-full bg-transparent py-2.5 text-sm outline-none dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
+                            className="w-full bg-transparent py-2.5 text-sm outline-none placeholder:text-zinc-400 dark:text-zinc-100 dark:placeholder:text-zinc-500"
                         />
                     </div>
                     <div className="max-h-56 overflow-auto py-1">
@@ -77,9 +78,17 @@ export default function SearchableSelect({
                                         onChange(o.id);
                                         setOpen(false);
                                     }}
-                                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50/80 active:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/80 dark:active:bg-zinc-800 transition-colors"
+                                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-zinc-700 transition-colors hover:bg-zinc-50/80 active:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/80 dark:active:bg-zinc-800"
                                 >
-                                    <span className={o.id === value ? 'font-medium text-sky-600 dark:text-sky-400' : ''}>{o.name}</span>
+                                    <span
+                                        className={
+                                            o.id === value
+                                                ? 'font-medium text-sky-600 dark:text-sky-400'
+                                                : ''
+                                        }
+                                    >
+                                        {o.name}
+                                    </span>
                                     {o.id === value && (
                                         <Check className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                                     )}

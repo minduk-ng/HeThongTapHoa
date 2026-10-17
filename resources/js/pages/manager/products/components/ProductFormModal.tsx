@@ -8,11 +8,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import {
-    ManagerFormModal,
-    FormSection,
-    FormField,
-} from '@/components/form';
+import { ManagerFormModal, FormSection, FormField } from '@/components/form';
 import { compressAndResizeImage } from '../../../../utils/imageCompressor';
 import type { MenuItemData } from './ProductTable';
 
@@ -125,21 +121,22 @@ export default function ProductFormModal({
     const isDirty = useMemo(() => {
         if (productToEdit) {
             return (
-                name !== (productToEdit.name || '')
-                || String(categoryId) !== String(productToEdit.category_id || '')
-                || price !== String(productToEdit.price || '')
-                || vatRate !== String(productToEdit.vat_rate || 0)
-                || description !== (productToEdit.description || '')
-                || isAvailable !== (productToEdit.is_available ?? true)
-                || imageFile !== null
+                name !== (productToEdit.name || '') ||
+                String(categoryId) !==
+                    String(productToEdit.category_id || '') ||
+                price !== String(productToEdit.price || '') ||
+                vatRate !== String(productToEdit.vat_rate || 0) ||
+                description !== (productToEdit.description || '') ||
+                isAvailable !== (productToEdit.is_available ?? true) ||
+                imageFile !== null
             );
         }
 
         return (
-            name.trim() !== ''
-            || price.trim() !== ''
-            || description.trim() !== ''
-            || imageFile !== null
+            name.trim() !== '' ||
+            price.trim() !== '' ||
+            description.trim() !== '' ||
+            imageFile !== null
         );
     }, [
         productToEdit,
@@ -158,8 +155,8 @@ export default function ProductFormModal({
         const file = e.target.files?.[0];
 
         if (!file) {
-return;
-}
+            return;
+        }
 
         try {
             setIsCompressingImage(true);
@@ -189,8 +186,8 @@ return;
         e.preventDefault();
 
         if (submitting) {
-return;
-}
+            return;
+        }
 
         setSubmitting(true);
         const timer = setTimeout(() => {
@@ -288,7 +285,7 @@ return;
                         <button
                             type="button"
                             onClick={onOpenAddCategoryModal}
-                            className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 transition-colors shrink-0"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                             title="Thêm danh mục mới"
                         >
                             <Plus className="h-3.5 w-3.5 stroke-2" />
@@ -302,16 +299,20 @@ return;
                     hint="Bật để hiển thị và cho phép gọi món tại quầy POS"
                 >
                     <div className="flex items-center gap-3 pt-1">
-                        <label className="relative inline-flex items-center cursor-pointer">
+                        <label className="relative inline-flex cursor-pointer items-center">
                             <input
                                 type="checkbox"
                                 checked={isAvailable}
-                                onChange={(e) => setIsAvailable(e.target.checked)}
-                                className="sr-only peer"
+                                onChange={(e) =>
+                                    setIsAvailable(e.target.checked)
+                                }
+                                className="peer sr-only"
                             />
-                            <div className="w-9 h-5 bg-zinc-200 peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-sky-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-zinc-600 peer-checked:bg-sky-600"></div>
+                            <div className="peer h-5 w-9 rounded-full bg-zinc-200 peer-checked:bg-sky-600 peer-focus:ring-2 peer-focus:ring-sky-500 peer-focus:outline-hidden after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-zinc-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white dark:border-zinc-600"></div>
                             <span className="ml-2.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                                {isAvailable ? 'Đang phục vụ' : 'Tạm ngưng / Hết món'}
+                                {isAvailable
+                                    ? 'Đang phục vụ'
+                                    : 'Tạm ngưng / Hết món'}
                             </span>
                         </label>
                     </div>
@@ -337,7 +338,7 @@ return;
                         value={price}
                         onChange={(e) => setPrice(e.target.value)}
                         placeholder="Ví dụ: 35000"
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                         required
                     />
                 </FormField>
@@ -350,7 +351,7 @@ return;
                     <select
                         value={vatRate}
                         onChange={(e) => setVatRate(e.target.value)}
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                     >
                         <option value="0">0% (Không chịu thuế)</option>
                         <option value="5">5%</option>
@@ -369,11 +370,11 @@ return;
             >
                 {/* Image Upload Box */}
                 <div>
-                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                    <label className="mb-1.5 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
                         Ảnh sản phẩm
                     </label>
                     <div className="flex items-center gap-3">
-                        <div className="relative h-24 w-24 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden shrink-0">
+                        <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800">
                             {imagePreview ? (
                                 <>
                                     <img
@@ -384,18 +385,18 @@ return;
                                     <button
                                         type="button"
                                         onClick={handleRemoveImage}
-                                        className="absolute top-1 right-1 p-1 bg-rose-600/90 text-white rounded-lg hover:bg-rose-700 transition-colors shadow-xs"
+                                        className="absolute top-1 right-1 rounded-lg bg-rose-600/90 p-1 text-white shadow-xs transition-colors hover:bg-rose-700"
                                         title="Xóa ảnh"
                                     >
                                         <Trash2 className="h-3 w-3" />
                                     </button>
                                 </>
                             ) : (
-                                <ImageIcon className="h-7 w-7 text-zinc-400 stroke-[1.2]" />
+                                <ImageIcon className="h-7 w-7 stroke-[1.2] text-zinc-400" />
                             )}
                             {showCompressingSpinner && (
-                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                    <Loader2 className="h-5 w-5 text-white animate-spin" />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                    <Loader2 className="h-5 w-5 animate-spin text-white" />
                                 </div>
                             )}
                         </div>
@@ -411,16 +412,21 @@ return;
                             />
                             <label
                                 htmlFor="product-image-upload"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer shadow-2xs transition-colors"
+                                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-2xs transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                             >
                                 <ImageIcon className="h-3.5 w-3.5 stroke-[1.5]" />
-                                <span>{imagePreview ? 'Đổi ảnh khác' : 'Tải ảnh lên'}</span>
+                                <span>
+                                    {imagePreview
+                                        ? 'Đổi ảnh khác'
+                                        : 'Tải ảnh lên'}
+                                </span>
                             </label>
-                            <p className="text-[11px] text-zinc-400 leading-tight">
-                                JPG, PNG hoặc WebP. Hệ thống tự động tối ưu hóa kích thước.
+                            <p className="text-[11px] leading-tight text-zinc-400">
+                                JPG, PNG hoặc WebP. Hệ thống tự động tối ưu hóa
+                                kích thước.
                             </p>
                             {errors.image && (
-                                <p className="text-xs text-rose-500 font-medium">
+                                <p className="text-xs font-medium text-rose-500">
                                     {errors.image}
                                 </p>
                             )}

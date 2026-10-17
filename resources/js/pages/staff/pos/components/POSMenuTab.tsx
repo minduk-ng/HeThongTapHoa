@@ -2,7 +2,11 @@ import { RotateCcw, UtensilsCrossed } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { cdnAsset, useCdnBaseUrl } from '../../../../utils/cdn';
 import { usePOSMenuIndex } from '../hooks/usePOSMenuIndex';
-import type { CategoryData, POSProductData, CartItem } from '../types/pos.types';
+import type {
+    CategoryData,
+    POSProductData,
+    CartItem,
+} from '../types/pos.types';
 import type { SortMode } from '../utils/menuAlgorithms';
 import {
     aggregateCartQuantities,
@@ -64,7 +68,9 @@ export default function POSMenuTab({
     const effectiveQuery = localQuery !== null ? localQuery : searchQuery;
 
     // Call queryMenu only when index is available and range is valid
-    const [lastValidProducts, setLastValidProducts] = useState<POSProductData[]>([]);
+    const [lastValidProducts, setLastValidProducts] = useState<
+        POSProductData[]
+    >([]);
     const queryProducts = useMemo(() => {
         if (!index || indexError || !priceRangeResult.ok) {
             return null;
@@ -77,7 +83,14 @@ export default function POSMenuTab({
             maxMinor: priceRangeResult.maxMinor,
             sort: sortMode,
         });
-    }, [index, indexError, priceRangeResult, effectiveQuery, selectedCategoryId, sortMode]);
+    }, [
+        index,
+        indexError,
+        priceRangeResult,
+        effectiveQuery,
+        selectedCategoryId,
+        sortMode,
+    ]);
 
     if (queryProducts && queryProducts !== lastValidProducts) {
         setLastValidProducts(queryProducts);
@@ -221,7 +234,8 @@ export default function POSMenuTab({
                 {/* Index error banner if payload refresh fails */}
                 {stale && (
                     <p role="status" className="text-xs text-amber-700">
-                        Đang hiển thị kết quả hợp lệ gần nhất. Tạm khóa chọn món đến khi dữ liệu và bộ lọc hợp lệ.
+                        Đang hiển thị kết quả hợp lệ gần nhất. Tạm khóa chọn món
+                        đến khi dữ liệu và bộ lọc hợp lệ.
                     </p>
                 )}
                 {disabled && (
@@ -267,7 +281,10 @@ export default function POSMenuTab({
                                     : 999;
                             const isOutOfStock = maxServings <= 0;
                             const isActionDisabled =
-                                isOutOfStock || !product.is_available || stale || disabled;
+                                isOutOfStock ||
+                                !product.is_available ||
+                                stale ||
+                                disabled;
                             const isLowStock =
                                 maxServings > 0 && maxServings <= 5;
 
@@ -284,14 +301,13 @@ export default function POSMenuTab({
                                     onKeyDown={(e) => {
                                         if (
                                             !isActionDisabled &&
-                                            (e.key === 'Enter' ||
-                                                e.key === ' ')
+                                            (e.key === 'Enter' || e.key === ' ')
                                         ) {
                                             e.preventDefault();
                                             onToggleProduct(product);
                                         }
                                     }}
-                                    className={`relative flex cursor-pointer flex-col justify-between rounded-xl border p-2 transition-colors duration-150 select-none outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                                    className={`relative flex cursor-pointer flex-col justify-between rounded-xl border p-2 transition-colors duration-150 outline-none select-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                                         isActionDisabled
                                             ? 'cursor-not-allowed border-rose-200 bg-zinc-50 opacity-50 dark:border-rose-900 dark:bg-zinc-800/40'
                                             : inCart

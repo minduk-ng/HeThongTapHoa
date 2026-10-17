@@ -37,19 +37,21 @@ export default function ThemeToggle({ onThemeChange }: ThemeToggleProps) {
         }
 
         if (onThemeChange) {
-onThemeChange(nextDark);
-}
+            onThemeChange(nextDark);
+        }
     };
 
     if (!mounted) {
-        return <div className="h-6 w-11 rounded-full bg-slate-200 dark:bg-slate-700" />;
+        return (
+            <div className="h-6 w-11 rounded-full bg-slate-200 dark:bg-slate-700" />
+        );
     }
 
     return (
         <button
             type="button"
             onClick={toggleTheme}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full p-0.5 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 dark:focus:ring-offset-slate-800 ${
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full p-0.5 transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 focus:outline-none dark:focus:ring-offset-slate-800 ${
                 dark ? 'bg-sky-600' : 'bg-slate-300'
             }`}
             role="switch"
@@ -62,12 +64,11 @@ onThemeChange(nextDark);
                 }`}
             >
                 {dark ? (
-                    <Sun className="h-3 w-3 text-amber-400 stroke-[2]" />
+                    <Sun className="h-3 w-3 stroke-[2] text-amber-400" />
                 ) : (
-                    <Moon className="h-3 w-3 text-slate-600 stroke-[2]" />
+                    <Moon className="h-3 w-3 stroke-[2] text-slate-600" />
                 )}
             </span>
         </button>
     );
 }
-

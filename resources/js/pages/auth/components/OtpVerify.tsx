@@ -1,5 +1,5 @@
 import { useForm, router, usePage } from '@inertiajs/react';
-import type { FormEvent} from 'react';
+import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
 interface OtpVerifyProps {
@@ -12,15 +12,17 @@ const getCookie = (name: string): string => {
     const parts = value.split(`; ${name}=`);
 
     if (parts.length === 2) {
-return decodeURIComponent(parts.pop()?.split(';').shift() || '');
-}
+        return decodeURIComponent(parts.pop()?.split(';').shift() || '');
+    }
 
     return '';
 };
 
 export default function OtpVerify({ email }: OtpVerifyProps) {
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
-    const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+    const [status, setStatus] = useState<
+        'idle' | 'processing' | 'success' | 'error'
+    >('idle');
     const [localError, setLocalError] = useState<string | null>(null);
     const inputs = useRef<(HTMLInputElement | null)[]>([]);
     const { errors } = usePage().props as any;
@@ -64,8 +66,8 @@ export default function OtpVerify({ email }: OtpVerifyProps) {
 
     const handleChange = (element: HTMLInputElement, index: number) => {
         if (element.value && isNaN(Number(element.value))) {
-return false;
-}
+            return false;
+        }
 
         const val = element.value;
         const nextOtp = otp.map((d, idx) => (idx === index ? val : d));
@@ -77,7 +79,10 @@ return false;
         }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    const handleKeyDown = (
+        e: React.KeyboardEvent<HTMLInputElement>,
+        index: number,
+    ) => {
         if (e.key === 'Backspace') {
             if (!otp[index] && index > 0) {
                 const nextOtp = [...otp];
@@ -94,17 +99,20 @@ return false;
 
     const handlePaste = (e: React.ClipboardEvent) => {
         e.preventDefault();
-        const pastedData = e.clipboardData.getData('text').slice(0, 6).split('');
+        const pastedData = e.clipboardData
+            .getData('text')
+            .slice(0, 6)
+            .split('');
 
         if (pastedData.some((char) => isNaN(Number(char)))) {
-return;
-}
+            return;
+        }
 
         const newOtp = [...otp];
         pastedData.forEach((char, index) => {
             if (index < 6) {
-newOtp[index] = char;
-}
+                newOtp[index] = char;
+            }
         });
         setOtp(newOtp);
 
@@ -126,11 +134,11 @@ newOtp[index] = char;
             const response = await fetch('/verify-otp', {
                 method: 'POST',
                 headers: {
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'Content-Type': 'application/json',
                     'X-XSRF-TOKEN': csrfToken,
                 },
-                body: JSON.stringify({ code })
+                body: JSON.stringify({ code }),
             });
 
             const result = await response.json();
@@ -143,7 +151,9 @@ newOtp[index] = char;
                 }, 800);
             } else {
                 setStatus('error');
-                const msg = result.errors?.code || 'Mã xác thực không chính xác hoặc đã hết hạn.';
+                const msg =
+                    result.errors?.code ||
+                    'Mã xác thực không chính xác hoặc đã hết hạn.';
                 setLocalError(msg);
 
                 // Hold error state for 500ms (animation duration) then reset and focus
@@ -192,8 +202,8 @@ newOtp[index] = char;
 
     const handleResend = () => {
         if (resendCooldown > 0) {
-return;
-}
+            return;
+        }
 
         postResend('/resend-otp', {
             onSuccess: () => {
@@ -201,11 +211,11 @@ return;
                 setStatus('idle');
                 setLocalError(null);
                 inputs.current[0]?.focus();
-                
+
                 setResendCooldown(cooldownMultiplier);
                 setCooldownMultiplier((prev) => prev * 2);
                 setOtpExpirationCooldown(600); // Reset OTP expiration back to 10 minutes
-            }
+            },
         });
     };
 
@@ -213,20 +223,23 @@ return;
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="text-center">
                 <h2 className="auth-heading">Xác thực OTP</h2>
-                <p className="mt-2 auth-subtitle">
+                <p className="auth-subtitle mt-2">
                     Vui lòng nhập mã gồm 6 chữ số đã được gửi đến <br />
-                    <span className="font-medium text-zinc-900 dark:text-zinc-200">{email}</span>
+                    <span className="font-medium text-zinc-900 dark:text-zinc-200">
+                        {email}
+                    </span>
                 </p>
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 font-semibold">
-                    {otpExpirationCooldown > 0 
-                        ? `Mã OTP có hiệu lực trong vòng ${formatTime(otpExpirationCooldown)}` 
-                        : "Mã OTP đã hết hiệu lực. Vui lòng gửi lại mã."}
+                <p className="mt-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                    {otpExpirationCooldown > 0
+                        ? `Mã OTP có hiệu lực trong vòng ${formatTime(otpExpirationCooldown)}`
+                        : 'Mã OTP đã hết hiệu lực. Vui lòng gửi lại mã.'}
                 </p>
             </div>
 
             <div className="flex justify-center gap-2 sm:gap-3">
                 {otp.map((dataVal, index) => {
-                    let inputClass = 'otp-input-field transition-all duration-200';
+                    let inputClass =
+                        'otp-input-field transition-all duration-200';
 
                     if (status === 'error') {
                         inputClass += ' otp-input-error';
@@ -247,23 +260,37 @@ return;
                             onChange={(e) => handleChange(e.target, index)}
                             onKeyDown={(e) => handleKeyDown(e, index)}
                             onPaste={handlePaste}
-                            disabled={status === 'processing' || status === 'success'}
+                            disabled={
+                                status === 'processing' || status === 'success'
+                            }
                             ref={(el) => {
- inputs.current[index] = el; 
-}}
+                                inputs.current[index] = el;
+                            }}
                         />
                     );
                 })}
             </div>
 
-            {(localError || errors.code) && <p className="form-error text-center">{localError || errors.code}</p>}
+            {(localError || errors.code) && (
+                <p className="form-error text-center">
+                    {localError || errors.code}
+                </p>
+            )}
 
             <button
                 type="submit"
-                disabled={status === 'processing' || status === 'success' || otp.join('').length !== 6}
+                disabled={
+                    status === 'processing' ||
+                    status === 'success' ||
+                    otp.join('').length !== 6
+                }
                 className="btn-primary"
             >
-                {status === 'processing' ? 'Đang xác thực…' : status === 'success' ? 'Xác thực thành công!' : 'Xác thực'}
+                {status === 'processing'
+                    ? 'Đang xác thực…'
+                    : status === 'success'
+                      ? 'Xác thực thành công!'
+                      : 'Xác thực'}
             </button>
 
             <p className="auth-footer">
@@ -271,10 +298,19 @@ return;
                 <button
                     type="button"
                     onClick={handleResend}
-                    disabled={resendProcessing || resendCooldown > 0 || status === 'processing' || status === 'success'}
+                    disabled={
+                        resendProcessing ||
+                        resendCooldown > 0 ||
+                        status === 'processing' ||
+                        status === 'success'
+                    }
                     className="link-primary disabled:opacity-50"
                 >
-                    {resendProcessing ? 'Đang gửi...' : resendCooldown > 0 ? `Gửi lại mã (${resendCooldown}s)` : 'Gửi lại mã'}
+                    {resendProcessing
+                        ? 'Đang gửi...'
+                        : resendCooldown > 0
+                          ? `Gửi lại mã (${resendCooldown}s)`
+                          : 'Gửi lại mã'}
                 </button>
             </p>
         </form>

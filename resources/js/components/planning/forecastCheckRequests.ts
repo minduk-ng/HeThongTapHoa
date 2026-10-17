@@ -2,8 +2,8 @@
 export function checkDateBounds(start?: string | null, end?: string | null) {
     const parse = (value?: string | null): Date | null => {
         if (!value || !/^\d{4}-\d{2}-\d{2}/.test(value)) {
-return null;
-}
+            return null;
+        }
 
         const date = new Date(`${value.slice(0, 10)}T00:00:00Z`);
 
@@ -13,8 +13,8 @@ return null;
     const last = parse(end);
 
     if (!first || !last) {
-return null;
-}
+        return null;
+    }
 
     first.setUTCDate(first.getUTCDate() + 1);
     last.setUTCDate(last.getUTCDate() - 6);
@@ -24,19 +24,21 @@ return null;
     return min <= max ? { min, max } : null;
 }
 
-export function createCheckSubmission(makeToken: () => string = () => crypto.randomUUID()) {
+export function createCheckSubmission(
+    makeToken: () => string = () => crypto.randomUUID(),
+) {
     let pending: { key: string; token: string } | null = null;
     let busy = false;
 
     return {
         begin(key: string): string | null {
             if (busy) {
-return null;
-}
+                return null;
+            }
 
             if (!pending || pending.key !== key) {
-pending = { key, token: makeToken() };
-}
+                pending = { key, token: makeToken() };
+            }
 
             busy = true;
 
@@ -46,8 +48,8 @@ pending = { key, token: makeToken() };
             busy = false;
 
             if (confirmed) {
-pending = null;
-}
+                pending = null;
+            }
         },
     };
 }
@@ -66,23 +68,23 @@ export function pollForecastCheck<T extends { id: number; status: string }>(
             const check = await load(controller.signal);
 
             if (stopped || check.id !== checkId) {
-return;
-}
+                return;
+            }
 
             onResult(check);
 
             if (check.status === 'completed' || check.status === 'failed') {
-return;
-}
+                return;
+            }
         } catch {
             if (stopped) {
-return;
-}
+                return;
+            }
         }
 
         if (!stopped) {
-timer = setTimeout(tick, delay);
-}
+            timer = setTimeout(tick, delay);
+        }
     };
     timer = setTimeout(tick, delay);
 

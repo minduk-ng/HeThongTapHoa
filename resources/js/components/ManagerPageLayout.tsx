@@ -27,16 +27,18 @@ export default function ManagerPageLayout({
     hasActiveFilter = false,
     sidebar,
 }: ManagerPageLayoutProps) {
-    const [filtersOpen, setFiltersOpen] = useState(defaultFiltersOpen || hasActiveFilter);
+    const [filtersOpen, setFiltersOpen] = useState(
+        defaultFiltersOpen || hasActiveFilter,
+    );
 
     // Fallback nếu có trang vẫn dùng cấu trúc sidebar cũ
     if (sidebar && !title) {
         return (
-            <div className="flex-1 flex flex-col lg:flex-row gap-4 h-full w-full min-h-0 overflow-hidden">
-                <aside className="w-full lg:w-80 shrink-0 h-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-5 shadow-xs flex flex-col overflow-y-auto min-h-0 space-y-5">
+            <div className="flex h-full min-h-0 w-full flex-1 flex-col gap-4 overflow-hidden lg:flex-row">
+                <aside className="flex h-full min-h-0 w-full shrink-0 flex-col space-y-5 overflow-y-auto rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs lg:w-80 dark:border-zinc-800/80 dark:bg-zinc-900">
                     {sidebar}
                 </aside>
-                <main className="flex-1 min-w-0 min-h-0 overflow-hidden flex flex-col">
+                <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                     {children}
                 </main>
             </div>
@@ -44,26 +46,28 @@ export default function ManagerPageLayout({
     }
 
     return (
-        <div className="flex-1 flex flex-col gap-3.5 h-full w-full min-h-0 overflow-hidden">
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col gap-3.5 overflow-hidden">
             {/* Top Control Bar Header */}
-            <div className="shrink-0 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-2 shadow-xs">
+            <div className="shrink-0 rounded-2xl border border-zinc-200/80 bg-white p-2 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     {/* Left: Icon, Title & Badge */}
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex min-w-0 items-center gap-3">
                         {Icon && (
-                            <Icon className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0 stroke-[1.5]" />
+                            <Icon className="h-5 w-5 shrink-0 stroke-[1.5] text-sky-600 dark:text-sky-400" />
                         )}
                         <div className="min-w-0">
-                            <div className="flex items-center gap-2.5 flex-wrap">
+                            <div className="flex flex-wrap items-center gap-2.5">
                                 {title && (
-                                    <h1 className="font-display text-xl font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">
+                                    <h1 className="font-display text-xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100">
                                         {title}
                                     </h1>
                                 )}
-                                {badge && <div className="shrink-0">{badge}</div>}
+                                {badge && (
+                                    <div className="shrink-0">{badge}</div>
+                                )}
                             </div>
                             {subtitle && (
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
+                                <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
                                     {subtitle}
                                 </p>
                             )}
@@ -71,25 +75,31 @@ export default function ManagerPageLayout({
                     </div>
 
                     {/* Right: Toggle Filter button & Actions */}
-                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
                         {filters && (
                             <button
                                 type="button"
                                 onClick={() => setFiltersOpen(!filtersOpen)}
-                                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition-colors shadow-2xs ${
+                                className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold shadow-2xs transition-colors ${
                                     filtersOpen
-                                        ? 'bg-sky-50 dark:bg-sky-950/40 border-sky-300 dark:border-sky-700/60 text-sky-700 dark:text-sky-300'
-                                        : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700'
+                                        ? 'border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-700/60 dark:bg-sky-950/40 dark:text-sky-300'
+                                        : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
                                 }`}
-                                title={filtersOpen ? 'Thu gọn bộ lọc' : 'Mở rộng bộ lọc'}
+                                title={
+                                    filtersOpen
+                                        ? 'Thu gọn bộ lọc'
+                                        : 'Mở rộng bộ lọc'
+                                }
                             >
-                                <SlidersHorizontal className="w-3.5 h-3.5 stroke-[1.5]" />
+                                <SlidersHorizontal className="h-3.5 w-3.5 stroke-[1.5]" />
                                 <span>Bộ lọc</span>
-                                {hasActiveFilter && <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />}
+                                {hasActiveFilter && (
+                                    <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                                )}
                                 {filtersOpen ? (
-                                    <ChevronUp className="w-3 h-3 text-zinc-400" />
+                                    <ChevronUp className="h-3 w-3 text-zinc-400" />
                                 ) : (
-                                    <ChevronDown className="w-3 h-3 text-zinc-400" />
+                                    <ChevronDown className="h-3 w-3 text-zinc-400" />
                                 )}
                             </button>
                         )}
@@ -99,14 +109,14 @@ export default function ManagerPageLayout({
 
                 {/* Collapsible Horizontal Filter Row */}
                 {filters && filtersOpen && (
-                    <div className="mt-3.5 pt-3.5 border-t border-zinc-100 dark:border-zinc-800 transition-colors duration-200">
+                    <div className="mt-3.5 border-t border-zinc-100 pt-3.5 transition-colors duration-200 dark:border-zinc-800">
                         {filters}
                     </div>
                 )}
             </div>
 
             {/* Main Table Content (Full Width) */}
-            <main className="flex-1 min-w-0 min-h-0 overflow-hidden flex flex-col">
+            <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                 {children}
             </main>
         </div>

@@ -1,7 +1,8 @@
 // Pure planning formatters and state evaluators.
 // Used across planning components and tested with Node built-in test runner.
 
-export type RunStatusKey = 'empty' | 'queued' | 'running' | 'completed' | 'failed' | 'stale';
+export type RunStatusKey =
+    'empty' | 'queued' | 'running' | 'completed' | 'failed' | 'stale';
 
 export type QualityTone = 'emerald' | 'amber' | 'rose' | 'zinc';
 
@@ -37,7 +38,7 @@ export function formatRunStatusLabel(status?: string | null): string {
 }
 
 export function formatSourceLabel(
-    dataset?: { id?: number; name?: string } | string | null
+    dataset?: { id?: number; name?: string } | string | null,
 ): string {
     if (!dataset) {
         return 'Dữ liệu thật';
@@ -79,13 +80,14 @@ export function formatForecastMetric(value: number | null | undefined): string {
 export function isRunStale(
     timestamp: string | Date | null | undefined,
     maxAgeHours = 24,
-    referenceTime: Date = new Date()
+    referenceTime: Date = new Date(),
 ): boolean {
     if (!timestamp) {
         return false;
     }
 
-    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+    const date =
+        typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
 
     if (Number.isNaN(date.getTime())) {
         return false;
@@ -100,13 +102,14 @@ export function isRunStale(
 export function formatStaleTimestamp(
     timestamp: string | Date | null | undefined,
     maxAgeHours = 24,
-    referenceTime: Date = new Date()
+    referenceTime: Date = new Date(),
 ): { isStale: boolean; label: string; hoursAgo: number | null } {
     if (!timestamp) {
         return { isStale: false, label: '', hoursAgo: null };
     }
 
-    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+    const date =
+        typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
 
     if (Number.isNaN(date.getTime())) {
         return { isStale: false, label: '', hoursAgo: null };
@@ -143,7 +146,10 @@ export function formatDataQuality(quality: string | null | undefined): {
     }
 }
 
-export function formatQuantity(value: number | null | undefined, decimals = 0): string {
+export function formatQuantity(
+    value: number | null | undefined,
+    decimals = 0,
+): string {
     if (value === null || value === undefined || Number.isNaN(value)) {
         return '0';
     }

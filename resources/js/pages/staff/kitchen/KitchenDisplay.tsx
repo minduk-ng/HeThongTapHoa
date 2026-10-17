@@ -15,7 +15,13 @@ import {
     Volume2,
     VolumeX,
 } from 'lucide-react';
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, {
+    useState,
+    useEffect,
+    useRef,
+    useCallback,
+    useMemo,
+} from 'react';
 import AvatarDropdown from '../../../components/AvatarDropdown';
 import KitchenPrintTicket from '../../../components/KitchenPrintTicket';
 import { useCommandQueue } from '../../../hooks/useCommandQueue';
@@ -84,7 +90,7 @@ export default function KitchenDisplay({
     const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
     // Durable station-ID filter; never match by station/category/item names.
     const [activeStationId, setActiveStationId] = useState<number | 'all'>(
-        'all'
+        'all',
     );
     const [mode, setMode] = useState<DispatchMode>('fifo');
     const [printOrder, setPrintOrder] = useState<KitchenOrderData | null>(null);
@@ -120,9 +126,11 @@ export default function KitchenDisplay({
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 body: JSON.stringify({
-                    target_minutes: Number(settingsTarget || dispatchSettings.target_minutes),
+                    target_minutes: Number(
+                        settingsTarget || dispatchSettings.target_minutes,
+                    ),
                     long_wait_minutes: Number(
-                        settingsLongWait || dispatchSettings.long_wait_minutes
+                        settingsLongWait || dispatchSettings.long_wait_minutes,
                     ),
                     expected_version: dispatchSettings.version,
                 }),
@@ -131,7 +139,9 @@ export default function KitchenDisplay({
             if (!response.ok) {
                 const data = await response.json().catch(() => ({}));
                 setAdminError(
-                    data.message || data.error || `Lỗi lưu cài đặt (${response.status})`
+                    data.message ||
+                        data.error ||
+                        `Lỗi lưu cài đặt (${response.status})`,
                 );
                 setIsSavingSettings(false);
 
@@ -148,7 +158,7 @@ export default function KitchenDisplay({
 
     const handleCategoryStationChange = async (
         categoryId: number,
-        stationId: number | null
+        stationId: number | null,
     ) => {
         setAdminError(null);
 
@@ -164,7 +174,7 @@ export default function KitchenDisplay({
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                     body: JSON.stringify({ kitchen_station_id: stationId }),
-                }
+                },
             );
 
             if (!response.ok) {
@@ -172,7 +182,7 @@ export default function KitchenDisplay({
                 setAdminError(
                     data.message ||
                         data.error ||
-                        `Lỗi cập nhật trạm (${response.status})`
+                        `Lỗi cập nhật trạm (${response.status})`,
                 );
 
                 return;
@@ -209,8 +219,8 @@ export default function KitchenDisplay({
         (user as { is_admin?: boolean })?.is_admin ||
         auth?.permissions?.includes('kitchen.dispatch.manage') ||
         (user as { permissions?: string[] })?.permissions?.includes(
-            'kitchen.dispatch.manage'
-        )
+            'kitchen.dispatch.manage',
+        ),
     );
 
     const { queue, enqueue, retry, discard } = useCommandQueue({
@@ -221,7 +231,7 @@ export default function KitchenDisplay({
             }),
     });
     const hasQueued = queue.some(
-        (c) => c.status === 'pending' || c.status === 'flushing'
+        (c) => c.status === 'pending' || c.status === 'flushing',
     );
     const failedCommands = queue.filter((c) => c.status === 'failed');
 
@@ -235,7 +245,7 @@ export default function KitchenDisplay({
         return () =>
             document.removeEventListener(
                 'fullscreenchange',
-                handleFullscreenChange
+                handleFullscreenChange,
             );
     }, []);
 
@@ -311,8 +321,7 @@ export default function KitchenDisplay({
         }
 
         return (
-            baseServerNowMsRef.current +
-            (Date.now() - receivedAtMsRef.current)
+            baseServerNowMsRef.current + (Date.now() - receivedAtMsRef.current)
         );
     }, [serverNow]);
 
@@ -338,16 +347,12 @@ export default function KitchenDisplay({
         return () =>
             document.removeEventListener(
                 'visibilitychange',
-                handleVisibilityChange
+                handleVisibilityChange,
             );
     }, [computeNowMs]);
 
     const serverAdjustedNowMs =
-        tickTime > 0
-            ? tickTime
-            : serverNow
-              ? Date.parse(serverNow)
-              : 0;
+        tickTime > 0 ? tickTime : serverNow ? Date.parse(serverNow) : 0;
 
     // Derived orderedGroups: rebuilds on data changes, mode, station, or clock tick
     const orderedGroups = useMemo(() => {
@@ -488,7 +493,7 @@ export default function KitchenDisplay({
         const createdAtTime = new Date(o.created_at).getTime();
         const elapsedMinutes = Math.max(
             0,
-            Math.floor((nowTime - createdAtTime) / 60000)
+            Math.floor((nowTime - createdAtTime) / 60000),
         );
 
         return elapsedMinutes >= 10 || !!o.has_additional_items;
@@ -499,7 +504,7 @@ export default function KitchenDisplay({
         total_orders: orders.length,
         waiting_items: orders.reduce(
             (sum, o) => sum + o.items.reduce((s, i) => s + i.quantity, 0),
-            0
+            0,
         ),
         warning_orders: liveWarningCount,
     };
@@ -516,7 +521,7 @@ export default function KitchenDisplay({
     const activeStationName =
         activeStationId === 'all'
             ? null
-            : stations?.find((s) => s.id === activeStationId)?.name ?? null;
+            : (stations?.find((s) => s.id === activeStationId)?.name ?? null);
 
     return (
         <DashboardLayout fullWidth={true} hideNavbar={true}>
@@ -608,7 +613,9 @@ export default function KitchenDisplay({
                                     <button
                                         key={station.id}
                                         type="button"
-                                        onClick={() => setActiveStationId(station.id)}
+                                        onClick={() =>
+                                            setActiveStationId(station.id)
+                                        }
                                         disabled={!station.is_active}
                                         title={
                                             station.is_active
@@ -742,7 +749,9 @@ export default function KitchenDisplay({
                         <div className="flex items-center gap-2 text-xs font-semibold">
                             <AlertTriangle className="h-4 w-4 shrink-0 stroke-[2] text-rose-600 dark:text-rose-400" />
                             <span>
-                                Mất kết nối mạng / Đang kết nối lại — Dữ liệu hiển thị có thể chưa mới nhất. Chỉnh sửa hạn điều phối tạm thời bị khóa.
+                                Mất kết nối mạng / Đang kết nối lại — Dữ liệu
+                                hiển thị có thể chưa mới nhất. Chỉnh sửa hạn
+                                điều phối tạm thời bị khóa.
                             </span>
                         </div>
                         <button
@@ -796,7 +805,8 @@ export default function KitchenDisplay({
                         <div className="flex min-w-0 flex-1 items-center gap-2">
                             <AlertTriangle className="h-4 w-4 shrink-0 stroke-[1.5] text-rose-600 dark:text-rose-400" />
                             <span className="truncate text-xs font-medium text-rose-700 dark:text-rose-300">
-                                {failedCommands.length} thao tác chưa được đồng bộ do lỗi mạng
+                                {failedCommands.length} thao tác chưa được đồng
+                                bộ do lỗi mạng
                             </span>
                         </div>
                         <button
@@ -827,10 +837,12 @@ export default function KitchenDisplay({
                             onClick={() => {
                                 if (!isAdminOpen && dispatchSettings) {
                                     setSettingsTarget(
-                                        String(dispatchSettings.target_minutes)
+                                        String(dispatchSettings.target_minutes),
                                     );
                                     setSettingsLongWait(
-                                        String(dispatchSettings.long_wait_minutes)
+                                        String(
+                                            dispatchSettings.long_wait_minutes,
+                                        ),
                                     );
                                 }
 
@@ -873,7 +885,7 @@ export default function KitchenDisplay({
                                                 value={settingsTarget}
                                                 onChange={(e) =>
                                                     setSettingsTarget(
-                                                        e.target.value
+                                                        e.target.value,
                                                     )
                                                 }
                                                 disabled={isDisconnected}
@@ -888,7 +900,7 @@ export default function KitchenDisplay({
                                                 value={settingsLongWait}
                                                 onChange={(e) =>
                                                     setSettingsLongWait(
-                                                        e.target.value
+                                                        e.target.value,
                                                     )
                                                 }
                                                 disabled={isDisconnected}
@@ -933,16 +945,20 @@ export default function KitchenDisplay({
                                                         onChange={(e) =>
                                                             handleCategoryStationChange(
                                                                 cat.id,
-                                                                e.target.value ===
+                                                                e.target
+                                                                    .value ===
                                                                     ''
                                                                     ? null
                                                                     : Number(
-                                                                          e.target
-                                                                              .value
-                                                                      )
+                                                                          e
+                                                                              .target
+                                                                              .value,
+                                                                      ),
                                                             )
                                                         }
-                                                        disabled={isDisconnected}
+                                                        disabled={
+                                                            isDisconnected
+                                                        }
                                                         className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-800"
                                                     >
                                                         <option value="">
@@ -952,9 +968,7 @@ export default function KitchenDisplay({
                                                             (s) => (
                                                                 <option
                                                                     key={s.id}
-                                                                    value={
-                                                                        s.id
-                                                                    }
+                                                                    value={s.id}
                                                                     disabled={
                                                                         !s.is_active
                                                                     }
@@ -964,7 +978,7 @@ export default function KitchenDisplay({
                                                                         ? ' (tắt)'
                                                                         : ''}
                                                                 </option>
-                                                            )
+                                                            ),
                                                         )}
                                                     </select>
                                                 </div>
@@ -1000,7 +1014,7 @@ export default function KitchenDisplay({
                             {hasWorkGroupsProp
                                 ? orderedGroups.map((group) => {
                                       const order = orders.find(
-                                          (o) => o.id === group.orderId
+                                          (o) => o.id === group.orderId,
                                       ) || {
                                           id: group.orderId,
                                           order_code: `#${group.orderId}`,
@@ -1052,7 +1066,7 @@ export default function KitchenDisplay({
                         .filter(
                             (item) =>
                                 item.status === 'pending' ||
-                                item.status === 'processing'
+                                item.status === 'processing',
                         )
                         .map((item) => ({
                             name: item.menu_item?.name || 'Món ăn',
@@ -1061,7 +1075,7 @@ export default function KitchenDisplay({
                         }))}
                     note={printOrder.note ?? null}
                     createdAtLabel={new Date(
-                        printOrder.created_at
+                        printOrder.created_at,
                     ).toLocaleTimeString('vi-VN', {
                         hour: '2-digit',
                         minute: '2-digit',

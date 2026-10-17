@@ -7,7 +7,9 @@ export function usePOSMenuIndex(products: readonly POSProductData[]): {
     index: MenuIndex | null;
     indexError: string | null;
 } {
-    const [lastValidIndex, setLastValidIndex] = useState<MenuIndex | null>(null);
+    const [lastValidIndex, setLastValidIndex] = useState<MenuIndex | null>(
+        null,
+    );
     const result = useMemo(() => {
         try {
             return { index: buildMenuIndex(products), indexError: null };
@@ -26,5 +28,8 @@ export function usePOSMenuIndex(products: readonly POSProductData[]): {
         setLastValidIndex(result.index);
     }
 
-    return { index: result.index ?? lastValidIndex, indexError: result.indexError };
+    return {
+        index: result.index ?? lastValidIndex,
+        indexError: result.indexError,
+    };
 }

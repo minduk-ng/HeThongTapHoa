@@ -33,7 +33,9 @@ export function useReverbStatus() {
             }
         };
 
-        queueMicrotask(() => setStatus(mapState(pusher.connection?.state || 'connecting')));
+        queueMicrotask(() =>
+            setStatus(mapState(pusher.connection?.state || 'connecting')),
+        );
 
         const handleStateChange = (states: { current: string }) => {
             setStatus(mapState(states.current));

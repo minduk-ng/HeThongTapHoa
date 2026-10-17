@@ -14,7 +14,12 @@ interface PlanningDialogProps {
 }
 
 export default function PlanningDialog({
-    open, onClose, labelledBy, busy = false, variant = 'modal', children,
+    open,
+    onClose,
+    labelledBy,
+    busy = false,
+    variant = 'modal',
+    children,
 }: PlanningDialogProps) {
     const ref = useRef<HTMLDialogElement>(null);
     const backdropPointer = useRef<number | null>(null);
@@ -36,9 +41,14 @@ export default function PlanningDialog({
         scrollLockCount += 1;
         document.body.style.overflow = 'hidden';
 
-        const closeControl = Array.from(dialog.querySelectorAll<HTMLElement>('[data-dialog-close]:not(:disabled)'))
-            .find((element) => element.getClientRects().length > 0);
-        const heading = dialog.querySelector<HTMLElement>('[data-dialog-heading]');
+        const closeControl = Array.from(
+            dialog.querySelectorAll<HTMLElement>(
+                '[data-dialog-close]:not(:disabled)',
+            ),
+        ).find((element) => element.getClientRects().length > 0);
+        const heading = dialog.querySelector<HTMLElement>(
+            '[data-dialog-heading]',
+        );
         (closeControl ?? heading)?.focus({ preventScroll: true });
 
         return () => {
@@ -71,17 +81,26 @@ export default function PlanningDialog({
                 }
             }}
             onPointerDown={(event) => {
-                backdropPointer.current = event.target === event.currentTarget && event.button === 0 && !busy
-                    ? event.pointerId
-                    : null;
+                backdropPointer.current =
+                    event.target === event.currentTarget &&
+                    event.button === 0 &&
+                    !busy
+                        ? event.pointerId
+                        : null;
             }}
             onPointerUp={(event) => {
-                const startedOnBackdrop = backdropPointer.current === event.pointerId;
+                const startedOnBackdrop =
+                    backdropPointer.current === event.pointerId;
                 backdropPointer.current = null;
 
                 // Touch implicit capture can retain the down target after dragging into the panel.
-                if (startedOnBackdrop && !busy && event.target === event.currentTarget &&
-                    document.elementFromPoint(event.clientX, event.clientY) === event.currentTarget) {
+                if (
+                    startedOnBackdrop &&
+                    !busy &&
+                    event.target === event.currentTarget &&
+                    document.elementFromPoint(event.clientX, event.clientY) ===
+                        event.currentTarget
+                ) {
                     onClose();
                 }
             }}

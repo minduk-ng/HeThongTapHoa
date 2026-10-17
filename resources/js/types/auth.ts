@@ -24,10 +24,13 @@ export type NavigationItem = {
 };
 
 export type NavigationGroup = {
-    [groupName: string]: NavigationItem[] | { __subs: Record<string, NavigationItem[]> };
+    [groupName: string]:
+        NavigationItem[] | { __subs: Record<string, NavigationItem[]> };
 };
 
-export type PageProps<T extends Record<string, unknown> = Record<string, unknown>> = T & {
+export type PageProps<
+    T extends Record<string, unknown> = Record<string, unknown>,
+> = T & {
     auth: Auth;
     navigation: NavigationGroup;
     flash?: {

@@ -45,7 +45,7 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="text-center">
                 <h2 className="auth-heading">Đăng ký</h2>
-                <p className="mt-1 auth-subtitle">Tạo tài khoản mới</p>
+                <p className="auth-subtitle mt-1">Tạo tài khoản mới</p>
             </div>
 
             <div>
@@ -107,7 +107,9 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                         )}
                     </button>
                 </div>
-                {errors.password && <p className="form-error">{errors.password}</p>}
+                {errors.password && (
+                    <p className="form-error">{errors.password}</p>
+                )}
             </div>
 
             <div>
@@ -119,7 +121,9 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                         id="signup-confirm"
                         type={showConfirm ? 'text' : 'password'}
                         value={data.password_confirmation}
-                        onChange={(e) => setData('password_confirmation', e.target.value)}
+                        onChange={(e) =>
+                            setData('password_confirmation', e.target.value)
+                        }
                         className={`${inputClass} pr-12`}
                         placeholder="Nhập lại mật khẩu"
                         required
@@ -137,14 +141,12 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                         )}
                     </button>
                 </div>
-                {errors.password_confirmation && <p className="form-error">{errors.password_confirmation}</p>}
+                {errors.password_confirmation && (
+                    <p className="form-error">{errors.password_confirmation}</p>
+                )}
             </div>
 
-            <button
-                type="submit"
-                disabled={processing}
-                className="btn-primary"
-            >
+            <button type="submit" disabled={processing} className="btn-primary">
                 {showSpinner ? (
                     <span className="flex items-center justify-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin stroke-[1.5]" />
@@ -165,7 +167,11 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
 
             <p className="auth-footer">
                 Đã có tài khoản?{' '}
-                <button type="button" onClick={onSwitchToLogin} className="link-primary">
+                <button
+                    type="button"
+                    onClick={onSwitchToLogin}
+                    className="link-primary"
+                >
                     Đăng nhập
                 </button>
             </p>

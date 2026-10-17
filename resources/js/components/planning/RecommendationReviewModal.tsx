@@ -10,10 +10,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PlanningDialog from './PlanningDialog';
-import {
-    formatCurrency,
-    formatQuantity,
-} from './planningFormatters';
+import { formatCurrency, formatQuantity } from './planningFormatters';
 import type { InventoryRecommendationItem } from './RecommendationDetailDrawer';
 
 export interface ReviewItem {
@@ -86,7 +83,10 @@ export default function RecommendationReviewModal({
 
             const ing = item.recommendation.ingredient;
             const baseUnit = ing?.unit || item.recommendation.unit;
-            const purchaseUnit = item.recommendation.purchase_unit || ing?.purchase_unit || baseUnit;
+            const purchaseUnit =
+                item.recommendation.purchase_unit ||
+                ing?.purchase_unit ||
+                baseUnit;
             const unitConversion = Number(ing?.unit_conversion ?? 1);
             const baseCostPrice = Number(ing?.cost_price ?? 0);
 
@@ -140,7 +140,9 @@ export default function RecommendationReviewModal({
         // 8-second safety timeout guard
         timeoutRef.current = setTimeout(() => {
             setIsSubmitting(false);
-            setErrorMessage('Yêu cầu phê duyệt phản hồi quá 8 giây. Vui lòng kiểm tra kết nối mạng và thử lại.');
+            setErrorMessage(
+                'Yêu cầu phê duyệt phản hồi quá 8 giây. Vui lòng kiểm tra kết nối mạng và thử lại.',
+            );
         }, 8000);
 
         router.post(
@@ -150,7 +152,10 @@ export default function RecommendationReviewModal({
                     recommendation_id: i.recommendation.id,
                     final_quantity: i.finalQuantity,
                     adjustment_reason:
-                        Math.abs(i.finalQuantity - i.recommendation.suggested_quantity) > 0.0001
+                        Math.abs(
+                            i.finalQuantity -
+                                i.recommendation.suggested_quantity,
+                        ) > 0.0001
                             ? i.reason
                             : null,
                 })),
@@ -176,14 +181,20 @@ export default function RecommendationReviewModal({
                     // Server returns 422: keep modal open
                     const stale = Boolean(
                         errors.recommendation ||
-                            Object.values(errors).some((msg) =>
+                        Object.values(errors).some(
+                            (msg) =>
                                 typeof msg === 'string' &&
-                                (msg.includes('tồn kho') || msg.includes('snapshot') || msg.includes('không còn hiệu lực'))
-                            )
+                                (msg.includes('tồn kho') ||
+                                    msg.includes('snapshot') ||
+                                    msg.includes('không còn hiệu lực')),
+                        ),
                     );
 
                     setIsStaleError(stale);
-                    const firstError = errors.recommendation || Object.values(errors)[0] || 'Không thể tạo kế hoạch mua hàng.';
+                    const firstError =
+                        errors.recommendation ||
+                        Object.values(errors)[0] ||
+                        'Không thể tạo kế hoạch mua hàng.';
 
                     setErrorMessage(String(firstError));
                 },
@@ -192,7 +203,7 @@ export default function RecommendationReviewModal({
                         clearTimeout(timeoutRef.current);
                     }
                 },
-            }
+            },
         );
     };
 
@@ -214,9 +225,14 @@ export default function RecommendationReviewModal({
                 },
                 onError: (err) => {
                     setIsRecalculating(false);
-                    setErrorMessage(String(Object.values(err)[0] || 'Lỗi khi kích hoạt tính lại dự báo.'));
+                    setErrorMessage(
+                        String(
+                            Object.values(err)[0] ||
+                                'Lỗi khi kích hoạt tính lại dự báo.',
+                        ),
+                    );
                 },
-            }
+            },
         );
     };
 
@@ -227,249 +243,288 @@ export default function RecommendationReviewModal({
             labelledBy="modal-review-title"
             busy={isSubmitting || isRecalculating}
         >
-                <div className="relative max-h-full w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-                    {/* Header */}
-                    <div className="flex items-start justify-between border-b border-slate-200 pb-4 dark:border-slate-800">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-950 dark:text-sky-400">
-                                <CheckCircle2 className="h-6 w-6" />
+            <div className="relative max-h-full w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+                {/* Header */}
+                <div className="flex items-start justify-between border-b border-slate-200 pb-4 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-950 dark:text-sky-400">
+                            <CheckCircle2 className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h2
+                                id="modal-review-title"
+                                data-dialog-heading
+                                tabIndex={-1}
+                                className="font-display text-xl font-bold text-slate-900 dark:text-white"
+                            >
+                                Xem lại & Phê duyệt kế hoạch mua hàng
+                            </h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Hệ thống sẽ tạo kế hoạch mua hàng riêng biệt cho
+                                từng nhà cung cấp
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={handleClose}
+                        data-dialog-close
+                        aria-label="Đóng xem lại kế hoạch"
+                        disabled={isSubmitting || isRecalculating}
+                        className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                {/* Stale / Server Error Banner */}
+                {errorMessage && (
+                    <div
+                        role="alert"
+                        className="mt-4 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200"
+                    >
+                        <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
+                        <div className="flex-1 text-sm">
+                            <div className="font-semibold">
+                                {isStaleError
+                                    ? 'Dữ liệu tồn kho đã thay đổi sau thời điểm snapshot (422)'
+                                    : 'Phát hiện dữ liệu không nhất quán (422)'}
                             </div>
-                            <div>
-                                <h2
-                                    id="modal-review-title"
-                                    data-dialog-heading
-                                    tabIndex={-1}
-                                    className="font-display text-xl font-bold text-slate-900 dark:text-white"
+                            <div className="mt-0.5 text-xs text-rose-700 dark:text-rose-300">
+                                {errorMessage}
+                            </div>
+                            <div className="mt-3 flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleRecalculate}
+                                    disabled={isRecalculating}
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-sky-700 px-3 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-sky-800 disabled:opacity-50"
                                 >
-                                    Xem lại & Phê duyệt kế hoạch mua hàng
-                                </h2>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    Hệ thống sẽ tạo kế hoạch mua hàng riêng biệt cho từng nhà cung cấp
-                                </p>
+                                    {isRecalculating ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <RefreshCw className="h-3.5 w-3.5" />
+                                    )}
+                                    Tính lại dự báo & tồn kho
+                                </button>
+                                <span className="text-xs text-rose-600 dark:text-rose-400">
+                                    (Lấy tồn kho thực tế và cập nhật lại đề
+                                    xuất)
+                                </span>
                             </div>
                         </div>
+                    </div>
+                )}
 
+                {/* Content: Grouped by Supplier */}
+                <div className="mt-4 max-h-[50vh] space-y-5 overflow-y-auto pr-1">
+                    {groupedSuppliers.map((group, groupIdx) => (
+                        <div
+                            key={groupIdx}
+                            className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-950/40"
+                        >
+                            <div className="mb-3 flex items-center justify-between border-b border-slate-200/80 pb-2.5 dark:border-slate-800">
+                                <div className="flex items-center gap-2">
+                                    <Building2 className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                                    <span className="font-display font-semibold text-slate-900 dark:text-white">
+                                        {group.supplierName}
+                                    </span>
+                                    {group.supplierPhone && (
+                                        <span className="text-xs text-slate-400">
+                                            ({group.supplierPhone})
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                    {group.items.length} mặt hàng
+                                </span>
+                            </div>
+
+                            <div className="space-y-2.5">
+                                {group.items.map((item, itemIdx) => {
+                                    const ing = item.recommendation.ingredient;
+                                    const baseUnit =
+                                        ing?.unit || item.recommendation.unit;
+                                    const purchaseUnit =
+                                        item.recommendation.purchase_unit ||
+                                        ing?.purchase_unit ||
+                                        baseUnit;
+                                    const unitConversion = Number(
+                                        ing?.unit_conversion ?? 1,
+                                    );
+                                    const baseCostPrice = Number(
+                                        ing?.cost_price ?? 0,
+                                    );
+
+                                    const isConverted =
+                                        Boolean(ing?.purchase_unit) &&
+                                        purchaseUnit === ing?.purchase_unit &&
+                                        unitConversion > 0;
+
+                                    const unitPrice = isConverted
+                                        ? Math.round(
+                                              baseCostPrice * unitConversion,
+                                          )
+                                        : baseCostPrice;
+
+                                    const itemTotal = Math.round(
+                                        item.finalQuantity * unitPrice,
+                                    );
+                                    const isAdjusted =
+                                        Math.abs(
+                                            item.finalQuantity -
+                                                item.recommendation
+                                                    .suggested_quantity,
+                                        ) > 0.0001;
+
+                                    return (
+                                        <div
+                                            key={itemIdx}
+                                            className="rounded-lg border border-slate-200/60 bg-white p-3 text-sm dark:border-slate-800 dark:bg-slate-900"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                                        {ing?.name ||
+                                                            `Nguyên liệu #${item.recommendation.ingredient_id}`}
+                                                    </span>
+                                                    <span className="ml-2 font-mono text-[11px] text-slate-400">
+                                                        ({ing?.code || '-'})
+                                                    </span>
+                                                </div>
+                                                <div className="font-display font-bold text-slate-900 tabular-nums dark:text-white">
+                                                    {formatCurrency(itemTotal)}
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-500 dark:text-slate-400">
+                                                <div>
+                                                    Đề xuất:{' '}
+                                                    <span className="tabular-nums">
+                                                        {formatQuantity(
+                                                            item.recommendation
+                                                                .suggested_quantity,
+                                                        )}
+                                                    </span>{' '}
+                                                    {purchaseUnit}
+                                                </div>
+                                                <div>
+                                                    Đặt thực tế:{' '}
+                                                    <span
+                                                        className={`font-semibold tabular-nums ${isAdjusted ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}
+                                                    >
+                                                        {formatQuantity(
+                                                            item.finalQuantity,
+                                                        )}
+                                                    </span>{' '}
+                                                    {purchaseUnit}
+                                                </div>
+                                                <div>
+                                                    Đơn giá:{' '}
+                                                    <span className="tabular-nums">
+                                                        {formatCurrency(
+                                                            unitPrice,
+                                                        )}
+                                                    </span>
+                                                    /{purchaseUnit}
+                                                </div>
+                                            </div>
+
+                                            {isAdjusted && (
+                                                <div className="mt-2 rounded-md bg-amber-50 p-2 text-[11px] text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                                                    <span className="font-semibold">
+                                                        Lý do điều chỉnh:
+                                                    </span>{' '}
+                                                    {item.reason ||
+                                                        '(Chưa ghi lý do)'}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="mt-3 flex justify-between border-t border-slate-200/60 pt-2 text-xs font-semibold dark:border-slate-800">
+                                <span className="text-slate-600 dark:text-slate-400">
+                                    Tổng tiền NCC ({group.supplierName}):
+                                </span>
+                                <span className="font-display text-sm text-slate-900 tabular-nums dark:text-white">
+                                    {formatCurrency(group.subtotal)}
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Overall Notes */}
+                <div className="mt-4">
+                    <label
+                        htmlFor="plan-notes"
+                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300"
+                    >
+                        <FileText className="h-3.5 w-3.5" />
+                        Ghi chú kế hoạch (tùy chọn)
+                    </label>
+                    <textarea
+                        id="plan-notes"
+                        rows={2}
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Nhập ghi chú chung cho đợt nhập hàng này..."
+                        className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder-slate-500"
+                    />
+                </div>
+
+                {/* Footer Summary & Action */}
+                <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
+                    <div className="text-left">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                            Tổng cộng {items.length} mặt hàng (
+                            {groupedSuppliers.length} NCC)
+                        </div>
+                        <div className="font-display text-xl font-bold text-emerald-600 tabular-nums dark:text-emerald-400">
+                            {formatCurrency(totalCost)}
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
                         <button
                             type="button"
                             onClick={handleClose}
                             data-dialog-close
-                            aria-label="Đóng xem lại kế hoạch"
+                            aria-label="Hủy xem lại kế hoạch"
                             disabled={isSubmitting || isRecalculating}
-                            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                            className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
                         >
-                            <X className="h-5 w-5" />
+                            Hủy bỏ
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            disabled={
+                                isSubmitting ||
+                                isRecalculating ||
+                                items.length === 0
+                            }
+                            className="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-800 disabled:opacity-50"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Đang tạo kế hoạch...
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    Xác nhận & Phê duyệt
+                                </>
+                            )}
                         </button>
                     </div>
-
-                    {/* Stale / Server Error Banner */}
-                    {errorMessage && (
-                        <div role="alert" className="mt-4 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200">
-                            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
-                            <div className="flex-1 text-sm">
-                                <div className="font-semibold">
-                                    {isStaleError
-                                        ? 'Dữ liệu tồn kho đã thay đổi sau thời điểm snapshot (422)'
-                                        : 'Phát hiện dữ liệu không nhất quán (422)'}
-                                </div>
-                                <div className="mt-0.5 text-xs text-rose-700 dark:text-rose-300">
-                                    {errorMessage}
-                                </div>
-                                <div className="mt-3 flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={handleRecalculate}
-                                        disabled={isRecalculating}
-                                        className="inline-flex items-center gap-1.5 rounded-lg bg-sky-700 px-3 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-sky-800 disabled:opacity-50"
-                                    >
-                                        {isRecalculating ? (
-                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                        ) : (
-                                            <RefreshCw className="h-3.5 w-3.5" />
-                                        )}
-                                        Tính lại dự báo & tồn kho
-                                    </button>
-                                    <span className="text-xs text-rose-600 dark:text-rose-400">
-                                        (Lấy tồn kho thực tế và cập nhật lại đề xuất)
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Content: Grouped by Supplier */}
-                    <div className="mt-4 max-h-[50vh] space-y-5 overflow-y-auto pr-1">
-                        {groupedSuppliers.map((group, groupIdx) => (
-                            <div
-                                key={groupIdx}
-                                className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-950/40"
-                            >
-                                <div className="mb-3 flex items-center justify-between border-b border-slate-200/80 pb-2.5 dark:border-slate-800">
-                                    <div className="flex items-center gap-2">
-                                        <Building2 className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-                                        <span className="font-display font-semibold text-slate-900 dark:text-white">
-                                            {group.supplierName}
-                                        </span>
-                                        {group.supplierPhone && (
-                                            <span className="text-xs text-slate-400">
-                                                ({group.supplierPhone})
-                                            </span>
-                                        )}
-                                    </div>
-                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                                        {group.items.length} mặt hàng
-                                    </span>
-                                </div>
-
-                                <div className="space-y-2.5">
-                                    {group.items.map((item, itemIdx) => {
-                                        const ing = item.recommendation.ingredient;
-                                        const baseUnit = ing?.unit || item.recommendation.unit;
-                                        const purchaseUnit = item.recommendation.purchase_unit || ing?.purchase_unit || baseUnit;
-                                        const unitConversion = Number(ing?.unit_conversion ?? 1);
-                                        const baseCostPrice = Number(ing?.cost_price ?? 0);
-
-                                        const isConverted =
-                                            Boolean(ing?.purchase_unit) &&
-                                            purchaseUnit === ing?.purchase_unit &&
-                                            unitConversion > 0;
-
-                                        const unitPrice = isConverted
-                                            ? Math.round(baseCostPrice * unitConversion)
-                                            : baseCostPrice;
-
-                                        const itemTotal = Math.round(item.finalQuantity * unitPrice);
-                                        const isAdjusted =
-                                            Math.abs(item.finalQuantity - item.recommendation.suggested_quantity) > 0.0001;
-
-                                        return (
-                                            <div
-                                                key={itemIdx}
-                                                className="rounded-lg border border-slate-200/60 bg-white p-3 text-sm dark:border-slate-800 dark:bg-slate-900"
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <span className="font-semibold text-slate-800 dark:text-slate-200">
-                                                            {ing?.name || `Nguyên liệu #${item.recommendation.ingredient_id}`}
-                                                        </span>
-                                                        <span className="ml-2 font-mono text-[11px] text-slate-400">
-                                                            ({ing?.code || '-'})
-                                                        </span>
-                                                    </div>
-                                                    <div className="font-display font-bold tabular-nums text-slate-900 dark:text-white">
-                                                        {formatCurrency(itemTotal)}
-                                                    </div>
-                                                </div>
-
-                                                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-500 dark:text-slate-400">
-                                                    <div>
-                                                        Đề xuất:{' '}
-                                                        <span className="tabular-nums">
-                                                            {formatQuantity(item.recommendation.suggested_quantity)}
-                                                        </span>{' '}
-                                                        {purchaseUnit}
-                                                    </div>
-                                                    <div>
-                                                        Đặt thực tế:{' '}
-                                                        <span className={`font-semibold tabular-nums ${isAdjusted ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                                                            {formatQuantity(item.finalQuantity)}
-                                                        </span>{' '}
-                                                        {purchaseUnit}
-                                                    </div>
-                                                    <div>
-                                                        Đơn giá:{' '}
-                                                        <span className="tabular-nums">
-                                                            {formatCurrency(unitPrice)}
-                                                        </span>
-                                                        /{purchaseUnit}
-                                                    </div>
-                                                </div>
-
-                                                {isAdjusted && (
-                                                    <div className="mt-2 rounded-md bg-amber-50 p-2 text-[11px] text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                                                        <span className="font-semibold">Lý do điều chỉnh:</span>{' '}
-                                                        {item.reason || '(Chưa ghi lý do)'}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-
-                                <div className="mt-3 flex justify-between border-t border-slate-200/60 pt-2 text-xs font-semibold dark:border-slate-800">
-                                    <span className="text-slate-600 dark:text-slate-400">
-                                        Tổng tiền NCC ({group.supplierName}):
-                                    </span>
-                                    <span className="font-display text-sm tabular-nums text-slate-900 dark:text-white">
-                                        {formatCurrency(group.subtotal)}
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Overall Notes */}
-                    <div className="mt-4">
-                        <label
-                            htmlFor="plan-notes"
-                            className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300"
-                        >
-                            <FileText className="h-3.5 w-3.5" />
-                            Ghi chú kế hoạch (tùy chọn)
-                        </label>
-                        <textarea
-                            id="plan-notes"
-                            rows={2}
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Nhập ghi chú chung cho đợt nhập hàng này..."
-                            className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-hidden focus:ring-1 focus:ring-sky-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder-slate-500"
-                        />
-                    </div>
-
-                    {/* Footer Summary & Action */}
-                    <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
-                        <div className="text-left">
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                                Tổng cộng {items.length} mặt hàng ({groupedSuppliers.length} NCC)
-                            </div>
-                            <div className="font-display text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                                {formatCurrency(totalCost)}
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={handleClose}
-                                data-dialog-close
-                                aria-label="Hủy xem lại kế hoạch"
-                                disabled={isSubmitting || isRecalculating}
-                                className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
-                            >
-                                Hủy bỏ
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handleSubmit}
-                                disabled={isSubmitting || isRecalculating || items.length === 0}
-                                className="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-800 disabled:opacity-50"
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Đang tạo kế hoạch...
-                                    </>
-                                ) : (
-                                    <>
-                                        <CheckCircle2 className="h-4 w-4" />
-                                        Xác nhận & Phê duyệt
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </div>
                 </div>
+            </div>
         </PlanningDialog>
     );
 }

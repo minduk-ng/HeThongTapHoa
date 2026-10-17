@@ -59,29 +59,43 @@ interface VoucherDetailProps {
 }
 
 const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+    new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+    }).format(val);
 
-export default function StockVoucherDetail({ voucher, products = [], items, total }: VoucherDetailProps) {
+export default function StockVoucherDetail({
+    voucher,
+    products = [],
+    items,
+    total,
+}: VoucherDetailProps) {
     const isImport = voucher.type === 'import';
     const isExport = voucher.type === 'export';
     const isAdjustment = voucher.type === 'adjustment';
 
-    const typeLabel = isAdjustment ? 'Phiếu điều chỉnh' : isImport ? 'Phiếu nhập' : 'Phiếu xuất';
+    const typeLabel = isAdjustment
+        ? 'Phiếu điều chỉnh'
+        : isImport
+          ? 'Phiếu nhập'
+          : 'Phiếu xuất';
 
     // Mặc định ẩn danh sách các món trong hoá đơn
     const [showProducts, setShowProducts] = useState(false);
 
     // State lưu danh sách ID các dòng cha đang được mở rộng (expanded)
-    const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>(() => {
-        const init: Record<number, boolean> = {};
-        items.forEach((it) => {
-            if (it.children && it.children.length > 0) {
-                init[it.ingredient_id] = true;
-            }
-        });
+    const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>(
+        () => {
+            const init: Record<number, boolean> = {};
+            items.forEach((it) => {
+                if (it.children && it.children.length > 0) {
+                    init[it.ingredient_id] = true;
+                }
+            });
 
-        return init;
-    });
+            return init;
+        },
+    );
 
     const toggleRow = (ingredientId: number) => {
         setExpandedRows((prev) => ({
@@ -90,9 +104,14 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
         }));
     };
 
-    const hasAnyChildren = items.some((it) => it.children && it.children.length > 0);
+    const hasAnyChildren = items.some(
+        (it) => it.children && it.children.length > 0,
+    );
     const areAllExpanded = items.every(
-        (it) => !it.children || it.children.length === 0 || expandedRows[it.ingredient_id]
+        (it) =>
+            !it.children ||
+            it.children.length === 0 ||
+            expandedRows[it.ingredient_id],
     );
 
     const toggleExpandAll = () => {
@@ -112,31 +131,35 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
     return (
         <DashboardLayout fullWidth={true}>
             <Head title={`Phiếu ${voucher.voucher_code}`} />
-            <div className="flex-1 flex flex-col h-full w-full min-h-0 overflow-hidden">
-                <div className="flex-1 h-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-xs flex flex-col min-w-0 min-h-0 overflow-hidden">
+            <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
+                <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
                     {/* Header */}
-                    <div className="px-6 pt-5 pb-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
+                    <div className="shrink-0 border-b border-zinc-100 px-6 pt-5 pb-4 dark:border-zinc-800">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-3">
                                 <button
                                     type="button"
-                                    onClick={() => router.get('/manager/inventory/vouchers')}
-                                    className="p-2 rounded-xl text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
+                                    onClick={() =>
+                                        router.get(
+                                            '/manager/inventory/vouchers',
+                                        )
+                                    }
+                                    className="rounded-xl p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                                     title="Quay lại danh sách phiếu"
                                 >
-                                    <ArrowLeft className="w-5 h-5 stroke-[1.5]" />
+                                    <ArrowLeft className="h-5 w-5 stroke-[1.5]" />
                                 </button>
                                 <div className="flex items-center space-x-2.5">
-                                    <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400">
-                                        <Box className="w-5 h-5 stroke-[1.5]" />
+                                    <div className="rounded-xl bg-sky-50 p-2 text-sky-600 dark:bg-sky-950/50 dark:text-sky-400">
+                                        <Box className="h-5 w-5 stroke-[1.5]" />
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h1 className="font-display text-2xl font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">
+                                            <h1 className="font-display text-2xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100">
                                                 {voucher.voucher_code}
                                             </h1>
                                             <span
-                                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full ${
+                                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                                                     isAdjustment
                                                         ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                                                         : isImport
@@ -145,11 +168,11 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
                                                 }`}
                                             >
                                                 {isAdjustment ? (
-                                                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                                                    <SlidersHorizontal className="h-3.5 w-3.5" />
                                                 ) : isImport ? (
-                                                    <ArrowDownToLine className="w-3.5 h-3.5" />
+                                                    <ArrowDownToLine className="h-3.5 w-3.5" />
                                                 ) : (
-                                                    <ArrowUpFromLine className="w-3.5 h-3.5" />
+                                                    <ArrowUpFromLine className="h-3.5 w-3.5" />
                                                 )}
                                                 {typeLabel}
                                             </span>
@@ -161,125 +184,170 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
                     </div>
 
                     {/* Scrollable Content Body */}
-                    <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5">
+                    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
                         {/* Meta Card */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-50 dark:bg-zinc-800/40 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 text-sm shrink-0">
+                        <div className="grid shrink-0 grid-cols-2 gap-4 rounded-xl border border-zinc-200/80 bg-zinc-50 p-4 text-sm md:grid-cols-4 dark:border-zinc-800/80 dark:bg-zinc-800/40">
                             <div>
-                                <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Mã phiếu</span>
-                                <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                                <span className="block text-xs font-medium text-zinc-400 dark:text-zinc-500">
+                                    Mã phiếu
+                                </span>
+                                <span className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
                                     {voucher.voucher_code}
                                 </span>
                             </div>
                             <div>
-                                <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Loại phiếu</span>
-                                <span className="font-semibold text-zinc-900 dark:text-zinc-100">{typeLabel}</span>
+                                <span className="block text-xs font-medium text-zinc-400 dark:text-zinc-500">
+                                    Loại phiếu
+                                </span>
+                                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                                    {typeLabel}
+                                </span>
                             </div>
                             <div>
-                                <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Thời điểm</span>
-                                <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                                <span className="block text-xs font-medium text-zinc-400 dark:text-zinc-500">
+                                    Thời điểm
+                                </span>
+                                <span className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
                                     {voucher.transacted_at}
                                 </span>
                             </div>
                             <div>
-                                <span className="text-xs text-zinc-400 dark:text-zinc-500 block font-medium">Người tạo</span>
+                                <span className="block text-xs font-medium text-zinc-400 dark:text-zinc-500">
+                                    Người tạo
+                                </span>
                                 <span className="font-semibold text-zinc-900 dark:text-zinc-100">
                                     {voucher.employee_name || '—'}
                                 </span>
                             </div>
 
                             {voucher.note && (
-                                <div className="col-span-2 md:col-span-4 pt-2.5 border-t border-zinc-200/60 dark:border-zinc-700/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+                                <div className="col-span-2 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200/60 pt-2.5 text-xs md:col-span-4 dark:border-zinc-700/60">
                                     <div className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
-                                        <span className="font-semibold text-zinc-600 dark:text-zinc-400">Ghi chú:</span>
+                                        <span className="font-semibold text-zinc-600 dark:text-zinc-400">
+                                            Ghi chú:
+                                        </span>
                                         <span>{voucher.note}</span>
                                     </div>
 
                                     {/* Nút nhỏ ở phần hoá đơn để mở/ẩn danh sách món */}
-                                    {isExport && products && products.length > 0 && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowProducts(!showProducts)}
-                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border border-sky-300 dark:border-sky-700/60 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-colors shadow-2xs"
-                                        >
-                                            {showProducts ? (
-                                                <>
-                                                    <EyeOff className="w-3.5 h-3.5 stroke-[1.5]" />
-                                                    <span>Ẩn món trong hoá đơn</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Eye className="w-3.5 h-3.5 stroke-[1.5]" />
-                                                    <span>Xem món trong hoá đơn ({products.length})</span>
-                                                </>
-                                            )}
-                                        </button>
-                                    )}
+                                    {isExport &&
+                                        products &&
+                                        products.length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setShowProducts(
+                                                        !showProducts,
+                                                    )
+                                                }
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 shadow-2xs transition-colors hover:bg-sky-100 dark:border-sky-700/60 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/40"
+                                            >
+                                                {showProducts ? (
+                                                    <>
+                                                        <EyeOff className="h-3.5 w-3.5 stroke-[1.5]" />
+                                                        <span>
+                                                            Ẩn món trong hoá đơn
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Eye className="h-3.5 w-3.5 stroke-[1.5]" />
+                                                        <span>
+                                                            Xem món trong hoá
+                                                            đơn (
+                                                            {products.length})
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        )}
                                 </div>
                             )}
                         </div>
 
                         {/* Top Table for Export Vouchers: Sold Menu Items in Invoices/Orders (Chỉ hiển thị khi bấm nút) */}
-                        {isExport && products && products.length > 0 && showProducts && (
-                            <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 overflow-hidden shadow-xs shrink-0 transition-all duration-200">
-                                <div className="flex items-center justify-between px-4 py-3 bg-zinc-50/80 dark:bg-zinc-800/60 border-b border-zinc-100 dark:border-zinc-800">
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-1 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
-                                            <Receipt className="w-4 h-4 stroke-[1.5]" />
+                        {isExport &&
+                            products &&
+                            products.length > 0 &&
+                            showProducts && (
+                                <div className="shrink-0 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-xs transition-all duration-200 dark:border-zinc-800/80 dark:bg-zinc-900">
+                                    <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/80 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-800/60">
+                                        <div className="flex items-center gap-2">
+                                            <div className="rounded-lg bg-amber-100 p-1 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                                                <Receipt className="h-4 w-4 stroke-[1.5]" />
+                                            </div>
+                                            <h3 className="font-display text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                                Danh sách món trong hoá đơn /
+                                                phiếu xuất
+                                            </h3>
                                         </div>
-                                        <h3 className="font-display text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                                            Danh sách món trong hoá đơn / phiếu xuất
-                                        </h3>
+                                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                                            {products.length} món
+                                        </span>
                                     </div>
-                                    <span className="rounded-full bg-amber-50 dark:bg-amber-950/40 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                                        {products.length} món
-                                    </span>
-                                </div>
 
-                                <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse text-left text-sm">
-                                        <thead className="bg-zinc-50/75 dark:bg-zinc-800/60 border-b border-zinc-200/80 dark:border-zinc-800 text-xs font-semibold text-zinc-600 dark:text-zinc-400">
-                                            <tr>
-                                                <th className="px-4 py-2.5 text-center w-16 border-r border-zinc-200/60 dark:border-zinc-800/60">STT</th>
-                                                <th className="px-4 py-2.5 text-left border-r border-zinc-200/60 dark:border-zinc-800/60">Tên món</th>
-                                                <th className="px-4 py-2.5 text-center w-36 border-r border-zinc-200/60 dark:border-zinc-800/60">Số lượng bán</th>
-                                                <th className="px-4 py-2.5 text-center w-44">Trạng thái trừ kho</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                                            {products.map((p, idx) => (
-                                                <tr key={p.id || idx} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/40 transition-colors">
-                                                    <td className="px-4 py-2.5 text-center text-xs text-zinc-400 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40">
-                                                        {idx + 1}
-                                                    </td>
-                                                    <td className="px-4 py-2.5 text-left font-medium text-zinc-900 dark:text-zinc-100 border-r border-zinc-100/80 dark:border-zinc-800/40">
-                                                        <div className="flex items-center gap-2">
-                                                            <UtensilsCrossed className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                                                            <span>{p.name}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-2.5 text-center font-bold text-zinc-900 dark:text-zinc-100 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40">
-                                                        {p.quantity.toLocaleString('vi-VN')} phần/ly
-                                                    </td>
-                                                    <td className="px-4 py-2.5 text-center">
-                                                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-                                                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                                            Đã trừ định lượng
-                                                        </span>
-                                                    </td>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse text-left text-sm">
+                                            <thead className="border-b border-zinc-200/80 bg-zinc-50/75 text-xs font-semibold text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-400">
+                                                <tr>
+                                                    <th className="w-16 border-r border-zinc-200/60 px-4 py-2.5 text-center dark:border-zinc-800/60">
+                                                        STT
+                                                    </th>
+                                                    <th className="border-r border-zinc-200/60 px-4 py-2.5 text-left dark:border-zinc-800/60">
+                                                        Tên món
+                                                    </th>
+                                                    <th className="w-36 border-r border-zinc-200/60 px-4 py-2.5 text-center dark:border-zinc-800/60">
+                                                        Số lượng bán
+                                                    </th>
+                                                    <th className="w-44 px-4 py-2.5 text-center">
+                                                        Trạng thái trừ kho
+                                                    </th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                                                {products.map((p, idx) => (
+                                                    <tr
+                                                        key={p.id || idx}
+                                                        className="transition-colors hover:bg-zinc-50/60 dark:hover:bg-zinc-800/40"
+                                                    >
+                                                        <td className="border-r border-zinc-100/80 px-4 py-2.5 text-center text-xs text-zinc-400 tabular-nums dark:border-zinc-800/40">
+                                                            {idx + 1}
+                                                        </td>
+                                                        <td className="border-r border-zinc-100/80 px-4 py-2.5 text-left font-medium text-zinc-900 dark:border-zinc-800/40 dark:text-zinc-100">
+                                                            <div className="flex items-center gap-2">
+                                                                <UtensilsCrossed className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                                                                <span>
+                                                                    {p.name}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="border-r border-zinc-100/80 px-4 py-2.5 text-center font-bold text-zinc-900 tabular-nums dark:border-zinc-800/40 dark:text-zinc-100">
+                                                            {p.quantity.toLocaleString(
+                                                                'vi-VN',
+                                                            )}{' '}
+                                                            phần/ly
+                                                        </td>
+                                                        <td className="px-4 py-2.5 text-center">
+                                                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                                                Đã trừ định
+                                                                lượng
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
                         {/* Bottom Table: Ingredients Breakdown (Cha - Con Accordion) */}
-                        <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 overflow-hidden shadow-xs">
-                            <div className="flex items-center justify-between px-4 py-3 bg-zinc-50/80 dark:bg-zinc-800/60 border-b border-zinc-100 dark:border-zinc-800">
+                        <div className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
+                            <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/80 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-800/60">
                                 <div className="flex items-center gap-2">
-                                    <div className="p-1 rounded-lg bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300">
-                                        <Layers className="w-4 h-4 stroke-[1.5]" />
+                                    <div className="rounded-lg bg-sky-100 p-1 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300">
+                                        <Layers className="h-4 w-4 stroke-[1.5]" />
                                     </div>
                                     <h3 className="font-display text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                                         {isExport
@@ -292,16 +360,16 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
                                     <button
                                         type="button"
                                         onClick={toggleExpandAll}
-                                        className="flex items-center gap-1.5 rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-700 dark:bg-zinc-800 px-3 py-1 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors"
+                                        className="flex items-center gap-1.5 rounded-xl border border-zinc-200/80 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                                     >
                                         {areAllExpanded ? (
                                             <>
-                                                <ChevronsDownUp className="w-3.5 h-3.5 text-zinc-400" />
+                                                <ChevronsDownUp className="h-3.5 w-3.5 text-zinc-400" />
                                                 <span>Thu gọn tất cả</span>
                                             </>
                                         ) : (
                                             <>
-                                                <ChevronsUpDown className="w-3.5 h-3.5 text-zinc-400" />
+                                                <ChevronsUpDown className="h-3.5 w-3.5 text-zinc-400" />
                                                 <span>Mở rộng tất cả</span>
                                             </>
                                         )}
@@ -311,28 +379,52 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
 
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse text-left text-sm">
-                                    <thead className="bg-zinc-50/75 dark:bg-zinc-800/60 border-b border-zinc-200/80 dark:border-zinc-800 text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                                    <thead className="border-b border-zinc-200/80 bg-zinc-50/75 text-xs font-semibold text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-400">
                                         <tr>
-                                            {isExport && <th className="w-10 px-3 py-2.5 text-center border-r border-zinc-200/60 dark:border-zinc-800/60"></th>}
-                                            <th className="px-4 py-2.5 text-center w-28 border-r border-zinc-200/60 dark:border-zinc-800/60">Mã NVL</th>
-                                            <th className="px-4 py-2.5 text-left border-r border-zinc-200/60 dark:border-zinc-800/60">Tên nguyên liệu / Món tiêu hao</th>
-                                            <th className="px-4 py-2.5 text-right w-36 border-r border-zinc-200/60 dark:border-zinc-800/60">
-                                                {isExport ? 'Tổng lượng xuất' : 'Số lượng'}
+                                            {isExport && (
+                                                <th className="w-10 border-r border-zinc-200/60 px-3 py-2.5 text-center dark:border-zinc-800/60"></th>
+                                            )}
+                                            <th className="w-28 border-r border-zinc-200/60 px-4 py-2.5 text-center dark:border-zinc-800/60">
+                                                Mã NVL
                                             </th>
-                                            <th className="px-4 py-2.5 text-right w-36 border-r border-zinc-200/60 dark:border-zinc-800/60">Đơn giá</th>
-                                            <th className="px-4 py-2.5 text-right w-40">Thành tiền</th>
+                                            <th className="border-r border-zinc-200/60 px-4 py-2.5 text-left dark:border-zinc-800/60">
+                                                Tên nguyên liệu / Món tiêu hao
+                                            </th>
+                                            <th className="w-36 border-r border-zinc-200/60 px-4 py-2.5 text-right dark:border-zinc-800/60">
+                                                {isExport
+                                                    ? 'Tổng lượng xuất'
+                                                    : 'Số lượng'}
+                                            </th>
+                                            <th className="w-36 border-r border-zinc-200/60 px-4 py-2.5 text-right dark:border-zinc-800/60">
+                                                Đơn giá
+                                            </th>
+                                            <th className="w-40 px-4 py-2.5 text-right">
+                                                Thành tiền
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
                                         {items.map((it) => {
-                                            const hasChildren = it.children && it.children.length > 0;
-                                            const isExpanded = !!expandedRows[it.ingredient_id];
+                                            const hasChildren =
+                                                it.children &&
+                                                it.children.length > 0;
+                                            const isExpanded =
+                                                !!expandedRows[
+                                                    it.ingredient_id
+                                                ];
 
                                             return (
-                                                <React.Fragment key={it.ingredient_id}>
+                                                <React.Fragment
+                                                    key={it.ingredient_id}
+                                                >
                                                     {/* Parent Row (Nguyên liệu cha) */}
                                                     <tr
-                                                        onClick={() => hasChildren && toggleRow(it.ingredient_id)}
+                                                        onClick={() =>
+                                                            hasChildren &&
+                                                            toggleRow(
+                                                                it.ingredient_id,
+                                                            )
+                                                        }
                                                         className={`transition-colors ${
                                                             hasChildren
                                                                 ? 'cursor-pointer hover:bg-sky-50/40 dark:hover:bg-sky-950/20'
@@ -340,89 +432,150 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
                                                         } ${isExpanded ? 'bg-sky-50/20 dark:bg-sky-950/10' : ''}`}
                                                     >
                                                         {isExport && (
-                                                            <td className="px-3 py-3 text-center border-r border-zinc-100/80 dark:border-zinc-800/40">
+                                                            <td className="border-r border-zinc-100/80 px-3 py-3 text-center dark:border-zinc-800/40">
                                                                 {hasChildren ? (
                                                                     <div className="flex items-center justify-center">
                                                                         <ChevronRight
-                                                                            className={`w-4 h-4 text-sky-600 dark:text-sky-400 transition-transform duration-200 ${
-                                                                                isExpanded ? 'rotate-90' : ''
+                                                                            className={`h-4 w-4 text-sky-600 transition-transform duration-200 dark:text-sky-400 ${
+                                                                                isExpanded
+                                                                                    ? 'rotate-90'
+                                                                                    : ''
                                                                             }`}
                                                                         />
                                                                     </div>
                                                                 ) : (
-                                                                    <span className="text-zinc-300 dark:text-zinc-600">—</span>
+                                                                    <span className="text-zinc-300 dark:text-zinc-600">
+                                                                        —
+                                                                    </span>
                                                                 )}
                                                             </td>
                                                         )}
-                                                        <td className="px-4 py-3 text-center font-mono text-xs font-semibold text-sky-600 dark:text-sky-400 border-r border-zinc-100/80 dark:border-zinc-800/40">
-                                                            {it.code || `NVL${String(it.ingredient_id).padStart(5, '0')}`}
+                                                        <td className="border-r border-zinc-100/80 px-4 py-3 text-center font-mono text-xs font-semibold text-sky-600 dark:border-zinc-800/40 dark:text-sky-400">
+                                                            {it.code ||
+                                                                `NVL${String(it.ingredient_id).padStart(5, '0')}`}
                                                         </td>
-                                                        <td className="px-4 py-3 text-left border-r border-zinc-100/80 dark:border-zinc-800/40">
+                                                        <td className="border-r border-zinc-100/80 px-4 py-3 text-left dark:border-zinc-800/40">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="font-semibold text-zinc-900 dark:text-zinc-100">
                                                                     {it.name}
                                                                 </span>
                                                                 {hasChildren && (
-                                                                    <span className="rounded-md bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
-                                                                        {it.children!.length} món dùng
+                                                                    <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                                                                        {
+                                                                            it
+                                                                                .children!
+                                                                                .length
+                                                                        }{' '}
+                                                                        món dùng
                                                                     </span>
                                                                 )}
                                                             </div>
                                                         </td>
                                                         <td
-                                                            className={`px-4 py-3 text-right font-bold tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40 ${
-                                                                it.quantity < 0 ? 'text-rose-600' : 'text-emerald-600'
+                                                            className={`border-r border-zinc-100/80 px-4 py-3 text-right font-bold tabular-nums dark:border-zinc-800/40 ${
+                                                                it.quantity < 0
+                                                                    ? 'text-rose-600'
+                                                                    : 'text-emerald-600'
                                                             }`}
                                                         >
-                                                            {it.quantity > 0 ? '+' : ''}
-                                                            {it.quantity.toLocaleString('vi-VN')} {it.unit}
+                                                            {it.quantity > 0
+                                                                ? '+'
+                                                                : ''}
+                                                            {it.quantity.toLocaleString(
+                                                                'vi-VN',
+                                                            )}{' '}
+                                                            {it.unit}
                                                         </td>
-                                                        <td className="px-4 py-3 text-right text-zinc-600 dark:text-zinc-400 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40">
-                                                            {it.unit_price != null ? formatCurrency(it.unit_price) : '—'}
+                                                        <td className="border-r border-zinc-100/80 px-4 py-3 text-right text-zinc-600 tabular-nums dark:border-zinc-800/40 dark:text-zinc-400">
+                                                            {it.unit_price !=
+                                                            null
+                                                                ? formatCurrency(
+                                                                      it.unit_price,
+                                                                  )
+                                                                : '—'}
                                                         </td>
-                                                        <td className="px-4 py-3 text-right text-zinc-900 dark:text-zinc-100 tabular-nums font-semibold">
-                                                            {isImport ? formatCurrency(it.total) : '—'}
+                                                        <td className="px-4 py-3 text-right font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
+                                                            {isImport
+                                                                ? formatCurrency(
+                                                                      it.total,
+                                                                  )
+                                                                : '—'}
                                                         </td>
                                                     </tr>
 
                                                     {/* Child Rows (Các món con tiêu hao nguyên liệu cha) */}
-                                                    {isExport && isExpanded && hasChildren && (
-                                                        <>
-                                                            {it.children!.map((c, cIdx) => (
-                                                                <tr
-                                                                    key={`${it.ingredient_id}-${c.product_id}-${cIdx}`}
-                                                                    className="bg-zinc-50/70 dark:bg-zinc-800/30 text-xs border-l-4 border-l-sky-500"
-                                                                >
-                                                                    <td className="px-3 py-2 text-center text-zinc-300 dark:text-zinc-600 border-r border-zinc-100/80 dark:border-zinc-800/40">
-                                                                        ↳
-                                                                    </td>
-                                                                    <td className="px-4 py-2 text-center text-[11px] text-zinc-400 font-mono border-r border-zinc-100/80 dark:border-zinc-800/40">
-                                                                        Món #{c.product_id}
-                                                                    </td>
-                                                                    <td className="px-4 py-2 text-left pl-6 border-r border-zinc-100/80 dark:border-zinc-800/40">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <UtensilsCrossed className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                                                            <span className="font-medium text-zinc-800 dark:text-zinc-200">
-                                                                                {c.product_name}
-                                                                            </span>
-                                                                            <span className="text-[11px] text-zinc-400">
-                                                                                ({c.product_quantity} phần × {c.recipe_amount} {c.unit})
-                                                                            </span>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td className="px-4 py-2 text-right font-semibold text-rose-600/90 dark:text-rose-400 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40">
-                                                                        -{(c.total_quantity).toLocaleString('vi-VN')} {c.unit}
-                                                                    </td>
-                                                                    <td className="px-4 py-2 text-right text-zinc-400 text-[11px] border-r border-zinc-100/80 dark:border-zinc-800/40">
-                                                                        Định lượng công thức
-                                                                    </td>
-                                                                    <td className="px-4 py-2 text-right text-zinc-400 text-[11px]">
-                                                                        —
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </>
-                                                    )}
+                                                    {isExport &&
+                                                        isExpanded &&
+                                                        hasChildren && (
+                                                            <>
+                                                                {it.children!.map(
+                                                                    (
+                                                                        c,
+                                                                        cIdx,
+                                                                    ) => (
+                                                                        <tr
+                                                                            key={`${it.ingredient_id}-${c.product_id}-${cIdx}`}
+                                                                            className="border-l-4 border-l-sky-500 bg-zinc-50/70 text-xs dark:bg-zinc-800/30"
+                                                                        >
+                                                                            <td className="border-r border-zinc-100/80 px-3 py-2 text-center text-zinc-300 dark:border-zinc-800/40 dark:text-zinc-600">
+                                                                                ↳
+                                                                            </td>
+                                                                            <td className="border-r border-zinc-100/80 px-4 py-2 text-center font-mono text-[11px] text-zinc-400 dark:border-zinc-800/40">
+                                                                                Món
+                                                                                #
+                                                                                {
+                                                                                    c.product_id
+                                                                                }
+                                                                            </td>
+                                                                            <td className="border-r border-zinc-100/80 px-4 py-2 pl-6 text-left dark:border-zinc-800/40">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <UtensilsCrossed className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                                                                                    <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                                                                                        {
+                                                                                            c.product_name
+                                                                                        }
+                                                                                    </span>
+                                                                                    <span className="text-[11px] text-zinc-400">
+                                                                                        (
+                                                                                        {
+                                                                                            c.product_quantity
+                                                                                        }{' '}
+                                                                                        phần
+                                                                                        ×{' '}
+                                                                                        {
+                                                                                            c.recipe_amount
+                                                                                        }{' '}
+                                                                                        {
+                                                                                            c.unit
+                                                                                        }
+
+                                                                                        )
+                                                                                    </span>
+                                                                                </div>
+                                                                            </td>
+                                                                            <td className="border-r border-zinc-100/80 px-4 py-2 text-right font-semibold text-rose-600/90 tabular-nums dark:border-zinc-800/40 dark:text-rose-400">
+                                                                                -
+                                                                                {c.total_quantity.toLocaleString(
+                                                                                    'vi-VN',
+                                                                                )}{' '}
+                                                                                {
+                                                                                    c.unit
+                                                                                }
+                                                                            </td>
+                                                                            <td className="border-r border-zinc-100/80 px-4 py-2 text-right text-[11px] text-zinc-400 dark:border-zinc-800/40">
+                                                                                Định
+                                                                                lượng
+                                                                                công
+                                                                                thức
+                                                                            </td>
+                                                                            <td className="px-4 py-2 text-right text-[11px] text-zinc-400">
+                                                                                —
+                                                                            </td>
+                                                                        </tr>
+                                                                    ),
+                                                                )}
+                                                            </>
+                                                        )}
                                                 </React.Fragment>
                                             );
                                         })}
@@ -435,7 +588,7 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
                                                 >
                                                     Tổng giá trị:
                                                 </td>
-                                                <td className="px-4 py-3 text-center font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                                                <td className="px-4 py-3 text-center font-bold text-zinc-900 tabular-nums dark:text-zinc-100">
                                                     {formatCurrency(total)}
                                                 </td>
                                             </tr>
@@ -445,10 +598,13 @@ export default function StockVoucherDetail({ voucher, products = [], items, tota
                             </div>
 
                             {isExport && (
-                                <div className="flex items-center gap-2 px-4 py-2.5 bg-zinc-50/50 dark:bg-zinc-800/20 border-t border-zinc-100 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-400">
-                                    <Info className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                                <div className="flex items-center gap-2 border-t border-zinc-100 bg-zinc-50/50 px-4 py-2.5 text-[11px] text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/20 dark:text-zinc-400">
+                                    <Info className="h-3.5 w-3.5 shrink-0 text-sky-500" />
                                     <span>
-                                        Định lượng nguyên liệu tiêu hao được tính tự động từ công thức món (product_recipes) nhân với số lượng từng món đã hoàn tất trong hoá đơn.
+                                        Định lượng nguyên liệu tiêu hao được
+                                        tính tự động từ công thức món
+                                        (product_recipes) nhân với số lượng từng
+                                        món đã hoàn tất trong hoá đơn.
                                     </span>
                                 </div>
                             )}

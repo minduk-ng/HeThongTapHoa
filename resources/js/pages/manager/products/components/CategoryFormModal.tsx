@@ -7,15 +7,18 @@ interface CategoryFormModalProps {
     onClose: () => void;
 }
 
-export default function CategoryFormModal({ isOpen, onClose }: CategoryFormModalProps) {
+export default function CategoryFormModal({
+    isOpen,
+    onClose,
+}: CategoryFormModalProps) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [errors, setErrors] = useState<{ name?: string }>({});
     const [submitting, setSubmitting] = useState(false);
 
     if (!isOpen) {
-return null;
-}
+        return null;
+    }
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -41,29 +44,30 @@ return null;
                     setErrors(errs as any);
                     setSubmitting(false);
                 },
-            }
+            },
         );
     };
 
     return (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-                <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
+            <div className="w-full max-w-md space-y-4 rounded-2xl border border-zinc-200/80 bg-white p-6 shadow-xl dark:border-zinc-800/80 dark:bg-zinc-900">
+                <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
                     <h3 className="font-display text-base font-semibold text-zinc-900 dark:text-zinc-100">
                         Thêm danh mục mới
                     </h3>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                     aria-label="Đóng">
-                        <X className="w-4 h-4 stroke-[1.5]" />
+                        className="rounded-xl p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                        aria-label="Đóng"
+                    >
+                        <X className="h-4 w-4 stroke-[1.5]" />
                     </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4 text-xs">
                     <div>
-                        <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        <label className="mb-1 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
                             Tên danh mục <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -71,14 +75,18 @@ return null;
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="Ví dụ: Mì cay, Đồ uống, Trà sữa..."
-                            className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-sky-500 font-medium"
+                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                             required
                         />
-                        {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+                        {errors.name && (
+                            <p className="mt-1 text-xs text-red-500">
+                                {errors.name}
+                            </p>
+                        )}
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        <label className="mb-1 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
                             Mô tả danh mục
                         </label>
                         <textarea
@@ -86,22 +94,22 @@ return null;
                             onChange={(e) => setDescription(e.target.value)}
                             rows={3}
                             placeholder="Mô tả chi tiết về nhóm sản phẩm này..."
-                            className="w-full px-3 py-2 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-sky-500"
+                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                         />
                     </div>
 
-                    <div className="flex justify-end items-center gap-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                    <div className="flex items-center justify-end gap-2.5 border-t border-zinc-100 pt-2 dark:border-zinc-800">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                            className="rounded-xl bg-zinc-100 px-4 py-2 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                         >
                             Hủy
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors shadow-xs disabled:opacity-50"
+                            className="rounded-xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-sky-700 active:bg-sky-800 disabled:opacity-50"
                         >
                             {submitting ? 'Đang lưu...' : 'Lưu danh mục'}
                         </button>

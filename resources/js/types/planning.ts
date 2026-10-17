@@ -7,8 +7,14 @@ export interface PlanningResultSummary {
     available_product_count: number;
     recommendation_count: number;
     positive_recommendation_count: number;
-    empty_reason: 'no_run' | 'running' | 'failed' | 'horizon_mismatch'
-        | 'missing_forecasts' | 'no_recommendation_evidence' | null;
+    empty_reason:
+        | 'no_run'
+        | 'running'
+        | 'failed'
+        | 'horizon_mismatch'
+        | 'missing_forecasts'
+        | 'no_recommendation_evidence'
+        | null;
 }
 
 export type ForecastStatus = 'available' | 'unavailable';

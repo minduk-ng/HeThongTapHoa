@@ -82,7 +82,14 @@
     color: var(--color-amber-700);
 }
 
-.dark .planning-ui :is(.text-slate-400, .text-slate-500, .dark\:text-slate-400, .dark\:text-slate-500) {
+.dark
+    .planning-ui
+    :is(
+        .text-slate-400,
+        .text-slate-500,
+        .dark\:text-slate-400,
+        .dark\:text-slate-500
+    ) {
     color: var(--color-slate-300);
 }
 

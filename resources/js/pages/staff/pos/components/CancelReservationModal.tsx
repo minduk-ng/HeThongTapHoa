@@ -14,25 +14,28 @@ export default function CancelReservationModal({
     depositTotal,
     onConfirm,
 }: CancelReservationModalProps) {
-    const [resolution, setResolution] = useState<'refund' | 'forfeit'>('refund');
+    const [resolution, setResolution] = useState<'refund' | 'forfeit'>(
+        'refund',
+    );
     const [note, setNote] = useState('');
 
     if (!isOpen) {
-return null;
-}
+        return null;
+    }
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div
-                className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-150"
+                className="animate-in fade-in fixed inset-0 bg-zinc-900/40 backdrop-blur-sm duration-150"
                 onClick={onClose}
             />
 
-            <div className="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-lg animate-in zoom-in-95 duration-150 dark:bg-zinc-900">
+            <div className="animate-in zoom-in-95 relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-lg duration-150 dark:bg-zinc-900">
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                 aria-label="Đóng">
+                    aria-label="Đóng"
+                >
                     <X className="h-5 w-5" />
                 </button>
 
@@ -54,9 +57,11 @@ return null;
                     {depositTotal > 0 && (
                         <div className="space-y-3 rounded-xl border border-rose-200 bg-rose-50/50 p-4 dark:border-rose-900/30 dark:bg-rose-900/10">
                             <p className="text-sm font-medium text-rose-800 dark:text-rose-300">
-                                Đơn có khoản cọc {depositTotal.toLocaleString('vi-VN')} đ. Xử lý cọc:
+                                Đơn có khoản cọc{' '}
+                                {depositTotal.toLocaleString('vi-VN')} đ. Xử lý
+                                cọc:
                             </p>
-                            
+
                             <label className="flex cursor-pointer items-start gap-3">
                                 <div className="flex h-5 items-center">
                                     <input
@@ -81,7 +86,9 @@ return null;
                                         name="resolution"
                                         className="h-4 w-4 border-zinc-300 text-rose-600 focus:ring-rose-600 dark:border-zinc-700 dark:bg-zinc-800"
                                         checked={resolution === 'forfeit'}
-                                        onChange={() => setResolution('forfeit')}
+                                        onChange={() =>
+                                            setResolution('forfeit')
+                                        }
                                     />
                                 </div>
                                 <div className="flex flex-col">

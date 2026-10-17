@@ -1,4 +1,13 @@
-import { FolderTree, Folder, ChevronRight, ChevronUp, ChevronDown, Edit3, Trash2, Rows3 } from 'lucide-react';
+import {
+    FolderTree,
+    Folder,
+    ChevronRight,
+    ChevronUp,
+    ChevronDown,
+    Edit3,
+    Trash2,
+    Rows3,
+} from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 
 export interface CategoryItem {
@@ -26,10 +35,15 @@ interface CategoryTableProps {
     onDelete: (category: CategoryData) => void;
 }
 
-type SortField = 'id' | 'name' | 'display_order' | 'items_count' | 'items_sum_price';
+type SortField =
+    'id' | 'name' | 'display_order' | 'items_count' | 'items_sum_price';
 type SortDirection = 'asc' | 'desc';
 
-export default function CategoryTable({ categories, onEdit, onDelete }: CategoryTableProps) {
+export default function CategoryTable({
+    categories,
+    onEdit,
+    onDelete,
+}: CategoryTableProps) {
     const [isCompact, setIsCompact] = useState(false);
     const [pageSize, setPageSize] = useState<number>(20);
     const [currentPage, setCurrentPage] = useState<number>(1);
@@ -70,20 +84,20 @@ export default function CategoryTable({ categories, onEdit, onDelete }: Category
             }
 
             if (typeof valA === 'string') {
-valA = valA.toLowerCase();
-}
+                valA = valA.toLowerCase();
+            }
 
             if (typeof valB === 'string') {
-valB = valB.toLowerCase();
-}
+                valB = valB.toLowerCase();
+            }
 
             if (valA < valB) {
-return sortDirection === 'asc' ? -1 : 1;
-}
+                return sortDirection === 'asc' ? -1 : 1;
+            }
 
             if (valA > valB) {
-return sortDirection === 'asc' ? 1 : -1;
-}
+                return sortDirection === 'asc' ? 1 : -1;
+            }
 
             return 0;
         });
@@ -91,7 +105,10 @@ return sortDirection === 'asc' ? 1 : -1;
         return sorted;
     }, [categories, sortField, sortDirection]);
 
-    const totalPages = Math.max(1, Math.ceil(sortedCategories.length / pageSize));
+    const totalPages = Math.max(
+        1,
+        Math.ceil(sortedCategories.length / pageSize),
+    );
     const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
 
     const paginatedCategories = useMemo(() => {
@@ -102,34 +119,36 @@ return sortDirection === 'asc' ? 1 : -1;
 
     const formatCurrency = (val: number | string | null | undefined) => {
         if (val === null || val === undefined) {
-return '0 đ';
-}
+            return '0 đ';
+        }
 
         return Number(val).toLocaleString('vi-VN') + ' đ';
     };
 
     const renderSortIcon = (field: SortField) => {
         if (sortField !== field) {
-            return <ChevronUp className="w-3.5 h-3.5 ml-1 text-zinc-300 dark:text-zinc-600 opacity-50 inline" />;
+            return (
+                <ChevronUp className="ml-1 inline h-3.5 w-3.5 text-zinc-300 opacity-50 dark:text-zinc-600" />
+            );
         }
 
         return sortDirection === 'asc' ? (
-            <ChevronUp className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
+            <ChevronUp className="ml-1 inline h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
         ) : (
-            <ChevronDown className="w-3.5 h-3.5 ml-1 text-sky-600 dark:text-sky-400 inline" />
+            <ChevronDown className="ml-1 inline h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
         );
     };
 
     return (
-        <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-zinc-900 rounded-2xl shadow-xs">
-            <div className="flex-1 overflow-auto min-h-0">
-                <table className="w-full border-collapse text-left text-sm relative">
-                    <thead className="sticky top-0 z-10 bg-zinc-50/95 dark:bg-zinc-800/95 backdrop-blur-xs text-zinc-600 dark:text-zinc-400 font-medium border-b border-zinc-200/80 dark:border-zinc-800 select-none">
+        <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-xs dark:bg-zinc-900">
+            <div className="min-h-0 flex-1 overflow-auto">
+                <table className="relative w-full border-collapse text-left text-sm">
+                    <thead className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50/95 font-medium text-zinc-600 backdrop-blur-xs select-none dark:border-zinc-800 dark:bg-zinc-800/95 dark:text-zinc-400">
                         <tr>
                             <th
                                 onClick={() => handleSort('display_order')}
-                                className={`px-4 text-center cursor-pointer border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60 ${
-                                    isCompact ? 'py-2.5 w-16' : 'py-3.5 w-20'
+                                className={`cursor-pointer border-r border-zinc-200/60 px-4 text-center hover:bg-zinc-100/80 dark:border-zinc-800/60 dark:hover:bg-zinc-700/60 ${
+                                    isCompact ? 'w-16 py-2.5' : 'w-20 py-3.5'
                                 }`}
                             >
                                 <div className="flex items-center justify-center space-x-1">
@@ -139,7 +158,7 @@ return '0 đ';
                             </th>
                             <th
                                 onClick={() => handleSort('name')}
-                                className={`px-4 text-left cursor-pointer border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60 ${
+                                className={`cursor-pointer border-r border-zinc-200/60 px-4 text-left hover:bg-zinc-100/80 dark:border-zinc-800/60 dark:hover:bg-zinc-700/60 ${
                                     isCompact ? 'py-2.5' : 'py-3.5'
                                 }`}
                             >
@@ -150,7 +169,7 @@ return '0 đ';
                             </th>
                             <th
                                 onClick={() => handleSort('items_count')}
-                                className={`px-4 text-center cursor-pointer border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60 ${
+                                className={`cursor-pointer border-r border-zinc-200/60 px-4 text-center hover:bg-zinc-100/80 dark:border-zinc-800/60 dark:hover:bg-zinc-700/60 ${
                                     isCompact ? 'py-2.5' : 'py-3.5'
                                 }`}
                             >
@@ -161,7 +180,7 @@ return '0 đ';
                             </th>
                             <th
                                 onClick={() => handleSort('items_sum_price')}
-                                className={`px-4 text-right cursor-pointer border-r border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60 ${
+                                className={`cursor-pointer border-r border-zinc-200/60 px-4 text-right hover:bg-zinc-100/80 dark:border-zinc-800/60 dark:hover:bg-zinc-700/60 ${
                                     isCompact ? 'py-2.5' : 'py-3.5'
                                 }`}
                             >
@@ -170,23 +189,29 @@ return '0 đ';
                                     {renderSortIcon('items_sum_price')}
                                 </div>
                             </th>
-                            <th className={`px-4 text-center ${isCompact ? 'py-2.5 w-24' : 'py-3.5 w-28'}`}>Thao tác</th>
+                            <th
+                                className={`px-4 text-center ${isCompact ? 'w-24 py-2.5' : 'w-28 py-3.5'}`}
+                            >
+                                Thao tác
+                            </th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 text-zinc-800 dark:text-zinc-200">
+                    <tbody className="divide-y divide-zinc-200 text-zinc-800 dark:divide-zinc-800 dark:text-zinc-200">
                         {paginatedCategories.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="py-16 px-6">
-                                    <div className="flex items-start space-x-4 max-w-md mx-auto">
-                                        <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 flex items-center justify-center shrink-0">
-                                            <FolderTree className="w-5 h-5 stroke-[1.5]" />
+                                <td colSpan={5} className="px-6 py-16">
+                                    <div className="mx-auto flex max-w-md items-start space-x-4">
+                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+                                            <FolderTree className="h-5 w-5 stroke-[1.5]" />
                                         </div>
                                         <div>
                                             <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                                                 Không tìm thấy danh mục
                                             </h4>
-                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">
-                                                Chưa có danh mục sản phẩm nào phù hợp với bộ lọc tìm kiếm. Thử thay đổi từ khóa tìm kiếm.
+                                            <p className="mt-0.5 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                                                Chưa có danh mục sản phẩm nào
+                                                phù hợp với bộ lọc tìm kiếm. Thử
+                                                thay đổi từ khóa tìm kiếm.
                                             </p>
                                         </div>
                                     </div>
@@ -194,80 +219,121 @@ return '0 đ';
                             </tr>
                         ) : (
                             paginatedCategories.map((category, index) => {
-                                const realIndex = (safeCurrentPage - 1) * pageSize + index + 1;
+                                const realIndex =
+                                    (safeCurrentPage - 1) * pageSize +
+                                    index +
+                                    1;
                                 const isExpanded = !!expandedIds[category.id];
-                                const hasChildren = category.items && category.items.length > 0;
+                                const hasChildren =
+                                    category.items && category.items.length > 0;
 
                                 return (
                                     <React.Fragment key={category.id}>
                                         {/* Category Parent Row */}
                                         <tr
-                                            className={`hover:bg-sky-50/40 dark:hover:bg-sky-950/20 transition-colors cursor-pointer ${
-                                                isExpanded ? 'bg-sky-50/30 dark:bg-sky-950/30' : ''
+                                            className={`cursor-pointer transition-colors hover:bg-sky-50/40 dark:hover:bg-sky-950/20 ${
+                                                isExpanded
+                                                    ? 'bg-sky-50/30 dark:bg-sky-950/30'
+                                                    : ''
                                             }`}
-                                            onClick={() => toggleExpand(category.id)}
+                                            onClick={() =>
+                                                toggleExpand(category.id)
+                                            }
                                         >
-                                            <td className={`px-4 text-center border-r border-zinc-100/80 dark:border-zinc-800/40 ${isCompact ? 'py-2.5' : 'py-4'}`}>
+                                            <td
+                                                className={`border-r border-zinc-100/80 px-4 text-center dark:border-zinc-800/40 ${isCompact ? 'py-2.5' : 'py-4'}`}
+                                            >
                                                 <div className="flex items-center justify-center space-x-2">
                                                     <button
                                                         type="button"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            toggleExpand(category.id);
+                                                            toggleExpand(
+                                                                category.id,
+                                                            );
                                                         }}
-                                                        className="p-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                                                        className="rounded-md p-1 text-zinc-400 transition-colors hover:bg-zinc-200 hover:text-zinc-700 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
                                                     >
                                                         <ChevronRight
-                                                            className={`w-4 h-4 transform transition-transform duration-200 stroke-[1.5] ${
-                                                                isExpanded ? 'rotate-90 text-sky-600 dark:text-sky-400' : ''
+                                                            className={`h-4 w-4 transform stroke-[1.5] transition-transform duration-200 ${
+                                                                isExpanded
+                                                                    ? 'rotate-90 text-sky-600 dark:text-sky-400'
+                                                                    : ''
                                                             }`}
                                                         />
                                                     </button>
-                                                    <span className="text-xs text-zinc-500 tabular-nums">{realIndex}</span>
+                                                    <span className="text-xs text-zinc-500 tabular-nums">
+                                                        {realIndex}
+                                                    </span>
                                                 </div>
                                             </td>
 
-                                            <td className={`px-4 text-left font-semibold text-zinc-900 dark:text-zinc-100 border-r border-zinc-100/80 dark:border-zinc-800/40 ${isCompact ? 'py-2.5' : 'py-4'}`}>
+                                            <td
+                                                className={`border-r border-zinc-100/80 px-4 text-left font-semibold text-zinc-900 dark:border-zinc-800/40 dark:text-zinc-100 ${isCompact ? 'py-2.5' : 'py-4'}`}
+                                            >
                                                 <div className="flex items-center space-x-2">
-                                                    <Folder className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0 stroke-[1.5]" />
+                                                    <Folder className="h-5 w-5 shrink-0 stroke-[1.5] text-sky-600 dark:text-sky-400" />
                                                     <span>{category.name}</span>
                                                     {category.description && (
-                                                        <span className="text-xs font-normal text-zinc-400 dark:text-zinc-500 ml-2">
-                                                            ({category.description})
+                                                        <span className="ml-2 text-xs font-normal text-zinc-400 dark:text-zinc-500">
+                                                            (
+                                                            {
+                                                                category.description
+                                                            }
+                                                            )
                                                         </span>
                                                     )}
                                                 </div>
                                             </td>
 
-                                            <td className={`px-4 text-center border-r border-zinc-100/80 dark:border-zinc-800/40 ${isCompact ? 'py-2.5' : 'py-4'}`}>
-                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 tabular-nums">
-                                                    {category.items_count ?? category.items?.length ?? 0} sản phẩm
+                                            <td
+                                                className={`border-r border-zinc-100/80 px-4 text-center dark:border-zinc-800/40 ${isCompact ? 'py-2.5' : 'py-4'}`}
+                                            >
+                                                <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700 tabular-nums dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                                                    {category.items_count ??
+                                                        category.items
+                                                            ?.length ??
+                                                        0}{' '}
+                                                    sản phẩm
                                                 </span>
                                             </td>
 
-                                            <td className={`px-4 text-right font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40 ${isCompact ? 'py-2.5' : 'py-4'}`}>
-                                                {formatCurrency(category.items_sum_price)}
+                                            <td
+                                                className={`border-r border-zinc-100/80 px-4 text-right font-semibold text-emerald-600 tabular-nums dark:border-zinc-800/40 dark:text-emerald-400 ${isCompact ? 'py-2.5' : 'py-4'}`}
+                                            >
+                                                {formatCurrency(
+                                                    category.items_sum_price,
+                                                )}
                                             </td>
 
-                                            <td className={`px-4 text-center ${isCompact ? 'py-2.5' : 'py-4'}`} onClick={(e) => e.stopPropagation()}>
+                                            <td
+                                                className={`px-4 text-center ${isCompact ? 'py-2.5' : 'py-4'}`}
+                                                onClick={(e) =>
+                                                    e.stopPropagation()
+                                                }
+                                            >
                                                 <div className="flex items-center justify-center space-x-1">
                                                     <button
                                                         type="button"
-                                                        onClick={() => onEdit(category)}
-                                                        className="p-1.5 text-zinc-500 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                                                        onClick={() =>
+                                                            onEdit(category)
+                                                        }
+                                                        className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-sky-600 dark:hover:bg-zinc-800 dark:hover:text-sky-400"
                                                         title="Sửa danh mục"
                                                         aria-label="Sửa danh mục"
                                                     >
-                                                        <Edit3 className="w-4 h-4 stroke-[1.5]" />
+                                                        <Edit3 className="h-4 w-4 stroke-[1.5]" />
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        onClick={() => onDelete(category)}
-                                                        className="p-1.5 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                                                        onClick={() =>
+                                                            onDelete(category)
+                                                        }
+                                                        className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-rose-600 dark:hover:bg-zinc-800 dark:hover:text-rose-400"
                                                         title="Xóa danh mục"
                                                         aria-label="Xóa danh mục"
                                                     >
-                                                        <Trash2 className="w-4 h-4 stroke-[1.5]" />
+                                                        <Trash2 className="h-4 w-4 stroke-[1.5]" />
                                                     </button>
                                                 </div>
                                             </td>
@@ -275,54 +341,102 @@ return '0 đ';
 
                                         {/* Child Products Table (Expandable Accordion Row) */}
                                         {isExpanded && (
-                                            <tr className="bg-zinc-50/90 dark:bg-zinc-950/80 border-t border-b border-zinc-200 dark:border-zinc-800">
-                                                <td colSpan={5} className="py-3 px-6 pl-12">
-                                                    <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-900 shadow-xs">
-                                                        <div className="bg-zinc-100/90 dark:bg-zinc-800/90 px-4 py-2 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
-                                                            <span>Danh sách sản phẩm thuộc: {category.name}</span>
-                                                            <span className="tabular-nums">Tổng: {category.items?.length ?? 0} món</span>
+                                            <tr className="border-t border-b border-zinc-200 bg-zinc-50/90 dark:border-zinc-800 dark:bg-zinc-950/80">
+                                                <td
+                                                    colSpan={5}
+                                                    className="px-6 py-3 pl-12"
+                                                >
+                                                    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
+                                                        <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-100/90 px-4 py-2 text-xs font-semibold tracking-wider text-zinc-700 uppercase dark:border-zinc-800 dark:bg-zinc-800/90 dark:text-zinc-300">
+                                                            <span>
+                                                                Danh sách sản
+                                                                phẩm thuộc:{' '}
+                                                                {category.name}
+                                                            </span>
+                                                            <span className="tabular-nums">
+                                                                Tổng:{' '}
+                                                                {category.items
+                                                                    ?.length ??
+                                                                    0}{' '}
+                                                                món
+                                                            </span>
                                                         </div>
 
                                                         {!hasChildren ? (
                                                             <div className="py-4 text-center text-xs text-zinc-400 dark:text-zinc-500">
-                                                                Danh mục này chưa có sản phẩm nào.
+                                                                Danh mục này
+                                                                chưa có sản phẩm
+                                                                nào.
                                                             </div>
                                                         ) : (
                                                             <table className="w-full border-collapse text-left text-xs">
-                                                                <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 font-medium">
+                                                                <thead className="border-b border-zinc-200 bg-zinc-50 font-medium text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
                                                                     <tr>
-                                                                        <th className="py-2 px-4 w-28 text-center border-r border-zinc-200/60 dark:border-zinc-800/60">Mã SP</th>
-                                                                        <th className="py-2 px-4 text-left border-r border-zinc-200/60 dark:border-zinc-800/60">Tên sản phẩm</th>
-                                                                        <th className="py-2 px-4 text-right border-r border-zinc-200/60 dark:border-zinc-800/60">Giá bán</th>
-                                                                        <th className="py-2 px-4 text-center">Trạng thái</th>
+                                                                        <th className="w-28 border-r border-zinc-200/60 px-4 py-2 text-center dark:border-zinc-800/60">
+                                                                            Mã
+                                                                            SP
+                                                                        </th>
+                                                                        <th className="border-r border-zinc-200/60 px-4 py-2 text-left dark:border-zinc-800/60">
+                                                                            Tên
+                                                                            sản
+                                                                            phẩm
+                                                                        </th>
+                                                                        <th className="border-r border-zinc-200/60 px-4 py-2 text-right dark:border-zinc-800/60">
+                                                                            Giá
+                                                                            bán
+                                                                        </th>
+                                                                        <th className="px-4 py-2 text-center">
+                                                                            Trạng
+                                                                            thái
+                                                                        </th>
                                                                     </tr>
                                                                 </thead>
-                                                                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60 text-zinc-700 dark:text-zinc-300">
-                                                                    {category.items!.map((child) => (
-                                                                        <tr
-                                                                            key={child.id}
-                                                                            className="hover:bg-zinc-100/80 dark:hover:bg-zinc-800/90 transition-colors"
-                                                                        >
-                                                                            <td className="py-2 px-4 text-center font-mono text-sky-600 dark:text-sky-400 font-medium border-r border-zinc-100/80 dark:border-zinc-800/40">
-                                                                                SP{String(child.id).padStart(5, '0')}
-                                                                            </td>
-                                                                            <td className="py-2 px-4 text-left font-medium text-zinc-900 dark:text-zinc-100 border-r border-zinc-100/80 dark:border-zinc-800/40">
-                                                                                {child.name}
-                                                                            </td>
-                                                                            <td className="py-2 px-4 text-right font-medium text-emerald-600 dark:text-emerald-400 tabular-nums border-r border-zinc-100/80 dark:border-zinc-800/40">
-                                                                                {formatCurrency(child.price)}
-                                                                            </td>
-                                                                            <td className="py-2 px-4 text-center">
-                                                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                                                                                    child.is_available
-                                                                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
-                                                                                        : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300'
-                                                                                }`}>
-                                                                                    {child.is_available ? 'Hoạt động' : 'Ngừng bán'}
-                                                                                </span>
-                                                                            </td>
-                                                                        </tr>
-                                                                    ))}
+                                                                <tbody className="divide-y divide-zinc-100 text-zinc-700 dark:divide-zinc-800/60 dark:text-zinc-300">
+                                                                    {category.items!.map(
+                                                                        (
+                                                                            child,
+                                                                        ) => (
+                                                                            <tr
+                                                                                key={
+                                                                                    child.id
+                                                                                }
+                                                                                className="transition-colors hover:bg-zinc-100/80 dark:hover:bg-zinc-800/90"
+                                                                            >
+                                                                                <td className="border-r border-zinc-100/80 px-4 py-2 text-center font-mono font-medium text-sky-600 dark:border-zinc-800/40 dark:text-sky-400">
+                                                                                    SP
+                                                                                    {String(
+                                                                                        child.id,
+                                                                                    ).padStart(
+                                                                                        5,
+                                                                                        '0',
+                                                                                    )}
+                                                                                </td>
+                                                                                <td className="border-r border-zinc-100/80 px-4 py-2 text-left font-medium text-zinc-900 dark:border-zinc-800/40 dark:text-zinc-100">
+                                                                                    {
+                                                                                        child.name
+                                                                                    }
+                                                                                </td>
+                                                                                <td className="border-r border-zinc-100/80 px-4 py-2 text-right font-medium text-emerald-600 tabular-nums dark:border-zinc-800/40 dark:text-emerald-400">
+                                                                                    {formatCurrency(
+                                                                                        child.price,
+                                                                                    )}
+                                                                                </td>
+                                                                                <td className="px-4 py-2 text-center">
+                                                                                    <span
+                                                                                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                                                                            child.is_available
+                                                                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                                                                                                : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300'
+                                                                                        }`}
+                                                                                    >
+                                                                                        {child.is_available
+                                                                                            ? 'Hoạt động'
+                                                                                            : 'Ngừng bán'}
+                                                                                    </span>
+                                                                                </td>
+                                                                            </tr>
+                                                                        ),
+                                                                    )}
                                                                 </tbody>
                                                             </table>
                                                         )}
@@ -339,7 +453,7 @@ return '0 đ';
             </div>
 
             {/* Table Footer Controls */}
-            <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-3 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs">
+            <div className="flex items-center justify-between border-t border-zinc-100 bg-white px-4 py-3 text-xs dark:border-zinc-800 dark:bg-zinc-900">
                 {/* Left Side: Records Count & Compact Toggle */}
                 <div className="flex items-center space-x-3">
                     <span className="text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">

@@ -1,11 +1,7 @@
 import { router } from '@inertiajs/react';
 import { Boxes, Package, Scale } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-    ManagerFormModal,
-    FormSection,
-    FormField,
-} from '@/components/form';
+import { ManagerFormModal, FormSection, FormField } from '@/components/form';
 import type { IngredientData } from './IngredientTable';
 
 interface IngredientFormModalProps {
@@ -35,7 +31,9 @@ export default function IngredientFormModal({
                 setName(ingredientToEdit.name);
                 setUnit(ingredientToEdit.unit);
                 setPurchaseUnit(ingredientToEdit.purchase_unit || '');
-                setUnitConversion(String(ingredientToEdit.unit_conversion || 1));
+                setUnitConversion(
+                    String(ingredientToEdit.unit_conversion || 1),
+                );
                 setStockQuantity(String(ingredientToEdit.stock_quantity));
                 setMinStockAlert(String(ingredientToEdit.min_stock_alert));
                 setCostPrice(String(ingredientToEdit.cost_price || 0));
@@ -56,22 +54,23 @@ export default function IngredientFormModal({
     const isDirty = useMemo(() => {
         if (ingredientToEdit) {
             return (
-                name !== ingredientToEdit.name
-                || unit !== ingredientToEdit.unit
-                || purchaseUnit !== (ingredientToEdit.purchase_unit || '')
-                || unitConversion !== String(ingredientToEdit.unit_conversion || 1)
-                || stockQuantity !== String(ingredientToEdit.stock_quantity)
-                || minStockAlert !== String(ingredientToEdit.min_stock_alert)
-                || costPrice !== String(ingredientToEdit.cost_price || 0)
+                name !== ingredientToEdit.name ||
+                unit !== ingredientToEdit.unit ||
+                purchaseUnit !== (ingredientToEdit.purchase_unit || '') ||
+                unitConversion !==
+                    String(ingredientToEdit.unit_conversion || 1) ||
+                stockQuantity !== String(ingredientToEdit.stock_quantity) ||
+                minStockAlert !== String(ingredientToEdit.min_stock_alert) ||
+                costPrice !== String(ingredientToEdit.cost_price || 0)
             );
         }
 
         return (
-            name.trim() !== ''
-            || purchaseUnit.trim() !== ''
-            || unitConversion !== '1'
-            || stockQuantity !== '0'
-            || costPrice !== '0'
+            name.trim() !== '' ||
+            purchaseUnit.trim() !== '' ||
+            unitConversion !== '1' ||
+            stockQuantity !== '0' ||
+            costPrice !== '0'
         );
     }, [
         ingredientToEdit,
@@ -88,8 +87,8 @@ export default function IngredientFormModal({
         e.preventDefault();
 
         if (submitting) {
-return;
-}
+            return;
+        }
 
         setSubmitting(true);
 
@@ -156,11 +155,7 @@ return;
                 icon={Package}
                 gridCols={2}
             >
-                <FormField
-                    label="Tên nguyên liệu"
-                    required
-                    error={errors.name}
-                >
+                <FormField label="Tên nguyên liệu" required error={errors.name}>
                     <input
                         type="text"
                         value={name}
@@ -225,7 +220,7 @@ return;
                         value={unitConversion}
                         onChange={(e) => setUnitConversion(e.target.value)}
                         placeholder="1"
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                     />
                 </FormField>
             </FormSection>
@@ -246,7 +241,7 @@ return;
                         step="any"
                         value={stockQuantity}
                         onChange={(e) => setStockQuantity(e.target.value)}
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                     />
                 </FormField>
 
@@ -260,7 +255,7 @@ return;
                         step="any"
                         value={minStockAlert}
                         onChange={(e) => setMinStockAlert(e.target.value)}
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                     />
                 </FormField>
 
@@ -273,7 +268,7 @@ return;
                         step="any"
                         value={costPrice}
                         onChange={(e) => setCostPrice(e.target.value)}
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                     />
                 </FormField>
             </FormSection>

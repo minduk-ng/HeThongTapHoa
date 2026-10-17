@@ -1,4 +1,10 @@
-import { Activity, AlertCircle, ArrowDownLeft, ArrowUpRight, Trash2 } from 'lucide-react';
+import {
+    Activity,
+    AlertCircle,
+    ArrowDownLeft,
+    ArrowUpRight,
+    Trash2,
+} from 'lucide-react';
 import React from 'react';
 
 export interface SystemLogEntry {
@@ -17,70 +23,81 @@ interface POSLogTabProps {
 
 export default function POSLogTab({ logs, onClearLogs }: POSLogTabProps) {
     return (
-        <div className="h-full flex flex-col min-h-0 space-y-3">
-            <div className="shrink-0 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
+        <div className="flex h-full min-h-0 flex-col space-y-3">
+            <div className="flex shrink-0 items-center justify-between border-b border-zinc-200 pb-2 dark:border-zinc-800">
                 <div className="flex items-center space-x-2 text-zinc-900 dark:text-zinc-100">
-                    <Activity className="w-4 h-4 text-sky-600 dark:text-sky-400 stroke-[1.5]" />
-                    <h3 className="font-display text-sm font-bold">Lịch sử Hoạt động Realtime</h3>
+                    <Activity className="h-4 w-4 stroke-[1.5] text-sky-600 dark:text-sky-400" />
+                    <h3 className="font-display text-sm font-bold">
+                        Lịch sử Hoạt động Realtime
+                    </h3>
                 </div>
                 {logs.length > 0 && (
                     <button
                         type="button"
                         onClick={onClearLogs}
-                        className="px-2 py-1 text-[11px] font-semibold text-zinc-500 hover:text-rose-600 dark:text-zinc-400 dark:hover:text-rose-400 flex items-center space-x-1"
+                        className="flex items-center space-x-1 px-2 py-1 text-[11px] font-semibold text-zinc-500 hover:text-rose-600 dark:text-zinc-400 dark:hover:text-rose-400"
                     >
-                        <Trash2 className="w-3 h-3 stroke-[1.5]" />
+                        <Trash2 className="h-3 w-3 stroke-[1.5]" />
                         <span>Xóa nhật ký</span>
                     </button>
                 )}
             </div>
 
-            <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-1 font-mono text-xs">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 font-mono text-xs">
                 {logs.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-zinc-400 text-xs py-8 space-y-1">
-                        <Activity className="w-8 h-8 stroke-[1.5] text-zinc-300 dark:text-zinc-700" />
-                        <span>Chưa có nhật ký hoạt động nào được ghi nhận.</span>
+                    <div className="flex h-full flex-col items-center justify-center space-y-1 py-8 text-xs text-zinc-400">
+                        <Activity className="h-8 w-8 stroke-[1.5] text-zinc-300 dark:text-zinc-700" />
+                        <span>
+                            Chưa có nhật ký hoạt động nào được ghi nhận.
+                        </span>
                     </div>
                 ) : (
                     logs.map((log) => (
                         <div
                             key={log.id}
-                            className={`p-2.5 rounded-xl border flex items-start space-x-2 transition-colors ${
+                            className={`flex items-start space-x-2 rounded-xl border p-2.5 transition-colors ${
                                 log.type === 'error'
-                                    ? 'bg-rose-50/90 dark:bg-rose-950/50 border-rose-300 dark:border-rose-900/80 text-rose-900 dark:text-rose-200 font-semibold'
-                                    : 'bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200/80 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200'
+                                    ? 'border-rose-300 bg-rose-50/90 font-semibold text-rose-900 dark:border-rose-900/80 dark:bg-rose-950/50 dark:text-rose-200'
+                                    : 'border-zinc-200/80 bg-zinc-50 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-800/40 dark:text-zinc-200'
                             }`}
                         >
-                            <span className={`tabular-nums font-bold shrink-0 ${log.type === 'error' ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-400'}`}>
+                            <span
+                                className={`shrink-0 font-bold tabular-nums ${log.type === 'error' ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-400'}`}
+                            >
                                 {log.timestamp}
                             </span>
                             <span
-                                className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md uppercase shrink-0 flex items-center gap-0.5 ${
+                                className={`flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase ${
                                     log.type === 'error'
-                                        ? 'bg-rose-600 text-white border border-rose-700 shadow-xs'
+                                        ? 'border border-rose-700 bg-rose-600 text-white shadow-xs'
                                         : log.type === 'sent'
-                                        ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-200 dark:border-sky-800'
-                                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                          ? 'border border-sky-200 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-300'
+                                          : 'border border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                                 }`}
                             >
                                 {log.type === 'error' ? (
                                     <>
-                                        <AlertCircle className="w-3 h-3 stroke-[1.5]" /> Lỗi
+                                        <AlertCircle className="h-3 w-3 stroke-[1.5]" />{' '}
+                                        Lỗi
                                     </>
                                 ) : log.type === 'sent' ? (
                                     <>
-                                        <ArrowUpRight className="w-3 h-3 stroke-[1.5]" /> Gửi
+                                        <ArrowUpRight className="h-3 w-3 stroke-[1.5]" />{' '}
+                                        Gửi
                                     </>
                                 ) : (
                                     <>
-                                        <ArrowDownLeft className="w-3 h-3 stroke-[1.5]" /> Nhận
+                                        <ArrowDownLeft className="h-3 w-3 stroke-[1.5]" />{' '}
+                                        Nhận
                                     </>
                                 )}
                             </span>
                             <div className="flex-1 break-words">
                                 {log.message}
                                 {log.details && (
-                                    <span className={`block text-[11px] mt-0.5 ${log.type === 'error' ? 'text-rose-700 dark:text-rose-300 font-normal' : 'text-zinc-400 font-normal'}`}>
+                                    <span
+                                        className={`mt-0.5 block text-[11px] ${log.type === 'error' ? 'font-normal text-rose-700 dark:text-rose-300' : 'font-normal text-zinc-400'}`}
+                                    >
                                         {log.details}
                                     </span>
                                 )}

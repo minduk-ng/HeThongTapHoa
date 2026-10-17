@@ -16,7 +16,7 @@ const createGroup = (
         longWaitMinutes?: number;
         targetMinutes?: number;
         stationId?: number;
-    }
+    },
 ): QueueGroup => ({
     id,
     batchId: id,
@@ -40,11 +40,11 @@ describe('orderGroups - FIFO mode', () => {
                 createGroup(1, '2026-10-16T10:00:00Z', '2026-10-16T10:15:00Z'),
             ],
             'fifo',
-            Date.parse('2026-10-16T10:30:00Z')
+            Date.parse('2026-10-16T10:30:00Z'),
         );
         assert.deepEqual(
             out.map((x) => x.id),
-            [1, 2]
+            [1, 2],
         );
     });
 
@@ -58,11 +58,11 @@ describe('orderGroups - FIFO mode', () => {
                 createGroup(1, sentAt, '2026-10-16T10:15:00Z'),
             ],
             'fifo',
-            Date.parse('2026-10-16T10:30:00Z')
+            Date.parse('2026-10-16T10:30:00Z'),
         );
         assert.deepEqual(
             out.map((x) => x.id),
-            [1, 2, 5, 9]
+            [1, 2, 5, 9],
         );
     });
 });
@@ -78,7 +78,7 @@ describe('orderGroups - Priority mode', () => {
         const out = orderGroups(groups, 'priority', now);
         assert.deepEqual(
             out.map((x) => x.id),
-            [2, 3, 1]
+            [2, 3, 1],
         );
     });
 
@@ -92,7 +92,7 @@ describe('orderGroups - Priority mode', () => {
         const out = orderGroups(groups, 'priority', now);
         assert.deepEqual(
             out.map((x) => x.id),
-            [2, 3, 1]
+            [2, 3, 1],
         );
     });
 
@@ -105,7 +105,7 @@ describe('orderGroups - Priority mode', () => {
         const out = orderGroups(groups, 'priority', now);
         assert.deepEqual(
             out.map((x) => x.id),
-            [2, 1]
+            [2, 1],
         );
     });
 
@@ -119,45 +119,72 @@ describe('orderGroups - Priority mode', () => {
         const out = orderGroups(groups, 'priority', now);
         assert.deepEqual(
             out.map((x) => x.id),
-            [2, 1, 3]
+            [2, 1, 3],
         );
     });
 
     it('respects exact longWaitMinutes boundary (wait >= threshold)', () => {
         const now = Date.parse('2026-10-16T10:20:00.000Z');
-        const groupExact = createGroup(1, '2026-10-16T10:00:00.000Z', '2026-10-16T11:00:00.000Z');
-        const groupUnder = createGroup(2, '2026-10-16T10:00:00.001Z', '2026-10-16T10:05:00.000Z');
+        const groupExact = createGroup(
+            1,
+            '2026-10-16T10:00:00.000Z',
+            '2026-10-16T11:00:00.000Z',
+        );
+        const groupUnder = createGroup(
+            2,
+            '2026-10-16T10:00:00.001Z',
+            '2026-10-16T10:05:00.000Z',
+        );
 
         const out = orderGroups([groupUnder, groupExact], 'priority', now);
         assert.deepEqual(
             out.map((x) => x.id),
-            [1, 2]
+            [1, 2],
         );
     });
 
     it('treats future sent time as non-negative wait but NOT long-wait', () => {
         const now = Date.parse('2026-10-16T10:00:00Z');
-        const futureGroup = createGroup(1, '2026-10-16T10:10:00Z', '2026-10-16T10:30:00Z', {
-            longWaitMinutes: 0,
-        });
-        const normalGroup = createGroup(2, '2026-10-16T09:59:00Z', '2026-10-16T10:15:00Z');
+        const futureGroup = createGroup(
+            1,
+            '2026-10-16T10:10:00Z',
+            '2026-10-16T10:30:00Z',
+            {
+                longWaitMinutes: 0,
+            },
+        );
+        const normalGroup = createGroup(
+            2,
+            '2026-10-16T09:59:00Z',
+            '2026-10-16T10:15:00Z',
+        );
 
         const out = orderGroups([futureGroup, normalGroup], 'priority', now);
         assert.deepEqual(
             out.map((x) => x.id),
-            [2, 1]
+            [2, 1],
         );
     });
 
     it('uses each group snapshot longWaitMinutes rather than a global constant', () => {
         const now = Date.parse('2026-10-16T10:15:00Z');
-        const g1 = createGroup(1, '2026-10-16T10:00:00Z', '2026-10-16T11:00:00Z', { longWaitMinutes: 10 });
-        const g2 = createGroup(2, '2026-10-16T10:00:00Z', '2026-10-16T10:05:00Z', { longWaitMinutes: 30 });
+        const g1 = createGroup(
+            1,
+            '2026-10-16T10:00:00Z',
+            '2026-10-16T11:00:00Z',
+            { longWaitMinutes: 10 },
+        );
+        const g2 = createGroup(
+            2,
+            '2026-10-16T10:00:00Z',
+            '2026-10-16T10:05:00Z',
+            { longWaitMinutes: 30 },
+        );
 
         const out = orderGroups([g2, g1], 'priority', now);
         assert.deepEqual(
             out.map((x) => x.id),
-            [1, 2]
+            [1, 2],
         );
     });
 });
@@ -165,15 +192,19 @@ describe('orderGroups - Priority mode', () => {
 describe('orderGroups - immutability and edge cases', () => {
     it('does not mutate input array or objects when deeply frozen', () => {
         const now = Date.parse('2026-10-16T10:30:00Z');
-        const g1 = Object.freeze(createGroup(1, '2026-10-16T10:00:00Z', '2026-10-16T10:15:00Z'));
-        const g2 = Object.freeze(createGroup(2, '2026-10-16T10:05:00Z', '2026-10-16T10:10:00Z'));
+        const g1 = Object.freeze(
+            createGroup(1, '2026-10-16T10:00:00Z', '2026-10-16T10:15:00Z'),
+        );
+        const g2 = Object.freeze(
+            createGroup(2, '2026-10-16T10:05:00Z', '2026-10-16T10:10:00Z'),
+        );
         const list = Object.freeze([g2, g1]);
 
         const out = orderGroups(list, 'priority', now);
         assert.notEqual(out, list);
         assert.deepEqual(
             out.map((x) => x.id),
-            [1, 2]
+            [1, 2],
         );
     });
 
@@ -183,7 +214,11 @@ describe('orderGroups - immutability and edge cases', () => {
     });
 
     it('handles single element array', () => {
-        const g = createGroup(1, '2026-10-16T10:00:00Z', '2026-10-16T10:15:00Z');
+        const g = createGroup(
+            1,
+            '2026-10-16T10:00:00Z',
+            '2026-10-16T10:15:00Z',
+        );
         const out = orderGroups([g], 'priority', Date.now());
         assert.deepEqual(out, [g]);
     });
@@ -201,7 +236,7 @@ describe('orderGroups - immutability and edge cases', () => {
         const out = orderGroups(raw, 'priority', now);
         assert.deepEqual(
             out.map((x) => x.id),
-            [1, 2, 3, 5, 8, 10]
+            [1, 2, 3, 5, 8, 10],
         );
     });
 });
@@ -222,7 +257,10 @@ describe('MinHeap data structure', () => {
         assert.equal(heap.peek(), 1);
 
         const extracted = heap.extractAll();
-        assert.deepEqual(extracted, [1, 10, 12, 32, 39, 42, 44, 45, 69, 85, 89]);
+        assert.deepEqual(
+            extracted,
+            [1, 10, 12, 32, 39, 42, 44, 45, 69, 85, 89],
+        );
         assert.equal(heap.size, 0);
     });
 
@@ -257,12 +295,9 @@ describe('filterGroupsByStation - durable station-ID filtering', () => {
 
     it('filters strictly by numeric stationId, never by station/category/item names', () => {
         const barNamedKitchen: QueueGroup = {
-            ...createGroup(
-                1,
-                '2026-10-16T10:00:00Z',
-                '2026-10-16T10:15:00Z',
-                { stationId: 7 }
-            ),
+            ...createGroup(1, '2026-10-16T10:00:00Z', '2026-10-16T10:15:00Z', {
+                stationId: 7,
+            }),
             stationName: 'Bếp nóng',
             items: [
                 {
@@ -275,38 +310,50 @@ describe('filterGroupsByStation - durable station-ID filtering', () => {
             ],
         };
         const general: QueueGroup = {
-            ...createGroup(
-                2,
-                '2026-10-16T10:00:00Z',
-                '2026-10-16T10:15:00Z',
-                { stationId: 9 }
-            ),
+            ...createGroup(2, '2026-10-16T10:00:00Z', '2026-10-16T10:15:00Z', {
+                stationId: 9,
+            }),
             stationName: 'Bar Pha Chế',
             items: [],
         };
 
         assert.deepEqual(
             filterGroupsByStation([barNamedKitchen, general], 7).map(
-                (x) => x.id
+                (x) => x.id,
             ),
-            [1]
+            [1],
         );
         assert.deepEqual(
             filterGroupsByStation([barNamedKitchen, general], 9).map(
-                (x) => x.id
+                (x) => x.id,
             ),
-            [2]
+            [2],
         );
-        assert.deepEqual(filterGroupsByStation([barNamedKitchen, general], 42), []);
+        assert.deepEqual(
+            filterGroupsByStation([barNamedKitchen, general], 42),
+            [],
+        );
     });
 });
 
 describe('isGroupLongWait helper', () => {
     it('accurately evaluates long-wait threshold and future timestamps', () => {
         const now = Date.parse('2026-10-16T12:00:00Z');
-        const pastLong = createGroup(1, '2026-10-16T11:39:00Z', '2026-10-16T12:10:00Z'); // 21m wait >= 20m
-        const pastNormal = createGroup(2, '2026-10-16T11:41:00Z', '2026-10-16T12:10:00Z'); // 19m wait < 20m
-        const future = createGroup(3, '2026-10-16T12:05:00Z', '2026-10-16T12:10:00Z'); // future
+        const pastLong = createGroup(
+            1,
+            '2026-10-16T11:39:00Z',
+            '2026-10-16T12:10:00Z',
+        ); // 21m wait >= 20m
+        const pastNormal = createGroup(
+            2,
+            '2026-10-16T11:41:00Z',
+            '2026-10-16T12:10:00Z',
+        ); // 19m wait < 20m
+        const future = createGroup(
+            3,
+            '2026-10-16T12:05:00Z',
+            '2026-10-16T12:10:00Z',
+        ); // future
 
         assert.equal(isGroupLongWait(pastLong, now), true);
         assert.equal(isGroupLongWait(pastNormal, now), false);

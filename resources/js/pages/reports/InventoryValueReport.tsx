@@ -53,8 +53,8 @@ export default function InventoryValueReport({
         const q = search.trim().toLowerCase();
 
         if (!q) {
-return safeRows;
-}
+            return safeRows;
+        }
 
         return safeRows.filter(
             (r) =>
@@ -124,7 +124,7 @@ return safeRows;
                 );
             case 'value':
                 return (
-                    <span className="tabular-nums font-semibold text-zinc-900 dark:text-zinc-100">
+                    <span className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-100">
                         {formatVND(row.value)}
                     </span>
                 );

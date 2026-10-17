@@ -15,15 +15,21 @@ interface CategoriesManagerProps {
     };
 }
 
-export default function CategoriesManager({ categories, filters }: CategoriesManagerProps) {
+export default function CategoriesManager({
+    categories,
+    filters,
+}: CategoriesManagerProps) {
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
 
     // Modals States
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [categoryToEdit, setCategoryToEdit] = useState<CategoryData | null>(null);
+    const [categoryToEdit, setCategoryToEdit] = useState<CategoryData | null>(
+        null,
+    );
 
     // Delete confirmation state
-    const [deletingCategory, setDeletingCategory] = useState<CategoryData | null>(null);
+    const [deletingCategory, setDeletingCategory] =
+        useState<CategoryData | null>(null);
     const [passwordValue, setPasswordValue] = useState('');
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -41,12 +47,14 @@ export default function CategoriesManager({ categories, filters }: CategoriesMan
             const query = searchQuery.trim().toLowerCase();
 
             if (!query) {
-return true;
-}
+                return true;
+            }
 
             const matchesName = cat.name.toLowerCase().includes(query);
             const matchesDesc = cat.description?.toLowerCase().includes(query);
-            const matchesChild = cat.items?.some((item) => item.name.toLowerCase().includes(query));
+            const matchesChild = cat.items?.some((item) =>
+                item.name.toLowerCase().includes(query),
+            );
 
             return matchesName || matchesDesc || matchesChild;
         });
@@ -76,8 +84,8 @@ return true;
         e.preventDefault();
 
         if (!deletingCategory) {
-return;
-}
+            return;
+        }
 
         if (!passwordValue) {
             setDeleteError('Vui lòng nhập mật khẩu xác nhận');
@@ -101,7 +109,9 @@ return;
                 if (errs.password) {
                     setDeleteError(errs.password);
                 } else {
-                    setDeleteError('Không thể xóa danh mục. Vui lòng kiểm tra lại.');
+                    setDeleteError(
+                        'Không thể xóa danh mục. Vui lòng kiểm tra lại.',
+                    );
                 }
             },
         });
@@ -109,7 +119,10 @@ return;
 
     // Calculate summary statistics
     const totalCategories = categories.length;
-    const totalProducts = categories.reduce((sum, cat) => sum + (cat.items_count ?? cat.items?.length ?? 0), 0);
+    const totalProducts = categories.reduce(
+        (sum, cat) => sum + (cat.items_count ?? cat.items?.length ?? 0),
+        0,
+    );
 
     const hasActiveFilter = Boolean(searchQuery);
 
@@ -122,11 +135,11 @@ return;
                 title="Danh mục sản phẩm"
                 subtitle="Phân loại & sắp xếp thực đơn hàng hóa"
                 badge={
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                             {totalCategories} danh mục
                         </span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300">
                             {totalProducts} món
                         </span>
                     </div>
@@ -136,23 +149,25 @@ return;
                     <button
                         type="button"
                         onClick={handleOpenAddModal}
-                        className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors shadow-xs"
+                        className="flex items-center gap-1.5 rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-sky-700 active:bg-sky-800"
                     >
-                        <Plus className="w-3.5 h-3.5 stroke-2" />
+                        <Plus className="h-3.5 w-3.5 stroke-2" />
                         <span>Thêm danh mục</span>
                     </button>
                 }
                 filters={
                     <div className="flex flex-wrap items-center gap-2.5">
                         {/* Search Bar */}
-                        <div className="relative flex-1 min-w-[200px] max-w-xs">
-                            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                        <div className="relative max-w-xs min-w-[200px] flex-1">
+                            <Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
                             <input
                                 type="text"
                                 value={searchQuery}
-                                onChange={(e) => handleSearchChange(e.target.value)}
+                                onChange={(e) =>
+                                    handleSearchChange(e.target.value)
+                                }
                                 placeholder="Tìm tên danh mục..."
-                                className="w-full pl-8 pr-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 transition-colors"
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-1.5 pr-3 pl-8 text-xs text-zinc-900 transition-colors focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100"
                             />
                         </div>
 
@@ -161,10 +176,10 @@ return;
                             <button
                                 type="button"
                                 onClick={() => handleSearchChange('')}
-                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                                className="flex items-center gap-1 rounded-xl bg-zinc-100 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                                 title="Đặt lại bộ lọc"
                             >
-                                <RotateCcw className="w-3.5 h-3.5" />
+                                <RotateCcw className="h-3.5 w-3.5" />
                                 <span>Đặt lại</span>
                             </button>
                         )}
@@ -198,7 +213,7 @@ return;
                 processing={isDeleting}
             />
             {deleteError && (
-                <div className="fixed bottom-4 right-4 z-50 bg-rose-600 text-white text-xs px-4 py-2 rounded-xl shadow-lg">
+                <div className="fixed right-4 bottom-4 z-50 rounded-xl bg-rose-600 px-4 py-2 text-xs text-white shadow-lg">
                     {deleteError}
                 </div>
             )}

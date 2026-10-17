@@ -95,13 +95,12 @@ export default function PaymentsReport({
         >();
 
         for (const r of safeRows) {
-            const cur =
-                map.get(r.payment_method) ?? {
-                    count: 0,
-                    total: 0,
-                    gross: 0,
-                    discount: 0,
-                };
+            const cur = map.get(r.payment_method) ?? {
+                count: 0,
+                total: 0,
+                gross: 0,
+                discount: 0,
+            };
 
             cur.count += 1;
             cur.total += r.total_amount;
@@ -219,7 +218,7 @@ export default function PaymentsReport({
                 );
             case 'discount_total':
                 return (
-                    <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">
+                    <span className="font-medium text-rose-600 tabular-nums dark:text-rose-400">
                         {formatVND(row.discount_total)}
                     </span>
                 );

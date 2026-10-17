@@ -76,9 +76,12 @@ export default function SyntheticDatasets({
     const [search, setSearch] = useState(filters?.search || '');
     const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [datasetToDelete, setDatasetToDelete] = useState<SyntheticDatasetItem | null>(null);
+    const [datasetToDelete, setDatasetToDelete] =
+        useState<SyntheticDatasetItem | null>(null);
     const [deleteConfirmationInput, setDeleteConfirmationInput] = useState('');
-    const [runningDatasetId, setRunningDatasetId] = useState<number | null>(null);
+    const [runningDatasetId, setRunningDatasetId] = useState<number | null>(
+        null,
+    );
 
     // Scenario form state
     const [name, setName] = useState('');
@@ -147,9 +150,13 @@ export default function SyntheticDatasets({
             const trendFactor = 1.0 + trend * i;
             const isPromo = rand1 < promotionRate;
             const promoFactor = isPromo ? promotionFactor : 1.0;
-            const noiseVal = noise > 0 ? (rand2 * 2 - 1) * noise * ordersPerDay : 0;
+            const noiseVal =
+                noise > 0 ? (rand2 * 2 - 1) * noise * ordersPerDay : 0;
 
-            let qty = Math.round(ordersPerDay * trendFactor * weekFactor * promoFactor + noiseVal);
+            let qty = Math.round(
+                ordersPerDay * trendFactor * weekFactor * promoFactor +
+                    noiseVal,
+            );
 
             if (zeroDemandRate > 0 && rand1 < zeroDemandRate) {
                 qty = 0;
@@ -228,9 +235,13 @@ export default function SyntheticDatasets({
                 },
                 onError: (err) => {
                     setIsSubmitting(false);
-                    setFormError(String(Object.values(err)[0] || 'Lỗi khi tạo tập dữ liệu.'));
+                    setFormError(
+                        String(
+                            Object.values(err)[0] || 'Lỗi khi tạo tập dữ liệu.',
+                        ),
+                    );
                 },
-            }
+            },
         );
     };
 
@@ -249,7 +260,7 @@ export default function SyntheticDatasets({
                 onFinish: () => {
                     setRunningDatasetId(null);
                 },
-            }
+            },
         );
     };
 
@@ -275,7 +286,9 @@ export default function SyntheticDatasets({
             },
             onError: (err) => {
                 setIsDeleting(false);
-                setDeleteError(String(Object.values(err)[0] || 'Lỗi khi xóa tập dữ liệu.'));
+                setDeleteError(
+                    String(Object.values(err)[0] || 'Lỗi khi xóa tập dữ liệu.'),
+                );
             },
         });
     };
@@ -288,11 +301,12 @@ export default function SyntheticDatasets({
                 {/* Header Title */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+                        <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
                             Không gian thử nghiệm Dữ liệu mô phỏng (Synthetic)
                         </h1>
                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                            Sinh dữ liệu bán hàng giả lập để thử nghiệm độ chính xác mô hình dự báo và tối ưu tồn kho
+                            Sinh dữ liệu bán hàng giả lập để thử nghiệm độ chính
+                            xác mô hình dự báo và tối ưu tồn kho
                         </p>
                     </div>
 
@@ -314,14 +328,18 @@ export default function SyntheticDatasets({
                         </div>
                         <div className="flex-1">
                             <h2 className="font-display text-sm font-bold text-amber-900 dark:text-amber-200">
-                                Dữ liệu thử nghiệm — không ghi đè dữ liệu vận hành
+                                Dữ liệu thử nghiệm — không ghi đè dữ liệu vận
+                                hành
                             </h2>
                             <p className="mt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
-                                Toàn bộ hóa đơn và nhu cầu mô phỏng được cô lập hoàn toàn trong môi trường Sandbox (tiền tố{' '}
+                                Toàn bộ hóa đơn và nhu cầu mô phỏng được cô lập
+                                hoàn toàn trong môi trường Sandbox (tiền tố{' '}
                                 <code className="rounded bg-amber-200/60 px-1 py-0.5 font-mono dark:bg-amber-900/80">
                                     SYN-
                                 </code>
-                                ). Không ảnh hưởng đến doanh thu thực tế, chỉ số tài chính, sổ cái tiền hay tồn kho vận hành của quán.
+                                ). Không ảnh hưởng đến doanh thu thực tế, chỉ số
+                                tài chính, sổ cái tiền hay tồn kho vận hành của
+                                quán.
                             </p>
                         </div>
                     </div>
@@ -330,18 +348,22 @@ export default function SyntheticDatasets({
                 {/* Toolbar / Search */}
                 <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900">
                     <div className="relative min-w-[280px] flex-1">
-                        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         <input
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Tìm kiếm theo tên tập dữ liệu, hash hoặc mô tả..."
-                            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                            className="w-full rounded-xl border border-slate-200 bg-white py-2 pr-4 pl-10 text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                         />
                     </div>
 
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                        Tổng cộng: <strong className="text-slate-900 dark:text-white">{filteredDatasets.length}</strong> tập dữ liệu
+                        Tổng cộng:{' '}
+                        <strong className="text-slate-900 dark:text-white">
+                            {filteredDatasets.length}
+                        </strong>{' '}
+                        tập dữ liệu
                     </div>
                 </div>
 
@@ -353,16 +375,18 @@ export default function SyntheticDatasets({
                             Chưa có tập dữ liệu mô phỏng nào
                         </h3>
                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                            Bấm "Tạo kịch bản mới" để khởi tạo tập dữ liệu tổng hợp với các mẫu nhu cầu khác nhau.
+                            Bấm "Tạo kịch bản mới" để khởi tạo tập dữ liệu tổng
+                            hợp với các mẫu nhu cầu khác nhau.
                         </p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                         {filteredDatasets.map((dataset) => {
                             const isRunning = runningDatasetId === dataset.id;
-                            const config = dataset.config || dataset.configuration || {};
+                            const config =
+                                dataset.config || dataset.configuration || {};
                             const datasetRuns = recentRuns.filter(
-                                (r) => r.synthetic_dataset_id === dataset.id
+                                (r) => r.synthetic_dataset_id === dataset.id,
                             );
                             const latestRun = datasetRuns[0] || null;
 
@@ -383,7 +407,14 @@ export default function SyntheticDatasets({
                                                         {dataset.name}
                                                     </h3>
                                                     <span className="text-xs text-slate-400">
-                                                        Tạo bởi: {dataset.creator?.name || 'Hệ thống'} • {formatDate(dataset.created_at)}
+                                                        Tạo bởi:{' '}
+                                                        {dataset.creator
+                                                            ?.name ||
+                                                            'Hệ thống'}{' '}
+                                                        •{' '}
+                                                        {formatDate(
+                                                            dataset.created_at,
+                                                        )}
                                                     </span>
                                                 </div>
                                             </div>
@@ -392,7 +423,9 @@ export default function SyntheticDatasets({
                                                 type="button"
                                                 onClick={() => {
                                                     setDatasetToDelete(dataset);
-                                                    setDeleteConfirmationInput('');
+                                                    setDeleteConfirmationInput(
+                                                        '',
+                                                    );
                                                 }}
                                                 className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
                                                 title="Xóa tập dữ liệu"
@@ -410,19 +443,40 @@ export default function SyntheticDatasets({
                                         {/* Configuration Pills */}
                                         <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
                                             <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                                Seed: <strong className="tabular-nums">{dataset.seed}</strong>
+                                                Seed:{' '}
+                                                <strong className="tabular-nums">
+                                                    {dataset.seed}
+                                                </strong>
                                             </span>
                                             <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                                Khoảng: <strong className="tabular-nums">{Number(config.days ?? 120)}</strong> ngày
+                                                Khoảng:{' '}
+                                                <strong className="tabular-nums">
+                                                    {Number(config.days ?? 120)}
+                                                </strong>{' '}
+                                                ngày
                                             </span>
                                             <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                                Cơ sở: <strong className="tabular-nums">{Number(config.orders_per_day ?? 20)}</strong> đơn/ngày
+                                                Cơ sở:{' '}
+                                                <strong className="tabular-nums">
+                                                    {Number(
+                                                        config.orders_per_day ??
+                                                            20,
+                                                    )}
+                                                </strong>{' '}
+                                                đơn/ngày
                                             </span>
                                             <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                                Số HĐ: <strong className="tabular-nums">{formatQuantity(dataset.invoices_count)}</strong>
+                                                Số HĐ:{' '}
+                                                <strong className="tabular-nums">
+                                                    {formatQuantity(
+                                                        dataset.invoices_count,
+                                                    )}
+                                                </strong>
                                             </span>
                                             <span className="rounded-lg bg-purple-50 px-2.5 py-1 font-medium text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
-                                                v{dataset.generator_version || '1.0.0'}
+                                                v
+                                                {dataset.generator_version ||
+                                                    '1.0.0'}
                                             </span>
                                         </div>
 
@@ -430,25 +484,41 @@ export default function SyntheticDatasets({
                                         <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/60 p-2.5 text-[11px] text-slate-400 dark:border-slate-800/60 dark:bg-slate-950/40">
                                             <div className="flex items-center gap-1 truncate font-mono">
                                                 <Hash className="h-3 w-3 shrink-0" />
-                                                <span>Hash: {dataset.dataset_hash ? dataset.dataset_hash.slice(0, 20) + '...' : '-'}</span>
+                                                <span>
+                                                    Hash:{' '}
+                                                    {dataset.dataset_hash
+                                                        ? dataset.dataset_hash.slice(
+                                                              0,
+                                                              20,
+                                                          ) + '...'
+                                                        : '-'}
+                                                </span>
                                             </div>
                                         </div>
 
                                         {/* Run Status Indicator */}
                                         <div className="mt-3 flex items-center justify-between text-xs">
-                                            <span className="text-slate-500 dark:text-slate-400">Trạng thái chạy gần nhất:</span>
+                                            <span className="text-slate-500 dark:text-slate-400">
+                                                Trạng thái chạy gần nhất:
+                                            </span>
                                             <span
                                                 className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${
-                                                    latestRun?.status === 'completed'
+                                                    latestRun?.status ===
+                                                    'completed'
                                                         ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                                                        : latestRun?.status === 'running'
+                                                        : latestRun?.status ===
+                                                            'running'
                                                           ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
-                                                          : latestRun?.status === 'failed'
+                                                          : latestRun?.status ===
+                                                              'failed'
                                                             ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
                                                             : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                                                 }`}
                                             >
-                                                {formatRunStatusLabel(latestRun?.status || 'empty')}
+                                                {formatRunStatusLabel(
+                                                    latestRun?.status ||
+                                                        'empty',
+                                                )}
                                             </span>
                                         </div>
                                     </div>
@@ -457,7 +527,9 @@ export default function SyntheticDatasets({
                                     <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
                                         <button
                                             type="button"
-                                            onClick={() => handleRunDataset(dataset.id)}
+                                            onClick={() =>
+                                                handleRunDataset(dataset.id)
+                                            }
                                             disabled={isRunning}
                                             className="inline-flex items-center gap-1.5 rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-sky-700 disabled:opacity-50"
                                         >
@@ -530,7 +602,8 @@ export default function SyntheticDatasets({
                                             Cấu hình Kịch bản Sinh Dữ liệu
                                         </h2>
                                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                                            Mô phỏng chuỗi thời gian nhu cầu với xu hướng, tính mùa vụ và nhiễu
+                                            Mô phỏng chuỗi thời gian nhu cầu với
+                                            xu hướng, tính mùa vụ và nhiễu
                                         </p>
                                     </div>
                                 </div>
@@ -557,7 +630,7 @@ export default function SyntheticDatasets({
 
                                 {/* Basic Fields */}
                                 <div className="space-y-4">
-                                    <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                    <h3 className="font-display text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
                                         Thông tin cơ bản
                                     </h3>
 
@@ -573,7 +646,9 @@ export default function SyntheticDatasets({
                                             type="text"
                                             required
                                             value={name}
-                                            onChange={(e) => setName(e.target.value)}
+                                            onChange={(e) =>
+                                                setName(e.target.value)
+                                            }
                                             placeholder="VD: Kịch bản Trà Sữa Mùa Hè - Có Khuyến Mãi"
                                             className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-900 focus:border-sky-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                                         />
@@ -590,7 +665,9 @@ export default function SyntheticDatasets({
                                             id="scenario-desc"
                                             rows={2}
                                             value={description}
-                                            onChange={(e) => setDescription(e.target.value)}
+                                            onChange={(e) =>
+                                                setDescription(e.target.value)
+                                            }
                                             placeholder="Ghi chú về đặc thù kịch bản để so sánh..."
                                             className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-900 focus:border-sky-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                                         />
@@ -610,8 +687,14 @@ export default function SyntheticDatasets({
                                                 min="10"
                                                 max="365"
                                                 value={days}
-                                                onChange={(e) => setDays(parseInt(e.target.value) || 30)}
-                                                className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-xs tabular-nums text-slate-900 focus:border-sky-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                                                onChange={(e) =>
+                                                    setDays(
+                                                        parseInt(
+                                                            e.target.value,
+                                                        ) || 30,
+                                                    )
+                                                }
+                                                className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-900 tabular-nums focus:border-sky-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                                             />
                                         </div>
 
@@ -628,8 +711,14 @@ export default function SyntheticDatasets({
                                                 min="1"
                                                 max="500"
                                                 value={ordersPerDay}
-                                                onChange={(e) => setOrdersPerDay(parseInt(e.target.value) || 20)}
-                                                className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-xs tabular-nums text-slate-900 focus:border-sky-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                                                onChange={(e) =>
+                                                    setOrdersPerDay(
+                                                        parseInt(
+                                                            e.target.value,
+                                                        ) || 20,
+                                                    )
+                                                }
+                                                className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-900 tabular-nums focus:border-sky-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                                             />
                                         </div>
 
@@ -644,8 +733,14 @@ export default function SyntheticDatasets({
                                                 id="scenario-seed"
                                                 type="number"
                                                 value={seed}
-                                                onChange={(e) => setSeed(parseInt(e.target.value) || 42)}
-                                                className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-xs tabular-nums text-slate-900 focus:border-sky-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                                                onChange={(e) =>
+                                                    setSeed(
+                                                        parseInt(
+                                                            e.target.value,
+                                                        ) || 42,
+                                                    )
+                                                }
+                                                className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-900 tabular-nums focus:border-sky-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                                             />
                                         </div>
                                     </div>
@@ -653,7 +748,7 @@ export default function SyntheticDatasets({
 
                                 {/* Advanced Parameters */}
                                 <div className="space-y-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-950/30">
-                                    <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                    <h3 className="font-display text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
                                         Tham số chuỗi thời gian nâng cao
                                     </h3>
 
@@ -662,7 +757,9 @@ export default function SyntheticDatasets({
                                         <div>
                                             <label className="flex justify-between font-medium text-slate-700 dark:text-slate-300">
                                                 <span>Xu hướng (Trend):</span>
-                                                <span className="font-mono tabular-nums">{trend}</span>
+                                                <span className="font-mono tabular-nums">
+                                                    {trend}
+                                                </span>
                                             </label>
                                             <input
                                                 type="range"
@@ -670,7 +767,13 @@ export default function SyntheticDatasets({
                                                 max="0.05"
                                                 step="0.005"
                                                 value={trend}
-                                                onChange={(e) => setTrend(parseFloat(e.target.value))}
+                                                onChange={(e) =>
+                                                    setTrend(
+                                                        parseFloat(
+                                                            e.target.value,
+                                                        ),
+                                                    )
+                                                }
                                                 className="mt-2 w-full accent-sky-600"
                                             />
                                         </div>
@@ -678,8 +781,12 @@ export default function SyntheticDatasets({
                                         {/* Noise */}
                                         <div>
                                             <label className="flex justify-between font-medium text-slate-700 dark:text-slate-300">
-                                                <span>Tỷ lệ nhiễu (Noise):</span>
-                                                <span className="font-mono tabular-nums">{noise}</span>
+                                                <span>
+                                                    Tỷ lệ nhiễu (Noise):
+                                                </span>
+                                                <span className="font-mono tabular-nums">
+                                                    {noise}
+                                                </span>
                                             </label>
                                             <input
                                                 type="range"
@@ -687,7 +794,13 @@ export default function SyntheticDatasets({
                                                 max="0.5"
                                                 step="0.05"
                                                 value={noise}
-                                                onChange={(e) => setNoise(parseFloat(e.target.value))}
+                                                onChange={(e) =>
+                                                    setNoise(
+                                                        parseFloat(
+                                                            e.target.value,
+                                                        ),
+                                                    )
+                                                }
                                                 className="mt-2 w-full accent-sky-600"
                                             />
                                         </div>
@@ -695,8 +808,12 @@ export default function SyntheticDatasets({
                                         {/* Promotion Rate */}
                                         <div>
                                             <label className="flex justify-between font-medium text-slate-700 dark:text-slate-300">
-                                                <span>Tần suất KM (Promo):</span>
-                                                <span className="font-mono tabular-nums">{promotionRate * 100}%</span>
+                                                <span>
+                                                    Tần suất KM (Promo):
+                                                </span>
+                                                <span className="font-mono tabular-nums">
+                                                    {promotionRate * 100}%
+                                                </span>
                                             </label>
                                             <input
                                                 type="range"
@@ -704,7 +821,13 @@ export default function SyntheticDatasets({
                                                 max="0.3"
                                                 step="0.02"
                                                 value={promotionRate}
-                                                onChange={(e) => setPromotionRate(parseFloat(e.target.value))}
+                                                onChange={(e) =>
+                                                    setPromotionRate(
+                                                        parseFloat(
+                                                            e.target.value,
+                                                        ),
+                                                    )
+                                                }
                                                 className="mt-2 w-full accent-sky-600"
                                             />
                                         </div>
@@ -712,8 +835,13 @@ export default function SyntheticDatasets({
                                         {/* Promotion Factor */}
                                         <div>
                                             <label className="flex justify-between font-medium text-slate-700 dark:text-slate-300">
-                                                <span>Hệ số nhân KM (Promo Factor):</span>
-                                                <span className="font-mono tabular-nums">{promotionFactor}x</span>
+                                                <span>
+                                                    Hệ số nhân KM (Promo
+                                                    Factor):
+                                                </span>
+                                                <span className="font-mono tabular-nums">
+                                                    {promotionFactor}x
+                                                </span>
                                             </label>
                                             <input
                                                 type="range"
@@ -721,7 +849,13 @@ export default function SyntheticDatasets({
                                                 max="3.0"
                                                 step="0.1"
                                                 value={promotionFactor}
-                                                onChange={(e) => setPromotionFactor(parseFloat(e.target.value))}
+                                                onChange={(e) =>
+                                                    setPromotionFactor(
+                                                        parseFloat(
+                                                            e.target.value,
+                                                        ),
+                                                    )
+                                                }
                                                 className="mt-2 w-full accent-sky-600"
                                             />
                                         </div>
@@ -729,8 +863,12 @@ export default function SyntheticDatasets({
                                         {/* Missing Observations Rate */}
                                         <div>
                                             <label className="flex justify-between font-medium text-slate-700 dark:text-slate-300">
-                                                <span>Thiếu quan sát (Missing):</span>
-                                                <span className="font-mono tabular-nums">{missingRate * 100}%</span>
+                                                <span>
+                                                    Thiếu quan sát (Missing):
+                                                </span>
+                                                <span className="font-mono tabular-nums">
+                                                    {missingRate * 100}%
+                                                </span>
                                             </label>
                                             <input
                                                 type="range"
@@ -738,7 +876,13 @@ export default function SyntheticDatasets({
                                                 max="0.1"
                                                 step="0.01"
                                                 value={missingRate}
-                                                onChange={(e) => setMissingRate(parseFloat(e.target.value))}
+                                                onChange={(e) =>
+                                                    setMissingRate(
+                                                        parseFloat(
+                                                            e.target.value,
+                                                        ),
+                                                    )
+                                                }
                                                 className="mt-2 w-full accent-sky-600"
                                             />
                                         </div>
@@ -747,7 +891,9 @@ export default function SyntheticDatasets({
                                         <div>
                                             <label className="flex justify-between font-medium text-slate-700 dark:text-slate-300">
                                                 <span>Tỷ lệ ngày 0 đơn:</span>
-                                                <span className="font-mono tabular-nums">{zeroDemandRate * 100}%</span>
+                                                <span className="font-mono tabular-nums">
+                                                    {zeroDemandRate * 100}%
+                                                </span>
                                             </label>
                                             <input
                                                 type="range"
@@ -755,7 +901,13 @@ export default function SyntheticDatasets({
                                                 max="0.4"
                                                 step="0.05"
                                                 value={zeroDemandRate}
-                                                onChange={(e) => setZeroDemandRate(parseFloat(e.target.value))}
+                                                onChange={(e) =>
+                                                    setZeroDemandRate(
+                                                        parseFloat(
+                                                            e.target.value,
+                                                        ),
+                                                    )
+                                                }
                                                 className="mt-2 w-full accent-sky-600"
                                             />
                                         </div>
@@ -763,8 +915,12 @@ export default function SyntheticDatasets({
                                         {/* Outlier Rate */}
                                         <div>
                                             <label className="flex justify-between font-medium text-slate-700 dark:text-slate-300">
-                                                <span>Tỷ lệ ngoại lai (Outliers):</span>
-                                                <span className="font-mono tabular-nums">{outlierRate * 100}%</span>
+                                                <span>
+                                                    Tỷ lệ ngoại lai (Outliers):
+                                                </span>
+                                                <span className="font-mono tabular-nums">
+                                                    {outlierRate * 100}%
+                                                </span>
                                             </label>
                                             <input
                                                 type="range"
@@ -772,7 +928,13 @@ export default function SyntheticDatasets({
                                                 max="0.1"
                                                 step="0.01"
                                                 value={outlierRate}
-                                                onChange={(e) => setOutlierRate(parseFloat(e.target.value))}
+                                                onChange={(e) =>
+                                                    setOutlierRate(
+                                                        parseFloat(
+                                                            e.target.value,
+                                                        ),
+                                                    )
+                                                }
                                                 className="mt-2 w-full accent-sky-600"
                                             />
                                         </div>
@@ -780,8 +942,12 @@ export default function SyntheticDatasets({
                                         {/* Stockout Censor */}
                                         <div>
                                             <label className="flex justify-between font-medium text-slate-700 dark:text-slate-300">
-                                                <span>Cắt gọt đứt hàng (Stockout):</span>
-                                                <span className="font-mono tabular-nums">{stockoutCensorRate * 100}%</span>
+                                                <span>
+                                                    Cắt gọt đứt hàng (Stockout):
+                                                </span>
+                                                <span className="font-mono tabular-nums">
+                                                    {stockoutCensorRate * 100}%
+                                                </span>
                                             </label>
                                             <input
                                                 type="range"
@@ -789,7 +955,13 @@ export default function SyntheticDatasets({
                                                 max="0.2"
                                                 step="0.02"
                                                 value={stockoutCensorRate}
-                                                onChange={(e) => setStockoutCensorRate(parseFloat(e.target.value))}
+                                                onChange={(e) =>
+                                                    setStockoutCensorRate(
+                                                        parseFloat(
+                                                            e.target.value,
+                                                        ),
+                                                    )
+                                                }
                                                 className="mt-2 w-full accent-sky-600"
                                             />
                                         </div>
@@ -801,14 +973,17 @@ export default function SyntheticDatasets({
                                             id="weekly-toggle"
                                             type="checkbox"
                                             checked={weekly}
-                                            onChange={(e) => setWeekly(e.target.checked)}
+                                            onChange={(e) =>
+                                                setWeekly(e.target.checked)
+                                            }
                                             className="rounded-sm border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900"
                                         />
                                         <label
                                             htmlFor="weekly-toggle"
                                             className="font-medium text-slate-700 dark:text-slate-300"
                                         >
-                                            Bật chu kỳ mùa vụ theo tuần (Thứ 6, Thứ 7 cao hơn ngày trong tuần)
+                                            Bật chu kỳ mùa vụ theo tuần (Thứ 6,
+                                            Thứ 7 cao hơn ngày trong tuần)
                                         </label>
                                     </div>
                                 </div>
@@ -816,8 +991,9 @@ export default function SyntheticDatasets({
                                 {/* Preview Chart */}
                                 <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                                     <div className="mb-2 flex items-center justify-between">
-                                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                            Xem trước hình dạng chuỗi nhu cầu (30 ngày đầu)
+                                        <span className="text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
+                                            Xem trước hình dạng chuỗi nhu cầu
+                                            (30 ngày đầu)
                                         </span>
                                         <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-950 dark:text-sky-300">
                                             Dữ liệu minh họa
@@ -825,17 +1001,52 @@ export default function SyntheticDatasets({
                                     </div>
 
                                     <div className="h-44 w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={previewSeries} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                                        <ResponsiveContainer
+                                            width="100%"
+                                            height="100%"
+                                        >
+                                            <AreaChart
+                                                data={previewSeries}
+                                                margin={{
+                                                    top: 5,
+                                                    right: 10,
+                                                    left: -20,
+                                                    bottom: 0,
+                                                }}
+                                            >
                                                 <defs>
-                                                    <linearGradient id="previewColor" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#0284c7" stopOpacity={0.4} />
-                                                        <stop offset="95%" stopColor="#0284c7" stopOpacity={0} />
+                                                    <linearGradient
+                                                        id="previewColor"
+                                                        x1="0"
+                                                        y1="0"
+                                                        x2="0"
+                                                        y2="1"
+                                                    >
+                                                        <stop
+                                                            offset="5%"
+                                                            stopColor="#0284c7"
+                                                            stopOpacity={0.4}
+                                                        />
+                                                        <stop
+                                                            offset="95%"
+                                                            stopColor="#0284c7"
+                                                            stopOpacity={0}
+                                                        />
                                                     </linearGradient>
                                                 </defs>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                                                <XAxis dataKey="day" tick={{ fontSize: 10 }} interval={4} />
-                                                <YAxis tick={{ fontSize: 10 }} />
+                                                <CartesianGrid
+                                                    strokeDasharray="3 3"
+                                                    vertical={false}
+                                                    opacity={0.3}
+                                                />
+                                                <XAxis
+                                                    dataKey="day"
+                                                    tick={{ fontSize: 10 }}
+                                                    interval={4}
+                                                />
+                                                <YAxis
+                                                    tick={{ fontSize: 10 }}
+                                                />
                                                 <Tooltip
                                                     contentStyle={{
                                                         borderRadius: '8px',
@@ -865,7 +1076,8 @@ export default function SyntheticDatasets({
                                         {isSubmitting ? (
                                             <>
                                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                                Đang tạo kịch bản & sinh hóa đơn...
+                                                Đang tạo kịch bản & sinh hóa
+                                                đơn...
                                             </>
                                         ) : (
                                             <>
@@ -913,8 +1125,9 @@ export default function SyntheticDatasets({
                             </div>
 
                             <p className="mt-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-                                Hành động này sẽ xóa vĩnh viễn tập dữ liệu cùng toàn bộ hóa đơn mô phỏng liên quan.
-                                Để xác nhận, vui lòng nhập chính xác tên tập dữ liệu:
+                                Hành động này sẽ xóa vĩnh viễn tập dữ liệu cùng
+                                toàn bộ hóa đơn mô phỏng liên quan. Để xác nhận,
+                                vui lòng nhập chính xác tên tập dữ liệu:
                             </p>
 
                             <div className="mt-2 rounded-lg bg-slate-100 p-2 font-mono text-xs font-semibold text-slate-800 dark:bg-slate-800 dark:text-slate-200">
@@ -924,7 +1137,9 @@ export default function SyntheticDatasets({
                             <input
                                 type="text"
                                 value={deleteConfirmationInput}
-                                onChange={(e) => setDeleteConfirmationInput(e.target.value)}
+                                onChange={(e) =>
+                                    setDeleteConfirmationInput(e.target.value)
+                                }
                                 placeholder="Nhập tên tập dữ liệu tại đây..."
                                 className="mt-3 w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-900 focus:border-rose-500 focus:outline-hidden dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                             />
@@ -952,7 +1167,8 @@ export default function SyntheticDatasets({
                                     type="button"
                                     disabled={
                                         isDeleting ||
-                                        deleteConfirmationInput.trim() !== datasetToDelete.name
+                                        deleteConfirmationInput.trim() !==
+                                            datasetToDelete.name
                                     }
                                     onClick={handleDeleteDataset}
                                     className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-40"

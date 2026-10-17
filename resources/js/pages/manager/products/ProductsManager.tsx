@@ -1,5 +1,12 @@
 import { Head, router } from '@inertiajs/react';
-import { Plus, Search, Upload, Download, UtensilsCrossed, RotateCcw } from 'lucide-react';
+import {
+    Plus,
+    Search,
+    Upload,
+    Download,
+    UtensilsCrossed,
+    RotateCcw,
+} from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal';
 import ManagerPageLayout from '../../../components/ManagerPageLayout';
@@ -39,16 +46,22 @@ export default function ProductsManager({
 }: ProductsManagerProps) {
     const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
-    const [selectedCategory, setSelectedCategory] = useState(filters.category_id || 'all');
+    const [selectedCategory, setSelectedCategory] = useState(
+        filters.category_id || 'all',
+    );
 
     // Modals States
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [productToEdit, setProductToEdit] = useState<MenuItemData | null>(null);
+    const [productToEdit, setProductToEdit] = useState<MenuItemData | null>(
+        null,
+    );
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
     // Delete confirmation state
-    const [deletingProduct, setDeletingProduct] = useState<MenuItemData | null>(null);
+    const [deletingProduct, setDeletingProduct] = useState<MenuItemData | null>(
+        null,
+    );
     const [passwordValue, setPasswordValue] = useState('');
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -73,7 +86,8 @@ export default function ProductsManager({
                 String(product.id).includes(query);
 
             const matchesCategory =
-                selectedCategory === 'all' || String(product.category_id) === selectedCategory;
+                selectedCategory === 'all' ||
+                String(product.category_id) === selectedCategory;
 
             let matchesStatus = true;
 
@@ -119,8 +133,8 @@ export default function ProductsManager({
         e.preventDefault();
 
         if (!deletingProduct) {
-return;
-}
+            return;
+        }
 
         if (!passwordValue) {
             setDeleteError('Vui lòng nhập mật khẩu xác nhận');
@@ -144,7 +158,9 @@ return;
                 if (errs.password) {
                     setDeleteError(errs.password);
                 } else {
-                    setDeleteError('Không thể xóa sản phẩm. Vui lòng kiểm tra lại.');
+                    setDeleteError(
+                        'Không thể xóa sản phẩm. Vui lòng kiểm tra lại.',
+                    );
                 }
             },
         });
@@ -154,7 +170,9 @@ return;
         window.location.href = '/manager/products/export';
     };
 
-    const hasActiveFilter = Boolean(searchQuery || selectedCategory !== 'all' || statusFilter !== 'all');
+    const hasActiveFilter = Boolean(
+        searchQuery || selectedCategory !== 'all' || statusFilter !== 'all',
+    );
 
     return (
         <DashboardLayout fullWidth={true}>
@@ -165,7 +183,7 @@ return;
                 title="Sản phẩm & Thực đơn"
                 subtitle="Quản lý danh sách món ăn, giá bán & định mức VAT"
                 badge={
-                    <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                         {items.length} món
                     </span>
                 }
@@ -175,25 +193,25 @@ return;
                         <button
                             type="button"
                             onClick={() => setIsImportModalOpen(true)}
-                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                            className="flex items-center gap-1.5 rounded-xl bg-zinc-100 px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                         >
-                            <Upload className="w-3.5 h-3.5 stroke-[1.5]" />
+                            <Upload className="h-3.5 w-3.5 stroke-[1.5]" />
                             <span>Nhập Excel</span>
                         </button>
                         <button
                             type="button"
                             onClick={handleExportExcel}
-                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                            className="flex items-center gap-1.5 rounded-xl bg-zinc-100 px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                         >
-                            <Download className="w-3.5 h-3.5 stroke-[1.5]" />
+                            <Download className="h-3.5 w-3.5 stroke-[1.5]" />
                             <span>Xuất Excel</span>
                         </button>
                         <button
                             type="button"
                             onClick={handleOpenAddModal}
-                            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-colors shadow-xs"
+                            className="flex items-center gap-1.5 rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-sky-700 active:bg-sky-800"
                         >
-                            <Plus className="w-3.5 h-3.5 stroke-2" />
+                            <Plus className="h-3.5 w-3.5 stroke-2" />
                             <span>Thêm món</span>
                         </button>
                     </div>
@@ -201,14 +219,16 @@ return;
                 filters={
                     <div className="flex flex-wrap items-center gap-2.5">
                         {/* Search Bar */}
-                        <div className="relative flex-1 min-w-[200px] max-w-xs">
-                            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                        <div className="relative max-w-xs min-w-[200px] flex-1">
+                            <Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
                             <input
                                 type="text"
                                 value={searchQuery}
-                                onChange={(e) => handleSearchChange(e.target.value)}
+                                onChange={(e) =>
+                                    handleSearchChange(e.target.value)
+                                }
                                 placeholder="Tìm tên món / mã SP..."
-                                className="w-full pl-8 pr-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 transition-colors"
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-1.5 pr-3 pl-8 text-xs text-zinc-900 transition-colors focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100"
                             />
                         </div>
 
@@ -216,10 +236,14 @@ return;
                         <div className="w-48">
                             <select
                                 value={selectedCategory}
-                                onChange={(e) => handleCategoryChange(e.target.value)}
-                                className="w-full px-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
+                                onChange={(e) =>
+                                    handleCategoryChange(e.target.value)
+                                }
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-900 focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100"
                             >
-                                <option value="all">Tất cả danh mục ({categories.length})</option>
+                                <option value="all">
+                                    Tất cả danh mục ({categories.length})
+                                </option>
                                 {categories.map((cat) => (
                                     <option key={cat.id} value={String(cat.id)}>
                                         {cat.name}
@@ -232,12 +256,16 @@ return;
                         <div className="w-44">
                             <select
                                 value={statusFilter}
-                                onChange={(e) => handleStatusChange(e.target.value)}
-                                className="w-full px-3 py-1.5 text-xs border rounded-xl bg-zinc-50 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-sky-500 font-medium"
+                                onChange={(e) =>
+                                    handleStatusChange(e.target.value)
+                                }
+                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-900 focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-100"
                             >
                                 <option value="all">Tất cả trạng thái</option>
                                 <option value="active">Đang kinh doanh</option>
-                                <option value="inactive">Ngừng kinh doanh</option>
+                                <option value="inactive">
+                                    Ngừng kinh doanh
+                                </option>
                             </select>
                         </div>
 
@@ -250,10 +278,10 @@ return;
                                     handleCategoryChange('all');
                                     handleStatusChange('all');
                                 }}
-                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                                className="flex items-center gap-1 rounded-xl bg-zinc-100 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                                 title="Đặt lại bộ lọc"
                             >
-                                <RotateCcw className="w-3.5 h-3.5" />
+                                <RotateCcw className="h-3.5 w-3.5" />
                                 <span>Đặt lại</span>
                             </button>
                         )}
@@ -301,7 +329,7 @@ return;
                 processing={isDeleting}
             />
             {deleteError && (
-                <div className="fixed bottom-4 right-4 z-50 bg-rose-600 text-white text-xs px-4 py-2 rounded-xl shadow-lg">
+                <div className="fixed right-4 bottom-4 z-50 rounded-xl bg-rose-600 px-4 py-2 text-xs text-white shadow-lg">
                     {deleteError}
                 </div>
             )}

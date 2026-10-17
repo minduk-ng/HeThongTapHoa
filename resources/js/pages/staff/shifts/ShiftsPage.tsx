@@ -1,12 +1,5 @@
 import { Head } from '@inertiajs/react';
-import {
-    Minus,
-    Plus,
-    CalendarClock,
-    LogIn,
-    LogOut,
-    X,
-} from 'lucide-react';
+import { Minus, Plus, CalendarClock, LogIn, LogOut, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '../../../layouts/DashboardLayout';
 
@@ -302,7 +295,7 @@ export default function ShiftsPage() {
                         </section>
                     ) : (
                         <section className="grid gap-4 md:grid-cols-12">
-                            <div className="md:col-span-4 rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
+                            <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs md:col-span-4 dark:border-zinc-800/80 dark:bg-zinc-900">
                                 <div className="text-xs font-medium text-zinc-500">
                                     Thời điểm mở ca
                                 </div>
@@ -312,15 +305,15 @@ export default function ShiftsPage() {
                                     )}
                                 </div>
                             </div>
-                            <div className="md:col-span-3 rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
+                            <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs md:col-span-3 dark:border-zinc-800/80 dark:bg-zinc-900">
                                 <div className="text-xs font-medium text-zinc-500">
                                     Tiền đầu ca
                                 </div>
-                                <div className="mt-1 font-display text-2xl font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
+                                <div className="mt-1 font-display text-2xl font-bold text-zinc-900 tabular-nums dark:text-zinc-100">
                                     {money(shift.opening_cash)}
                                 </div>
                             </div>
-                            <div className="md:col-span-5 rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800/80 dark:bg-zinc-900">
+                            <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-xs md:col-span-5 dark:border-zinc-800/80 dark:bg-zinc-900">
                                 <div className="text-xs font-medium text-zinc-500">
                                     Tiền mặt kỳ vọng
                                 </div>
@@ -332,7 +325,7 @@ export default function ShiftsPage() {
                                 <button
                                     type="button"
                                     onClick={() => openMovement('expense')}
-                                    className="flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white shadow-xs hover:bg-rose-700 active:bg-rose-800 transition-colors"
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-rose-700 active:bg-rose-800"
                                 >
                                     <Minus className="h-4 w-4 stroke-[1.5]" />
                                     <span>Ghi chi trong ca</span>
@@ -340,7 +333,7 @@ export default function ShiftsPage() {
                                 <button
                                     type="button"
                                     onClick={() => openMovement('income')}
-                                    className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 active:bg-emerald-800 transition-colors"
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-emerald-700 active:bg-emerald-800"
                                 >
                                     <Plus className="h-4 w-4 stroke-[1.5]" />
                                     <span>Ghi thu trong ca</span>
@@ -372,7 +365,9 @@ export default function ShiftsPage() {
                                                             : 'thu'}
                                                     </span>
                                                     <span className="font-medium">
-                                                        {MOVEMENT_LABELS[movement.category] || movement.category}
+                                                        {MOVEMENT_LABELS[
+                                                            movement.category
+                                                        ] || movement.category}
                                                     </span>
                                                     {movement.note && (
                                                         <span className="text-xs text-zinc-500">
@@ -420,7 +415,7 @@ export default function ShiftsPage() {
                                     type="button"
                                     onClick={() => setCloseOpen(false)}
                                     aria-label="Đóng"
-                                    className="rounded-xl p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
+                                    className="rounded-xl p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                                 >
                                     <X className="h-5 w-5 stroke-[1.5]" />
                                 </button>
@@ -492,13 +487,16 @@ export default function ShiftsPage() {
                                     type="button"
                                     onClick={() => setMovementOpen(false)}
                                     aria-label="Đóng"
-                                    className="rounded-xl p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
+                                    className="rounded-xl p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                                 >
                                     <X className="h-5 w-5 stroke-[1.5]" />
                                 </button>
                             </div>
                             <label className="mt-5 block text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                                Loại {movementType === 'expense' ? 'chi tiêu' : 'thu ngoài'}
+                                Loại{' '}
+                                {movementType === 'expense'
+                                    ? 'chi tiêu'
+                                    : 'thu ngoài'}
                                 <select
                                     value={movementCategory}
                                     onChange={(e) =>
@@ -515,7 +513,8 @@ export default function ShiftsPage() {
                                                 key={category}
                                                 value={category}
                                             >
-                                                {MOVEMENT_LABELS[category] || category}
+                                                {MOVEMENT_LABELS[category] ||
+                                                    category}
                                             </option>
                                         ),
                                     )}

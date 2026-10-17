@@ -20,7 +20,11 @@ interface Props {
     promotionId: number | null;
 }
 
-export default function PromotionInvoicesModal({ isOpen, onClose, promotionId }: Props) {
+export default function PromotionInvoicesModal({
+    isOpen,
+    onClose,
+    promotionId,
+}: Props) {
     const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -30,8 +34,8 @@ export default function PromotionInvoicesModal({ isOpen, onClose, promotionId }:
 
     useEffect(() => {
         if (!isOpen || promotionId === null) {
-return;
-}
+            return;
+        }
 
         queueMicrotask(() => {
             setLoading(true);
@@ -40,11 +44,13 @@ return;
             setHasMore(false);
             setNextPage(null);
         });
-        fetch(`/manager/promotions/${promotionId}/invoices?per_page=50`, { headers: { Accept: 'application/json' } })
+        fetch(`/manager/promotions/${promotionId}/invoices?per_page=50`, {
+            headers: { Accept: 'application/json' },
+        })
             .then((r) => {
                 if (!r.ok) {
-throw new Error('Không thể tải danh sách hoá đơn.');
-}
+                    throw new Error('Không thể tải danh sách hoá đơn.');
+                }
 
                 return r.json();
             })
@@ -53,19 +59,21 @@ throw new Error('Không thể tải danh sách hoá đơn.');
                 setHasMore(data.meta?.has_more ?? false);
                 setNextPage(data.meta?.next_page ?? null);
             })
-            .catch(() => setError('Không thể tải danh sách hoá đơn. Vui lòng thử lại.'))
+            .catch(() =>
+                setError('Không thể tải danh sách hoá đơn. Vui lòng thử lại.'),
+            )
             .finally(() => setLoading(false));
     }, [isOpen, promotionId]);
 
     useEffect(() => {
         if (!isOpen) {
-return;
-}
+            return;
+        }
 
         const handler = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
-onClose();
-}
+                onClose();
+            }
         };
         window.addEventListener('keydown', handler);
 
@@ -74,15 +82,15 @@ onClose();
 
     const loadMore = () => {
         if (!nextPage || loadingMore) {
-return;
-}
+            return;
+        }
 
         setLoadingMore(true);
         fetch(nextPage, { headers: { Accept: 'application/json' } })
             .then((r) => {
                 if (!r.ok) {
-throw new Error('Không thể tải thêm.');
-}
+                    throw new Error('Không thể tải thêm.');
+                }
 
                 return r.json();
             })
@@ -96,35 +104,110 @@ throw new Error('Không thể tải thêm.');
     };
 
     if (!isOpen) {
-return null;
-}
+        return null;
+    }
 
     const columns: DataTableColumn<InvoiceRow>[] = [
-        { key: 'invoice_code', header: 'Mã hoá đơn', align: 'center', render: (i) => <span className="font-mono font-medium text-sky-600 dark:text-sky-400">{i.invoice_code}</span> },
-        { key: 'issued_at', header: 'Thời gian', align: 'center', render: (i) => <span className="tabular-nums">{new Date(i.issued_at).toLocaleString('vi-VN')}</span> },
-        { key: 'table_name', header: 'Bàn', align: 'center', render: (i) => i.table_name || 'Mang đi' },
-        { key: 'subtotal_amount', header: 'Tổng tiền', align: 'right', render: (i) => <span className="tabular-nums">{Number(i.subtotal_amount).toLocaleString('vi-VN')} đ</span> },
-        { key: 'discount_amount', header: 'Tiền giảm', align: 'right', render: (i) => <span className="tabular-nums text-rose-600 dark:text-rose-400">−{Number(i.discount_amount).toLocaleString('vi-VN')} đ</span> },
-        { key: 'total_amount', header: 'Thực thu', align: 'right', render: (i) => <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{Number(i.total_amount).toLocaleString('vi-VN')} đ</span> },
-        { key: 'payment_method', header: 'PTTT', align: 'center', render: (i) => ({ cash: 'Tiền mặt', bank_transfer: 'Chuyển khoản', e_wallet: 'Ví điện tử', mixed: 'Hỗn hợp' })[i.payment_method] || i.payment_method },
+        {
+            key: 'invoice_code',
+            header: 'Mã hoá đơn',
+            align: 'center',
+            render: (i) => (
+                <span className="font-mono font-medium text-sky-600 dark:text-sky-400">
+                    {i.invoice_code}
+                </span>
+            ),
+        },
+        {
+            key: 'issued_at',
+            header: 'Thời gian',
+            align: 'center',
+            render: (i) => (
+                <span className="tabular-nums">
+                    {new Date(i.issued_at).toLocaleString('vi-VN')}
+                </span>
+            ),
+        },
+        {
+            key: 'table_name',
+            header: 'Bàn',
+            align: 'center',
+            render: (i) => i.table_name || 'Mang đi',
+        },
+        {
+            key: 'subtotal_amount',
+            header: 'Tổng tiền',
+            align: 'right',
+            render: (i) => (
+                <span className="tabular-nums">
+                    {Number(i.subtotal_amount).toLocaleString('vi-VN')} đ
+                </span>
+            ),
+        },
+        {
+            key: 'discount_amount',
+            header: 'Tiền giảm',
+            align: 'right',
+            render: (i) => (
+                <span className="text-rose-600 tabular-nums dark:text-rose-400">
+                    −{Number(i.discount_amount).toLocaleString('vi-VN')} đ
+                </span>
+            ),
+        },
+        {
+            key: 'total_amount',
+            header: 'Thực thu',
+            align: 'right',
+            render: (i) => (
+                <span className="font-semibold text-emerald-600 tabular-nums dark:text-emerald-400">
+                    {Number(i.total_amount).toLocaleString('vi-VN')} đ
+                </span>
+            ),
+        },
+        {
+            key: 'payment_method',
+            header: 'PTTT',
+            align: 'center',
+            render: (i) =>
+                ({
+                    cash: 'Tiền mặt',
+                    bank_transfer: 'Chuyển khoản',
+                    e_wallet: 'Ví điện tử',
+                    mixed: 'Hỗn hợp',
+                })[i.payment_method] || i.payment_method,
+        },
     ];
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4" onClick={onClose}>
+        <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs"
+            onClick={onClose}
+        >
             <div
-                className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[85vh] overflow-auto p-6"
+                className="max-h-[85vh] w-full max-w-4xl overflow-auto rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3 mb-5">
-                    <h3 className="font-display text-lg font-bold text-zinc-900 dark:text-zinc-100">Hoá đơn đã dùng mã</h3>
-                    <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-600 p-1 rounded-lg" aria-label="Đóng">
-                        <X className="w-5 h-5" />
+                <div className="mb-5 flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
+                    <h3 className="font-display text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                        Hoá đơn đã dùng mã
+                    </h3>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-lg p-1 text-zinc-400 hover:text-zinc-600"
+                        aria-label="Đóng"
+                    >
+                        <X className="h-5 w-5" />
                     </button>
                 </div>
                 {loading ? (
-                    <div className="py-10 text-center text-sm text-zinc-500">Đang tải…</div>
+                    <div className="py-10 text-center text-sm text-zinc-500">
+                        Đang tải…
+                    </div>
                 ) : error ? (
-                    <div className="py-10 text-center text-sm text-rose-600">{error}</div>
+                    <div className="py-10 text-center text-sm text-rose-600">
+                        {error}
+                    </div>
                 ) : (
                     <>
                         <DataTable<InvoiceRow>
@@ -145,7 +228,11 @@ return null;
                                     className="flex items-center gap-1.5 rounded-lg border border-zinc-300 px-4 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                                 >
                                     <ChevronDown className="h-3.5 w-3.5 stroke-[1.5]" />
-                                    <span>{loadingMore ? 'Đang tải...' : 'Tải thêm'}</span>
+                                    <span>
+                                        {loadingMore
+                                            ? 'Đang tải...'
+                                            : 'Tải thêm'}
+                                    </span>
                                 </button>
                             </div>
                         )}

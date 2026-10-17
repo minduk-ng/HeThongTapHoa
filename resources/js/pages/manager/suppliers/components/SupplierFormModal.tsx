@@ -1,11 +1,7 @@
 import { router } from '@inertiajs/react';
 import { Building2, MapPin } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-    ManagerFormModal,
-    FormSection,
-    FormField,
-} from '@/components/form';
+import { ManagerFormModal, FormSection, FormField } from '@/components/form';
 import type { SupplierData } from '../SuppliersManager';
 
 interface SupplierFormModalProps {
@@ -47,18 +43,18 @@ export default function SupplierFormModal({
     const isDirty = useMemo(() => {
         if (supplierToEdit) {
             return (
-                name !== (supplierToEdit.name || '')
-                || phone !== (supplierToEdit.phone || '')
-                || address !== (supplierToEdit.address || '')
-                || note !== (supplierToEdit.note || '')
+                name !== (supplierToEdit.name || '') ||
+                phone !== (supplierToEdit.phone || '') ||
+                address !== (supplierToEdit.address || '') ||
+                note !== (supplierToEdit.note || '')
             );
         }
 
         return (
-            name.trim() !== ''
-            || phone.trim() !== ''
-            || address.trim() !== ''
-            || note.trim() !== ''
+            name.trim() !== '' ||
+            phone.trim() !== '' ||
+            address.trim() !== '' ||
+            note.trim() !== ''
         );
     }, [supplierToEdit, name, phone, address, note]);
 
@@ -66,8 +62,8 @@ export default function SupplierFormModal({
         e.preventDefault();
 
         if (submitting) {
-return;
-}
+            return;
+        }
 
         setSubmitting(true);
         const timer = setTimeout(() => {
@@ -138,16 +134,13 @@ return;
                     />
                 </FormField>
 
-                <FormField
-                    label="Số điện thoại"
-                    error={errors.phone}
-                >
+                <FormField label="Số điện thoại" error={errors.phone}>
                     <input
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="028 1234 5678"
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                     />
                 </FormField>
             </FormSection>

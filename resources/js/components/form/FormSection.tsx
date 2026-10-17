@@ -35,7 +35,7 @@ export default function FormSection({
                             <Icon className="h-4 w-4 stroke-[1.5] text-zinc-500 dark:text-zinc-400" />
                         )}
                         {title && (
-                            <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                            <h3 className="font-display text-xs font-semibold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
                                 {title}
                             </h3>
                         )}

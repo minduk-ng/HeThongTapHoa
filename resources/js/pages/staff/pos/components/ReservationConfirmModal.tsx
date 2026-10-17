@@ -16,8 +16,8 @@ export default function ReservationConfirmModal({
     onConfirm,
 }: ReservationConfirmModalProps) {
     if (!isOpen || !table) {
-return null;
-}
+        return null;
+    }
 
     const formattedTime = table.reservation_time
         ? new Date(table.reservation_time).toLocaleString('vi-VN', {
@@ -30,15 +30,15 @@ return null;
         : '—';
 
     return (
-        <div className="fixed inset-0 z-[100] overflow-hidden flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-            <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 border border-purple-200/80 dark:border-purple-900/60 rounded-2xl shadow-xl p-6 space-y-5">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black/40 p-4 backdrop-blur-xs">
+            <div className="relative w-full max-w-md space-y-5 rounded-2xl border border-purple-200/80 bg-white p-6 shadow-xl dark:border-purple-900/60 dark:bg-zinc-900">
                 {/* Header */}
-                <div className="flex items-center space-x-3 border-b border-purple-100 dark:border-purple-900/60 pb-4">
-                    <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200/60 dark:border-purple-900/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                        <Calendar className="w-6 h-6 stroke-[1.5]" />
+                <div className="flex items-center space-x-3 border-b border-purple-100 pb-4 dark:border-purple-900/60">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-purple-200/60 bg-purple-50 text-purple-600 dark:border-purple-900/60 dark:bg-purple-950/60 dark:text-purple-400">
+                        <Calendar className="h-6 w-6 stroke-[1.5]" />
                     </div>
                     <div>
-                        <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 block">
+                        <span className="block text-xs font-semibold text-purple-600 dark:text-purple-400">
                             Thông tin đặt bàn trước
                         </span>
                         <h2 className="font-display text-2xl font-normal tracking-tight text-zinc-900 dark:text-zinc-100">
@@ -48,43 +48,50 @@ return null;
                 </div>
 
                 {/* Details Content Box */}
-                <div className="bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/50 rounded-xl p-4 space-y-3 text-xs text-zinc-800 dark:text-zinc-200">
-                    <div className="flex justify-between items-center">
-                        <span className="text-zinc-500 flex items-center gap-1.5">
-                            <User className="w-3.5 h-3.5 stroke-[1.5]" /> Người đặt:
+                <div className="space-y-3 rounded-xl border border-purple-200/60 bg-purple-50/60 p-4 text-xs text-zinc-800 dark:border-purple-900/50 dark:bg-purple-950/30 dark:text-zinc-200">
+                    <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-zinc-500">
+                            <User className="h-3.5 w-3.5 stroke-[1.5]" /> Người
+                            đặt:
                         </span>
                         <span className="font-semibold text-purple-900 dark:text-purple-200">
                             {table.reservation_name || 'Khách đặt trước'}
                         </span>
                     </div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-zinc-500 flex items-center gap-1.5">
-                            <Phone className="w-3.5 h-3.5 stroke-[1.5]" /> Số điện thoại:
+                    <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-zinc-500">
+                            <Phone className="h-3.5 w-3.5 stroke-[1.5]" /> Số
+                            điện thoại:
                         </span>
-                        <span className="font-semibold font-mono">{table.reservation_phone || '—'}</span>
+                        <span className="font-mono font-semibold">
+                            {table.reservation_phone || '—'}
+                        </span>
                     </div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-zinc-500 flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 stroke-[1.5]" /> Thời gian hẹn:
+                    <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-zinc-500">
+                            <Clock className="h-3.5 w-3.5 stroke-[1.5]" /> Thời
+                            gian hẹn:
                         </span>
-                        <span className="font-semibold text-purple-700 dark:text-purple-300 bg-purple-100/80 dark:bg-purple-900/60 px-2 py-0.5 rounded-md">
+                        <span className="rounded-md bg-purple-100/80 px-2 py-0.5 font-semibold text-purple-700 dark:bg-purple-900/60 dark:text-purple-300">
                             {formattedTime}
                         </span>
                     </div>
                     {table.reservation_note && (
-                        <div className="pt-2 border-t border-purple-200/60 dark:border-purple-900/50 space-y-1">
-                            <span className="text-zinc-500 flex items-center gap-1.5">
-                                <FileText className="w-3.5 h-3.5 stroke-[1.5]" /> Ghi chú:
+                        <div className="space-y-1 border-t border-purple-200/60 pt-2 dark:border-purple-900/50">
+                            <span className="flex items-center gap-1.5 text-zinc-500">
+                                <FileText className="h-3.5 w-3.5 stroke-[1.5]" />{' '}
+                                Ghi chú:
                             </span>
-                            <p className="text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800/80 p-2.5 rounded-lg border border-purple-100 dark:border-purple-900/40">
+                            <p className="rounded-lg border border-purple-100 bg-white p-2.5 text-zinc-700 dark:border-purple-900/40 dark:bg-zinc-800/80 dark:text-zinc-300">
                                 “{table.reservation_note}”
                             </p>
                         </div>
                     )}
                 </div>
 
-                <p className="text-[11px] text-zinc-400 text-center leading-relaxed">
-                    Nhấn xác nhận để xếp khách vào bàn và bắt đầu thực hiện gọi món.
+                <p className="text-center text-[11px] leading-relaxed text-zinc-400">
+                    Nhấn xác nhận để xếp khách vào bàn và bắt đầu thực hiện gọi
+                    món.
                 </p>
 
                 {/* Buttons */}
@@ -92,16 +99,16 @@ return null;
                     <button
                         type="button"
                         onClick={onClose}
-                        className="py-2.5 px-3 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 rounded-xl transition-colors duration-150"
+                        className="rounded-xl bg-zinc-100 px-3 py-2.5 text-xs font-semibold text-zinc-700 transition-colors duration-150 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300"
                     >
                         Hủy / Xem lại
                     </button>
                     <button
                         type="button"
                         onClick={onConfirm}
-                        className="py-2.5 px-3 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition-colors duration-150 flex items-center justify-center space-x-1.5"
+                        className="flex items-center justify-center space-x-1.5 rounded-xl bg-purple-600 px-3 py-2.5 text-xs font-semibold text-white transition-colors duration-150 hover:bg-purple-700"
                     >
-                        <Check className="w-3.5 h-3.5" />
+                        <Check className="h-3.5 w-3.5" />
                         <span>Nhận bàn & Gọi món</span>
                     </button>
                 </div>

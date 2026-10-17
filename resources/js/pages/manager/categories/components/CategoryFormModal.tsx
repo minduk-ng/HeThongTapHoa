@@ -1,11 +1,7 @@
 import { router } from '@inertiajs/react';
 import { FileText, FolderTree } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-    ManagerFormModal,
-    FormSection,
-    FormField,
-} from '@/components/form';
+import { ManagerFormModal, FormSection, FormField } from '@/components/form';
 import type { CategoryData } from './CategoryTable';
 
 interface CategoryFormModalProps {
@@ -56,16 +52,16 @@ export default function CategoryFormModal({
                   : '0';
 
             return (
-                name !== (categoryToEdit.name || '')
-                || description !== (categoryToEdit.description || '')
-                || sortOrder !== origOrder
+                name !== (categoryToEdit.name || '') ||
+                description !== (categoryToEdit.description || '') ||
+                sortOrder !== origOrder
             );
         }
 
         return (
-            name.trim() !== ''
-            || description.trim() !== ''
-            || (sortOrder !== '0' && sortOrder.trim() !== '')
+            name.trim() !== '' ||
+            description.trim() !== '' ||
+            (sortOrder !== '0' && sortOrder.trim() !== '')
         );
     }, [categoryToEdit, name, description, sortOrder]);
 
@@ -73,8 +69,8 @@ export default function CategoryFormModal({
         e.preventDefault();
 
         if (submitting) {
-return;
-}
+            return;
+        }
 
         setSubmitting(true);
 
@@ -129,11 +125,7 @@ return;
                 icon={FolderTree}
                 gridCols={2}
             >
-                <FormField
-                    label="Tên danh mục"
-                    required
-                    error={errors.name}
-                >
+                <FormField label="Tên danh mục" required error={errors.name}>
                     <input
                         type="text"
                         value={name}
@@ -154,7 +146,7 @@ return;
                         value={sortOrder}
                         onChange={(e) => setSortOrder(e.target.value)}
                         placeholder="0"
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold tabular-nums text-zinc-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-semibold text-zinc-900 tabular-nums focus:ring-2 focus:ring-sky-500 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                     />
                 </FormField>
             </FormSection>

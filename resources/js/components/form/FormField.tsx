@@ -19,18 +19,20 @@ export default function FormField({
 }: FormFieldProps) {
     return (
         <div className={className}>
-            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+            <label className="mb-1.5 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
                 {label}
-                {required && <span className="text-rose-500 ml-1 font-semibold">*</span>}
+                {required && (
+                    <span className="ml-1 font-semibold text-rose-500">*</span>
+                )}
             </label>
             {children}
             {hint && !error && (
-                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1 leading-relaxed">
+                <p className="mt-1 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
                     {hint}
                 </p>
             )}
             {error && (
-                <p className="text-xs text-rose-500 font-medium mt-1">
+                <p className="mt-1 text-xs font-medium text-rose-500">
                     {error}
                 </p>
             )}

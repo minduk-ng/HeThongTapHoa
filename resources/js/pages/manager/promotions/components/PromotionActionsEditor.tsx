@@ -1,4 +1,12 @@
-import { Plus, Trash2, Percent, Coins, Gift, AlertCircle, Info } from 'lucide-react';
+import {
+    Plus,
+    Trash2,
+    Percent,
+    Coins,
+    Gift,
+    AlertCircle,
+    Info,
+} from 'lucide-react';
 import React from 'react';
 
 export interface ActionRow {
@@ -14,17 +22,36 @@ interface Props {
 }
 
 const ALL_TYPES = [
-    { value: 'discount_percent', label: 'Giảm theo phần trăm (%)', icon: Percent, desc: 'Giảm theo tỷ lệ % trên tổng hoá đơn' },
-    { value: 'discount_amount', label: 'Giảm theo số tiền cố định (đ)', icon: Coins, desc: 'Trừ trực tiếp số tiền cụ thể vào hoá đơn' },
-    { value: 'free_product', label: 'Tặng món miễn phí', icon: Gift, desc: 'Tặng 1 món trong thực đơn khi áp dụng' },
+    {
+        value: 'discount_percent',
+        label: 'Giảm theo phần trăm (%)',
+        icon: Percent,
+        desc: 'Giảm theo tỷ lệ % trên tổng hoá đơn',
+    },
+    {
+        value: 'discount_amount',
+        label: 'Giảm theo số tiền cố định (đ)',
+        icon: Coins,
+        desc: 'Trừ trực tiếp số tiền cụ thể vào hoá đơn',
+    },
+    {
+        value: 'free_product',
+        label: 'Tặng món miễn phí',
+        icon: Gift,
+        desc: 'Tặng 1 món trong thực đơn khi áp dụng',
+    },
 ] as const;
 
-export default function PromotionActionsEditor({ actions, onChange, menuItems }: Props) {
+export default function PromotionActionsEditor({
+    actions,
+    onChange,
+    menuItems,
+}: Props) {
     const update = (i: number, key: keyof ActionRow, value: string) => {
         const next = actions.map((a, idx) => {
             if (idx !== i) {
-return a;
-}
+                return a;
+            }
 
             const updated = { ...a, [key]: value };
 
@@ -38,7 +65,9 @@ return a;
         onChange(next);
     };
 
-    const hasPercent = actions.some((a) => a.action_type === 'discount_percent');
+    const hasPercent = actions.some(
+        (a) => a.action_type === 'discount_percent',
+    );
     const hasAmount = actions.some((a) => a.action_type === 'discount_amount');
     const selectedFreeItemIds = actions
         .filter((a) => a.action_type === 'free_product' && a.action_value)
@@ -71,7 +100,14 @@ return a;
             nextType = 'free_product';
         }
 
-        onChange([...actions, { action_type: nextType, action_value: '', max_discount_amount: '' }]);
+        onChange([
+            ...actions,
+            {
+                action_type: nextType,
+                action_value: '',
+                max_discount_amount: '',
+            },
+        ]);
     };
 
     const remove = (i: number) => {
@@ -81,51 +117,56 @@ return a;
     return (
         <div className="space-y-3">
             {actions.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-amber-300 dark:border-amber-700/60 bg-amber-50/50 dark:bg-amber-950/20 p-4 text-center">
+                <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-4 text-center dark:border-amber-700/60 dark:bg-amber-950/20">
                     <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
-                        Chưa có hành động giảm giá nào. Vui lòng thêm ít nhất 1 mức giảm giá.
+                        Chưa có hành động giảm giá nào. Vui lòng thêm ít nhất 1
+                        mức giảm giá.
                     </p>
                 </div>
             ) : (
                 actions.map((a, i) => {
-                    const currentTypeInfo = ALL_TYPES.find((t) => t.value === a.action_type);
+                    const currentTypeInfo = ALL_TYPES.find(
+                        (t) => t.value === a.action_type,
+                    );
                     const TypeIcon = currentTypeInfo?.icon ?? Percent;
 
                     // Các options hợp lệ cho dòng này
                     const allowedTypesForRow = ALL_TYPES.filter((t) => {
                         if (t.value === a.action_type) {
-return true;
-}
+                            return true;
+                        }
 
                         if (t.value === 'discount_percent') {
-return !hasPercent && !hasAmount;
-}
+                            return !hasPercent && !hasAmount;
+                        }
 
                         if (t.value === 'discount_amount') {
-return !hasPercent && !hasAmount;
-}
+                            return !hasPercent && !hasAmount;
+                        }
 
                         if (t.value === 'free_product') {
-return true;
-}
+                            return true;
+                        }
 
                         return false;
                     });
 
                     // Lọc danh sách món tặng không bị trùng với các dòng free_product khác
                     const availableMenuItems = menuItems.filter(
-                        (m) => String(m.id) === a.action_value || !selectedFreeItemIds.includes(String(m.id))
+                        (m) =>
+                            String(m.id) === a.action_value ||
+                            !selectedFreeItemIds.includes(String(m.id)),
                     );
 
                     return (
                         <div
                             key={i}
-                            className="group relative rounded-xl border border-zinc-200/80 bg-zinc-50/50 p-3.5 transition-colors dark:border-zinc-800/80 dark:bg-zinc-800/40 hover:border-zinc-300 dark:hover:border-zinc-700"
+                            className="group relative rounded-xl border border-zinc-200/80 bg-zinc-50/50 p-3.5 transition-colors hover:border-zinc-300 dark:border-zinc-800/80 dark:bg-zinc-800/40 dark:hover:border-zinc-700"
                         >
                             <div className="flex flex-wrap items-start justify-between gap-3">
                                 {/* Action Type Selector */}
-                                <div className="flex-1 min-w-[200px] space-y-1">
-                                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                                <div className="min-w-[200px] flex-1 space-y-1">
+                                    <label className="block text-[11px] font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
                                         Hình thức giảm
                                     </label>
                                     <div className="relative flex items-center">
@@ -134,11 +175,20 @@ return true;
                                         </div>
                                         <select
                                             value={a.action_type}
-                                            onChange={(e) => update(i, 'action_type', e.target.value)}
+                                            onChange={(e) =>
+                                                update(
+                                                    i,
+                                                    'action_type',
+                                                    e.target.value,
+                                                )
+                                            }
                                             className="w-full rounded-lg border border-zinc-300 bg-white py-2 pr-3 pl-9 text-xs font-medium text-zinc-800 transition-colors focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
                                         >
                                             {allowedTypesForRow.map((t) => (
-                                                <option key={t.value} value={t.value}>
+                                                <option
+                                                    key={t.value}
+                                                    value={t.value}
+                                                >
                                                     {t.label}
                                                 </option>
                                             ))}
@@ -151,7 +201,10 @@ return true;
                                     <>
                                         <div className="w-28 space-y-1">
                                             <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
-                                                Mức giảm (%) <span className="text-rose-500">*</span>
+                                                Mức giảm (%){' '}
+                                                <span className="text-rose-500">
+                                                    *
+                                                </span>
                                             </label>
                                             <div className="relative">
                                                 <input
@@ -160,9 +213,15 @@ return true;
                                                     max={100}
                                                     step="any"
                                                     value={a.action_value}
-                                                    onChange={(e) => update(i, 'action_value', e.target.value)}
+                                                    onChange={(e) =>
+                                                        update(
+                                                            i,
+                                                            'action_value',
+                                                            e.target.value,
+                                                        )
+                                                    }
                                                     placeholder="VD: 15"
-                                                    className="w-full rounded-lg border border-zinc-300 bg-white py-2 pr-7 pl-3 text-xs font-bold tabular-nums text-zinc-800 transition-colors focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                                    className="w-full rounded-lg border border-zinc-300 bg-white py-2 pr-7 pl-3 text-xs font-bold text-zinc-800 tabular-nums transition-colors focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                                 />
                                                 <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-xs font-bold text-zinc-400">
                                                     %
@@ -179,10 +238,18 @@ return true;
                                                     type="number"
                                                     min={0}
                                                     step={1000}
-                                                    value={a.max_discount_amount}
-                                                    onChange={(e) => update(i, 'max_discount_amount', e.target.value)}
+                                                    value={
+                                                        a.max_discount_amount
+                                                    }
+                                                    onChange={(e) =>
+                                                        update(
+                                                            i,
+                                                            'max_discount_amount',
+                                                            e.target.value,
+                                                        )
+                                                    }
                                                     placeholder="Không giới hạn"
-                                                    className="w-full rounded-lg border border-zinc-300 bg-white py-2 pr-7 pl-3 text-xs tabular-nums text-zinc-800 transition-colors focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                                    className="w-full rounded-lg border border-zinc-300 bg-white py-2 pr-7 pl-3 text-xs text-zinc-800 tabular-nums transition-colors focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                                 />
                                                 <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-xs font-semibold text-zinc-400">
                                                     đ
@@ -195,7 +262,10 @@ return true;
                                 {a.action_type === 'discount_amount' && (
                                     <div className="w-40 space-y-1">
                                         <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
-                                            Số tiền giảm (đ) <span className="text-rose-500">*</span>
+                                            Số tiền giảm (đ){' '}
+                                            <span className="text-rose-500">
+                                                *
+                                            </span>
                                         </label>
                                         <div className="relative">
                                             <input
@@ -203,9 +273,15 @@ return true;
                                                 min={1000}
                                                 step={1000}
                                                 value={a.action_value}
-                                                onChange={(e) => update(i, 'action_value', e.target.value)}
+                                                onChange={(e) =>
+                                                    update(
+                                                        i,
+                                                        'action_value',
+                                                        e.target.value,
+                                                    )
+                                                }
                                                 placeholder="VD: 50000"
-                                                className="w-full rounded-lg border border-zinc-300 bg-white py-2 pr-7 pl-3 text-xs font-bold tabular-nums text-zinc-800 transition-colors focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                                className="w-full rounded-lg border border-zinc-300 bg-white py-2 pr-7 pl-3 text-xs font-bold text-zinc-800 tabular-nums transition-colors focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                             />
                                             <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-xs font-bold text-zinc-400">
                                                 đ
@@ -215,16 +291,27 @@ return true;
                                 )}
 
                                 {a.action_type === 'free_product' && (
-                                    <div className="flex-1 min-w-[220px] space-y-1">
+                                    <div className="min-w-[220px] flex-1 space-y-1">
                                         <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
-                                            Món tặng kèm miễn phí <span className="text-rose-500">*</span>
+                                            Món tặng kèm miễn phí{' '}
+                                            <span className="text-rose-500">
+                                                *
+                                            </span>
                                         </label>
                                         <select
                                             value={a.action_value}
-                                            onChange={(e) => update(i, 'action_value', e.target.value)}
+                                            onChange={(e) =>
+                                                update(
+                                                    i,
+                                                    'action_value',
+                                                    e.target.value,
+                                                )
+                                            }
                                             className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-800 transition-colors focus:border-sky-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                                         >
-                                            <option value="">-- Chọn món tặng --</option>
+                                            <option value="">
+                                                -- Chọn món tặng --
+                                            </option>
                                             {availableMenuItems.map((m) => (
                                                 <option key={m.id} value={m.id}>
                                                     {m.name}
@@ -248,18 +335,22 @@ return true;
                             </div>
 
                             {/* Validation warning */}
-                            {a.action_type === 'free_product' && !a.action_value && (
-                                <p className="mt-2 flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                                    <AlertCircle className="h-3.5 w-3.5" />
-                                    Vui lòng chọn món tặng cụ thể từ danh sách thực đơn.
-                                </p>
-                            )}
-                            {a.action_type === 'discount_percent' && Number(a.action_value) > 100 && (
-                                <p className="mt-2 flex items-center gap-1 text-[11px] font-medium text-rose-600 dark:text-rose-400">
-                                    <AlertCircle className="h-3.5 w-3.5" />
-                                    Mức giảm phần trăm không được vượt quá 100%.
-                                </p>
-                            )}
+                            {a.action_type === 'free_product' &&
+                                !a.action_value && (
+                                    <p className="mt-2 flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                                        <AlertCircle className="h-3.5 w-3.5" />
+                                        Vui lòng chọn món tặng cụ thể từ danh
+                                        sách thực đơn.
+                                    </p>
+                                )}
+                            {a.action_type === 'discount_percent' &&
+                                Number(a.action_value) > 100 && (
+                                    <p className="mt-2 flex items-center gap-1 text-[11px] font-medium text-rose-600 dark:text-rose-400">
+                                        <AlertCircle className="h-3.5 w-3.5" />
+                                        Mức giảm phần trăm không được vượt quá
+                                        100%.
+                                    </p>
+                                )}
                         </div>
                     );
                 })
@@ -279,7 +370,9 @@ return true;
                 <div className="flex items-center gap-1.5 rounded-xl bg-zinc-100/80 px-3 py-2 text-[11px] text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
                     <Info className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
                     <span>
-                        Đã cấu hình đủ loại hành động giảm giá. Mỗi chương trình chỉ áp dụng 1 mức giảm giá chính (% hoặc tiền mặt) và các món quà tặng không trùng lặp.
+                        Đã cấu hình đủ loại hành động giảm giá. Mỗi chương trình
+                        chỉ áp dụng 1 mức giảm giá chính (% hoặc tiền mặt) và
+                        các món quà tặng không trùng lặp.
                     </span>
                 </div>
             )}

@@ -1,6 +1,12 @@
-import { CheckCircle2, AlertTriangle, AlertCircle, Clock, HelpCircle } from 'lucide-react';
-import { formatDataQuality  } from './planningFormatters';
-import type {QualityTone} from './planningFormatters';
+import {
+    CheckCircle2,
+    AlertTriangle,
+    AlertCircle,
+    Clock,
+    HelpCircle,
+} from 'lucide-react';
+import { formatDataQuality } from './planningFormatters';
+import type { QualityTone } from './planningFormatters';
 
 interface DataQualityBadgeProps {
     quality: string | null | undefined;
@@ -11,12 +17,9 @@ interface DataQualityBadgeProps {
 const TONE_CLASSES: Record<QualityTone, string> = {
     emerald:
         'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/80',
-    amber:
-        'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/80',
-    rose:
-        'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/80',
-    zinc:
-        'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700',
+    amber: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/80',
+    rose: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/80',
+    zinc: 'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700',
 };
 
 export default function DataQualityBadge({
@@ -28,8 +31,8 @@ export default function DataQualityBadge({
 
     const renderIcon = () => {
         if (!showIcon) {
-return null;
-}
+            return null;
+        }
 
         switch (quality) {
             case 'sufficient':
@@ -49,7 +52,7 @@ return null;
 
     return (
         <span
-            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border tabular-nums transition-colors ${TONE_CLASSES[tone]} ${className}`}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium tabular-nums transition-colors ${TONE_CLASSES[tone]} ${className}`}
             title={`Chất lượng dữ liệu: ${label}`}
         >
             {renderIcon()}

@@ -91,8 +91,8 @@ export default function ManagerFormModal({
     // Escape key handling
     useEffect(() => {
         if (!isOpen) {
-return undefined;
-}
+            return undefined;
+        }
 
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
@@ -131,10 +131,10 @@ return undefined;
             >
                 <div
                     onClick={(e) => e.stopPropagation()}
-                    className={`flex flex-col w-full ${sizeClasses[size] || 'max-w-2xl'} max-h-[90vh] bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl overflow-hidden transition-all`}
+                    className={`flex w-full flex-col ${sizeClasses[size] || 'max-w-2xl'} max-h-[90vh] overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-2xl transition-all dark:border-zinc-800/80 dark:bg-zinc-900`}
                 >
                     {/* Header */}
-                    <div className="flex items-center justify-between px-6 py-4.5 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-800/50">
+                    <div className="flex items-center justify-between border-b border-zinc-200/80 bg-zinc-50/50 px-6 py-4.5 dark:border-zinc-800/80 dark:bg-zinc-800/50">
                         <div className="flex items-center gap-3">
                             <div className="flex flex-col">
                                 <div className="flex items-center gap-2">
@@ -152,7 +152,7 @@ return undefined;
                                     </span>
                                 </div>
                                 {subtitle && (
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                                         {subtitle}
                                     </p>
                                 )}
@@ -162,7 +162,7 @@ return undefined;
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-xl p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                            className="rounded-xl p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                             aria-label="Đóng"
                         >
                             <X className="h-5 w-5 stroke-[1.5]" />
@@ -173,18 +173,19 @@ return undefined;
                     <form
                         id={formId}
                         onSubmit={onSubmit}
-                        className="flex-1 overflow-y-auto p-6 space-y-4 text-xs"
+                        className="flex-1 space-y-4 overflow-y-auto p-6 text-xs"
                     >
                         {children}
                     </form>
 
                     {/* Sticky Footer */}
-                    <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/80 dark:bg-zinc-800/60">
+                    <div className="flex items-center justify-between border-t border-zinc-200/80 bg-zinc-50/80 px-6 py-4 dark:border-zinc-800/80 dark:bg-zinc-800/60">
                         {/* Dirty State / Warning Message */}
                         <div className="flex items-center">
                             {showNudge && (
-                                <span className="text-xs font-medium text-amber-600 dark:text-amber-400 animate-pulse">
-                                    Nội dung chưa được lưu! Nhấn Lưu hoặc Hủy để đóng.
+                                <span className="animate-pulse text-xs font-medium text-amber-600 dark:text-amber-400">
+                                    Nội dung chưa được lưu! Nhấn Lưu hoặc Hủy để
+                                    đóng.
                                 </span>
                             )}
                         </div>
@@ -194,7 +195,7 @@ return undefined;
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-medium text-zinc-700 shadow-2xs hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+                                className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-medium text-zinc-700 shadow-2xs transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                             >
                                 {cancelLabel}
                             </button>
@@ -204,16 +205,14 @@ return undefined;
                                 disabled={submitting}
                                 className={`inline-flex items-center gap-1.5 rounded-xl px-5 py-2 text-xs font-semibold text-white shadow-xs transition-all disabled:opacity-50 ${
                                     showNudge
-                                        ? 'bg-sky-600 ring-4 ring-sky-400/50 scale-105'
+                                        ? 'scale-105 bg-sky-600 ring-4 ring-sky-400/50'
                                         : 'bg-sky-600 hover:bg-sky-700 active:bg-sky-800'
                                 }`}
                             >
                                 {showSpinner && (
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                 )}
-                                {submitting
-                                    ? 'Đang lưu…'
-                                    : finalSubmitLabel}
+                                {submitting ? 'Đang lưu…' : finalSubmitLabel}
                             </button>
                         </div>
                     </div>

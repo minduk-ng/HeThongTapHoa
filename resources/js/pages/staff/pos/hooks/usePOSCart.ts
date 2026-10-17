@@ -1,6 +1,14 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { POSTableData, POSProductData, CartItem } from '../types/pos.types';
-import type { DraftLine, DraftSnapshot, ServerOrderView } from '../utils/draftUndo';
+import type {
+    POSTableData,
+    POSProductData,
+    CartItem,
+} from '../types/pos.types';
+import type {
+    DraftLine,
+    DraftSnapshot,
+    ServerOrderView,
+} from '../utils/draftUndo';
 import {
     pushDraftSnapshot,
     popDraftSnapshot,
@@ -37,16 +45,25 @@ export function usePOSCart(
         [products],
     );
 
-    const [contexts, renderContexts] = useState<Record<string, ContextState>>({});
+    const [contexts, renderContexts] = useState<Record<string, ContextState>>(
+        {},
+    );
     const contextsRef = useRef(contexts);
     const nextGeneration = useRef(0);
     const tableBaselines = useRef(new Map<number, string>());
     // Event callbacks must see earlier changes in the same React batch.
-    const setContexts = useCallback((update: (prev: Record<string, ContextState>) => Record<string, ContextState>) => {
-        const next = update(contextsRef.current);
-        contextsRef.current = next;
-        renderContexts(next);
-    }, []);
+    const setContexts = useCallback(
+        (
+            update: (
+                prev: Record<string, ContextState>,
+            ) => Record<string, ContextState>,
+        ) => {
+            const next = update(contextsRef.current);
+            contextsRef.current = next;
+            renderContexts(next);
+        },
+        [],
+    );
 
     const [activeInvoiceId, setActiveInvoiceId] = useState<
         Record<number, string>
@@ -99,9 +116,9 @@ export function usePOSCart(
 
     const canUndo = Boolean(
         selectedTable &&
-            currentContext &&
-            !currentContext.sending &&
-            currentContext.history.length > 0,
+        currentContext &&
+        !currentContext.sending &&
+        currentContext.history.length > 0,
     );
 
     const sending = Boolean(currentContext?.sending);
@@ -155,8 +172,7 @@ export function usePOSCart(
                     (i.draftLineId === lineId ||
                         String(i.menu_item_id) === lineId),
             );
-            const existingDraft =
-                draftIndex > -1 ? prevCart[draftIndex] : null;
+            const existingDraft = draftIndex > -1 ? prevCart[draftIndex] : null;
 
             let newCart: CartItem[] | null = null;
 
@@ -220,8 +236,7 @@ export function usePOSCart(
                     const otherDemand = prevCart
                         .filter(
                             (i) =>
-                                !i.isConfirmed &&
-                                i.menu_item_id === product.id,
+                                !i.isConfirmed && i.menu_item_id === product.id,
                         )
                         .reduce((sum, i) => sum + i.quantity, 0);
 
@@ -332,10 +347,7 @@ export function usePOSCart(
             setContexts((prev) => {
                 const current = prev[ctxKey] || ctx;
 
-                if (
-                    current.generation !== key.generation ||
-                    current.sending
-                ) {
+                if (current.generation !== key.generation || current.sending) {
                     return prev;
                 }
 
@@ -379,7 +391,9 @@ export function usePOSCart(
                 targetInvoiceKey =
                     activeInvoiceId[targetTableId] || 'draft_default';
                 const existing =
-                    contextsRef.current[`${targetTableId}::${targetInvoiceKey}`];
+                    contextsRef.current[
+                        `${targetTableId}::${targetInvoiceKey}`
+                    ];
 
                 if (!existing) {
                     return;
@@ -464,7 +478,13 @@ export function usePOSCart(
 
             whisperDraftCart(targetTableId, nextCart);
         },
-        [selectedTable, activeInvoiceId, productById, setUndoError, setContexts],
+        [
+            selectedTable,
+            activeInvoiceId,
+            productById,
+            setUndoError,
+            setContexts,
+        ],
     );
 
     const invalidateContexts = useCallback(
@@ -494,196 +514,243 @@ export function usePOSCart(
         [setContexts],
     );
 
-    const reconcileBaseline = useCallback((serverTables: POSTableData[]) => {
-        const safeTables = (
-            Array.isArray(serverTables)
-                ? serverTables
-                : Object.values(serverTables || {})
-        ) as POSTableData[];
+    const reconcileBaseline = useCallback(
+        (serverTables: POSTableData[]) => {
+            const safeTables = (
+                Array.isArray(serverTables)
+                    ? serverTables
+                    : Object.values(serverTables || {})
+            ) as POSTableData[];
 
-        const allServerOrderViews = extractServerOrderViews(safeTables);
-        const changedTables = new Set<number>();
-        const nextTableBaselines = new Map<number, string>();
+            const allServerOrderViews = extractServerOrderViews(safeTables);
+            const changedTables = new Set<number>();
+            const nextTableBaselines = new Map<number, string>();
 
-        for (const table of safeTables) {
-            const groupId = table.merged_into_table_id ?? table.id;
-            const ownership = safeTables.filter(t => t.id === groupId || t.merged_into_table_id === groupId).map(t => t.id).sort((a, b) => a - b);
-            const baseline = JSON.stringify([groupId, ownership, fingerprintBaseline(allServerOrderViews.filter(v => v.tableId === table.id))]);
-            const previous = tableBaselines.current.get(table.id);
+            for (const table of safeTables) {
+                const groupId = table.merged_into_table_id ?? table.id;
+                const ownership = safeTables
+                    .filter(
+                        (t) =>
+                            t.id === groupId ||
+                            t.merged_into_table_id === groupId,
+                    )
+                    .map((t) => t.id)
+                    .sort((a, b) => a - b);
+                const baseline = JSON.stringify([
+                    groupId,
+                    ownership,
+                    fingerprintBaseline(
+                        allServerOrderViews.filter(
+                            (v) => v.tableId === table.id,
+                        ),
+                    ),
+                ]);
+                const previous = tableBaselines.current.get(table.id);
 
-            if (previous !== undefined && previous !== baseline) {
-                changedTables.add(table.id);
+                if (previous !== undefined && previous !== baseline) {
+                    changedTables.add(table.id);
+                }
+
+                nextTableBaselines.set(table.id, baseline);
             }
 
-            nextTableBaselines.set(table.id, baseline);
-        }
+            tableBaselines.current = nextTableBaselines;
+            const serverOrdersByContext = new Map<string, ServerOrderView[]>();
 
-        tableBaselines.current = nextTableBaselines;
-        const serverOrdersByContext = new Map<string, ServerOrderView[]>();
+            for (const view of allServerOrderViews) {
+                const ctxKey = `${view.tableId}::${view.invoiceKey}`;
+                const list = serverOrdersByContext.get(ctxKey) || [];
+                list.push(view);
+                serverOrdersByContext.set(ctxKey, list);
+            }
 
-        for (const view of allServerOrderViews) {
-            const ctxKey = `${view.tableId}::${view.invoiceKey}`;
-            const list = serverOrdersByContext.get(ctxKey) || [];
-            list.push(view);
-            serverOrdersByContext.set(ctxKey, list);
-        }
+            setActiveInvoiceId((prevActive) => {
+                const nextActive = { ...prevActive };
+                safeTables.forEach((table) => {
+                    const allOrders =
+                        table.active_orders ||
+                        (table.active_order ? [table.active_order] : []);
+                    const currentActive = nextActive[table.id];
 
-        setActiveInvoiceId((prevActive) => {
-            const nextActive = { ...prevActive };
-            safeTables.forEach((table) => {
-                const allOrders =
-                    table.active_orders ||
-                    (table.active_order ? [table.active_order] : []);
-                const currentActive = nextActive[table.id];
-
-                if (currentActive && currentActive.startsWith('draft_') && !changedTables.has(table.id)) {
-                    return;
-                } else if (currentActive && currentActive.startsWith('draft_')) {
-                    if (allOrders.length > 0) {
-                        const latestOrder = allOrders[allOrders.length - 1];
-                        nextActive[table.id] =
-                            latestOrder.order_code || `draft_${latestOrder.id}`;
-                    }
-                } else {
-                    const hasCurrentActive = allOrders.some(
-                        (o) =>
-                            (o.order_code || `draft_${o.id}`) === currentActive,
-                    );
-
-                    if (!currentActive || !hasCurrentActive) {
+                    if (
+                        currentActive &&
+                        currentActive.startsWith('draft_') &&
+                        !changedTables.has(table.id)
+                    ) {
+                        return;
+                    } else if (
+                        currentActive &&
+                        currentActive.startsWith('draft_')
+                    ) {
                         if (allOrders.length > 0) {
+                            const latestOrder = allOrders[allOrders.length - 1];
                             nextActive[table.id] =
-                                allOrders[0].order_code ||
-                                `draft_${allOrders[0].id}`;
-                        } else {
-                            nextActive[table.id] = 'draft_default';
+                                latestOrder.order_code ||
+                                `draft_${latestOrder.id}`;
+                        }
+                    } else {
+                        const hasCurrentActive = allOrders.some(
+                            (o) =>
+                                (o.order_code || `draft_${o.id}`) ===
+                                currentActive,
+                        );
+
+                        if (!currentActive || !hasCurrentActive) {
+                            if (allOrders.length > 0) {
+                                nextActive[table.id] =
+                                    allOrders[0].order_code ||
+                                    `draft_${allOrders[0].id}`;
+                            } else {
+                                nextActive[table.id] = 'draft_default';
+                            }
                         }
                     }
-                }
+                });
+
+                return nextActive;
             });
 
-            return nextActive;
-        });
+            setContexts((prevContexts) => {
+                const nextContexts: Record<string, ContextState> = {};
+                const activeKeysSet = new Set<string>();
 
-        setContexts((prevContexts) => {
-            const nextContexts: Record<string, ContextState> = {};
-            const activeKeysSet = new Set<string>();
+                safeTables.forEach((table) => {
+                    const allOrders =
+                        table.active_orders ||
+                        (table.active_order ? [table.active_order] : []);
 
-            safeTables.forEach((table) => {
-                const allOrders =
-                    table.active_orders ||
-                    (table.active_order ? [table.active_order] : []);
-
-                const invoiceKeys = allOrders.map(
-                    (o) => o.order_code || `draft_${o.id}`,
-                );
-
-                if (invoiceKeys.length === 0) {
-                    invoiceKeys.push('draft_default');
-                }
-
-                invoiceKeys.forEach((key) => {
-                    const ctxKey = `${table.id}::${key}`;
-                    activeKeysSet.add(ctxKey);
-
-                    const serverOrders =
-                        serverOrdersByContext.get(ctxKey) || [];
-                    const groupId = table.merged_into_table_id ?? table.id;
-                    const ownership = safeTables.filter(t => t.id === groupId || t.merged_into_table_id === groupId).map(t => t.id).sort((a, b) => a - b);
-                    const newFingerprint = JSON.stringify([groupId, ownership, fingerprintBaseline(serverOrders)]);
-                    const existingCtx = prevContexts[ctxKey];
-
-                    const confirmedCartItems: CartItem[] = [];
-                    const matchingOrders = allOrders.filter(
-                        (o) => (o.order_code || `draft_${o.id}`) === key,
+                    const invoiceKeys = allOrders.map(
+                        (o) => o.order_code || `draft_${o.id}`,
                     );
 
-                    matchingOrders.forEach((order) => {
-                        const isOrderCompleted = order.status === 'completed';
-                        const isDraft =
-                            order.status === 'draft' ||
-                            order.status === 'reserved';
+                    if (invoiceKeys.length === 0) {
+                        invoiceKeys.push('draft_default');
+                    }
 
-                        if (order.items) {
-                            order.items.forEach((item) => {
-                                if (item.status === 'cancelled') {
-                                    return;
-                                }
+                    invoiceKeys.forEach((key) => {
+                        const ctxKey = `${table.id}::${key}`;
+                        activeKeysSet.add(ctxKey);
 
-                                confirmedCartItems.push({
-                                    draftLineId: isDraft ? `server_${item.id}` : undefined,
-                                    menu_item_id: item.menu_item_id,
-                                    name: item.menu_item?.name || 'Món',
-                                    quantity: item.quantity,
-                                    initialQuantity: item.quantity,
-                                    unit_price: Number(item.unit_price),
-                                    vat_rate: Number(
-                                        item.menu_item?.vat_rate || 0,
-                                    ),
-                                    note: item.note || '',
-                                    isConfirmed: !isDraft,
-                                    isKitchenCompleted:
-                                        item.status === 'completed' ||
-                                        isOrderCompleted,
-                                    isServed: !!item.served_at,
-                                    orderItemId: item.id,
-                                    orderCode:
-                                        order.order_code || `draft_${order.id}`,
-                                    sentAt: item.created_at,
+                        const serverOrders =
+                            serverOrdersByContext.get(ctxKey) || [];
+                        const groupId = table.merged_into_table_id ?? table.id;
+                        const ownership = safeTables
+                            .filter(
+                                (t) =>
+                                    t.id === groupId ||
+                                    t.merged_into_table_id === groupId,
+                            )
+                            .map((t) => t.id)
+                            .sort((a, b) => a - b);
+                        const newFingerprint = JSON.stringify([
+                            groupId,
+                            ownership,
+                            fingerprintBaseline(serverOrders),
+                        ]);
+                        const existingCtx = prevContexts[ctxKey];
+
+                        const confirmedCartItems: CartItem[] = [];
+                        const matchingOrders = allOrders.filter(
+                            (o) => (o.order_code || `draft_${o.id}`) === key,
+                        );
+
+                        matchingOrders.forEach((order) => {
+                            const isOrderCompleted =
+                                order.status === 'completed';
+                            const isDraft =
+                                order.status === 'draft' ||
+                                order.status === 'reserved';
+
+                            if (order.items) {
+                                order.items.forEach((item) => {
+                                    if (item.status === 'cancelled') {
+                                        return;
+                                    }
+
+                                    confirmedCartItems.push({
+                                        draftLineId: isDraft
+                                            ? `server_${item.id}`
+                                            : undefined,
+                                        menu_item_id: item.menu_item_id,
+                                        name: item.menu_item?.name || 'Món',
+                                        quantity: item.quantity,
+                                        initialQuantity: item.quantity,
+                                        unit_price: Number(item.unit_price),
+                                        vat_rate: Number(
+                                            item.menu_item?.vat_rate || 0,
+                                        ),
+                                        note: item.note || '',
+                                        isConfirmed: !isDraft,
+                                        isKitchenCompleted:
+                                            item.status === 'completed' ||
+                                            isOrderCompleted,
+                                        isServed: !!item.served_at,
+                                        orderItemId: item.id,
+                                        orderCode:
+                                            order.order_code ||
+                                            `draft_${order.id}`,
+                                        sentAt: item.created_at,
+                                    });
                                 });
-                            });
-                        }
-                    });
+                            }
+                        });
 
-                    if (!existingCtx) {
-                        nextContexts[ctxKey] = {
-                            tableId: table.id,
-                            invoiceKey: key,
-                            generation: ++nextGeneration.current,
-                            cart: confirmedCartItems,
-                            history: [],
-                            baselineFingerprint: newFingerprint,
-                            sending: false,
-                        };
-                    } else {
-                        const isFingerprintEqual =
-                            existingCtx.baselineFingerprint === newFingerprint;
-
-                        if (isFingerprintEqual) {
-                            nextContexts[ctxKey] = existingCtx;
-                        } else {
+                        if (!existingCtx) {
                             nextContexts[ctxKey] = {
-                                ...existingCtx,
+                                tableId: table.id,
+                                invoiceKey: key,
                                 generation: ++nextGeneration.current,
                                 cart: confirmedCartItems,
                                 history: [],
                                 baselineFingerprint: newFingerprint,
                                 sending: false,
                             };
+                        } else {
+                            const isFingerprintEqual =
+                                existingCtx.baselineFingerprint ===
+                                newFingerprint;
+
+                            if (isFingerprintEqual) {
+                                nextContexts[ctxKey] = existingCtx;
+                            } else {
+                                nextContexts[ctxKey] = {
+                                    ...existingCtx,
+                                    generation: ++nextGeneration.current,
+                                    cart: confirmedCartItems,
+                                    history: [],
+                                    baselineFingerprint: newFingerprint,
+                                    sending: false,
+                                };
+                            }
+                        }
+                    });
+                });
+
+                // Retain unconfirmed draft invoices not present on server
+                Object.entries(prevContexts).forEach(([ctxKey, ctx]) => {
+                    if (
+                        !activeKeysSet.has(ctxKey) &&
+                        ctx.invoiceKey.startsWith('draft_')
+                    ) {
+                        const tableExists = safeTables.some(
+                            (t) => t.id === ctx.tableId,
+                        );
+
+                        if (
+                            tableExists &&
+                            !changedTables.has(ctx.tableId) &&
+                            ctx.baselineFingerprint === '[]'
+                        ) {
+                            nextContexts[ctxKey] = ctx;
                         }
                     }
                 });
+
+                return nextContexts;
             });
-
-            // Retain unconfirmed draft invoices not present on server
-            Object.entries(prevContexts).forEach(([ctxKey, ctx]) => {
-                if (
-                    !activeKeysSet.has(ctxKey) &&
-                    ctx.invoiceKey.startsWith('draft_')
-                ) {
-                    const tableExists = safeTables.some(
-                        (t) => t.id === ctx.tableId,
-                    );
-
-                    if (tableExists && !changedTables.has(ctx.tableId) && ctx.baselineFingerprint === '[]') {
-                        nextContexts[ctxKey] = ctx;
-                    }
-                }
-            });
-
-            return nextContexts;
-        });
-    }, [setContexts]);
+        },
+        [setContexts],
+    );
 
     useEffect(() => {
         queueMicrotask(() => {
@@ -763,45 +830,51 @@ export function usePOSCart(
         [reconcileBaseline, setContexts],
     );
 
-    const onSendFailure = useCallback((key: ContextKey) => {
-        const ctxKey = `${key.tableId}::${key.invoiceKey}`;
+    const onSendFailure = useCallback(
+        (key: ContextKey) => {
+            const ctxKey = `${key.tableId}::${key.invoiceKey}`;
 
-        setContexts((prev) => {
-            const existing = prev[ctxKey];
+            setContexts((prev) => {
+                const existing = prev[ctxKey];
 
-            if (!existing || existing.generation !== key.generation) {
-                return prev;
-            }
+                if (!existing || existing.generation !== key.generation) {
+                    return prev;
+                }
 
-            return {
-                ...prev,
-                [ctxKey]: {
-                    ...existing,
-                    sending: false,
-                },
-            };
-        });
-    }, [setContexts]);
+                return {
+                    ...prev,
+                    [ctxKey]: {
+                        ...existing,
+                        sending: false,
+                    },
+                };
+            });
+        },
+        [setContexts],
+    );
 
-    const onSendAmbiguous = useCallback((key: ContextKey) => {
-        const ctxKey = `${key.tableId}::${key.invoiceKey}`;
+    const onSendAmbiguous = useCallback(
+        (key: ContextKey) => {
+            const ctxKey = `${key.tableId}::${key.invoiceKey}`;
 
-        setContexts((prev) => {
-            const existing = prev[ctxKey];
+            setContexts((prev) => {
+                const existing = prev[ctxKey];
 
-            if (!existing || existing.generation !== key.generation) {
-                return prev;
-            }
+                if (!existing || existing.generation !== key.generation) {
+                    return prev;
+                }
 
-            return {
-                ...prev,
-                [ctxKey]: {
-                    ...existing,
-                    sending: true,
-                },
-            };
-        });
-    }, [setContexts]);
+                return {
+                    ...prev,
+                    [ctxKey]: {
+                        ...existing,
+                        sending: true,
+                    },
+                };
+            });
+        },
+        [setContexts],
+    );
 
     const addNewDraftInvoice = (tableId: number) => {
         const nextTempId = `draft_${generateDraftLineId()}`;
@@ -954,8 +1027,7 @@ export function usePOSCart(
 
         const updated = ctx.cart.map((item) => {
             if (item.orderItemId === orderItemId && item.isConfirmed) {
-                const newStagedQty =
-                    (item.stagedReduceQty || 0) + reduceQty;
+                const newStagedQty = (item.stagedReduceQty || 0) + reduceQty;
                 const currentEffectiveQty = Math.max(
                     0,
                     item.quantity - reduceQty,
@@ -1029,7 +1101,9 @@ export function usePOSCart(
             }
 
             const updated = ctx.cart.map((item) =>
-                !item.isConfirmed && item.menu_item_id === menuItemId ? { ...item, note } : item,
+                !item.isConfirmed && item.menu_item_id === menuItemId
+                    ? { ...item, note }
+                    : item,
             );
 
             return {
@@ -1076,9 +1150,8 @@ export function usePOSCart(
             if (remainingForTable.length === 0) {
                 const defaultExisting = prev[`${tableId}::draft_default`];
                 const defaultGen =
-                    (defaultExisting?.generation ??
-                        existing?.generation ??
-                        0) + 1;
+                    (defaultExisting?.generation ?? existing?.generation ?? 0) +
+                    1;
 
                 next[`${tableId}::draft_default`] = {
                     tableId,
@@ -1159,10 +1232,21 @@ export function usePOSCart(
         whisperDraftCart(tableId, []);
     };
 
-    const captureContexts = (tableIds: number[], invoiceKeys?: string[]): ContextKey[] =>
+    const captureContexts = (
+        tableIds: number[],
+        invoiceKeys?: string[],
+    ): ContextKey[] =>
         Object.values(contextsRef.current)
-            .filter(ctx => tableIds.includes(ctx.tableId) && (!invoiceKeys || invoiceKeys.includes(ctx.invoiceKey)))
-            .map(({ tableId, invoiceKey, generation }) => ({ tableId, invoiceKey, generation }));
+            .filter(
+                (ctx) =>
+                    tableIds.includes(ctx.tableId) &&
+                    (!invoiceKeys || invoiceKeys.includes(ctx.invoiceKey)),
+            )
+            .map(({ tableId, invoiceKey, generation }) => ({
+                tableId,
+                invoiceKey,
+                generation,
+            }));
 
     return {
         captureContexts,

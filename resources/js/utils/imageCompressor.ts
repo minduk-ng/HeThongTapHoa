@@ -5,7 +5,7 @@
 export async function compressAndResizeImage(
     file: File,
     targetSize = 600,
-    quality = 0.85
+    quality = 0.85,
 ): Promise<File> {
     return new Promise((resolve) => {
         // If file is already small svg, resolve as is
@@ -64,7 +64,7 @@ export async function compressAndResizeImage(
                     0,
                     0,
                     targetSize,
-                    targetSize
+                    targetSize,
                 );
 
                 // Export to WebP format
@@ -73,17 +73,21 @@ export async function compressAndResizeImage(
                         if (blob) {
                             const baseName = file.name.replace(/\.[^/.]+$/, '');
                             const webpFilename = `${baseName}_600x600.webp`;
-                            const compressedFile = new File([blob], webpFilename, {
-                                type: 'image/webp',
-                                lastModified: Date.now(),
-                            });
+                            const compressedFile = new File(
+                                [blob],
+                                webpFilename,
+                                {
+                                    type: 'image/webp',
+                                    lastModified: Date.now(),
+                                },
+                            );
                             resolve(compressedFile);
                         } else {
                             resolve(file);
                         }
                     },
                     'image/webp',
-                    quality
+                    quality,
                 );
             };
 

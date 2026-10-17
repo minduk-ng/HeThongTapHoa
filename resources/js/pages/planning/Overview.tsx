@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import ActualForecastChart from '../../components/planning/ActualForecastChart';
-import type {ActualForecastPoint} from '../../components/planning/ActualForecastChart';
+import type { ActualForecastPoint } from '../../components/planning/ActualForecastChart';
 import DataQualityBadge from '../../components/planning/DataQualityBadge';
 import {
     formatCurrency,
@@ -24,7 +24,7 @@ import {
 } from '../../components/planning/planningFormatters';
 import PlanningResultState from '../../components/planning/PlanningResultState';
 import RunStatusBanner from '../../components/planning/RunStatusBanner';
-import type {ForecastRunSummary} from '../../components/planning/RunStatusBanner';
+import type { ForecastRunSummary } from '../../components/planning/RunStatusBanner';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import type { PlanningResultSummary } from '../../types/planning';
 
@@ -133,10 +133,10 @@ export default function Overview({
     const safeRecentRuns = Array.isArray(recentRuns) ? recentRuns : [];
 
     const [selectedHorizon, setSelectedHorizon] = useState<number>(
-        filters?.horizon_days || activeRun?.horizon_days || 7
+        filters?.horizon_days || activeRun?.horizon_days || 7,
     );
     const [selectedCategory, setSelectedCategory] = useState<string>(
-        filters?.category_id ? String(filters.category_id) : 'all'
+        filters?.category_id ? String(filters.category_id) : 'all',
     );
 
     const handleFilterChange = (categoryId: string, horizon: number) => {
@@ -148,27 +148,42 @@ export default function Overview({
                 '/planning',
                 {
                     synthetic_dataset_id: filters?.synthetic_dataset_id ?? null,
-                    category_id: categoryId === 'all' ? null : Number(categoryId),
+                    category_id:
+                        categoryId === 'all' ? null : Number(categoryId),
                     horizon_days: horizon,
                 },
                 {
                     preserveState: true,
                     preserveScroll: true,
-                }
+                },
             );
         });
     };
 
     // Total counts for distribution percentages
-    const totalQualityCount = safeQualityDist.reduce((acc, q) => acc + q.count, 0);
+    const totalQualityCount = safeQualityDist.reduce(
+        (acc, q) => acc + q.count,
+        0,
+    );
     const totalModelCount = safeModelDist.reduce((acc, m) => acc + m.count, 0);
 
-    const productReason = resultSummary.empty_reason === 'no_recommendation_evidence' ? null : resultSummary.empty_reason;
-    const filteredProductsEmpty = Boolean(filters?.category_id) && resultSummary.unfiltered_product_count > 0 && safeTopGrowing.length === 0;
-    const contextQuery = new URLSearchParams({ horizon_days: String(activeRun?.horizon_days || selectedHorizon) });
+    const productReason =
+        resultSummary.empty_reason === 'no_recommendation_evidence'
+            ? null
+            : resultSummary.empty_reason;
+    const filteredProductsEmpty =
+        Boolean(filters?.category_id) &&
+        resultSummary.unfiltered_product_count > 0 &&
+        safeTopGrowing.length === 0;
+    const contextQuery = new URLSearchParams({
+        horizon_days: String(activeRun?.horizon_days || selectedHorizon),
+    });
 
     if (filters?.synthetic_dataset_id != null) {
-        contextQuery.set('synthetic_dataset_id', String(filters.synthetic_dataset_id));
+        contextQuery.set(
+            'synthetic_dataset_id',
+            String(filters.synthetic_dataset_id),
+        );
     }
 
     return (
@@ -183,7 +198,8 @@ export default function Overview({
                             Tổng quan Dự báo & Kế hoạch
                         </h1>
                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                            Nhu cầu tiêu thụ sản phẩm, mô hình dự báo và tối ưu hoá tồn kho nguyên liệu.
+                            Nhu cầu tiêu thụ sản phẩm, mô hình dự báo và tối ưu
+                            hoá tồn kho nguyên liệu.
                         </p>
                     </div>
 
@@ -233,10 +249,12 @@ export default function Overview({
                             </div>
                         </div>
                         <div className="mt-3">
-                            <span className="font-display tabular-nums text-2xl font-bold text-slate-900 dark:text-slate-100">
+                            <span className="font-display text-2xl font-bold text-slate-900 tabular-nums dark:text-slate-100">
                                 {formatQuantity(kpis?.growth_items_count)}
                             </span>
-                            <span className="ml-1 text-xs text-slate-500 dark:text-slate-400">món</span>
+                            <span className="ml-1 text-xs text-slate-500 dark:text-slate-400">
+                                món
+                            </span>
                         </div>
                         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                             Có nhu cầu dự báo trong kỳ tới
@@ -254,10 +272,12 @@ export default function Overview({
                             </div>
                         </div>
                         <div className="mt-3">
-                            <span className="font-display tabular-nums text-2xl font-bold text-slate-900 dark:text-slate-100">
+                            <span className="font-display text-2xl font-bold text-slate-900 tabular-nums dark:text-slate-100">
                                 {formatQuantity(kpis?.procurement_needed_count)}
                             </span>
-                            <span className="ml-1 text-xs text-slate-500 dark:text-slate-400">mặt hàng</span>
+                            <span className="ml-1 text-xs text-slate-500 dark:text-slate-400">
+                                mặt hàng
+                            </span>
                         </div>
                         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                             Cần đặt hàng bổ sung tồn kho
@@ -275,7 +295,7 @@ export default function Overview({
                             </div>
                         </div>
                         <div className="mt-3">
-                            <span className="font-display tabular-nums text-2xl font-bold text-slate-900 dark:text-slate-100">
+                            <span className="font-display text-2xl font-bold text-slate-900 tabular-nums dark:text-slate-100">
                                 {formatCurrency(kpis?.estimated_value)}
                             </span>
                         </div>
@@ -295,8 +315,10 @@ export default function Overview({
                             </div>
                         </div>
                         <div className="mt-3">
-                            <span className="font-display tabular-nums text-2xl font-bold text-slate-900 dark:text-slate-100">
-                                {kpis?.average_wape == null ? '—' : formatWape(kpis.average_wape)}
+                            <span className="font-display text-2xl font-bold text-slate-900 tabular-nums dark:text-slate-100">
+                                {kpis?.average_wape == null
+                                    ? '—'
+                                    : formatWape(kpis.average_wape)}
                             </span>
                         </div>
                         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -308,7 +330,9 @@ export default function Overview({
                 {/* 4. Replenishment decisions before analysis */}
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-800/80">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Cần nhập hàng</h2>
+                        <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
+                            Cần nhập hàng
+                        </h2>
                         <Link
                             href={`/planning/procurement?${contextQuery}`}
                             className="inline-flex items-center gap-1 text-sm font-semibold text-sky-700 hover:text-sky-800 dark:text-sky-300 dark:hover:text-sky-200"
@@ -318,20 +342,47 @@ export default function Overview({
                         </Link>
                     </div>
                     {safeUrgentReorders.length === 0 ? (
-                        resultSummary.empty_reason ? <PlanningResultState reason={resultSummary.empty_reason} /> : (
+                        resultSummary.empty_reason ? (
+                            <PlanningResultState
+                                reason={resultSummary.empty_reason}
+                            />
+                        ) : (
                             <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                                <p className="font-semibold">{resultSummary.recommendation_count > 0 && resultSummary.positive_recommendation_count === 0 ? 'Không có đề xuất nhập thêm trong lượt này' : 'Chưa có đề xuất trong danh sách này'}</p>
-                                <p className="mt-1 text-xs">Lượt #{activeRun?.id} · {formatDateTime(activeRun?.completed_at || activeRun?.data_cutoff)}. Chỉ phản ánh các bản ghi đã tạo, không xác nhận đủ tồn kho cho mọi nguyên liệu.</p>
+                                <p className="font-semibold">
+                                    {resultSummary.recommendation_count > 0 &&
+                                    resultSummary.positive_recommendation_count ===
+                                        0
+                                        ? 'Không có đề xuất nhập thêm trong lượt này'
+                                        : 'Chưa có đề xuất trong danh sách này'}
+                                </p>
+                                <p className="mt-1 text-xs">
+                                    Lượt #{activeRun?.id} ·{' '}
+                                    {formatDateTime(
+                                        activeRun?.completed_at ||
+                                            activeRun?.data_cutoff,
+                                    )}
+                                    . Chỉ phản ánh các bản ghi đã tạo, không xác
+                                    nhận đủ tồn kho cho mọi nguyên liệu.
+                                </p>
                             </div>
                         )
                     ) : (
                         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {safeUrgentReorders.map((item) => (
-                                <div key={item.id} className="rounded-xl border border-amber-200/60 bg-amber-50/20 p-3 transition-colors dark:border-amber-900/40 dark:bg-amber-950/20">
+                                <div
+                                    key={item.id}
+                                    className="rounded-xl border border-amber-200/60 bg-amber-50/20 p-3 transition-colors dark:border-amber-900/40 dark:bg-amber-950/20"
+                                >
                                     <div className="flex items-start justify-between gap-2">
                                         <div>
-                                            <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200">{item.ingredient_name}</h3>
-                                            <p className="text-[11px] text-slate-500 dark:text-slate-400">NCC: {item.supplier_name || 'Mặc định'}</p>
+                                            <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200">
+                                                {item.ingredient_name}
+                                            </h3>
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                NCC:{' '}
+                                                {item.supplier_name ||
+                                                    'Mặc định'}
+                                            </p>
                                         </div>
                                         <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
                                             <AlertTriangle className="h-3 w-3" />
@@ -340,12 +391,27 @@ export default function Overview({
                                     </div>
                                     <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-amber-200/40 pt-2 text-sm dark:border-amber-900/30">
                                         <div>
-                                            <span className="text-slate-500 dark:text-slate-400">Hiện có: </span>
-                                            <strong className="tabular-nums text-slate-700 dark:text-slate-300">{formatQuantity(item.stock_quantity)} {item.unit}</strong>
+                                            <span className="text-slate-500 dark:text-slate-400">
+                                                Hiện có:{' '}
+                                            </span>
+                                            <strong className="text-slate-700 tabular-nums dark:text-slate-300">
+                                                {formatQuantity(
+                                                    item.stock_quantity,
+                                                )}{' '}
+                                                {item.unit}
+                                            </strong>
                                         </div>
                                         <div>
-                                            <span className="text-slate-500 dark:text-slate-400">Đề xuất: </span>
-                                            <strong className="tabular-nums font-bold text-amber-700 dark:text-amber-300">+{formatQuantity(item.suggested_quantity)} {item.unit}</strong>
+                                            <span className="text-slate-500 dark:text-slate-400">
+                                                Đề xuất:{' '}
+                                            </span>
+                                            <strong className="font-bold text-amber-700 tabular-nums dark:text-amber-300">
+                                                +
+                                                {formatQuantity(
+                                                    item.suggested_quantity,
+                                                )}{' '}
+                                                {item.unit}
+                                            </strong>
                                         </div>
                                     </div>
                                 </div>
@@ -362,7 +428,8 @@ export default function Overview({
                                 Diễn biến Nhu cầu & Dự báo
                             </h2>
                             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                                So sánh lịch sử nhu cầu thực tế và đường dự đoán tương lai theo chu kỳ.
+                                So sánh lịch sử nhu cầu thực tế và đường dự đoán
+                                tương lai theo chu kỳ.
                             </p>
                         </div>
 
@@ -374,7 +441,10 @@ export default function Overview({
                                 <select
                                     value={selectedCategory}
                                     onChange={(e) =>
-                                        handleFilterChange(e.target.value, selectedHorizon)
+                                        handleFilterChange(
+                                            e.target.value,
+                                            selectedHorizon,
+                                        )
                                     }
                                     aria-label="Lọc theo danh mục sản phẩm"
                                     className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
@@ -389,13 +459,19 @@ export default function Overview({
                             </div>
 
                             {/* Horizon 7 / 30 day Toggle */}
-                            <div role="group" aria-label="Kỳ dự báo" className="inline-flex rounded-xl bg-slate-100 p-0.5 dark:bg-slate-700/60">
+                            <div
+                                role="group"
+                                aria-label="Kỳ dự báo"
+                                className="inline-flex rounded-xl bg-slate-100 p-0.5 dark:bg-slate-700/60"
+                            >
                                 <button
                                     type="button"
-                                    onClick={() => handleFilterChange(selectedCategory, 7)}
+                                    onClick={() =>
+                                        handleFilterChange(selectedCategory, 7)
+                                    }
                                     className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
                                         selectedHorizon === 7
-                                             ? 'bg-sky-700 text-white shadow-2xs dark:bg-sky-700 font-semibold'
+                                            ? 'bg-sky-700 font-semibold text-white shadow-2xs dark:bg-sky-700'
                                             : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                                     }`}
                                 >
@@ -403,10 +479,12 @@ export default function Overview({
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => handleFilterChange(selectedCategory, 30)}
+                                    onClick={() =>
+                                        handleFilterChange(selectedCategory, 30)
+                                    }
                                     className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
                                         selectedHorizon === 30
-                                             ? 'bg-sky-700 text-white shadow-2xs dark:bg-sky-700 font-semibold'
+                                            ? 'bg-sky-700 font-semibold text-white shadow-2xs dark:bg-sky-700'
                                             : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                                     }`}
                                 >
@@ -417,10 +495,26 @@ export default function Overview({
                     </div>
 
                     <div className="p-5">
-                        {productReason && <PlanningResultState reason={productReason} />}
+                        {productReason && (
+                            <PlanningResultState reason={productReason} />
+                        )}
                         {filteredProductsEmpty && (
-                            <PlanningResultState title="Không có kết quả phù hợp" description="Danh mục đang chọn không có sản phẩm dự báo.">
-                                <button type="button" onClick={() => handleFilterChange('all', selectedHorizon)} className="mt-3 text-sm font-semibold underline">Xóa bộ lọc</button>
+                            <PlanningResultState
+                                title="Không có kết quả phù hợp"
+                                description="Danh mục đang chọn không có sản phẩm dự báo."
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        handleFilterChange(
+                                            'all',
+                                            selectedHorizon,
+                                        )
+                                    }
+                                    className="mt-3 text-sm font-semibold underline"
+                                >
+                                    Xóa bộ lọc
+                                </button>
                             </PlanningResultState>
                         )}
                         {safeChartData.length > 0 && (
@@ -438,10 +532,18 @@ export default function Overview({
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-800/80">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-700/60">
                         <div>
-                            <h3 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">Sản phẩm nhu cầu cao nhất</h3>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">Top 10 sản phẩm có tổng sản lượng dự báo lớn nhất</p>
+                            <h3 className="font-display text-sm font-bold text-slate-900 dark:text-slate-100">
+                                Sản phẩm nhu cầu cao nhất
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Top 10 sản phẩm có tổng sản lượng dự báo lớn
+                                nhất
+                            </p>
                         </div>
-                        <Link href={`/planning/products?${contextQuery}`} className="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300">
+                        <Link
+                            href={`/planning/products?${contextQuery}`}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
+                        >
                             <span>Xem tất cả</span>
                             <ChevronRight className="h-3.5 w-3.5" />
                         </Link>
@@ -454,31 +556,76 @@ export default function Overview({
                     >
                         {safeTopGrowing.length === 0 ? (
                             filteredProductsEmpty ? (
-                                <PlanningResultState title="Không có kết quả phù hợp" description="Danh mục đang chọn không có sản phẩm dự báo.">
-                                    <button type="button" onClick={() => handleFilterChange('all', selectedHorizon)} className="mt-3 text-sm font-semibold underline">Xóa bộ lọc</button>
+                                <PlanningResultState
+                                    title="Không có kết quả phù hợp"
+                                    description="Danh mục đang chọn không có sản phẩm dự báo."
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            handleFilterChange(
+                                                'all',
+                                                selectedHorizon,
+                                            )
+                                        }
+                                        className="mt-3 text-sm font-semibold underline"
+                                    >
+                                        Xóa bộ lọc
+                                    </button>
                                 </PlanningResultState>
-                            ) : <PlanningResultState reason={productReason} />
+                            ) : (
+                                <PlanningResultState reason={productReason} />
+                            )
                         ) : (
                             <table className="w-full text-left text-xs">
                                 <thead>
                                     <tr className="border-b border-slate-100 text-slate-500 dark:border-slate-700/60 dark:text-slate-400">
-                                        <th className="pb-2 font-medium">Sản phẩm</th>
-                                        <th className="pb-2 font-medium">Danh mục</th>
-                                        <th className="pb-2 text-right font-medium">Dự báo (kỳ)</th>
-                                        <th className="pb-2 text-center font-medium">Mô hình</th>
-                                        <th className="pb-2 text-right font-medium">Chất lượng</th>
+                                        <th className="pb-2 font-medium">
+                                            Sản phẩm
+                                        </th>
+                                        <th className="pb-2 font-medium">
+                                            Danh mục
+                                        </th>
+                                        <th className="pb-2 text-right font-medium">
+                                            Dự báo (kỳ)
+                                        </th>
+                                        <th className="pb-2 text-center font-medium">
+                                            Mô hình
+                                        </th>
+                                        <th className="pb-2 text-right font-medium">
+                                            Chất lượng
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40">
                                     {safeTopGrowing.map((prod) => (
-                                        <tr key={prod.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/60">
-                                            <td className="py-2.5 font-medium text-slate-800 dark:text-slate-200">{prod.name}</td>
-                                            <td className="py-2.5 text-slate-500 dark:text-slate-400">{prod.category_name || '—'}</td>
-                                            <td className="py-2.5 text-right tabular-nums font-semibold text-slate-900 dark:text-slate-100">{formatQuantity(prod.forecast_quantity)}</td>
-                                            <td className="py-2.5 text-center">
-                                                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">{MODEL_NAMES[prod.model_key] || prod.model_key}</span>
+                                        <tr
+                                            key={prod.id}
+                                            className="hover:bg-slate-50/50 dark:hover:bg-slate-800/60"
+                                        >
+                                            <td className="py-2.5 font-medium text-slate-800 dark:text-slate-200">
+                                                {prod.name}
                                             </td>
-                                            <td className="py-2.5 text-right"><DataQualityBadge quality={prod.data_quality} /></td>
+                                            <td className="py-2.5 text-slate-500 dark:text-slate-400">
+                                                {prod.category_name || '—'}
+                                            </td>
+                                            <td className="py-2.5 text-right font-semibold text-slate-900 tabular-nums dark:text-slate-100">
+                                                {formatQuantity(
+                                                    prod.forecast_quantity,
+                                                )}
+                                            </td>
+                                            <td className="py-2.5 text-center">
+                                                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                                    {MODEL_NAMES[
+                                                        prod.model_key
+                                                    ] || prod.model_key}
+                                                </span>
+                                            </td>
+                                            <td className="py-2.5 text-right">
+                                                <DataQualityBadge
+                                                    quality={prod.data_quality}
+                                                />
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -501,11 +648,12 @@ export default function Overview({
                                         Chất lượng dữ liệu lịch sử
                                     </h3>
                                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                                        Đánh giá độ tin cậy của chuỗi chu kỳ doanh thu
+                                        Đánh giá độ tin cậy của chuỗi chu kỳ
+                                        doanh thu
                                     </p>
                                 </div>
                             </div>
-                            <span className="tabular-nums text-xs font-medium text-slate-500 dark:text-slate-400">
+                            <span className="text-xs font-medium text-slate-500 tabular-nums dark:text-slate-400">
                                 {totalQualityCount} sản phẩm
                             </span>
                         </div>
@@ -519,7 +667,11 @@ export default function Overview({
                                 safeQualityDist.map((item) => {
                                     const percent =
                                         totalQualityCount > 0
-                                            ? Math.round((item.count / totalQualityCount) * 100)
+                                            ? Math.round(
+                                                  (item.count /
+                                                      totalQualityCount) *
+                                                      100,
+                                              )
                                             : 0;
 
                                     return (
@@ -528,17 +680,22 @@ export default function Overview({
                                             className="flex items-center justify-between gap-3 text-xs"
                                         >
                                             <div className="flex items-center gap-2">
-                                                <DataQualityBadge quality={item.quality} />
+                                                <DataQualityBadge
+                                                    quality={item.quality}
+                                                />
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
                                                     <div
                                                         className="h-full rounded-full bg-sky-500"
-                                                        style={{ width: `${percent}%` }}
+                                                        style={{
+                                                            width: `${percent}%`,
+                                                        }}
                                                     />
                                                 </div>
-                                                <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-300 w-12 text-right">
-                                                    {item.count} món ({percent}%)
+                                                <span className="w-12 text-right font-semibold text-slate-700 tabular-nums dark:text-slate-300">
+                                                    {item.count} món ({percent}
+                                                    %)
                                                 </span>
                                             </div>
                                         </div>
@@ -560,11 +717,12 @@ export default function Overview({
                                         Phân bổ mô hình dự báo
                                     </h3>
                                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                                        Mô hình được áp dụng tối ưu theo từng sản phẩm
+                                        Mô hình được áp dụng tối ưu theo từng
+                                        sản phẩm
                                     </p>
                                 </div>
                             </div>
-                            <span className="tabular-nums text-xs font-medium text-slate-500 dark:text-slate-400">
+                            <span className="text-xs font-medium text-slate-500 tabular-nums dark:text-slate-400">
                                 {totalModelCount} phân bổ
                             </span>
                         </div>
@@ -578,7 +736,11 @@ export default function Overview({
                                 safeModelDist.map((item) => {
                                     const percent =
                                         totalModelCount > 0
-                                            ? Math.round((item.count / totalModelCount) * 100)
+                                            ? Math.round(
+                                                  (item.count /
+                                                      totalModelCount) *
+                                                      100,
+                                              )
                                             : 0;
 
                                     return (
@@ -587,17 +749,21 @@ export default function Overview({
                                             className="flex items-center justify-between gap-3 text-xs"
                                         >
                                             <span className="font-medium text-slate-700 dark:text-slate-300">
-                                                {MODEL_NAMES[item.model_key] || item.model_key}
+                                                {MODEL_NAMES[item.model_key] ||
+                                                    item.model_key}
                                             </span>
                                             <div className="flex items-center gap-3">
                                                 <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
                                                     <div
                                                         className="h-full rounded-full bg-purple-500"
-                                                        style={{ width: `${percent}%` }}
+                                                        style={{
+                                                            width: `${percent}%`,
+                                                        }}
                                                     />
                                                 </div>
-                                                <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-300 w-12 text-right">
-                                                    {item.count} món ({percent}%)
+                                                <span className="w-12 text-right font-semibold text-slate-700 tabular-nums dark:text-slate-300">
+                                                    {item.count} món ({percent}
+                                                    %)
                                                 </span>
                                             </div>
                                         </div>
@@ -611,11 +777,15 @@ export default function Overview({
                 {/* 8. Recent Runs Footnote / Quick history if any */}
                 {safeRecentRuns.length > 1 && (
                     <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">Lịch sử chạy gần đây: </span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                            Lịch sử chạy gần đây:{' '}
+                        </span>
                         {safeRecentRuns.slice(0, 5).map((r, idx) => (
                             <span key={r.id}>
                                 #{r.id} ({r.kind} - {r.status})
-                                {idx < Math.min(safeRecentRuns.length, 5) - 1 ? ' • ' : ''}
+                                {idx < Math.min(safeRecentRuns.length, 5) - 1
+                                    ? ' • '
+                                    : ''}
                             </span>
                         ))}
                     </div>

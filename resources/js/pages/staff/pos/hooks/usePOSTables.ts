@@ -3,10 +3,13 @@ import { useState, useEffect } from 'react';
 import type { POSTableData } from '../types/pos.types';
 
 export function usePOSTables(tables: POSTableData[]) {
-    const [selectedTable, setSelectedTable] = useState<POSTableData | null>(tables[0] || null);
+    const [selectedTable, setSelectedTable] = useState<POSTableData | null>(
+        tables[0] || null,
+    );
 
-
-    const [draftTableCounts, setDraftTableCounts] = useState<Record<number, number>>({});
+    const [draftTableCounts, setDraftTableCounts] = useState<
+        Record<number, number>
+    >({});
 
     // Realtime WebSocket Listener via Reverb for order status & table updates
     useEffect(() => {
@@ -36,17 +39,20 @@ export function usePOSTables(tables: POSTableData[]) {
                         only: ['tables'],
                         onError: () => {},
                     });
-                })
+                });
 
             const presence = window.Echo.join('pos-room');
-            presence.listenForWhisper('table-draft-cart-updated', (e: { tableId: number; unconfirmedCount: number }) => {
-                if (e && e.tableId !== undefined) {
-                    setDraftTableCounts((prev) => ({
-                        ...prev,
-                        [e.tableId]: e.unconfirmedCount || 0,
-                    }));
-                }
-            });
+            presence.listenForWhisper(
+                'table-draft-cart-updated',
+                (e: { tableId: number; unconfirmedCount: number }) => {
+                    if (e && e.tableId !== undefined) {
+                        setDraftTableCounts((prev) => ({
+                            ...prev,
+                            [e.tableId]: e.unconfirmedCount || 0,
+                        }));
+                    }
+                },
+            );
 
             return () => {
                 window.Echo.leave('pos-channel');
@@ -56,11 +62,15 @@ export function usePOSTables(tables: POSTableData[]) {
 
     // Sync selectedTable when Inertia reloads tables prop
     useEffect(() => {
-        const safeTables = (Array.isArray(tables) ? tables : Object.values(tables || {})) as POSTableData[];
+        const safeTables = (
+            Array.isArray(tables) ? tables : Object.values(tables || {})
+        ) as POSTableData[];
 
         queueMicrotask(() => {
             if (selectedTable) {
-                const updated = safeTables.find((t) => t.id === selectedTable.id);
+                const updated = safeTables.find(
+                    (t) => t.id === selectedTable.id,
+                );
 
                 if (updated) {
                     setSelectedTable(updated);
